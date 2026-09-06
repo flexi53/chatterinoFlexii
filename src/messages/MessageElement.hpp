@@ -110,6 +110,9 @@ enum class MessageElementFlag : int64_t {
     // - 7TV Contributor
     BadgeSevenTV = (1LL << 36),
 
+    /// Custom badge from Chatterino Homies
+    BadgeHomies = (1LL << 34),
+
     // Slot 8: BetterTTV
     // - BetterTTV Pro
     BadgeBttv = (1LL << 6),
@@ -122,7 +125,7 @@ enum class MessageElementFlag : int64_t {
 
     Badges = BadgeGlobalAuthority | BadgePredictions | BadgeChannelAuthority |
              BadgeSubscription | BadgeVanity | BadgeChatterino | BadgeSevenTV |
-             BadgeFfz | BadgeSharedChannel | BadgeBttv,
+             BadgeFfz | BadgeSharedChannel | BadgeBttv | BadgeHomies,
 
     ChannelName = (1LL << 20),
 

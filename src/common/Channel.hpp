@@ -151,6 +151,10 @@ public:
 
     static std::shared_ptr<Channel> getEmpty();
 
+    /// The platform this channel belongs to, e.g. "twitch". Matches the
+    /// directory chat logs for this channel are written to.
+    const QString &getPlatform() const;
+
     /// Update the user's last message and insert the personal emotes if necessary.
     void upsertPersonalSeventvEmotes(
         const QString &userLogin,

@@ -14,6 +14,7 @@
 #include "controllers/commands/CommandController.hpp"
 #include "controllers/highlights/HighlightBlacklistUser.hpp"
 #include "controllers/hotkeys/HotkeyController.hpp"
+#include "controllers/moderation/ModerationHistory.hpp"
 #include "controllers/userdata/UserDataController.hpp"
 #include "messages/Message.hpp"
 #include "messages/MessageBuilder.hpp"
@@ -26,6 +27,7 @@
 #include "providers/twitch/TwitchAccount.hpp"
 #include "providers/twitch/TwitchChannel.hpp"
 #include "providers/twitch/TwitchIrcServer.hpp"
+#include "singletons/Paths.hpp"
 #include "singletons/Resources.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/StreamerMode.hpp"
@@ -53,6 +55,7 @@
 
 #include <QCheckBox>
 #include <QDesktopServices>
+#include <QDir>
 #include <QFile>
 #include <QMessageBox>
 #include <QMetaEnum>
@@ -60,11 +63,15 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QPointer>
+#include <QRegularExpression>
 #include <QStringBuilder>
+#include <QTextStream>
 
 namespace {
 constexpr QStringView TEXT_FOLLOWERS = u"Followers: %1";
 constexpr QStringView TEXT_CREATED = u"Created: %1";
+/// Mirrors the warnings/timeouts/bans shorthand on Twitch's own mod card
+constexpr QStringView TEXT_MOD_HISTORY = u"Punishments: %1";
 constexpr QStringView TEXT_TITLE = u"%1's Usercard - #%2";
 constexpr QStringView TEXT_USER_ID = u"ID: ";
 constexpr QStringView TEXT_UNAVAILABLE = u"(not available)";
@@ -124,6 +131,128 @@ bool checkMessageUserName(const QString &userName, MessagePtr message)
     return (isSubscription || isModAction || isSelectedUser);
 }
 
+/// How far back the user card looks for messages of a user.
+constexpr int USERCARD_HISTORY_DAYS = 7;
+
+/// The most messages the user card will ever show, no matter how much history
+/// is available.
+constexpr size_t USERCARD_MAX_MESSAGES = 25;
+
+/// Identifies a message well enough to spot the same line showing up both in
+/// the channel's buffer and in the chat log on disk.
+QString messageDedupeKey(const QTime &time, const QString &text)
+{
+    return time.toString("HH:mm:ss") % u'\0' % text;
+}
+
+/// Reads the messages @a userName sent in @a channel over the last
+/// USERCARD_HISTORY_DAYS days from the chat logs on disk.
+///
+/// The channel's own buffer only reaches back as far as its message limit,
+/// which on a busy channel is roughly an hour. Anything older has to come from
+/// the logs, so this is empty unless logging is turned on for the channel.
+/// Lines already present in @a alreadyShown are skipped so nothing appears
+/// twice.
+std::vector<MessagePtr> loadLoggedMessages(const QString &userName,
+                                           const ChannelPtr &channel,
+                                           const QSet<QString> &alreadyShown)
+{
+    std::vector<MessagePtr> messages;
+
+    if (!getSettings()->enableLogging)
+    {
+        return messages;
+    }
+
+    const auto platform = channel->getPlatform();
+    if (platform.isEmpty())
+    {
+        return messages;
+    }
+
+    auto baseDirectory = getSettings()->logPath.getValue();
+    if (baseDirectory.isEmpty())
+    {
+        baseDirectory = getApp()->getPaths().messageLogDirectory;
+    }
+
+    // Mirrors the layout LoggingChannel writes to:
+    // <base>/<Platform>/Channels/<channel>/<channel>-<date>.log
+    const auto platformDirectory =
+        platform.left(1).toUpper() + platform.mid(1).toLower();
+    const auto channelName = channel->getName();
+    const auto directory = QStringList{baseDirectory, platformDirectory,
+                                       QStringLiteral("Channels"), channelName}
+                               .join(QDir::separator());
+
+    // "[timestamp] name: text", where name is either the login or
+    // "Localized login". The timestamp is optional because it can be disabled.
+    static const QRegularExpression logLine(
+        QStringLiteral(R"(^(?:\[([^\]]*)\]\s+)?(\S.*?):\s(.*)$)"));
+
+    const auto timestampFormat = getSettings()->logTimestampFormat.getValue();
+    const auto today = QDate::currentDate();
+
+    for (int dayOffset = USERCARD_HISTORY_DAYS - 1; dayOffset >= 0; --dayOffset)
+    {
+        const auto date = today.addDays(-dayOffset);
+
+        QFile file(directory + QDir::separator() + channelName + "-" +
+                   date.toString("yyyy-MM-dd") + ".log");
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        {
+            continue;  // no log for that day
+        }
+
+        QTextStream stream(&file);
+        while (!stream.atEnd())
+        {
+            const auto line = stream.readLine();
+            // '#' starts the "Start/Stop logging at ..." marker lines
+            if (line.isEmpty() || line.startsWith('#'))
+            {
+                continue;
+            }
+
+            const auto match = logLine.match(line);
+            if (!match.hasMatch())
+            {
+                continue;
+            }
+
+            // The login name always comes last in the name part
+            const auto nameParts =
+                match.captured(2).split(' ', Qt::SkipEmptyParts);
+            if (nameParts.isEmpty() ||
+                nameParts.last().compare(userName, Qt::CaseInsensitive) != 0)
+            {
+                continue;
+            }
+
+            const auto text = match.captured(3);
+            const auto time =
+                QTime::fromString(match.captured(1), timestampFormat);
+
+            if (alreadyShown.contains(messageDedupeKey(time, text)))
+            {
+                continue;  // still in the channel's buffer
+            }
+
+            messages.push_back(time.isValid() ? makeSystemMessage(text, time)
+                                              : makeSystemMessage(text));
+        }
+    }
+
+    // Only the newest ones can ever end up on the card
+    if (messages.size() > USERCARD_MAX_MESSAGES)
+    {
+        messages.erase(messages.begin(),
+                       messages.end() - USERCARD_MAX_MESSAGES);
+    }
+
+    return messages;
+}
+
 ChannelPtr filterMessages(const QString &userName, ChannelPtr channel)
 {
     std::vector<MessagePtr> snapshot = channel->getMessageSnapshot();
@@ -139,12 +268,31 @@ ChannelPtr filterMessages(const QString &userName, ChannelPtr channel)
             std::make_shared<Channel>(channel->getName(), Channel::Type::None);
     }
 
+    // What the channel still holds in memory
+    std::vector<MessagePtr> live;
+    QSet<QString> liveKeys;
     for (const auto &message : snapshot)
     {
         if (checkMessageUserName(userName, message))
         {
-            channelPtr->addMessage(message, MessageContext::Repost);
+            live.push_back(message);
+            liveKeys.insert(
+                messageDedupeKey(message->parseTime, message->messageText));
         }
+    }
+
+    // Anything older than the buffer comes from the chat logs on disk
+    auto combined = loadLoggedMessages(userName, channel, liveKeys);
+    combined.insert(combined.end(), live.begin(), live.end());
+
+    // Show at most USERCARD_MAX_MESSAGES, keeping the newest ones
+    auto first = combined.size() > USERCARD_MAX_MESSAGES
+                     ? combined.end() - USERCARD_MAX_MESSAGES
+                     : combined.begin();
+
+    for (auto it = first; it != combined.end(); ++it)
+    {
+        channelPtr->addMessage(*it, MessageContext::Repost);
     }
 
     return channelPtr;
@@ -475,6 +623,7 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
                 .assign(&this->ui_.createdDateLabel);
             vbox.emplace<Label>("").assign(&this->ui_.followageLabel);
             vbox.emplace<Label>("").assign(&this->ui_.subageLabel);
+            vbox.emplace<Label>("").assign(&this->ui_.modHistoryLabel);
         }
     }
 
@@ -946,6 +1095,7 @@ void UserInfoPopup::setData(const QString &name,
     if (!isId)
     {
         this->updateLatestMessages();
+        this->updateModerationHistory();
     }
     // If we're opening by ID, this will be called as soon as we get the information from twitch
 
@@ -957,6 +1107,47 @@ void UserInfoPopup::setData(const QString &name,
         // not a normal twitch channel, the url opened by the button will be invalid, so hide the button
         this->ui_.usercardLabel->hide();
     }
+}
+
+void UserInfoPopup::updateModerationHistory()
+{
+    if (this->ui_.modHistoryLabel == nullptr)
+    {
+        return;
+    }
+
+    QString channelID;
+    if (auto *twitchChannel =
+            dynamic_cast<TwitchChannel *>(this->underlyingChannel_.get()))
+    {
+        channelID = twitchChannel->roomId();
+    }
+
+    if (channelID.isEmpty() || this->userId_.isEmpty())
+    {
+        this->ui_.modHistoryLabel->setVisible(false);
+        return;
+    }
+
+    const auto counts =
+        getApp()->getModerationHistory()->counts(channelID, this->userId_);
+
+    if (counts.isEmpty())
+    {
+        this->ui_.modHistoryLabel->setVisible(false);
+        return;
+    }
+
+    this->ui_.modHistoryLabel->setText(
+        TEXT_MOD_HISTORY.arg(counts.toShortString()));
+    this->ui_.modHistoryLabel->setToolTip(
+        QStringLiteral("%1 warnings, %2 timeouts, %3 bans in this channel.\n"
+                       "Counted from moderation events since ChattiFlexii "
+                       "started recording them - not Twitch's own history.")
+            .arg(QString::number(counts.warnings),
+                 QString::number(counts.timeouts),
+                 QString::number(counts.bans)));
+    this->ui_.modHistoryLabel->setVisible(true);
 }
 
 void UserInfoPopup::updateLatestMessages()

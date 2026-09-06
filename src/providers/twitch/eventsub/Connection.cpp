@@ -9,6 +9,7 @@
 #include "controllers/accounts/AccountController.hpp"
 #include "controllers/highlights/HighlightController.hpp"
 #include "controllers/highlights/HighlightResult.hpp"
+#include "controllers/moderation/ModerationHistory.hpp"
 #include "messages/Message.hpp"
 #include "messages/MessageBuilder.hpp"
 #include "providers/twitch/eventsub/Controller.hpp"
@@ -181,6 +182,29 @@ void Connection::onChannelModerate(
     std::visit(
         [&](auto &&action) {
             using Action = std::remove_cvref_t<decltype(action)>;
+
+            // Keep a tally of punishments per user so the user card can show
+            // them without having to open Twitch's own moderator card.
+            namespace moderate = lib::payload::channel_moderate::v2;
+            if constexpr (std::is_same_v<Action, moderate::Warn> ||
+                          std::is_same_v<Action, moderate::Timeout> ||
+                          std::is_same_v<Action, moderate::Ban>)
+            {
+                auto kind = ModerationHistory::Action::Warning;
+                if constexpr (std::is_same_v<Action, moderate::Timeout>)
+                {
+                    kind = ModerationHistory::Action::Timeout;
+                }
+                else if constexpr (std::is_same_v<Action, moderate::Ban>)
+                {
+                    kind = ModerationHistory::Action::Ban;
+                }
+
+                getApp()->getModerationHistory()->record(
+                    payload.event.broadcasterUserID.qt(), action.userID.qt(),
+                    kind);
+            }
+
             static_assert(CanMakeModMessage<Action> ||
                               CanHandleModMessage<Action> ||
                               std::is_same_v<Action, std::string>,

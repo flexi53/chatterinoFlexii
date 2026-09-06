@@ -398,6 +398,10 @@ set(SOURCE_FILES
         providers/emoji/Emojis.hpp
         providers/emoji/EmojiStyle.hpp
 
+        controllers/moderation/ModerationHistory.cpp
+        controllers/moderation/ModerationHistory.hpp
+        providers/homies/HomiesBadges.cpp
+        providers/homies/HomiesBadges.hpp
         providers/ffz/FfzBadges.cpp
         providers/ffz/FfzBadges.hpp
         providers/ffz/FfzEmotes.cpp

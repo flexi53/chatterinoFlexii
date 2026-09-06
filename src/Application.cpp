@@ -33,6 +33,7 @@
 #    include "controllers/plugins/PluginController.hpp"
 #endif
 #include "controllers/emotes/EmoteController.hpp"
+#include "controllers/moderation/ModerationHistory.hpp"
 #include "controllers/sound/MiniaudioBackend.hpp"
 #include "controllers/sound/NullBackend.hpp"
 #include "controllers/twitch/LiveController.hpp"
@@ -43,6 +44,7 @@
 #include "providers/bttv/BttvLiveUpdates.hpp"
 #include "providers/chatterino/ChatterinoBadges.hpp"
 #include "providers/ffz/FfzBadges.hpp"
+#include "providers/homies/HomiesBadges.hpp"
 #include "providers/seventv/SeventvBadges.hpp"
 #include "providers/seventv/SeventvEventAPI.hpp"
 #include "providers/seventv/SeventvPaints.hpp"
@@ -194,6 +196,8 @@ Application::Application(Settings &_settings, const Paths &paths,
     , ffzBadges(new FfzBadges)
     , bttvBadges(new BttvBadges)
     , seventvBadges(new SeventvBadges)
+    , homiesBadges(new HomiesBadges)
+    , moderationHistory(new ModerationHistory)
     , seventvPaints(new SeventvPaints)
     , seventvPersonalEmotes(new SeventvPersonalEmotes)
     , userData(new UserDataController(paths))
@@ -456,6 +460,19 @@ SeventvBadges *Application::getSeventvBadges()
     assert(this->seventvBadges);
 
     return this->seventvBadges.get();
+}
+
+HomiesBadges *Application::getHomiesBadges()
+{
+    // HomiesBadges handles its own locks, so we don't need to assert that this is called in the GUI thread
+    return this->homiesBadges.get();
+}
+
+ModerationHistory *Application::getModerationHistory()
+{
+    // ModerationHistory handles its own locks, so it can be reached from the
+    // EventSub thread as well as the GUI thread
+    return this->moderationHistory.get();
 }
 
 IUserDataController *Application::getUserData()

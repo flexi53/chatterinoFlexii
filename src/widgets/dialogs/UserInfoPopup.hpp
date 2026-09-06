@@ -56,6 +56,7 @@ private:
     void installEvents();
     void updateUserData();
     void updateLatestMessages();
+    void updateModerationHistory();
     void updateNotes();
 
     void loadAvatar(const QString &userID, const QString &pictureURL,
@@ -120,6 +121,7 @@ private:
         Label *userIDLabel = nullptr;
         Label *followageLabel = nullptr;
         Label *subageLabel = nullptr;
+        Label *modHistoryLabel = nullptr;
 
         LiveIndicator *liveIndicator = nullptr;
 

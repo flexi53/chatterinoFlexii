@@ -448,6 +448,11 @@ QString Channel::getCurrentStreamID() const
     return {};
 }
 
+const QString &Channel::getPlatform() const
+{
+    return this->platform_;
+}
+
 std::shared_ptr<Channel> Channel::getEmpty()
 {
     static std::shared_ptr<Channel> channel(new Channel("", Type::None));
