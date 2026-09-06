@@ -45,7 +45,7 @@ int main(int argc, char **argv)
 {
     QApplication a(argc, argv);
 
-    QCoreApplication::setApplicationName("chatterino");
+    QCoreApplication::setApplicationName("ChattiFlexii");
     QCoreApplication::setApplicationVersion(CHATTERINO_VERSION);
     QCoreApplication::setOrganizationDomain("chatterino.com");
 #ifdef Q_OS_WIN
