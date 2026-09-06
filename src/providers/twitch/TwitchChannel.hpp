@@ -103,6 +103,14 @@ public:
          */
         unsigned viewerCount = 0;
         /**
+         * Viewers across every channel of the Stream Together session this
+         * channel is part of, or 0 when it is streaming on its own.
+         * @lua@field shared_viewer_count number
+         */
+        unsigned sharedViewerCount = 0;
+        /// How many broadcasters are in the session, 0 when not in one
+        int sharedParticipantCount = 0;
+        /**
          * @lua@field title string Stream title or last stream title
          */
         QString title;
@@ -385,6 +393,19 @@ public:
 
     bool isLoadingRecentMessages() const;
 
+    /**
+     * Indicates an activity to 7TV in this channel for this user.
+     * This is done at most once every 60s.
+     *
+     * Public because it is also sent when a channel is joined and once the
+     * account's 7TV ID has loaded - not only when the user sends a message.
+     */
+    void updateSevenTVActivity();
+
+    /// Looks up the Stream Together session this channel is in and adds up the
+    /// viewers of all its participants. Throttled, and only while live.
+    void refreshSharedChatViewers();
+
 private:
     struct NameOptions {
         // displayName is the non-CJK-display name for this user
@@ -424,11 +445,6 @@ private:
 
     void updateBttvActivity();
 
-    /**
-     * Indicates an activity to 7TV in this channel for this user.
-     * This is done at most once every 60s.
-     */
-    void updateSevenTVActivity();
     void listenSevenTVCosmetics() const;
 
     /**
@@ -560,6 +576,7 @@ private:
      * Or: Up until this moment we don't need to send activity.
      */
     QDateTime nextSeventvActivity_;
+    QDateTime nextSharedChatCheck_;
 
     QDateTime nextBttvActivity_;
 

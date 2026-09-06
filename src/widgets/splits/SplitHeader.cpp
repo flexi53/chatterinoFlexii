@@ -195,10 +195,20 @@ auto formatTooltip(const TwitchChannel::StreamStatus &s, QString thumbnail,
                 "Mode&gt;</span>");
         }
 
-        return QString("%1 for %2 with %3 viewers")
-            .arg(s.rerun ? "Vod-casting" : "Live")
-            .arg(s.uptime)
-            .arg(localizeNumbers(s.viewerCount));
+        auto text = QString("%1 for %2 with %3 viewers")
+                        .arg(s.rerun ? "Vod-casting" : "Live")
+                        .arg(s.uptime)
+                        .arg(localizeNumbers(s.viewerCount));
+
+        if (s.sharedParticipantCount > 1)
+        {
+            text += QString("<br>%1 viewers across %2 channels streaming "
+                            "together")
+                        .arg(localizeNumbers(s.sharedViewerCount))
+                        .arg(s.sharedParticipantCount);
+        }
+
+        return text;
     }();
 
     return QString("<p style=\"text-align: center;\">" +  //
@@ -242,6 +252,13 @@ auto formatTitle(const TwitchChannel::StreamStatus &s, Settings &settings)
     if (settings.headerViewerCount)
     {
         title += " - " + localizeNumbers(s.viewerCount);
+
+        // In a Stream Together session the channel's own count is only part of
+        // the audience, so show the combined one next to it.
+        if (s.sharedParticipantCount > 1 && s.sharedViewerCount > s.viewerCount)
+        {
+            title += " (" + localizeNumbers(s.sharedViewerCount) + " total)";
+        }
     }
     if (settings.headerGame && !s.game.isEmpty())
     {

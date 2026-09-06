@@ -693,8 +693,11 @@ void KickChannel::updateSevenTVActivity()
     {
         return;
     }
-    // Make sure to not send activity again before receiving the response
-    this->nextSeventvActivity_ = this->nextSeventvActivity_.addSecs(300);
+    // Make sure to not send activity again before receiving the response.
+    // This has to start from the current time - adding to the previous value
+    // does nothing while it is still invalid, which let a second request slip
+    // through before the first one had answered.
+    this->nextSeventvActivity_ = QDateTime::currentDateTimeUtc().addSecs(300);
 
     qCDebug(chatterinoSeventv) << "Sending activity in" << this->getName();
 

@@ -621,6 +621,8 @@ void TwitchChannel::updateStreamStatus(
                 }
             }
         }
+        this->refreshSharedChatViewers();
+
         if (this->setLive(true))
         {
             this->onLiveStatusChanged(true, isInitialUpdate);
@@ -629,6 +631,14 @@ void TwitchChannel::updateStreamStatus(
     }
     else
     {
+        {
+            // Leaving the air also leaves any session
+            auto status = this->streamStatus_.access();
+            status->sharedViewerCount = 0;
+            status->sharedParticipantCount = 0;
+        }
+        this->nextSharedChatCheck_ = {};
+
         if (this->setLive(false))
         {
             this->onLiveStatusChanged(false, isInitialUpdate);
@@ -992,6 +1002,10 @@ void TwitchChannel::setRoomId(const QString &id)
         {
             this->roomIdChanged();
             this->loadRecentMessages();
+
+            // Tell 7TV we're here as soon as the channel is known, so badges
+            // and personal emotes show up without having to write first.
+            this->updateSevenTVActivity();
         }
         this->disconnected_ = false;
         this->lastConnectedAt_ = std::chrono::system_clock::now();
@@ -2305,6 +2319,96 @@ void TwitchChannel::updateBttvActivity()
                                                 acc->getUserId());
 }
 
+void TwitchChannel::refreshSharedChatViewers()
+{
+    // The stream status is refreshed every 30s for every channel. Looking up
+    // the session that often would be a lot of requests for something that
+    // rarely changes, so this is throttled per channel.
+    static constexpr int CHECK_INTERVAL_SECONDS = 120;
+
+    if (this->nextSharedChatCheck_.isValid() &&
+        QDateTime::currentDateTimeUtc() < this->nextSharedChatCheck_)
+    {
+        return;
+    }
+    this->nextSharedChatCheck_ =
+        QDateTime::currentDateTimeUtc().addSecs(CHECK_INTERVAL_SECONDS);
+
+    const auto roomID = this->roomId();
+    if (roomID.isEmpty())
+    {
+        return;
+    }
+
+    getHelix()->getSharedChatSession(
+        roomID,
+        [chan = weakOf<Channel>(this)](
+            const std::optional<HelixSharedChatSession> &session) {
+            auto self = std::dynamic_pointer_cast<TwitchChannel>(chan.lock());
+            if (!self)
+            {
+                return;
+            }
+
+            // Not in a session, or in one on its own - nothing to add up
+            if (!session || session->participantIDs.size() < 2)
+            {
+                bool changed = false;
+                {
+                    auto status = self->streamStatus_.access();
+                    changed = status->sharedParticipantCount != 0;
+                    status->sharedViewerCount = 0;
+                    status->sharedParticipantCount = 0;
+                }
+                if (changed)
+                {
+                    self->streamStatusChanged.invoke();
+                }
+                return;
+            }
+
+            const auto participantCount =
+                static_cast<int>(session->participantIDs.size());
+
+            getHelix()->fetchStreams(
+                session->participantIDs, {},
+                [chan, participantCount](const auto &streams) {
+                    auto self =
+                        std::dynamic_pointer_cast<TwitchChannel>(chan.lock());
+                    if (!self)
+                    {
+                        return;
+                    }
+
+                    unsigned total = 0;
+                    for (const auto &stream : streams)
+                    {
+                        total += stream.viewerCount;
+                    }
+
+                    {
+                        auto status = self->streamStatus_.access();
+                        status->sharedViewerCount = total;
+                        status->sharedParticipantCount = participantCount;
+                    }
+
+                    qCDebug(chatterinoTwitch)
+                        << "Stream Together in" << self->getName() << "-"
+                        << participantCount << "channels," << total
+                        << "viewers in total";
+
+                    self->streamStatusChanged.invoke();
+                },
+                [] {
+                    // Keep whatever was shown before
+                },
+                [] {});
+        },
+        [] {
+            // Endpoint unavailable or not permitted - just don't show a total
+        });
+}
+
 void TwitchChannel::updateSevenTVActivity()
 {
     static const QString seventvActivityUrl =
@@ -2328,8 +2432,11 @@ void TwitchChannel::updateSevenTVActivity()
     {
         return;
     }
-    // Make sure to not send activity again before receiving the response
-    this->nextSeventvActivity_ = this->nextSeventvActivity_.addSecs(300);
+    // Make sure to not send activity again before receiving the response.
+    // This has to start from the current time - adding to the previous value
+    // does nothing while it is still invalid, which let a second request slip
+    // through before the first one had answered.
+    this->nextSeventvActivity_ = QDateTime::currentDateTimeUtc().addSecs(300);
 
     qCDebug(chatterinoSeventv) << "Sending activity in" << this->getName();
 

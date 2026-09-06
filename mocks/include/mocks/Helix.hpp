@@ -97,6 +97,13 @@ public:
                  HelixFailureCallback failureCallback),
                 (override));
 
+    MOCK_METHOD(
+        void, getSharedChatSession,
+        (QString broadcasterID,
+         ResultCallback<std::optional<HelixSharedChatSession>> successCallback,
+         HelixFailureCallback failureCallback),
+        (override));
+
     MOCK_METHOD(void, createStreamMarker,
                 (QString broadcasterId, QString description,
                  ResultCallback<HelixStreamMarker> successCallback,

@@ -26,4 +26,7 @@ QString cancelPrediction(const CommandContext &ctx);
 /// /completeprediction
 QString completePrediction(const CommandContext &ctx);
 
+/// /predictioninfo - read-only, shows the channel's current prediction
+QString predictionInfo(const CommandContext &ctx);
+
 }  // namespace chatterino::commands

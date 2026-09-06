@@ -141,6 +141,29 @@ struct HelixClip {
     }
 };
 
+/// The active Stream Together / Shared Chat session of a channel.
+struct HelixSharedChatSession {
+    QString sessionID;
+    QString hostBroadcasterID;
+    /// Every broadcaster taking part, including the host
+    QStringList participantIDs;
+
+    explicit HelixSharedChatSession(const QJsonObject &jsonObject)
+        : sessionID(jsonObject.value("session_id").toString())
+        , hostBroadcasterID(jsonObject.value("host_broadcaster_id").toString())
+    {
+        for (const auto &participant :
+             jsonObject.value("participants").toArray())
+        {
+            auto id = participant.toObject().value("broadcaster_id").toString();
+            if (!id.isEmpty())
+            {
+                this->participantIDs.append(id);
+            }
+        }
+    }
+};
+
 struct HelixChannel {
     QString userId;
     QString name;
@@ -539,13 +562,49 @@ struct HelixPrediction {
     QString title;
     QString winningOutcomeID;
     QString status;
+    /// Seconds the prediction accepts entries for
+    int predictionWindow = 0;
+    QDateTime createdAt;
+    QDateTime lockedAt;
+    QDateTime endedAt;
     std::vector<HelixPredictionOutcome> outcomes;
+
+    /// When entries stop being accepted, derived from the start plus the
+    /// window. Invalid if the API did not say when it started.
+    QDateTime locksAt() const
+    {
+        if (!this->createdAt.isValid() || this->predictionWindow <= 0)
+        {
+            return {};
+        }
+
+        return this->createdAt.addSecs(this->predictionWindow);
+    }
+
+    /// Channel points staked across every outcome
+    int totalChannelPoints() const
+    {
+        int total = 0;
+        for (const auto &outcome : this->outcomes)
+        {
+            total += outcome.channelPoints;
+        }
+
+        return total;
+    }
 
     explicit HelixPrediction(const QJsonObject &jsonObject)
         : id(jsonObject.value("id").toString())
         , title(jsonObject.value("title").toString())
         , winningOutcomeID(jsonObject.value("winning_outcome_id").toString())
         , status(jsonObject.value("status").toString())
+        , predictionWindow(jsonObject.value("prediction_window").toInt())
+        , createdAt(QDateTime::fromString(
+              jsonObject.value("created_at").toString(), Qt::ISODate))
+        , lockedAt(QDateTime::fromString(
+              jsonObject.value("locked_at").toString(), Qt::ISODate))
+        , endedAt(QDateTime::fromString(jsonObject.value("ended_at").toString(),
+                                        Qt::ISODate))
     {
         const auto &data = jsonObject.value("outcomes").toArray();
         this->outcomes.reserve(data.size());
@@ -1056,6 +1115,15 @@ public:
                             ResultCallback<HelixChannel> successCallback,
                             HelixFailureCallback failureCallback) = 0;
 
+    /// https://dev.twitch.tv/docs/api/reference#get-shared-chat-session
+    ///
+    /// Calls @a successCallback with std::nullopt when the channel is not
+    /// currently part of a session.
+    virtual void getSharedChatSession(
+        QString broadcasterID,
+        ResultCallback<std::optional<HelixSharedChatSession>> successCallback,
+        HelixFailureCallback failureCallback) = 0;
+
     // https://dev.twitch.tv/docs/api/reference/#create-stream-marker
     virtual void createStreamMarker(
         QString broadcasterId, QString description,
@@ -1462,6 +1530,11 @@ public:
     void getChannel(QString broadcasterId,
                     ResultCallback<HelixChannel> successCallback,
                     HelixFailureCallback failureCallback) final;
+
+    void getSharedChatSession(
+        QString broadcasterID,
+        ResultCallback<std::optional<HelixSharedChatSession>> successCallback,
+        HelixFailureCallback failureCallback) final;
 
     // https://dev.twitch.tv/docs/api/reference/#create-stream-marker
     void createStreamMarker(

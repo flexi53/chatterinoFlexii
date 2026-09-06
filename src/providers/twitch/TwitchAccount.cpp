@@ -17,7 +17,9 @@
 #include "providers/seventv/SeventvEmotes.hpp"
 #include "providers/seventv/SeventvPersonalEmotes.hpp"
 #include "providers/twitch/api/Helix.hpp"
+#include "providers/twitch/TwitchChannel.hpp"
 #include "providers/twitch/TwitchCommon.hpp"
+#include "providers/twitch/TwitchIrcServer.hpp"
 #include "providers/twitch/TwitchUsers.hpp"
 #include "util/CancellationToken.hpp"
 #include "util/QStringHash.hpp"  // IWYU pragma: keep
@@ -404,6 +406,22 @@ void TwitchAccount::loadSeventvUserID()
                                        emoteSet["id"].toString());
                     break;
                 }
+            }
+
+            // The channels have already been joined by the time this ID
+            // arrives, so announce presence in all of them now. Without this
+            // the user's 7TV badge and personal emotes would only show up in a
+            // channel after they sent their first message there.
+            // This callback runs in the GUI thread.
+            if (auto *twitch = getApp()->getTwitch())
+            {
+                twitch->forEachChannel([](const ChannelPtr &channel) {
+                    if (auto *twitchChannel =
+                            dynamic_cast<TwitchChannel *>(channel.get()))
+                    {
+                        twitchChannel->updateSevenTVActivity();
+                    }
+                });
             }
         },
         [](const auto &result) {

@@ -400,4 +400,68 @@ QString completePrediction(const CommandContext &ctx)
     return "";
 }
 
+QString predictionInfo(const CommandContext &ctx)
+{
+    if (ctx.channel == nullptr)
+    {
+        return "";
+    }
+
+    if (ctx.twitchChannel == nullptr)
+    {
+        ctx.channel->addSystemMessage(
+            "The /predictioninfo command only works in Twitch channels.");
+        return "";
+    }
+
+    getHelix()->getPredictions(
+        ctx.twitchChannel->roomId(), {}, 1, {},
+        [channel = ctx.channel](const auto &result) {
+            if (result.predictions.empty())
+            {
+                channel->addSystemMessage("There is no prediction right now.");
+                return;
+            }
+
+            const auto &prediction = result.predictions.front();
+
+            QString text = QString("Prediction \"%1\" (%2)")
+                               .arg(prediction.title, prediction.status);
+
+            const auto total = prediction.totalChannelPoints();
+            for (const auto &outcome : prediction.outcomes)
+            {
+                auto share =
+                    total > 0
+                        ? QString::number(outcome.channelPoints * 100.0 / total,
+                                          'f', 1)
+                        : QStringLiteral("0.0");
+
+                text += QString(" | %1: %2%% (%3 points, %4 users)")
+                            .arg(outcome.title, share,
+                                 QString::number(outcome.channelPoints),
+                                 QString::number(outcome.users));
+            }
+
+            const auto locksAt = prediction.locksAt();
+            if (prediction.status == "ACTIVE" && locksAt.isValid())
+            {
+                auto secondsLeft =
+                    QDateTime::currentDateTimeUtc().secsTo(locksAt);
+                if (secondsLeft > 0)
+                {
+                    text += QString(" | locks in %1s").arg(secondsLeft);
+                }
+            }
+
+            channel->addSystemMessage(text);
+        },
+        [channel = ctx.channel](const QString &error) {
+            channel->addSystemMessage("Failed to get the prediction - " +
+                                      error);
+        });
+
+    return "";
+}
+
 }  // namespace chatterino::commands

@@ -486,6 +486,49 @@ void Helix::fetchChannels(
         .execute();
 }
 
+void Helix::getSharedChatSession(
+    QString broadcasterID,
+    ResultCallback<std::optional<HelixSharedChatSession>> successCallback,
+    HelixFailureCallback failureCallback)
+{
+    QUrlQuery urlQuery;
+    urlQuery.addQueryItem("broadcaster_id", broadcasterID);
+
+    this->makeGet("shared_chat/session", urlQuery)
+        .onSuccess(
+            [successCallback, failureCallback, broadcasterID](auto result) {
+                auto root = result.parseJson();
+                auto data = root.value("data");
+
+                if (!data.isArray())
+                {
+                    failureCallback();
+                    return;
+                }
+
+                auto entries = data.toArray();
+                if (entries.isEmpty())
+                {
+                    // Not in a session right now - that is a normal answer, not a
+                    // failure.
+                    successCallback(std::nullopt);
+                    return;
+                }
+
+                auto session = HelixSharedChatSession(entries.at(0).toObject());
+
+                qCDebug(chatterinoTwitch)
+                    << "Shared chat session for" << broadcasterID << "with"
+                    << session.participantIDs.size() << "participants";
+
+                successCallback(std::move(session));
+            })
+        .onError([failureCallback](auto /*result*/) {
+            failureCallback();
+        })
+        .execute();
+}
+
 void Helix::getChannel(QString broadcasterId,
                        ResultCallback<HelixChannel> successCallback,
                        HelixFailureCallback failureCallback)
