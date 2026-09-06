@@ -21,21 +21,36 @@
 #include "widgets/dialogs/SettingsDialog.hpp"
 #include "widgets/helper/ChannelView.hpp"
 #include "widgets/helper/NotebookTab.hpp"
+#include "widgets/helper/NotebookTabGroupHeader.hpp"
 #include "widgets/splits/Split.hpp"
 #include "widgets/splits/SplitContainer.hpp"
 #include "widgets/Window.hpp"
 
 #include <boost/foreach.hpp>
 #include <QActionGroup>
+#include <QColorDialog>
 #include <QDebug>
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QFile>
 #include <QFormLayout>
+#include <QHBoxLayout>
+#include <QIcon>
+#include <QInputDialog>
+#include <QLabel>
 #include <QLayout>
 #include <QList>
+#include <QListWidget>
+#include <QPixmap>
+#include <QPushButton>
+#include <QSet>
+#include <QSignalBlocker>
 #include <QStandardPaths>
 #include <QUuid>
+#include <QVBoxLayout>
 #include <QWidget>
 
+#include <map>
 #include <ranges>
 #include <utility>
 
@@ -85,6 +100,17 @@ Notebook::Notebook(QWidget *parent)
     QObject::connect(this->lockNotebookLayoutAction_, &QAction::triggered,
                      [this](bool value) {
                          this->setLockNotebookLayout(value);
+                     });
+
+    this->tabGroupsOnOwnRowAction_ =
+        new QAction("Tab Groups on Their Own Row", this);
+    this->tabGroupsOnOwnRowAction_->setCheckable(true);
+    this->tabGroupsOnOwnRowAction_->setChecked(
+        getSettings()->tabGroupsOnOwnRow.getValue());
+    QObject::connect(this->tabGroupsOnOwnRowAction_, &QAction::triggered,
+                     [this](bool value) {
+                         getSettings()->tabGroupsOnOwnRow.setValue(value);
+                         this->performLayout(true);
                      });
 
     this->toggleTopMostAction_ = new QAction("Top most window", this);
@@ -148,6 +174,9 @@ NotebookTab *Notebook::addPageAt(QWidget *page, int position, QString title,
     page->hide();
     page->setParent(this);
 
+    // Inserting in the middle of a group would split it apart
+    this->keepTabGroupsContiguous();
+
     if (select || this->items_.count() == 1)
     {
         this->select(page);
@@ -203,6 +232,9 @@ void Notebook::removePage(QWidget *page)
     this->items_[removingIndex].page->deleteLater();
     this->items_[removingIndex].tab->deleteLater();
     this->items_.removeAt(removingIndex);
+
+    // The removed tab may have been the last member of its group
+    this->syncTabGroups();
 
     this->performLayout(true);
 }
@@ -598,6 +630,10 @@ void Notebook::rearrangePage(QWidget *page, int index)
 
     this->items_.move(this->indexOf(page), index);
 
+    // A tab dragged into a group joins it, one dragged out of it leaves.
+    this->updateTabGroupFromNeighbours(index);
+    this->keepTabGroupsContiguous();
+
     this->performLayout(true);
 }
 
@@ -692,6 +728,16 @@ void Notebook::updateTabVisibility()
     {
         item.tab->setVisible(this->shouldShowTab(item.tab));
     }
+
+    // A header is shown whenever tabs are shown at all - a collapsed group
+    // still needs its header to be expandable again.
+    for (auto &group : this->tabGroups_)
+    {
+        if (group.header != nullptr)
+        {
+            group.header->setVisible(this->showTabs_);
+        }
+    }
 }
 
 bool Notebook::getShowAddButton() const
@@ -738,18 +784,55 @@ void Notebook::resizeEvent(QResizeEvent *)
 void Notebook::performLayout(bool animated)
 {
     std::vector<Item> filteredItems;
-    filteredItems.reserve(this->items_.size());
-    if (this->tabVisibilityFilter_)
+    filteredItems.reserve(this->items_.size() + this->tabGroups_.size());
+
+    // Walk the unfiltered list so that a group's header is emitted even when
+    // every one of its tabs is hidden - that is exactly the collapsed case.
+    QSet<QString> emittedHeaders;
+    for (const auto &item : this->items_)
     {
-        std::copy_if(this->items_.begin(), this->items_.end(),
-                     std::back_inserter(filteredItems),
-                     [this](const auto &item) {
-                         return this->tabVisibilityFilter_(item.tab);
-                     });
+        const auto &groupName = item.tab->getGroupName();
+        if (!groupName.isEmpty() && !emittedHeaders.contains(groupName))
+        {
+            emittedHeaders.insert(groupName);
+
+            auto *group = this->findTabGroup(groupName);
+            if (group != nullptr && group->header != nullptr)
+            {
+                filteredItems.push_back(Item{.tab = group->header});
+            }
+        }
+
+        if (this->isTabHiddenByGroup(item.tab))
+        {
+            continue;
+        }
+
+        if (this->tabVisibilityFilter_ && !this->tabVisibilityFilter_(item.tab))
+        {
+            continue;
+        }
+
+        filteredItems.push_back(item);
     }
-    else
+
+    // Mark where rows have to break so each group sits on a row of its own:
+    // in front of every header, and in front of whatever follows a group.
+    if (getSettings()->tabGroupsOnOwnRow)
     {
-        filteredItems.assign(this->items_.begin(), this->items_.end());
+        bool previousWasGrouped = false;
+        for (auto &item : filteredItems)
+        {
+            const bool isHeader = item.page == nullptr;
+            const bool isGrouped = isHeader || item.tab->isInGroup();
+
+            if (isHeader || (previousWasGrouped && !isGrouped))
+            {
+                item.startsNewRow = true;
+            }
+
+            previousWasGrouped = isGrouped;
+        }
     }
 
     const auto scale = this->scale();
@@ -836,7 +919,7 @@ void Notebook::performHorizontalLayout(const LayoutContext &ctx, bool animated)
             auto fitsInLine = ((isLast ? ctx.addButtonWidth : 0) + x +
                                item.tab->width()) <= this->width();
 
-            if (!isFirst && !fitsInLine)
+            if (!isFirst && (!fitsInLine || item.startsNewRow))
             {
                 y += item.tab->height() * reverse;
                 x = ctx.left;
@@ -1189,6 +1272,14 @@ void Notebook::addNotebookActionsToMenu(QMenu *menu)
 {
     menu->addAction(this->lockNotebookLayoutAction_);
 
+    this->tabGroupsOnOwnRowAction_->setChecked(
+        getSettings()->tabGroupsOnOwnRow.getValue());
+    menu->addAction(this->tabGroupsOnOwnRowAction_);
+
+    menu->addAction("Manage Tab Groups...", this, [this] {
+        this->showTabGroupsDialog();
+    });
+
     menu->addAction(this->toggleTopMostAction_);
 }
 
@@ -1241,12 +1332,748 @@ bool Notebook::shouldShowTab(const NotebookTab *tab) const
         return false;
     }
 
+    if (this->isTabHiddenByGroup(tab))
+    {
+        return false;
+    }
+
     if (this->tabVisibilityFilter_)
     {
         return this->tabVisibilityFilter_(tab);
     }
 
     return true;
+}
+
+Notebook::TabGroup *Notebook::findTabGroup(const QString &name)
+{
+    for (auto &group : this->tabGroups_)
+    {
+        if (group.name == name)
+        {
+            return &group;
+        }
+    }
+
+    return nullptr;
+}
+
+const Notebook::TabGroup *Notebook::findTabGroup(const QString &name) const
+{
+    for (const auto &group : this->tabGroups_)
+    {
+        if (group.name == name)
+        {
+            return &group;
+        }
+    }
+
+    return nullptr;
+}
+
+bool Notebook::isTabHiddenByGroup(const NotebookTab *tab) const
+{
+    // The selected tab always stays visible, matching the behaviour of the
+    // tab visibility filter - see Notebook::setTabVisibilityFilter.
+    if (tab->isSelected() || !tab->isInGroup())
+    {
+        return false;
+    }
+
+    const auto *group = this->findTabGroup(tab->getGroupName());
+
+    return group != nullptr && group->collapsed;
+}
+
+void Notebook::addTabToGroup(NotebookTab *tab, const QString &groupName)
+{
+    if (tab == nullptr)
+    {
+        return;
+    }
+
+    if (groupName.isEmpty())
+    {
+        this->removeTabFromGroup(tab);
+        return;
+    }
+
+    if (this->findTabGroup(groupName) == nullptr)
+    {
+        TabGroup group;
+        group.name = groupName;
+        group.header = new NotebookTabGroupHeader(this, groupName);
+        group.header->show();
+
+        this->tabGroups_.push_back(group);
+    }
+
+    tab->setGroupName(groupName);
+
+    // A tab joining a marked group takes on its colour
+    if (auto *group = this->findTabGroup(groupName);
+        group != nullptr && group->color.isValid())
+    {
+        tab->setCustomColor(group->color);
+    }
+
+    this->syncTabGroups();
+}
+
+void Notebook::removeTabFromGroup(NotebookTab *tab)
+{
+    if (tab == nullptr || !tab->isInGroup())
+    {
+        return;
+    }
+
+    tab->setGroupName(QString());
+    tab->setCustomColor(QColor());
+
+    this->syncTabGroups();
+}
+
+QStringList Notebook::tabGroupNames() const
+{
+    // In the order the groups appear in the notebook, not the order they
+    // happened to be created in.
+    QStringList names;
+    names.reserve(static_cast<qsizetype>(this->tabGroups_.size()));
+
+    for (const auto &item : this->items_)
+    {
+        const auto &groupName = item.tab->getGroupName();
+        if (!groupName.isEmpty() && !names.contains(groupName))
+        {
+            names.append(groupName);
+        }
+    }
+
+    return names;
+}
+
+void Notebook::setTabGroupOrder(const QStringList &order)
+{
+    if (this->tabGroups_.empty())
+    {
+        return;
+    }
+
+    // Walk the notebook once, collecting each group's tabs and remembering
+    // where in the sequence its block sits. Ungrouped tabs keep their place.
+    struct Entry {
+        bool isGroup = false;
+        QString group;
+        Item item;
+    };
+
+    std::vector<Entry> sequence;
+    std::map<QString, QList<Item>> members;
+
+    for (const auto &item : this->items_)
+    {
+        const auto groupName = item.tab->getGroupName();
+        if (groupName.isEmpty())
+        {
+            sequence.push_back(Entry{.item = item});
+            continue;
+        }
+
+        if (!members.contains(groupName))
+        {
+            sequence.push_back(Entry{.isGroup = true, .group = groupName});
+        }
+        members[groupName].append(item);
+    }
+
+    // The requested order, restricted to groups that actually exist, with any
+    // group the caller left out appended in its current position's order.
+    QStringList wanted;
+    for (const auto &name : order)
+    {
+        if (members.contains(name) && !wanted.contains(name))
+        {
+            wanted.append(name);
+        }
+    }
+    for (const auto &entry : sequence)
+    {
+        if (entry.isGroup && !wanted.contains(entry.group))
+        {
+            wanted.append(entry.group);
+        }
+    }
+
+    // Drop the groups back into the slots their blocks occupied
+    QList<Item> reordered;
+    reordered.reserve(this->items_.size());
+    qsizetype slot = 0;
+
+    for (const auto &entry : sequence)
+    {
+        if (!entry.isGroup)
+        {
+            reordered.append(entry.item);
+            continue;
+        }
+
+        if (slot < wanted.size())
+        {
+            for (const auto &member : members[wanted[slot]])
+            {
+                reordered.append(member);
+            }
+            slot++;
+        }
+    }
+
+    this->items_ = std::move(reordered);
+
+    // Queue up save because: Tab group order changed
+    getApp()->getWindows()->queueSave();
+
+    this->performLayout(true);
+}
+
+void Notebook::renameTabGroup(const QString &oldName, const QString &newName)
+{
+    if (newName.isEmpty() || oldName == newName)
+    {
+        return;
+    }
+
+    auto *group = this->findTabGroup(oldName);
+    if (group == nullptr)
+    {
+        return;
+    }
+
+    // Renaming onto an existing group merges the two - the old group loses all
+    // its tabs and is dropped by syncTabGroups.
+    const bool mergesIntoExisting = this->findTabGroup(newName) != nullptr;
+
+    for (auto &item : this->items_)
+    {
+        if (item.tab->getGroupName() == oldName)
+        {
+            item.tab->setGroupName(newName);
+        }
+    }
+
+    if (!mergesIntoExisting)
+    {
+        group->name = newName;
+        if (group->header != nullptr)
+        {
+            group->header->setGroupName(newName);
+        }
+    }
+
+    this->syncTabGroups();
+
+    // Members that were merged into an existing group take on its colour
+    this->setTabGroupColor(newName, this->tabGroupColor(newName));
+}
+
+void Notebook::dissolveTabGroup(const QString &name)
+{
+    for (auto &item : this->items_)
+    {
+        if (item.tab->getGroupName() == name)
+        {
+            item.tab->setGroupName(QString());
+            item.tab->setCustomColor(QColor());
+        }
+    }
+
+    this->syncTabGroups();
+}
+
+bool Notebook::isTabGroupCollapsed(const QString &name) const
+{
+    const auto *group = this->findTabGroup(name);
+
+    return group != nullptr && group->collapsed;
+}
+
+void Notebook::showTabGroupsDialog()
+{
+    if (this->tabGroups_.empty())
+    {
+        QMessageBox::information(
+            this, "Tab Groups",
+            "There are no tab groups yet.\n\nRight click a tab and pick "
+            "\"Tab Group\" to create one.");
+        return;
+    }
+
+    auto *dialog = new QDialog(this);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->setWindowTitle("Tab Groups");
+    dialog->setMinimumSize(360, 320);
+
+    auto *layout = new QVBoxLayout(dialog);
+    layout->addWidget(
+        new QLabel("Drag a group or use the arrows to change its position."));
+
+    auto *list = new QListWidget(dialog);
+    list->setDragDropMode(QAbstractItemView::InternalMove);
+    list->setSelectionMode(QAbstractItemView::SingleSelection);
+    layout->addWidget(list, 1);
+
+    // Fills the list from the notebook's current state
+    auto refresh = [this, list] {
+        const auto selected =
+            list->currentItem() != nullptr
+                ? list->currentItem()->data(Qt::UserRole).toString()
+                : QString();
+        QSignalBlocker blocker(list->model());
+        list->clear();
+
+        for (const auto &name : this->tabGroupNames())
+        {
+            int memberCount = 0;
+            for (const auto &item : this->items_)
+            {
+                if (item.tab->getGroupName() == name)
+                {
+                    memberCount++;
+                }
+            }
+
+            auto *row = new QListWidgetItem(
+                QStringLiteral("%1  (%2)")
+                    .arg(name, QString::number(memberCount)));
+            row->setData(Qt::UserRole, name);
+
+            const auto color = this->tabGroupColor(name);
+            if (color.isValid())
+            {
+                QPixmap pixmap(12, 12);
+                pixmap.fill(color);
+                row->setIcon(QIcon(pixmap));
+            }
+
+            if (this->isTabGroupCollapsed(name))
+            {
+                row->setText(row->text() + "  - collapsed");
+            }
+
+            list->addItem(row);
+            if (name == selected)
+            {
+                list->setCurrentItem(row);
+            }
+        }
+    };
+
+    // Writes the list's order back to the notebook
+    auto applyOrder = [this, list] {
+        QStringList order;
+        for (int i = 0; i < list->count(); i++)
+        {
+            order.append(list->item(i)->data(Qt::UserRole).toString());
+        }
+        this->setTabGroupOrder(order);
+    };
+
+    auto selectedGroup = [list]() -> QString {
+        auto *current = list->currentItem();
+        return current != nullptr ? current->data(Qt::UserRole).toString()
+                                  : QString();
+    };
+
+    auto moveBy = [list, applyOrder](int delta) {
+        const auto row = list->currentRow();
+        const auto target = row + delta;
+        if (row < 0 || target < 0 || target >= list->count())
+        {
+            return;
+        }
+
+        list->insertItem(target, list->takeItem(row));
+        list->setCurrentRow(target);
+        applyOrder();
+    };
+
+    auto *buttons = new QHBoxLayout;
+
+    auto *up = new QPushButton("Move Up", dialog);
+    QObject::connect(up, &QPushButton::clicked, dialog, [moveBy] {
+        moveBy(-1);
+    });
+    buttons->addWidget(up);
+
+    auto *down = new QPushButton("Move Down", dialog);
+    QObject::connect(down, &QPushButton::clicked, dialog, [moveBy] {
+        moveBy(1);
+    });
+    buttons->addWidget(down);
+
+    buttons->addStretch(1);
+    layout->addLayout(buttons);
+
+    auto *actions = new QHBoxLayout;
+
+    auto *rename = new QPushButton("Rename...", dialog);
+    QObject::connect(rename, &QPushButton::clicked, dialog,
+                     [this, dialog, selectedGroup, refresh] {
+                         const auto name = selectedGroup();
+                         if (name.isEmpty())
+                         {
+                             return;
+                         }
+
+                         bool accepted = false;
+                         auto newName = QInputDialog::getText(
+                                            dialog, "Rename Group",
+                                            "Group name:", QLineEdit::Normal,
+                                            name, &accepted)
+                                            .trimmed();
+
+                         if (accepted && !newName.isEmpty())
+                         {
+                             this->renameTabGroup(name, newName);
+                             refresh();
+                         }
+                     });
+    actions->addWidget(rename);
+
+    auto *color = new QPushButton("Color...", dialog);
+    QObject::connect(color, &QPushButton::clicked, dialog,
+                     [this, dialog, selectedGroup, refresh] {
+                         const auto name = selectedGroup();
+                         if (name.isEmpty())
+                         {
+                             return;
+                         }
+
+                         const auto current = this->tabGroupColor(name);
+                         auto picked = QColorDialog::getColor(
+                             current.isValid() ? current : QColor("#0091ff"),
+                             dialog, "Group Color");
+
+                         if (picked.isValid())
+                         {
+                             this->setTabGroupColor(name, picked);
+                             refresh();
+                         }
+                     });
+    actions->addWidget(color);
+
+    auto *collapse = new QPushButton("Collapse/Expand", dialog);
+    QObject::connect(collapse, &QPushButton::clicked, dialog,
+                     [this, selectedGroup, refresh] {
+                         const auto name = selectedGroup();
+                         if (!name.isEmpty())
+                         {
+                             this->toggleTabGroupCollapsed(name);
+                             refresh();
+                         }
+                     });
+    actions->addWidget(collapse);
+
+    auto *ungroup = new QPushButton("Ungroup", dialog);
+    QObject::connect(ungroup, &QPushButton::clicked, dialog,
+                     [this, selectedGroup, refresh] {
+                         const auto name = selectedGroup();
+                         if (!name.isEmpty())
+                         {
+                             this->dissolveTabGroup(name);
+                             refresh();
+                         }
+                     });
+    actions->addWidget(ungroup);
+
+    layout->addLayout(actions);
+
+    auto *closeBox = new QDialogButtonBox(QDialogButtonBox::Close, dialog);
+    QObject::connect(closeBox, &QDialogButtonBox::rejected, dialog,
+                     &QDialog::close);
+    layout->addWidget(closeBox);
+
+    // Dragging a row in the list reorders the groups straight away
+    QObject::connect(list->model(), &QAbstractItemModel::rowsMoved, dialog,
+                     [applyOrder] {
+                         applyOrder();
+                     });
+
+    refresh();
+    dialog->show();
+}
+
+void Notebook::setTabGroupCollapsed(const QString &name, bool collapsed)
+{
+    auto *group = this->findTabGroup(name);
+    if (group == nullptr || group->collapsed == collapsed)
+    {
+        return;
+    }
+
+    group->collapsed = collapsed;
+    if (group->header != nullptr)
+    {
+        group->header->setCollapsed(collapsed);
+    }
+
+    this->performLayout();
+    this->updateTabVisibility();
+
+    // Queue up save because: Tab group collapsed state changed
+    getApp()->getWindows()->queueSave();
+}
+
+void Notebook::toggleTabGroupCollapsed(const QString &name)
+{
+    this->setTabGroupCollapsed(name, !this->isTabGroupCollapsed(name));
+}
+
+void Notebook::syncTabGroups()
+{
+    for (auto it = this->tabGroups_.begin(); it != this->tabGroups_.end();)
+    {
+        int memberCount = 0;
+        for (const auto &item : this->items_)
+        {
+            if (item.tab->getGroupName() == it->name)
+            {
+                memberCount++;
+            }
+        }
+
+        if (memberCount == 0)
+        {
+            if (it->header != nullptr)
+            {
+                it->header->hide();
+                it->header->deleteLater();
+            }
+
+            it = this->tabGroups_.erase(it);
+            continue;
+        }
+
+        if (it->header != nullptr)
+        {
+            it->header->setMemberCount(memberCount);
+        }
+
+        ++it;
+    }
+
+    this->reorderGroupedTabs();
+
+    this->performLayout();
+    this->updateTabVisibility();
+
+    // Queue up save because: Tab grouping changed
+    getApp()->getWindows()->queueSave();
+}
+
+int Notebook::tabGroupIndex(const QString &groupName) const
+{
+    for (int i = 0; i < this->items_.size(); i++)
+    {
+        if (this->items_[i].tab->getGroupName() == groupName)
+        {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+void Notebook::moveTabGroup(const QString &groupName, int index)
+{
+    if (this->isNotebookLayoutLocked() || groupName.isEmpty())
+    {
+        return;
+    }
+
+    if (index < 0 || index >= this->items_.size())
+    {
+        return;
+    }
+
+    const auto currentIndex = this->tabGroupIndex(groupName);
+    if (currentIndex == -1 || currentIndex == index)
+    {
+        return;
+    }
+
+    // Dropping onto the group itself changes nothing
+    auto *anchor = this->items_[index].page;
+    if (this->items_[index].tab->getGroupName() == groupName)
+    {
+        return;
+    }
+
+    // Take the group out, then put it back around the tab it was dropped on
+    QList<Item> members;
+    QList<Item> rest;
+    for (const auto &item : this->items_)
+    {
+        if (item.tab->getGroupName() == groupName)
+        {
+            members.append(item);
+        }
+        else
+        {
+            rest.append(item);
+        }
+    }
+
+    if (members.isEmpty())
+    {
+        return;
+    }
+
+    int position = -1;
+    for (int i = 0; i < rest.size(); i++)
+    {
+        if (rest[i].page == anchor)
+        {
+            position = i;
+            break;
+        }
+    }
+
+    if (position == -1)
+    {
+        position = rest.size();
+    }
+    else if (index > currentIndex)
+    {
+        // Moving to the right: the group lands behind the tab it was dropped
+        // on, otherwise it would not appear to move at all.
+        position++;
+    }
+
+    for (int i = 0; i < members.size(); i++)
+    {
+        rest.insert(position + i, members[i]);
+    }
+
+    this->items_ = std::move(rest);
+
+    // Queue up save because: Tab group moved
+    getApp()->getWindows()->queueSave();
+
+    this->performLayout(true);
+}
+
+void Notebook::keepTabGroupsContiguous()
+{
+    if (this->tabGroups_.empty())
+    {
+        return;
+    }
+
+    this->reorderGroupedTabs();
+}
+
+void Notebook::updateTabGroupFromNeighbours(int index)
+{
+    if (this->tabGroups_.empty() || index < 0 || index >= this->items_.size())
+    {
+        return;
+    }
+
+    auto *tab = this->items_[index].tab;
+
+    const auto before =
+        index > 0 ? this->items_[index - 1].tab->getGroupName() : QString();
+    const auto after = index + 1 < this->items_.size()
+                           ? this->items_[index + 1].tab->getGroupName()
+                           : QString();
+
+    // Only a tab sitting between two members of the same group counts as
+    // being inside that group.
+    const auto target =
+        (!before.isEmpty() && before == after) ? before : QString();
+
+    if (tab->getGroupName() == target)
+    {
+        return;
+    }
+
+    if (target.isEmpty())
+    {
+        this->removeTabFromGroup(tab);
+    }
+    else
+    {
+        this->addTabToGroup(tab, target);
+    }
+}
+
+QColor Notebook::tabGroupColor(const QString &name) const
+{
+    const auto *group = this->findTabGroup(name);
+
+    return group != nullptr ? group->color : QColor();
+}
+
+void Notebook::setTabGroupColor(const QString &name, const QColor &color)
+{
+    auto *group = this->findTabGroup(name);
+    if (group == nullptr)
+    {
+        return;
+    }
+
+    group->color = color;
+
+    if (group->header != nullptr)
+    {
+        group->header->setCustomColor(color);
+    }
+
+    for (auto &item : this->items_)
+    {
+        if (item.tab->getGroupName() == name)
+        {
+            item.tab->setCustomColor(color);
+        }
+    }
+
+    this->performLayout();
+}
+
+void Notebook::reorderGroupedTabs()
+{
+    QList<Item> reordered;
+    reordered.reserve(this->items_.size());
+
+    QSet<QString> placedGroups;
+    for (const auto &item : this->items_)
+    {
+        const auto &groupName = item.tab->getGroupName();
+
+        if (groupName.isEmpty())
+        {
+            reordered.append(item);
+            continue;
+        }
+
+        if (placedGroups.contains(groupName))
+        {
+            continue;
+        }
+        placedGroups.insert(groupName);
+
+        // Pull every member of the group to the position of its first tab so
+        // that the group stays contiguous behind its header.
+        for (const auto &member : this->items_)
+        {
+            if (member.tab->getGroupName() == groupName)
+            {
+                reordered.append(member);
+            }
+        }
+    }
+
+    this->items_ = std::move(reordered);
 }
 
 void Notebook::sortTabsAlphabetically()
@@ -1258,6 +2085,9 @@ void Notebook::sortTabsAlphabetically()
         const QString &rhs = b.tab->getTitle();
         return lhs.compare(rhs, Qt::CaseInsensitive) < 0;
     });
+
+    // Sorting ignores grouping, so pull the groups back together afterwards
+    this->keepTabGroupsContiguous();
 
     getApp()->getWindows()->queueSave();
     this->performLayout(true);

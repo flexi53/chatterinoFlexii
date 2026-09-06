@@ -819,6 +819,8 @@ set(SOURCE_FILES
         widgets/helper/MicroNotebook.hpp
         widgets/helper/NotebookTab.cpp
         widgets/helper/NotebookTab.hpp
+        widgets/helper/NotebookTabGroupHeader.cpp
+        widgets/helper/NotebookTabGroupHeader.hpp
         widgets/helper/OverlayInteraction.cpp
         widgets/helper/OverlayInteraction.hpp
         widgets/helper/RegExpItemDelegate.cpp

@@ -146,6 +146,13 @@ TabDescriptor TabDescriptor::loadFromJSON(const QJsonObject &tabObj)
     // Load tab "highlightsEnabled" state
     tab.highlightsEnabled_ = tabObj.value("highlightsEnabled").toBool(true);
 
+    // Load tab group
+    tab.group_ = tabObj.value("group").toString();
+    tab.groupCollapsed_ = tabObj.value("groupCollapsed").toBool(false);
+
+    // Load tab marker colour
+    tab.color_ = tabObj.value("color").toString();
+
     QJsonObject splitRoot = tabObj.value("splits2").toObject();
 
     // Load tab splits

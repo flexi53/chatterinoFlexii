@@ -11,8 +11,13 @@
 
 #include <pajlada/settings/setting.hpp>
 #include <pajlada/signals/signalholder.hpp>
+#include <QColor>
+#include <QFont>
 #include <QMenu>
+#include <QPainterPath>
 #include <QPropertyAnimation>
+
+#include <functional>
 
 namespace chatterino {
 
@@ -38,6 +43,21 @@ public:
     void setDefaultTitle(const QString &title);
     const QString &getDefaultTitle() const;
     const QString &getTitle() const;
+
+    /// The name of the tab group this tab belongs to, or an empty string if
+    /// this tab is not grouped.
+    const QString &getGroupName() const;
+    void setGroupName(const QString &name);
+    bool isInGroup() const;
+
+    /// A user-chosen colour marking this tab. Returns an invalid QColor when
+    /// the tab is not marked.
+    const QColor &getCustomColor() const;
+    void setCustomColor(const QColor &color);
+    bool hasCustomColor() const;
+    /// Whether the group this tab belongs to is currently collapsed. Always
+    /// false for ungrouped tabs.
+    bool isGroupCollapsed() const;
 
     bool isSelected() const;
     void setSelected(bool value);
@@ -92,6 +112,28 @@ public:
     int normalTabWidth() const;
 
 protected:
+    /// The Notebook this tab lives in. Available to subclasses such as
+    /// NotebookTabGroupHeader.
+    Notebook *notebook() const;
+
+    /// Whether all four corners are rounded instead of only the two on the
+    /// notebook's outer edge. Group headers use this to read as a label
+    /// rather than as another tab.
+    virtual bool hasFullyRoundedCorners() const;
+
+    /// Whether the title is drawn in bold. Group headers use this to stand out
+    /// from the tabs that belong to them.
+    virtual bool usesBoldTitle() const;
+
+    /// The font the title is drawn with, honouring usesBoldTitle()
+    QFont titleFont() const;
+
+    /// Fills @a menu with the shared colour palette. @a apply is handed the
+    /// chosen colour, or an invalid QColor when the user removes the marking.
+    static void buildColorMenu(
+        QMenu *menu, QWidget *parent, const QColor &current,
+        const std::function<void(const QColor &)> &apply);
+
     void themeChangedEvent() override;
 
     void paintEvent(QPaintEvent *) override;
@@ -121,8 +163,14 @@ protected:
 
 private:
     void showRenameDialog();
+    void rebuildTabGroupMenu();
+    void rebuildTabColorMenu();
 
-    bool hasXButton() const;
+    /// The rounded outline of this tab. Everything painting the tab body is
+    /// clipped to it so nothing bleeds past the rounded corners.
+    QPainterPath tabShapePath(const QRectF &rect, float scale) const;
+
+    virtual bool hasXButton() const;
     bool shouldDrawXButton() const;
     QRect getXRect() const;
     void titleUpdated();
@@ -148,6 +196,8 @@ private:
 
     QString customTitle_;
     QString defaultTitle_;
+    QString groupName_;
+    QColor customColor_;
 
     bool selected_{};
     bool mouseOver_{};
@@ -169,6 +219,8 @@ private:
 
     QMenu menu_;
     QMenu *closeMultipleTabsMenu_{};
+    QMenu *tabGroupMenu_{};
+    QMenu *tabColorMenu_{};
     QAction *closeTabsBeforeSelectedAction_{};
     QAction *closeTabsAfterSelectedAction_{};
 

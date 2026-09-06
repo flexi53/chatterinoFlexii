@@ -220,6 +220,9 @@ public:
         "/appearance/messages/alternateMessageBackground", false};
     FloatSetting boldScale = {"/appearance/boldScale", 63};
     BoolSetting showTabCloseButton = {"/appearance/showTabCloseButton", true};
+    /// Start every tab group on a row of its own, even when the group
+    /// does not fill the row.
+    BoolSetting tabGroupsOnOwnRow = {"/appearance/tabGroupsOnOwnRow", false};
     BoolSetting showTabLive = {"/appearance/showTabLiveButton", true};
     EnumStringSetting<TabStyle> tabStyle = {
         "/appearance/tabStyle",

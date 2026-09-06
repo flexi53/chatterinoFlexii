@@ -25,13 +25,18 @@
 #include <boost/container_hash/hash.hpp>
 #include <QAbstractAnimation>
 #include <QApplication>
+#include <QColorDialog>
 #include <QDebug>
 #include <QDialogButtonBox>
+#include <QIcon>
+#include <QInputDialog>
 #include <QLabel>
 #include <QLinearGradient>
 #include <QLineEdit>
 #include <QMimeData>
 #include <QPainter>
+#include <QPainterPath>
+#include <QPixmap>
 
 #include <algorithm>
 
@@ -117,6 +122,19 @@ NotebookTab::NotebookTab(Notebook *notebook)
 
     this->menu_.addAction("Rename Tab", [this]() {
         this->showRenameDialog();
+    });
+
+    this->tabGroupMenu_ = new QMenu("Tab Group", &this->menu_);
+    this->menu_.addMenu(this->tabGroupMenu_);
+
+    this->tabColorMenu_ = new QMenu("Tab Color", &this->menu_);
+    this->menu_.addMenu(this->tabColorMenu_);
+
+    // The list of groups changes while the app runs, so the submenu is rebuilt
+    // every time the context menu is opened.
+    QObject::connect(&this->menu_, &QMenu::aboutToShow, this, [this] {
+        this->rebuildTabGroupMenu();
+        this->rebuildTabColorMenu();
     });
 
     // XXX: this doesn't update after changing hotkeys
@@ -420,8 +438,9 @@ int NotebookTab::normalTabWidthForHeight(int height) const
     float scale = this->scale();
     int width = 0;
 
-    auto metrics =
-        getApp()->getFonts()->getFontMetrics(FontStyle::UiTabs, scale);
+    // Bold text is wider, so the width has to be measured with the very font
+    // the title will be drawn with - otherwise it gets clipped.
+    QFontMetricsF metrics(this->titleFont());
 
     float compactDivider = getCompactDivider(getSettings()->tabStyle);
     if (this->hasXButton())
@@ -866,8 +885,9 @@ void NotebookTab::paintEvent(QPaintEvent *)
     QPainter painter(this);
     float scale = this->scale();
 
-    painter.setFont(app->getFonts()->getFont(FontStyle::UiTabs, scale));
-    auto metrics = app->getFonts()->getFontMetrics(FontStyle::UiTabs, scale);
+    const auto font = this->titleFont();
+    painter.setFont(font);
+    QFontMetricsF metrics(font);
 
     int height = int(scale * NOTEBOOK_TAB_HEIGHT);
 
@@ -918,13 +938,37 @@ void NotebookTab::paintEvent(QPaintEvent *)
             break;
     }
 
+    // The rounded outline of this tab. The background, the marker colour and
+    // the indicator line are all clipped to it, so nothing bleeds past the
+    // rounded corners.
+    const auto tabShape = this->tabShapePath(bgRect, scale);
+
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    painter.setClipPath(tabShape);
+
     painter.fillRect(bgRect, tabBackground);
+
+    // wash the background with the tab's marker colour
+    if (this->customColor_.isValid())
+    {
+        auto wash = this->customColor_;
+        wash.setAlpha(this->selected_ ? 60 : 38);
+        painter.fillRect(bgRect, wash);
+    }
 
     // draw color indicator line
     auto lineThickness = ceil((this->selected_ ? 2.f : 1.f) * scale);
     auto lineColor = this->mouseOver_ ? colors.line.hover
                                       : (windowFocused ? colors.line.regular
                                                        : colors.line.unfocused);
+
+    // A marked tab shows its own colour on the indicator line. Selection is
+    // still readable because a selected tab draws the line twice as thick.
+    if (this->customColor_.isValid())
+    {
+        lineColor = this->customColor_;
+    }
 
     QRect lineRect;
     switch (this->tabLocation_)
@@ -948,6 +992,8 @@ void NotebookTab::paintEvent(QPaintEvent *)
     }
 
     painter.fillRect(lineRect, lineColor);
+
+    painter.restore();
 
     // draw live indicator
     if ((this->isLive_ || this->isRerun_) && getSettings()->showTabLive)
@@ -1040,7 +1086,10 @@ void NotebookTab::paintEvent(QPaintEvent *)
     // draw mouse over effect
     if (!this->selected_)
     {
+        painter.save();
+        painter.setClipPath(tabShape);
         this->fancyPaint(painter);
+        painter.restore();
     }
 
     // draw line at border
@@ -1324,6 +1373,242 @@ QRect NotebookTab::getXRect() const
     }
 
     return xRect;
+}
+
+const QString &NotebookTab::getGroupName() const
+{
+    return this->groupName_;
+}
+
+void NotebookTab::setGroupName(const QString &name)
+{
+    if (this->groupName_ == name)
+    {
+        return;
+    }
+
+    this->groupName_ = name;
+    this->update();
+}
+
+bool NotebookTab::isInGroup() const
+{
+    return !this->groupName_.isEmpty();
+}
+
+bool NotebookTab::isGroupCollapsed() const
+{
+    if (this->groupName_.isEmpty())
+    {
+        return false;
+    }
+
+    return this->notebook_->isTabGroupCollapsed(this->groupName_);
+}
+
+Notebook *NotebookTab::notebook() const
+{
+    return this->notebook_;
+}
+
+void NotebookTab::rebuildTabGroupMenu()
+{
+    this->tabGroupMenu_->clear();
+
+    this->tabGroupMenu_->addAction("New Group...", [this] {
+        bool accepted = false;
+        auto name = QInputDialog::getText(this, "New Tab Group",
+                                          "Group name:", QLineEdit::Normal,
+                                          QString(), &accepted)
+                        .trimmed();
+
+        if (accepted && !name.isEmpty())
+        {
+            this->notebook_->addTabToGroup(this, name);
+        }
+    });
+
+    const auto groupNames = this->notebook_->tabGroupNames();
+    if (!groupNames.isEmpty())
+    {
+        this->tabGroupMenu_->addSeparator();
+    }
+
+    for (const auto &name : groupNames)
+    {
+        auto *action = this->tabGroupMenu_->addAction(name, [this, name] {
+            this->notebook_->addTabToGroup(this, name);
+        });
+        action->setCheckable(true);
+        action->setChecked(name == this->groupName_);
+    }
+
+    if (this->isInGroup())
+    {
+        this->tabGroupMenu_->addSeparator();
+        this->tabGroupMenu_->addAction("Remove from Group", [this] {
+            this->notebook_->removeTabFromGroup(this);
+        });
+    }
+}
+
+const QColor &NotebookTab::getCustomColor() const
+{
+    return this->customColor_;
+}
+
+void NotebookTab::setCustomColor(const QColor &color)
+{
+    if (this->customColor_ == color)
+    {
+        return;
+    }
+
+    this->customColor_ = color;
+
+    // Queue up save because: Tab colour changed
+    getApp()->getWindows()->queueSave();
+
+    this->update();
+}
+
+bool NotebookTab::hasCustomColor() const
+{
+    return this->customColor_.isValid();
+}
+
+void NotebookTab::buildColorMenu(
+    QMenu *menu, QWidget *parent, const QColor &current,
+    const std::function<void(const QColor &)> &apply)
+{
+    // A small palette that stays legible on both the light and the dark theme
+    static const std::vector<std::pair<const char *, const char *>> presets{
+        {"Red", "#e5484d"},    {"Orange", "#f76b15"}, {"Yellow", "#ffb224"},
+        {"Green", "#30a46c"},  {"Teal", "#12a594"},   {"Blue", "#0091ff"},
+        {"Purple", "#8e4ec6"}, {"Pink", "#e93d82"},
+    };
+
+    auto swatch = [](const QColor &color) {
+        QPixmap pixmap(16, 16);
+        pixmap.fill(color);
+        return QIcon(pixmap);
+    };
+
+    for (const auto &[name, hex] : presets)
+    {
+        QColor color(hex);
+        auto *action = menu->addAction(swatch(color), name, [apply, color] {
+            apply(color);
+        });
+        action->setCheckable(true);
+        action->setChecked(current == color);
+    }
+
+    menu->addSeparator();
+
+    menu->addAction("Custom Color...", [apply, current, parent] {
+        auto color = QColorDialog::getColor(
+            current.isValid() ? current : QColor("#0091ff"), parent, "Color");
+
+        if (color.isValid())
+        {
+            apply(color);
+        }
+    });
+
+    if (current.isValid())
+    {
+        menu->addAction("Remove Color", [apply] {
+            apply(QColor());
+        });
+    }
+}
+
+void NotebookTab::rebuildTabColorMenu()
+{
+    this->tabColorMenu_->clear();
+
+    // A grouped tab has no colour of its own - the whole group is marked, so
+    // the menu applies to every tab in it.
+    if (this->isInGroup())
+    {
+        const auto groupName = this->groupName_;
+        this->tabColorMenu_->setTitle("Group Color");
+        buildColorMenu(this->tabColorMenu_, this,
+                       this->notebook_->tabGroupColor(groupName),
+                       [this, groupName](const QColor &color) {
+                           this->notebook_->setTabGroupColor(groupName, color);
+                       });
+        return;
+    }
+
+    this->tabColorMenu_->setTitle("Tab Color");
+    buildColorMenu(this->tabColorMenu_, this, this->customColor_,
+                   [this](const QColor &color) {
+                       this->setCustomColor(color);
+                   });
+}
+
+bool NotebookTab::hasFullyRoundedCorners() const
+{
+    return false;
+}
+
+QPainterPath NotebookTab::tabShapePath(const QRectF &rect, float scale) const
+{
+    QPainterPath path;
+
+    if (this->hasFullyRoundedCorners())
+    {
+        const auto radius = qreal(6.0 * scale);
+        path.addRoundedRect(rect, radius, radius);
+        return path;
+    }
+
+    const auto radius = qreal(4.0 * scale);
+    path.addRoundedRect(rect, radius, radius);
+
+    // Square off the edge that faces the page, so the tab still sits flush
+    // against the content it belongs to. Only the two corners on the
+    // notebook's outer edge stay rounded.
+    QRectF squareEdge = rect;
+    switch (this->tabLocation_)
+    {
+        case NotebookTabLocation::Top:
+            squareEdge.setTop(rect.top() + radius);
+            break;
+        case NotebookTabLocation::Bottom:
+            squareEdge.setBottom(rect.bottom() - radius);
+            break;
+        case NotebookTabLocation::Left:
+            squareEdge.setLeft(rect.left() + radius);
+            break;
+        case NotebookTabLocation::Right:
+            squareEdge.setRight(rect.right() - radius);
+            break;
+    }
+
+    QPainterPath squarePath;
+    squarePath.addRect(squareEdge);
+
+    return path.united(squarePath);
+}
+
+bool NotebookTab::usesBoldTitle() const
+{
+    return false;
+}
+
+QFont NotebookTab::titleFont() const
+{
+    auto font = getApp()->getFonts()->getFont(FontStyle::UiTabs, this->scale());
+
+    if (this->usesBoldTitle())
+    {
+        font.setBold(true);
+    }
+
+    return font;
 }
 
 }  // namespace chatterino

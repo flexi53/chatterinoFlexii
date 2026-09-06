@@ -664,6 +664,19 @@ void WindowManager::encodeTab(SplitContainer *tab, bool isSelected,
     // highlighting on new messages
     obj.insert("highlightsEnabled", tab->getTab()->hasHighlightsEnabled());
 
+    // tab group
+    if (tab->getTab()->isInGroup())
+    {
+        obj.insert("group", tab->getTab()->getGroupName());
+        obj.insert("groupCollapsed", tab->getTab()->isGroupCollapsed());
+    }
+
+    // tab marker colour
+    if (tab->getTab()->hasCustomColor())
+    {
+        obj.insert("color", tab->getTab()->getCustomColor().name());
+    }
+
     // splits
     QJsonObject splits;
 
@@ -949,11 +962,56 @@ void WindowManager::applyWindowLayout(const WindowLayout &layout)
             // highlighting on new messages
             page->getTab()->setHighlightsEnabled(tab.highlightsEnabled_);
 
+            // tab group - the collapsed state is applied further down, once
+            // every member of the group has been added
+            if (!tab.group_.isEmpty())
+            {
+                window.getNotebook().addTabToGroup(page->getTab(), tab.group_);
+            }
+
+            // tab marker colour
+            if (!tab.color_.isEmpty())
+            {
+                QColor color(tab.color_);
+                if (color.isValid())
+                {
+                    page->getTab()->setCustomColor(color);
+                }
+            }
+
             if (tab.rootNode_)
             {
                 page->applyFromDescriptor(*tab.rootNode_);
             }
         }
+
+        // Finish the groups only after every tab has been created. Both flags
+        // are stored on each member, so a group counts as collapsed when any
+        // of its tabs says so, and its colour is the one its members carry.
+        for (const auto &tab : windowData.tabs_)
+        {
+            if (tab.group_.isEmpty())
+            {
+                continue;
+            }
+
+            if (tab.groupCollapsed_)
+            {
+                window.getNotebook().setTabGroupCollapsed(tab.group_, true);
+            }
+
+            // The first member carrying a colour decides the group's colour
+            if (!tab.color_.isEmpty() &&
+                !window.getNotebook().tabGroupColor(tab.group_).isValid())
+            {
+                QColor color(tab.color_);
+                if (color.isValid())
+                {
+                    window.getNotebook().setTabGroupColor(tab.group_, color);
+                }
+            }
+        }
+
         window.show();
 
         // Set window state

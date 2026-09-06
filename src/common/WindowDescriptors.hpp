@@ -86,6 +86,13 @@ struct TabDescriptor {
     bool selected_{false};
     bool highlightsEnabled_{true};
 
+    // Name of the tab group this tab belongs to, empty if ungrouped
+    QString group_;
+    bool groupCollapsed_{false};
+
+    // User-chosen marker colour as "#rrggbb", empty if the tab is unmarked
+    QString color_;
+
     std::optional<NodeDescriptor> rootNode_;
 };
 
