@@ -10,6 +10,7 @@
 
 class QTabWidget;
 class QPushButton;
+class QLabel;
 
 namespace chatterino {
 
@@ -20,8 +21,17 @@ public:
 
     void selectModerationActions();
 
+    /// The settings dialog is created once and reused, so the log size has to
+    /// be recomputed every time the page is shown - otherwise it keeps
+    /// displaying whatever it was when the dialog was first opened.
+    void onShow() override;
+
 private:
     void addModerationButtonSettings(QTabWidget *);
+
+    void refreshLogDirectorySize();
+
+    QLabel *logsPathSizeLabel_{};
 
     QTimer itemsChangedTimer_;
     QTabWidget *tabWidget_{};

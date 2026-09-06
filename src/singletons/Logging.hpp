@@ -46,6 +46,11 @@ public:
                       const QString &platformName) override;
 
 private:
+    /// Deletes log files older than LOG_RETENTION_DAYS. Chatterino never
+    /// removes logs on its own, so without this the directory grows forever -
+    /// and the user card only ever looks a week back anyway.
+    static void cleanUpOldLogs();
+
     using PlatformName = QString;
     using ChannelName = QString;
     std::map<PlatformName,

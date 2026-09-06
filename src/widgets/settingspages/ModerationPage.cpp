@@ -130,37 +130,31 @@ ModerationPage::ModerationPage()
 
         // Show how big (size-wise) the logs are
         auto logsPathSizeLabel = logs.emplace<QLabel>();
-        logsPathSizeLabel->setText(QtConcurrent::run([] {
-                                       return fetchLogDirectorySize();
-                                   }).result());
+        this->logsPathSizeLabel_ = logsPathSizeLabel.getElement();
+        this->refreshLogDirectorySize();
 
         // Select event
-        QObject::connect(
-            selectDir.getElement(), &QPushButton::clicked, this,
-            [this, logsPathSizeLabel]() mutable {
-                auto dirName = QFileDialog::getExistingDirectory(this);
+        QObject::connect(selectDir.getElement(), &QPushButton::clicked, this,
+                         [this]() mutable {
+                             auto dirName =
+                                 QFileDialog::getExistingDirectory(this);
 
-                getSettings()->logPath = dirName;
+                             getSettings()->logPath = dirName;
 
-                // Refresh: Show how big (size-wise) the logs are
-                logsPathSizeLabel->setText(QtConcurrent::run([] {
-                                               return fetchLogDirectorySize();
-                                           }).result());
-            });
+                             // Refresh: Show how big (size-wise) the logs are
+                             this->refreshLogDirectorySize();
+                         });
 
         buttons->addSpacing(16);
 
         // Reset custom logpath
-        QObject::connect(
-            resetDir.getElement(), &QPushButton::clicked, this,
-            [logsPathSizeLabel]() mutable {
-                getSettings()->logPath = "";
+        QObject::connect(resetDir.getElement(), &QPushButton::clicked, this,
+                         [this]() mutable {
+                             getSettings()->logPath = "";
 
-                // Refresh: Show how big (size-wise) the logs are
-                logsPathSizeLabel->setText(QtConcurrent::run([] {
-                                               return fetchLogDirectorySize();
-                                           }).result());
-            });
+                             // Refresh: Show how big (size-wise) the logs are
+                             this->refreshLogDirectorySize();
+                         });
 
         auto logsTimestampFormatLayout =
             logs.emplace<QHBoxLayout>().withoutMargin();
@@ -408,6 +402,23 @@ void ModerationPage::addModerationButtonSettings(QTabWidget *tabs)
 void ModerationPage::selectModerationActions()
 {
     this->tabWidget_->setCurrentIndex(1);
+}
+
+void ModerationPage::refreshLogDirectorySize()
+{
+    if (this->logsPathSizeLabel_ == nullptr)
+    {
+        return;
+    }
+
+    this->logsPathSizeLabel_->setText(QtConcurrent::run([] {
+                                          return fetchLogDirectorySize();
+                                      }).result());
+}
+
+void ModerationPage::onShow()
+{
+    this->refreshLogDirectorySize();
 }
 
 }  // namespace chatterino
