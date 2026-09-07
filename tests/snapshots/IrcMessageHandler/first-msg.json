@@ -22,32 +22,6 @@
                     ]
                 },
                 {
-                    "color": "#ff487f3f",
-                    "flags": "FirstMessageMarker",
-                    "link": {
-                        "type": "None",
-                        "value": ""
-                    },
-                    "style": "ChatMediumSmall",
-                    "tooltip": "",
-                    "trailingSpace": true,
-                    "type": "TextElement",
-                    "words": [
-                        "FIRST",
-                        "MESSAGE"
-                    ]
-                },
-                {
-                    "flags": "FirstMessageMarker",
-                    "link": {
-                        "type": "None",
-                        "value": ""
-                    },
-                    "tooltip": "",
-                    "trailingSpace": true,
-                    "type": "LinebreakElement"
-                },
-                {
                     "element": {
                         "color": "System",
                         "flags": "Timestamp",
@@ -136,6 +110,21 @@
                     "tooltip": "Kappa<br>Twitch Emote",
                     "trailingSpace": true,
                     "type": "EmoteElement"
+                },
+                {
+                    "color": "#ff487f3f",
+                    "flags": "FirstMessageMarker",
+                    "link": {
+                        "type": "None",
+                        "value": ""
+                    },
+                    "style": "ChatMediumSmall",
+                    "tooltip": "",
+                    "trailingSpace": true,
+                    "type": "TextElement",
+                    "words": [
+                        "FIRST"
+                    ]
                 },
                 {
                     "background": "#ffa0a0a4",

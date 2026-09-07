@@ -1657,22 +1657,6 @@ std::pair<MessagePtrMut, HighlightAlert> MessageBuilder::makeIrcMessage(
 
     // timestamp
     builder->serverReceivedTime = calculateMessageTime(ircMessage);
-    // Twitch puts a small caption on its own line above a first-time
-    // chatter's message rather than labelling it inline. Mirror that: the
-    // caption first, then a line break, then the message itself.
-    if (builder->flags.has(MessageFlag::FirstMessage))
-    {
-        auto captionColor =
-            *ColorProvider::instance().color(ColorType::FirstMessageHighlight);
-        captionColor.setAlpha(255);
-
-        builder.emplace<TextElement>(
-            u"FIRST MESSAGE"_s, MessageElementFlag::FirstMessageMarker,
-            MessageColor(captionColor), FontStyle::ChatMediumSmall);
-        builder.emplace<LinebreakElement>(
-            MessageElementFlag::FirstMessageMarker);
-    }
-
     builder.emplace<TimestampElement>(builder->serverReceivedTime.time());
 
     bool shouldAddModerationElements = [&] {
@@ -1738,6 +1722,21 @@ std::pair<MessagePtrMut, HighlightAlert> MessageBuilder::makeIrcMessage(
     QStringList splits = content.split(' ');
 
     builder.addWords(splits, twitchEmotes, textState);
+
+    // A small caption trailing the message marks a first-time chatter. Set in
+    // caps and a size down so it reads as a label rather than as part of what
+    // the user wrote, and in the highlight colour at full opacity - the tint
+    // itself is far too transparent for text.
+    if (builder->flags.has(MessageFlag::FirstMessage))
+    {
+        auto captionColor =
+            *ColorProvider::instance().color(ColorType::FirstMessageHighlight);
+        captionColor.setAlpha(255);
+
+        builder.emplace<TextElement>(
+            u"FIRST"_s, MessageElementFlag::FirstMessageMarker,
+            MessageColor(captionColor), FontStyle::ChatMediumSmall);
+    }
 
     QString stylizedUsername =
         stylizeUsername(builder->loginName, builder.message());
