@@ -879,6 +879,8 @@ set(SOURCE_FILES
         widgets/settingspages/IgnoresPage.hpp
         widgets/settingspages/KeyboardSettingsPage.cpp
         widgets/settingspages/KeyboardSettingsPage.hpp
+        widgets/settingspages/LookPage.cpp
+        widgets/settingspages/LookPage.hpp
         widgets/settingspages/ModerationPage.cpp
         widgets/settingspages/ModerationPage.hpp
         widgets/settingspages/NicknamesPage.cpp

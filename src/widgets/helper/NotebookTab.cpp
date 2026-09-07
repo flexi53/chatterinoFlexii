@@ -951,7 +951,8 @@ void NotebookTab::paintEvent(QPaintEvent *)
 
     // Modern gives the tab some depth: light from above, a hairline rim.
     // Classic keeps the flat fill Chatterino has always had.
-    const bool modernLook = getSettings()->uiStyle == UiStyle::Modern;
+    const bool modernLook = getSettings()->uiStyle == UiStyle::Modern &&
+                            !this->hasFullyRoundedCorners();
     if (modernLook)
     {
         const bool lightTheme = this->theme->isLightTheme();
@@ -1603,17 +1604,28 @@ QPainterPath NotebookTab::tabShapePath(const QRectF &rect, float scale) const
 {
     QPainterPath path;
 
-    const bool modern = getSettings()->uiStyle == UiStyle::Modern;
+    // Group headers keep their classic shape and colour in either look - they
+    // are a label for the tabs beneath them, not another tab, and giving them
+    // the same treatment made the two harder to tell apart.
+    const bool modern = getSettings()->uiStyle == UiStyle::Modern &&
+                        !this->hasFullyRoundedCorners();
 
     if (this->hasFullyRoundedCorners())
     {
-        const auto radius = qreal((modern ? 10.0 : 6.0) * scale);
+        const auto radius = qreal(6.0 * scale);
         path.addRoundedRect(rect, radius, radius);
         return path;
     }
 
     const auto radius = qreal((modern ? 8.0 : 4.0) * scale);
     path.addRoundedRect(rect, radius, radius);
+
+    if (modern)
+    {
+        // Modern lets a tab float free of the page, so every corner stays
+        // round - the same shape the group headers already have.
+        return path;
+    }
 
     // Square off the edge that faces the page, so the tab still sits flush
     // against the content it belongs to. Only the two corners on the
