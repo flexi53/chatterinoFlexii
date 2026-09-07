@@ -430,6 +430,16 @@ HighlightController::HighlightController(Settings &settings,
     this->rebuildListener_.addSetting(settings.threadHighlightSoundUrl);
     this->rebuildListener_.addSetting(settings.showThreadHighlightInMentions);
 
+    // The captions of the built-in rows are captured when the checks are
+    // built, so editing one has to rebuild them - otherwise it would only
+    // take effect after a restart.
+    this->rebuildListener_.addSetting(settings.whisperHighlightCaption);
+    this->rebuildListener_.addSetting(settings.subHighlightCaption);
+    this->rebuildListener_.addSetting(settings.threadHighlightCaption);
+    this->rebuildListener_.addSetting(settings.automodHighlightCaption);
+    this->rebuildListener_.addSetting(settings.selfMessageHighlightCaption);
+    this->rebuildListener_.addSetting(settings.selfHighlightCaption);
+
     this->rebuildListener_.addSetting(settings.enableAutomodHighlight);
     this->rebuildListener_.addSetting(settings.showAutomodInMentions);
     this->rebuildListener_.addSetting(settings.enableAutomodHighlightSound);
