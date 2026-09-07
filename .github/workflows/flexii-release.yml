@@ -181,7 +181,31 @@ jobs:
           windeployqt "bin/$Env:APP_NAME.exe" --release --no-compiler-runtime `
               --no-translations --no-opengl-sw --force-openssl --dir ChattiFlexii/
           cp "bin/$Env:APP_NAME.exe" ChattiFlexii/
+          # conanfile.py copies the dependency DLLs next to the binary and into
+          # a folder called "Chatterino2" - windeployqt does not pick them up,
+          # so OpenSSL would be missing from a differently named output folder.
+          Copy-Item bin/*.dll ChattiFlexii/ -Force
           ..\.CI\deploy-crt.ps1 ChattiFlexii
+
+      - name: Verify the package is complete
+        shell: pwsh
+        working-directory: build
+        run: |
+          $required = @(
+            "$Env:APP_NAME.exe", "Qt6Core.dll", "Qt6Gui.dll", "Qt6Network.dll",
+            "Qt6Widgets.dll", "libssl-3-x64.dll", "libcrypto-3-x64.dll",
+            "platforms/qwindows.dll"
+          )
+          $missing = @()
+          foreach ($f in $required) {
+            if (-not (Test-Path "ChattiFlexii/$f")) { $missing += $f }
+          }
+          Get-ChildItem ChattiFlexii | Select-Object Name | Format-Table
+          if ($missing.Count -gt 0) {
+            Write-Error "Missing from the package: $($missing -join ', ')"
+            exit 1
+          }
+          Write-Host "All required files present"
 
       - name: Package
         shell: pwsh
