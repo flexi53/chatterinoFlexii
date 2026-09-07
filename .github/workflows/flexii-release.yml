@@ -101,6 +101,7 @@ jobs:
       # Older Conan releases do not know the compilers on the current runner
       # image and abort while detecting the profile.
       CONAN_VERSION: 2.28.1
+      QT_VERSION: 6.9.3
 
     steps:
       - uses: actions/checkout@v6
@@ -115,6 +116,16 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+
+      # Conan supplies boost, OpenSSL, libavif and hunspell, but not Qt -
+      # and without this windeployqt would not exist either.
+      - name: Install Qt6
+        uses: jurplel/install-qt-action@v4.3.1
+        with:
+          cache: true
+          cache-key-prefix: windows-QtCache-${{ env.QT_VERSION }}
+          modules: qtimageformats
+          version: ${{ env.QT_VERSION }}
 
       - name: Cache conan packages
         uses: actions/cache@v5
