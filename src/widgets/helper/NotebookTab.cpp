@@ -949,6 +949,29 @@ void NotebookTab::paintEvent(QPaintEvent *)
 
     painter.fillRect(bgRect, tabBackground);
 
+    // Modern gives the tab some depth: light from above, a hairline rim.
+    // Classic keeps the flat fill Chatterino has always had.
+    const bool modernLook = getSettings()->uiStyle == UiStyle::Modern;
+    if (modernLook)
+    {
+        const bool lightTheme = this->theme->isLightTheme();
+
+        QLinearGradient body(bgRect.topLeft(), bgRect.bottomLeft());
+        if (lightTheme)
+        {
+            body.setColorAt(0.0, QColor(255, 255, 255, 170));
+            body.setColorAt(0.45, QColor(255, 255, 255, 50));
+            body.setColorAt(1.0, QColor(0, 0, 0, 14));
+        }
+        else
+        {
+            body.setColorAt(0.0, QColor(255, 255, 255, 46));
+            body.setColorAt(0.45, QColor(255, 255, 255, 12));
+            body.setColorAt(1.0, QColor(0, 0, 0, 30));
+        }
+        painter.fillRect(bgRect, body);
+    }
+
     // wash the background with the tab's marker colour
     if (this->customColor_.isValid())
     {
@@ -994,6 +1017,28 @@ void NotebookTab::paintEvent(QPaintEvent *)
     painter.fillRect(lineRect, lineColor);
 
     painter.restore();
+
+    if (modernLook)
+    {
+        painter.save();
+        painter.setRenderHint(QPainter::Antialiasing, true);
+
+        const auto inset = qreal(0.5) * scale;
+        const auto rimRect =
+            QRectF(bgRect).adjusted(inset, inset, -inset, -inset);
+
+        QLinearGradient rim(rimRect.topLeft(), rimRect.bottomLeft());
+        const bool lightTheme = this->theme->isLightTheme();
+        rim.setColorAt(0.0, QColor(255, 255, 255, lightTheme ? 235 : 140));
+        rim.setColorAt(0.5, QColor(255, 255, 255, lightTheme ? 110 : 55));
+        rim.setColorAt(1.0, QColor(255, 255, 255, lightTheme ? 40 : 18));
+
+        painter.setPen(QPen(QBrush(rim), qreal(1.0) * scale));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawPath(this->tabShapePath(rimRect, scale));
+
+        painter.restore();
+    }
 
     // draw live indicator
     if ((this->isLive_ || this->isRerun_) && getSettings()->showTabLive)
@@ -1558,14 +1603,16 @@ QPainterPath NotebookTab::tabShapePath(const QRectF &rect, float scale) const
 {
     QPainterPath path;
 
+    const bool modern = getSettings()->uiStyle == UiStyle::Modern;
+
     if (this->hasFullyRoundedCorners())
     {
-        const auto radius = qreal(6.0 * scale);
+        const auto radius = qreal((modern ? 10.0 : 6.0) * scale);
         path.addRoundedRect(rect, radius, radius);
         return path;
     }
 
-    const auto radius = qreal(4.0 * scale);
+    const auto radius = qreal((modern ? 8.0 : 4.0) * scale);
     path.addRoundedRect(rect, radius, radius);
 
     // Square off the edge that faces the page, so the tab still sits flush

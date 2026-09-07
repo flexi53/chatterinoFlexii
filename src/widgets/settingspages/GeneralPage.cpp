@@ -242,6 +242,11 @@ void GeneralPage::initLayout(GeneralPageView &layout)
 
     SettingWidget::dropdown("Tab style", s.tabStyle)->addTo(layout);
 
+    SettingWidget::dropdown("Look", s.uiStyle)
+        ->setTooltip("Classic is Chatterino's usual look. Modern rounds "
+                     "things off more and gives surfaces some depth.")
+        ->addTo(layout);
+
     layout.addWidget(new FontSettingWidget(s.chatFontFamily, s.chatFontSize,
                                            s.chatFontWeight),
                      {"font", "weight", "size"});

@@ -237,6 +237,8 @@ template SettingWidget *SettingWidget::dropdown<ChatSendProtocol>(
     const QString &label, EnumStringSetting<ChatSendProtocol> &setting);
 template SettingWidget *SettingWidget::dropdown<TabStyle>(
     const QString &label, EnumStringSetting<TabStyle> &setting);
+template SettingWidget *SettingWidget::dropdown<UiStyle>(
+    const QString &label, EnumStringSetting<UiStyle> &setting);
 template SettingWidget *SettingWidget::dropdown<ShowModerationState>(
     const QString &label, EnumStringSetting<ShowModerationState> &setting);
 template SettingWidget *SettingWidget::dropdown<EmojiStyle>(

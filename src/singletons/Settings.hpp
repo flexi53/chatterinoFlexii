@@ -95,6 +95,13 @@ enum class TabStyle : std::uint8_t {
     Compact,
 };
 
+/// Which look the chat uses. Classic is Chatterino as it has always been;
+/// Modern rounds things off more and gives surfaces a bit of depth.
+enum class UiStyle : std::uint8_t {
+    Classic,
+    Modern,
+};
+
 enum class EmoteTooltipScale : std::uint8_t {
     Small,
     Medium,
@@ -227,6 +234,10 @@ public:
     EnumStringSetting<TabStyle> tabStyle = {
         "/appearance/tabStyle",
         TabStyle::Normal,
+    };
+    EnumStringSetting<UiStyle> uiStyle = {
+        "/appearance/uiStyle",
+        UiStyle::Classic,
     };
     BoolSetting hidePreferencesButton = {"/appearance/hidePreferencesButton",
                                          false};
@@ -537,7 +548,8 @@ public:
     QStringSetting selfHighlightColor = {"/highlighting/selfHighlightColor",
                                          ""};
     /// Free text shown next to a matching message
-    QStringSetting selfHighlightCaption = {"/highlighting/selfHighlightCaption", ""};
+    QStringSetting selfHighlightCaption = {"/highlighting/selfHighlightCaption",
+                                           ""};
 
     BoolSetting enableSelfMessageHighlight = {
         "/highlighting/selfMessageHighlight/enabled", false};
@@ -546,7 +558,8 @@ public:
     QStringSetting selfMessageHighlightColor = {
         "/highlighting/selfMessageHighlight/color", ""};
     /// Free text shown next to a matching message
-    QStringSetting selfMessageHighlightCaption = {"/highlighting/selfMessageHighlightCaption", ""};
+    QStringSetting selfMessageHighlightCaption = {
+        "/highlighting/selfMessageHighlightCaption", ""};
 
     BoolSetting enableWhisperHighlight = {
         "/highlighting/whisperHighlight/whispersHighlighted", true};
@@ -559,7 +572,8 @@ public:
     QStringSetting whisperHighlightColor = {
         "/highlighting/whisperHighlightColor", ""};
     /// Free text shown next to a matching message
-    QStringSetting whisperHighlightCaption = {"/highlighting/whisperHighlightCaption", ""};
+    QStringSetting whisperHighlightCaption = {
+        "/highlighting/whisperHighlightCaption", ""};
 
     BoolSetting enableRedeemedHighlight = {
         "/highlighting/redeemedHighlight/highlighted", true};
@@ -572,7 +586,8 @@ public:
     QStringSetting redeemedHighlightColor = {
         "/highlighting/redeemedHighlightColor", ""};
     /// Free text shown next to a matching message
-    QStringSetting redeemedHighlightCaption = {"/highlighting/redeemedHighlightCaption", ""};
+    QStringSetting redeemedHighlightCaption = {
+        "/highlighting/redeemedHighlightCaption", ""};
 
     BoolSetting enableFirstMessageHighlight = {
         "/highlighting/firstMessageHighlight/highlighted", true};
@@ -596,7 +611,8 @@ public:
     QStringSetting elevatedMessageHighlightColor = {
         "/highlighting/elevatedMessageHighlight/color", ""};
     /// Free text shown next to a matching message
-    QStringSetting elevatedMessageHighlightCaption = {"/highlighting/elevatedMessageHighlightCaption", ""};
+    QStringSetting elevatedMessageHighlightCaption = {
+        "/highlighting/elevatedMessageHighlightCaption", ""};
 
     BoolSetting enableSubHighlight = {
         "/highlighting/subHighlight/subsHighlighted", true};
@@ -608,14 +624,16 @@ public:
                                            ""};
     QStringSetting subHighlightColor = {"/highlighting/subHighlightColor", ""};
     /// Free text shown next to a matching message
-    QStringSetting subHighlightCaption = {"/highlighting/subHighlightCaption", ""};
+    QStringSetting subHighlightCaption = {"/highlighting/subHighlightCaption",
+                                          ""};
 
     BoolSetting enableWatchStreakHighlight = {
         "/highlighting/watchStreak/enabled", true};
     QStringSetting watchStreakHighlightColor = {
         "/highlighting/watchStreak/color", ""};
     /// Free text shown next to a matching message
-    QStringSetting watchStreakHighlightCaption = {"/highlighting/watchStreakHighlightCaption", ""};
+    QStringSetting watchStreakHighlightCaption = {
+        "/highlighting/watchStreakHighlightCaption", ""};
 
     BoolSetting enableAutomodHighlight = {
         "/highlighting/automod/enabled",
@@ -639,7 +657,8 @@ public:
     };
     QStringSetting automodHighlightColor = {"/highlighting/automod/color", ""};
     /// Free text shown next to a matching message
-    QStringSetting automodHighlightCaption = {"/highlighting/automodHighlightCaption", ""};
+    QStringSetting automodHighlightCaption = {
+        "/highlighting/automodHighlightCaption", ""};
 
     BoolSetting enableThreadHighlight = {
         "/highlighting/thread/nameIsHighlightKeyword", true};
@@ -654,7 +673,8 @@ public:
     QStringSetting threadHighlightColor = {"/highlighting/threadHighlightColor",
                                            ""};
     /// Free text shown next to a matching message
-    QStringSetting threadHighlightCaption = {"/highlighting/threadHighlightCaption", ""};
+    QStringSetting threadHighlightCaption = {
+        "/highlighting/threadHighlightCaption", ""};
 
     QStringSetting highlightColor = {"/highlighting/color", ""};
 
