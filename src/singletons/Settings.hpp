@@ -290,6 +290,9 @@ public:
     BoolSetting showBadgesBttv = {"/appearance/badges/bttv", true};
     BoolSetting showBadgesSevenTV = {"/appearance/badges/seventv", true};
     BoolSetting showBadgesHomies = {"/appearance/badges/homies", true};
+    /// Label a first-time chatter's message, the way Twitch does
+    BoolSetting showFirstMessageMarker = {
+        "/appearance/messages/firstMessageMarker", true};
     BoolSetting animateSevenTVBadges = {"/appearance/badges/animateSeventv",
                                         true};
     QSizeSetting lastPopupSize = {

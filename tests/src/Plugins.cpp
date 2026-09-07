@@ -976,6 +976,7 @@ TEST_F(PluginTest, MessageElementFlag)
                          "EmojiText=0x1000000,"
                          "EmoteImage=0x10,"
                          "EmoteText=0x20,"
+                         "FirstMessageMarker=0x800000000,"
                          "KickUsername=0x4000000000,"
                          "LowercaseLinks=0x20000000,"
                          "Mention=0x8000000,"

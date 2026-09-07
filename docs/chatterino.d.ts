@@ -486,6 +486,7 @@ declare namespace c2 {
         BadgeChatterino = 0,
         BadgeSevenTV = 0,
         BadgeHomies = 0,
+        FirstMessageMarker = 0,
         BadgeFfz = 0,
         Badges = 0,
         ChannelName = 0,

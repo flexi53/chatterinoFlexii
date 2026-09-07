@@ -113,6 +113,10 @@ enum class MessageElementFlag : int64_t {
     /// Custom badge from Chatterino Homies
     BadgeHomies = (1LL << 34),
 
+    /// The "first message" marker shown in front of a first-time chatter's
+    /// message, the way Twitch labels them
+    FirstMessageMarker = (1LL << 35),
+
     // Slot 8: BetterTTV
     // - BetterTTV Pro
     BadgeBttv = (1LL << 6),
@@ -164,8 +168,8 @@ enum class MessageElementFlag : int64_t {
     // `Username` but the username comes from Kick
     KickUsername = (1LL << 38),
 
-    Default = Timestamp | Badges | Username | BitsStatic | EmoteImage |
-              BitsAmount | Text | AlwaysShow,
+    Default = Timestamp | Badges | Username | FirstMessageMarker | BitsStatic |
+              EmoteImage | BitsAmount | Text | AlwaysShow,
 };
 using MessageElementFlags = FlagsEnum<MessageElementFlag>;
 

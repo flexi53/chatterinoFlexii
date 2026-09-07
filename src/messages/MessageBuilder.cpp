@@ -1688,6 +1688,15 @@ std::pair<MessagePtrMut, HighlightAlert> MessageBuilder::makeIrcMessage(
     builder.appendSeventvBadges(userID);
     builder.appendHomiesBadge(userID);
 
+    // Twitch labels a first-time chatter's message rather than only tinting
+    // it, so mirror that with a marker in front of the name.
+    if (builder->flags.has(MessageFlag::FirstMessage))
+    {
+        builder.emplace<TextElement>(
+            u"First message"_s, MessageElementFlag::FirstMessageMarker,
+            MessageColor::System, FontStyle::ChatMediumBold);
+    }
+
     builder.appendUsername(tags, args);
 
     TextState textState{.twitchChannel = twitchChannel, .userID = userID};

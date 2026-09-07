@@ -626,6 +626,7 @@ c2.MessageElementFlag = {
     BadgeChatterino = 0,
     BadgeSevenTV = 0,
     BadgeHomies = 0,
+    FirstMessageMarker = 0,
     BadgeBttv = 0,
     BadgeFfz = 0,
     Badges = 0,
