@@ -68,6 +68,12 @@ struct MessageLayoutContainer {
      */
     void breakLine();
 
+    /// Moves caption elements - the first message marker and highlight
+    /// captions - to the right edge of the last line, so they line up in a
+    /// column instead of trailing the text wherever it happens to end.
+    /// Leaves them alone when there is not enough room.
+    void alignCaptionsRight();
+
     /**
      * Paint the elements in this message
      */

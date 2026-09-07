@@ -119,6 +119,8 @@ void MessageLayoutContainer::endLayout()
         this->elements_.back()->setTrailingSpace(false);
     }
 
+    this->alignCaptionsRight();
+
     if (this->anyReorderingDone_)
     {
         std::ranges::sort(this->elements_, [](const auto &a, const auto &b) {
@@ -128,6 +130,55 @@ void MessageLayoutContainer::endLayout()
             }
             return a->getLine() < b->getLine();
         });
+    }
+}
+
+void MessageLayoutContainer::alignCaptionsRight()
+{
+    if (this->elements_.empty() || this->lines_.empty())
+    {
+        return;
+    }
+
+    static const MessageElementFlags CAPTION_FLAGS{
+        MessageElementFlag::FirstMessageMarker,
+        MessageElementFlag::HighlightCaption};
+
+    const auto lastLineStart = this->lines_.back().startIndex;
+
+    // How far right the captions may reach, and how far left they may go
+    // before running into the message itself.
+    qreal right = this->width_ - (MARGIN.right() * this->scale_);
+    qreal textEnd = 0;
+
+    for (size_t i = lastLineStart; i < this->elements_.size(); i++)
+    {
+        const auto *element = this->elements_[i].get();
+        if (!element->getCreator().getFlags().hasAny(CAPTION_FLAGS))
+        {
+            textEnd = std::max(textEnd, element->getRect().right());
+        }
+    }
+
+    // Walk backwards so several captions keep their relative order
+    for (size_t i = this->elements_.size(); i-- > lastLineStart;)
+    {
+        auto *element = this->elements_[i].get();
+        if (!element->getCreator().getFlags().hasAny(CAPTION_FLAGS))
+        {
+            continue;
+        }
+
+        const auto rect = element->getRect();
+        const auto x = right - rect.width();
+        if (x <= textEnd)
+        {
+            // No room - leave it trailing the text rather than overlapping it
+            break;
+        }
+
+        element->setPosition(QPointF(x, rect.y()));
+        right = x;
     }
 }
 
