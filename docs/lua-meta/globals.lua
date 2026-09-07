@@ -49,6 +49,7 @@ c2.ChannelType = {
     TwitchLive = {}, ---@type c2.ChannelType.TwitchLive
     TwitchAutomod = {}, ---@type c2.ChannelType.TwitchAutomod
     TwitchEnd = {}, ---@type c2.ChannelType.TwitchEnd
+    Kick = {}, ---@type c2.ChannelType.Kick
     Misc = {}, ---@type c2.ChannelType.Misc
 }
 
@@ -624,6 +625,7 @@ c2.MessageElementFlag = {
     BadgeVanity = 0,
     BadgeChatterino = 0,
     BadgeSevenTV = 0,
+    BadgeHomies = 0,
     BadgeBttv = 0,
     BadgeFfz = 0,
     Badges = 0,
@@ -639,6 +641,7 @@ c2.MessageElementFlag = {
     LowercaseLinks = 0,
     RepliedMessage = 0,
     ReplyButton = 0,
+    KickUsername = 0,
     Default = 0,
 }
 

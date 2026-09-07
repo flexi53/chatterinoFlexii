@@ -200,9 +200,12 @@ void Connection::onChannelModerate(
                     kind = ModerationHistory::Action::Ban;
                 }
 
-                getApp()->getModerationHistory()->record(
-                    payload.event.broadcasterUserID.qt(), action.userID.qt(),
-                    kind);
+                auto *history = getApp()->getModerationHistory();
+                if (history != nullptr)  // not available, e.g. in tests
+                {
+                    history->record(payload.event.broadcasterUserID.qt(),
+                                    action.userID.qt(), kind);
+                }
             }
 
             static_assert(CanMakeModMessage<Action> ||

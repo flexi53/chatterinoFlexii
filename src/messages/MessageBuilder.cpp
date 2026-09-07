@@ -2557,7 +2557,13 @@ void MessageBuilder::appendSeventvBadges(const QString &userID)
 
 void MessageBuilder::appendHomiesBadge(const QString &userID)
 {
-    if (auto badge = getApp()->getHomiesBadges()->getBadge({userID}))
+    auto *badges = getApp()->getHomiesBadges();
+    if (badges == nullptr)
+    {
+        return;  // not available, e.g. in tests
+    }
+
+    if (auto badge = badges->getBadge({userID}))
     {
         this->emplace<BadgeElement>(*badge, MessageElementFlag::BadgeHomies);
 

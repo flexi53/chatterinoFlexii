@@ -1129,8 +1129,14 @@ void UserInfoPopup::updateModerationHistory()
         return;
     }
 
-    const auto counts =
-        getApp()->getModerationHistory()->counts(channelID, this->userId_);
+    auto *history = getApp()->getModerationHistory();
+    if (history == nullptr)
+    {
+        this->ui_.modHistoryLabel->setVisible(false);
+        return;
+    }
+
+    const auto counts = history->counts(channelID, this->userId_);
 
     // Shown even when nothing has been recorded yet, so it is visible that
     // the channel is being watched rather than the line being broken.
