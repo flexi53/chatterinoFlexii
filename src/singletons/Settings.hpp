@@ -536,6 +536,8 @@ public:
         "/highlighting/selfHighlightSoundUrl", ""};
     QStringSetting selfHighlightColor = {"/highlighting/selfHighlightColor",
                                          ""};
+    /// Free text shown next to a matching message
+    QStringSetting selfHighlightCaption = {"/highlighting/selfHighlightCaption", ""};
 
     BoolSetting enableSelfMessageHighlight = {
         "/highlighting/selfMessageHighlight/enabled", false};
@@ -543,6 +545,8 @@ public:
         "/highlighting/selfMessageHighlight/showInMentions", false};
     QStringSetting selfMessageHighlightColor = {
         "/highlighting/selfMessageHighlight/color", ""};
+    /// Free text shown next to a matching message
+    QStringSetting selfMessageHighlightCaption = {"/highlighting/selfMessageHighlightCaption", ""};
 
     BoolSetting enableWhisperHighlight = {
         "/highlighting/whisperHighlight/whispersHighlighted", true};
@@ -554,6 +558,8 @@ public:
         "/highlighting/whisperHighlightSoundUrl", ""};
     QStringSetting whisperHighlightColor = {
         "/highlighting/whisperHighlightColor", ""};
+    /// Free text shown next to a matching message
+    QStringSetting whisperHighlightCaption = {"/highlighting/whisperHighlightCaption", ""};
 
     BoolSetting enableRedeemedHighlight = {
         "/highlighting/redeemedHighlight/highlighted", true};
@@ -565,6 +571,8 @@ public:
     //        "/highlighting/redeemedHighlightSoundUrl", ""};
     QStringSetting redeemedHighlightColor = {
         "/highlighting/redeemedHighlightColor", ""};
+    /// Free text shown next to a matching message
+    QStringSetting redeemedHighlightCaption = {"/highlighting/redeemedHighlightCaption", ""};
 
     BoolSetting enableFirstMessageHighlight = {
         "/highlighting/firstMessageHighlight/highlighted", true};
@@ -587,6 +595,8 @@ public:
     //        "/highlighting/elevatedMessageHighlight/soundUrl", ""};
     QStringSetting elevatedMessageHighlightColor = {
         "/highlighting/elevatedMessageHighlight/color", ""};
+    /// Free text shown next to a matching message
+    QStringSetting elevatedMessageHighlightCaption = {"/highlighting/elevatedMessageHighlightCaption", ""};
 
     BoolSetting enableSubHighlight = {
         "/highlighting/subHighlight/subsHighlighted", true};
@@ -597,11 +607,15 @@ public:
     QStringSetting subHighlightSoundUrl = {"/highlighting/subHighlightSoundUrl",
                                            ""};
     QStringSetting subHighlightColor = {"/highlighting/subHighlightColor", ""};
+    /// Free text shown next to a matching message
+    QStringSetting subHighlightCaption = {"/highlighting/subHighlightCaption", ""};
 
     BoolSetting enableWatchStreakHighlight = {
         "/highlighting/watchStreak/enabled", true};
     QStringSetting watchStreakHighlightColor = {
         "/highlighting/watchStreak/color", ""};
+    /// Free text shown next to a matching message
+    QStringSetting watchStreakHighlightCaption = {"/highlighting/watchStreakHighlightCaption", ""};
 
     BoolSetting enableAutomodHighlight = {
         "/highlighting/automod/enabled",
@@ -624,6 +638,8 @@ public:
         "",
     };
     QStringSetting automodHighlightColor = {"/highlighting/automod/color", ""};
+    /// Free text shown next to a matching message
+    QStringSetting automodHighlightCaption = {"/highlighting/automodHighlightCaption", ""};
 
     BoolSetting enableThreadHighlight = {
         "/highlighting/thread/nameIsHighlightKeyword", true};
@@ -637,6 +653,8 @@ public:
         "/highlighting/threadHighlightSoundUrl", ""};
     QStringSetting threadHighlightColor = {"/highlighting/threadHighlightColor",
                                            ""};
+    /// Free text shown next to a matching message
+    QStringSetting threadHighlightCaption = {"/highlighting/threadHighlightCaption", ""};
 
     QStringSetting highlightColor = {"/highlighting/color", ""};
 

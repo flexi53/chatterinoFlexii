@@ -25,13 +25,18 @@ public:
 
     HighlightBadge(const QString &badgeName, const QString &displayName,
                    bool showInMentions, bool hasAlert, bool hasSound,
-                   const QString &soundUrl, QColor color);
+                   const QString &soundUrl, QColor color,
+                   const QString &caption = QString());
 
     HighlightBadge(const QString &badgeName, const QString &displayName,
                    bool showInMentions, bool hasAlert, bool hasSound,
-                   const QString &soundUrl, std::shared_ptr<QColor> color);
+                   const QString &soundUrl, std::shared_ptr<QColor> color,
+                   const QString &caption = QString());
 
     const QString &badgeName() const;
+
+    /// Free text shown next to a matching message
+    const QString &getCaption() const;
     const QString &displayName() const;
     bool showInMentions() const;
     bool hasAlert() const;
@@ -63,6 +68,7 @@ private:
 
     QString badgeName_;
     QString displayName_;
+    QString caption_;
     bool showInMentions_;
     bool hasAlert_;
     bool hasSound_;
@@ -92,6 +98,7 @@ struct Serialize<chatterino::HighlightBadge> {
         chatterino::rj::set(ret, "soundUrl", value.getSoundUrl().toString(), a);
         chatterino::rj::set(ret, "color",
                             value.getColor()->name(QColor::HexArgb), a);
+        chatterino::rj::set(ret, "caption", value.getCaption(), a);
 
         return ret;
     }
@@ -116,6 +123,7 @@ struct Deserialize<chatterino::HighlightBadge> {
         bool _hasSound = false;
         QString _soundUrl;
         QString encodedColor;
+        QString _caption;
 
         chatterino::rj::getSafe(value, "name", _name);
         chatterino::rj::getSafe(value, "displayName", _displayName);
@@ -124,6 +132,7 @@ struct Deserialize<chatterino::HighlightBadge> {
         chatterino::rj::getSafe(value, "sound", _hasSound);
         chatterino::rj::getSafe(value, "soundUrl", _soundUrl);
         chatterino::rj::getSafe(value, "color", encodedColor);
+        chatterino::rj::getSafe(value, "caption", _caption);
 
         auto _color = QColor(encodedColor);
         if (!_color.isValid())
@@ -133,7 +142,7 @@ struct Deserialize<chatterino::HighlightBadge> {
 
         return chatterino::HighlightBadge(_name, _displayName, _showInMentions,
                                           _hasAlert, _hasSound, _soundUrl,
-                                          _color);
+                                          _color, _caption);
     }
 };
 

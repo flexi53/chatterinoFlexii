@@ -17,7 +17,7 @@ namespace chatterino {
 
 // commandmodel
 BadgeHighlightModel::BadgeHighlightModel(QObject *parent)
-    : SignalVectorModel<HighlightBadge>(6, parent)
+    : SignalVectorModel<HighlightBadge>(7, parent)
 {
 }
 
@@ -40,7 +40,8 @@ HighlightBadge BadgeHighlightModel::getItemFromRow(
         row[Column::FlashTaskbar]->data(Qt::CheckStateRole).toBool(),
         row[Column::PlaySound]->data(Qt::CheckStateRole).toBool(),
         row[Column::SoundPath]->data(Qt::UserRole).toString(),
-        highlightColor};
+        highlightColor,
+        row[Column::Caption]->data(Qt::DisplayRole).toString().trimmed()};
 }
 
 // row into vector item
@@ -55,6 +56,7 @@ void BadgeHighlightModel::getRowFromItem(const HighlightBadge &item,
     setBoolItem(row[Column::FlashTaskbar], item.hasAlert());
     setBoolItem(row[Column::PlaySound], item.hasSound());
     setFilePathItem(row[Column::SoundPath], item.getSoundUrl());
+    setStringItem(row[Column::Caption], item.getCaption());
     setColorItem(row[Column::Color], *item.getColor());
 
     getApp()->getTwitchBadges()->getBadgeIcon(

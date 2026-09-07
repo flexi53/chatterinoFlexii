@@ -24,7 +24,8 @@ public:
         FlashTaskbar = 2,
         PlaySound = 3,
         SoundPath = 4,
-        Color = 5
+        Caption = 5,
+        Color = 6
     };
 
 protected:

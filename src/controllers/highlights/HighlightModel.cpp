@@ -83,9 +83,8 @@ void HighlightModel::afterInit()
     auto selfColor = ColorProvider::instance().color(ColorType::SelfHighlight);
     setColorItem(usernameRow[Column::Color], *selfColor, false);
 
-    // These rows are backed by settings, not by a phrase the user can
-    // edit, so a caption typed here would be silently discarded.
-    usernameRow[Column::Caption]->setFlags(Qt::NoItemFlags);
+    setStringItem(usernameRow[Column::Caption],
+                  getSettings()->selfHighlightCaption.getValue());
 
     this->insertCustomRow(usernameRow, HighlightRowIndexes::SelfHighlightRow);
 
@@ -111,9 +110,8 @@ void HighlightModel::afterInit()
     auto whisperColor = ColorProvider::instance().color(ColorType::Whisper);
     setColorItem(whisperRow[Column::Color], *whisperColor, false);
 
-    // These rows are backed by settings, not by a phrase the user can
-    // edit, so a caption typed here would be silently discarded.
-    whisperRow[Column::Caption]->setFlags(Qt::NoItemFlags);
+    setStringItem(whisperRow[Column::Caption],
+                  getSettings()->whisperHighlightCaption.getValue());
 
     this->insertCustomRow(whisperRow, HighlightRowIndexes::WhisperRow);
 
@@ -137,9 +135,8 @@ void HighlightModel::afterInit()
     auto subColor = ColorProvider::instance().color(ColorType::Subscription);
     setColorItem(subRow[Column::Color], *subColor, false);
 
-    // These rows are backed by settings, not by a phrase the user can
-    // edit, so a caption typed here would be silently discarded.
-    subRow[Column::Caption]->setFlags(Qt::NoItemFlags);
+    setStringItem(subRow[Column::Caption],
+                  getSettings()->subHighlightCaption.getValue());
 
     this->insertCustomRow(subRow, HighlightRowIndexes::SubRow);
 
@@ -166,9 +163,8 @@ void HighlightModel::afterInit()
         ColorProvider::instance().color(ColorType::RedeemedHighlight);
     setColorItem(redeemedRow[Column::Color], *RedeemedColor, false);
 
-    // These rows are backed by settings, not by a phrase the user can
-    // edit, so a caption typed here would be silently discarded.
-    redeemedRow[Column::Caption]->setFlags(Qt::NoItemFlags);
+    setStringItem(redeemedRow[Column::Caption],
+                  getSettings()->redeemedHighlightCaption.getValue());
 
     this->insertCustomRow(redeemedRow, HighlightRowIndexes::RedeemedRow);
 
@@ -227,9 +223,8 @@ void HighlightModel::afterInit()
     setColorItem(elevatedMessageRow[Column::Color], *elevatedMessageColor,
                  false);
 
-    // These rows are backed by settings, not by a phrase the user can
-    // edit, so a caption typed here would be silently discarded.
-    elevatedMessageRow[Column::Caption]->setFlags(Qt::NoItemFlags);
+    setStringItem(elevatedMessageRow[Column::Caption],
+                  getSettings()->elevatedMessageHighlightCaption.getValue());
 
     this->insertCustomRow(elevatedMessageRow,
                           HighlightRowIndexes::ElevatedMessageRow);
@@ -261,9 +256,8 @@ void HighlightModel::afterInit()
         ColorProvider::instance().color(ColorType::ThreadMessageHighlight);
     setColorItem(threadMessageRow[Column::Color], *threadMessageColor, false);
 
-    // These rows are backed by settings, not by a phrase the user can
-    // edit, so a caption typed here would be silently discarded.
-    threadMessageRow[Column::Caption]->setFlags(Qt::NoItemFlags);
+    setStringItem(threadMessageRow[Column::Caption],
+                  getSettings()->threadHighlightCaption.getValue());
 
     this->insertCustomRow(threadMessageRow,
                           HighlightRowIndexes::ThreadMessageRow);
@@ -292,9 +286,8 @@ void HighlightModel::afterInit()
         ColorProvider::instance().color(ColorType::AutomodHighlight);
     setColorItem(automodRow[Column::Color], *automodColor, false);
 
-    // These rows are backed by settings, not by a phrase the user can
-    // edit, so a caption typed here would be silently discarded.
-    automodRow[Column::Caption]->setFlags(Qt::NoItemFlags);
+    setStringItem(automodRow[Column::Caption],
+                  getSettings()->automodHighlightCaption.getValue());
 
     this->insertCustomRow(automodRow, HighlightRowIndexes::AutomodRow);
 
@@ -314,9 +307,8 @@ void HighlightModel::afterInit()
         ColorProvider::instance().color(ColorType::WatchStreak);
     setColorItem(watchStreakRow[Column::Color], *watchStreakColor, false);
 
-    // These rows are backed by settings, not by a phrase the user can
-    // edit, so a caption typed here would be silently discarded.
-    watchStreakRow[Column::Caption]->setFlags(Qt::NoItemFlags);
+    setStringItem(watchStreakRow[Column::Caption],
+                  getSettings()->watchStreakHighlightCaption.getValue());
 
     this->insertCustomRow(watchStreakRow, HighlightRowIndexes::WatchStreakRow);
 }
@@ -499,10 +491,45 @@ void HighlightModel::customRowSetData(const std::vector<QStandardItem *> &row,
         }
         break;
         case Column::Caption: {
-            if (role == Qt::EditRole &&
-                rowIndex == HighlightRowIndexes::FirstMessageRow)
+            if (role != Qt::EditRole)
             {
-                getSettings()->firstMessageCaption.setValue(value.toString());
+                break;
+            }
+
+            const auto caption = value.toString();
+            switch (rowIndex)
+            {
+                case HighlightRowIndexes::SelfHighlightRow:
+                    getSettings()->selfHighlightCaption.setValue(caption);
+                    break;
+                case HighlightRowIndexes::WhisperRow:
+                    getSettings()->whisperHighlightCaption.setValue(caption);
+                    break;
+                case HighlightRowIndexes::SubRow:
+                    getSettings()->subHighlightCaption.setValue(caption);
+                    break;
+                case HighlightRowIndexes::RedeemedRow:
+                    getSettings()->redeemedHighlightCaption.setValue(caption);
+                    break;
+                case HighlightRowIndexes::FirstMessageRow:
+                    getSettings()->firstMessageCaption.setValue(caption);
+                    break;
+                case HighlightRowIndexes::ElevatedMessageRow:
+                    getSettings()->elevatedMessageHighlightCaption.setValue(
+                        caption);
+                    break;
+                case HighlightRowIndexes::ThreadMessageRow:
+                    getSettings()->threadHighlightCaption.setValue(caption);
+                    break;
+                case HighlightRowIndexes::AutomodRow:
+                    getSettings()->automodHighlightCaption.setValue(caption);
+                    break;
+                case HighlightRowIndexes::WatchStreakRow:
+                    getSettings()->watchStreakHighlightCaption.setValue(
+                        caption);
+                    break;
+                default:
+                    break;
             }
         }
         break;

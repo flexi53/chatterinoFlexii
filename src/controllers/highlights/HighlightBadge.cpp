@@ -24,9 +24,10 @@ bool HighlightBadge::operator==(const HighlightBadge &other) const
 HighlightBadge::HighlightBadge(const QString &badgeName,
                                const QString &displayName, bool showInMentions,
                                bool hasAlert, bool hasSound,
-                               const QString &soundUrl, QColor color)
+                               const QString &soundUrl, QColor color,
+                               const QString &caption)
     : HighlightBadge(badgeName, displayName, showInMentions, hasAlert, hasSound,
-                     soundUrl, std::make_shared<QColor>(color))
+                     soundUrl, std::make_shared<QColor>(color), caption)
 {
 }
 
@@ -34,9 +35,11 @@ HighlightBadge::HighlightBadge(const QString &badgeName,
                                const QString &displayName, bool showInMentions,
                                bool hasAlert, bool hasSound,
                                const QString &soundUrl,
-                               std::shared_ptr<QColor> color)
+                               std::shared_ptr<QColor> color,
+                               const QString &caption)
     : badgeName_(badgeName)
     , displayName_(displayName)
+    , caption_(caption)
     , showInMentions_(showInMentions)
     , hasAlert_(hasAlert)
     , hasSound_(hasSound)
@@ -55,6 +58,11 @@ HighlightBadge::HighlightBadge(const QString &badgeName,
 const QString &HighlightBadge::badgeName() const
 {
     return this->badgeName_;
+}
+
+const QString &HighlightBadge::getCaption() const
+{
+    return this->caption_;
 }
 
 const QString &HighlightBadge::displayName() const

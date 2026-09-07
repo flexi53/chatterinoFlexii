@@ -179,7 +179,8 @@ HighlightingPage::HighlightingPage()
                                              &getSettings()->highlightedBadges))
                                  .getElement();
                 view->setTitles({"Name", "Show In\nMentions", "Flash\ntaskbar",
-                                 "Play\nsound", "Custom\nsound", "Color"});
+                                 "Play\nsound", "Custom\nsound", "Caption",
+                                 "Color"});
                 view->getTableView()->horizontalHeader()->setSectionResizeMode(
                     QHeaderView::Fixed);
                 view->getTableView()->horizontalHeader()->setSectionResizeMode(

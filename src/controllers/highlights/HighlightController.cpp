@@ -55,7 +55,7 @@ auto highlightPhraseCheck(const HighlightPhrase &highlight) -> HighlightCheck
             return HighlightResult{
                 highlight.hasAlert(),       highlight.hasSound(),
                 highlightSoundUrl,          highlight.getColor(),
-                highlight.showInMentions(),
+                highlight.showInMentions(), highlight.getCaption(),
             };
         }};
 }
@@ -68,6 +68,7 @@ void rebuildSubscriptionHighlights(Settings &settings,
         auto highlightSound = settings.enableSubHighlightSound.getValue();
         auto highlightAlert = settings.enableSubHighlightTaskbar.getValue();
         auto highlightSoundUrlValue = settings.subHighlightSoundUrl.getValue();
+        auto caption = settings.subHighlightCaption.getValue();
         std::optional<QUrl> highlightSoundUrl;
         if (!highlightSoundUrlValue.isEmpty())
         {
@@ -101,6 +102,7 @@ void rebuildSubscriptionHighlights(Settings &settings,
                     highlightSoundUrl,  // customSoundUrl
                     highlightColor,     // color
                     false,              // showInMentions
+                    caption,            // caption
                 };
             }});
     }
@@ -122,6 +124,8 @@ void rebuildWhisperHighlights(Settings &settings,
         }
 
         // The custom whisper highlight color is handled in ColorProvider
+
+        auto caption = settings.whisperHighlightCaption.getValue();
 
         checks.emplace_back(HighlightCheck{
             [=](const auto &args, const auto &twitchBadges,
@@ -145,6 +149,7 @@ void rebuildWhisperHighlights(Settings &settings,
                     highlightSoundUrl,
                     ColorProvider::instance().color(ColorType::Whisper),
                     false,
+                    caption,
                 };
             }});
     }
@@ -166,6 +171,8 @@ void rebuildReplyThreadHighlight(Settings &settings,
         }
         auto highlightInMentions =
             settings.showThreadHighlightInMentions.getValue();
+        auto caption = settings.threadHighlightCaption.getValue();
+
         checks.emplace_back(HighlightCheck{
             [=](const auto & /*args*/, const auto & /*twitchBadges*/,
                 const auto & /*senderName*/, const auto & /*originalMessage*/,
@@ -180,6 +187,7 @@ void rebuildReplyThreadHighlight(Settings &settings,
                         ColorProvider::instance().color(
                             ColorType::ThreadMessageHighlight),
                         highlightInMentions,
+                        caption,
                     };
                 }
 
@@ -239,6 +247,8 @@ void rebuildMessageHighlights(Settings &settings,
         auto highlightColor =
             ColorProvider::instance().color(ColorType::AutomodHighlight);
 
+        auto caption = settings.automodHighlightCaption.getValue();
+
         checks.emplace_back(HighlightCheck{
             [=](const auto & /*args*/, const auto & /*twitchBadges*/,
                 const auto & /*senderName*/, const auto & /*originalMessage*/,
@@ -261,6 +271,7 @@ void rebuildMessageHighlights(Settings &settings,
                     highlightSoundUrl,  // customSoundUrl
                     highlightColor,     // color
                     false,              // showInMentions
+                    caption,            // caption
                 };
             }});
     }
@@ -274,9 +285,10 @@ void rebuildUserHighlights(Settings &settings,
     if (settings.enableSelfMessageHighlight)
     {
         bool showInMentions = settings.showSelfMessageHighlightInMentions;
+        auto caption = settings.selfMessageHighlightCaption.getValue();
 
         checks.emplace_back(HighlightCheck{
-            [showInMentions](
+            [showInMentions, caption](
                 const auto &args, const auto &twitchBadges,
                 const auto &senderName, const auto &originalMessage,
                 const auto &flags,
@@ -296,8 +308,9 @@ void rebuildUserHighlights(Settings &settings,
                 auto highlightColor = ColorProvider::instance().color(
                     ColorType::SelfMessageHighlight);
 
-                return HighlightResult{false, false, (QUrl) nullptr,
-                                       highlightColor, showInMentions};
+                return HighlightResult{false,          false,
+                                       (QUrl) nullptr, highlightColor,
+                                       showInMentions, caption};
             }});
     }
 
@@ -371,6 +384,7 @@ void rebuildBadgeHighlights(Settings &settings,
                             highlightSoundUrl,           //
                             highlight.getColor(),        //
                             highlight.showInMentions(),  //
+                            highlight.getCaption(),
                         };
                     }
                 }

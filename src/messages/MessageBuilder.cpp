@@ -65,6 +65,7 @@
 #include <QTimeZone>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <unordered_set>
 
@@ -1727,17 +1728,39 @@ std::pair<MessagePtrMut, HighlightAlert> MessageBuilder::makeIrcMessage(
     // caps and a size down so it reads as a label rather than as part of what
     // the user wrote, and in the highlight colour at full opacity - the tint
     // itself is far too transparent for text.
-    const auto firstMessageCaption =
-        getSettings()->firstMessageCaption.getValue();
-    if (builder->flags.has(MessageFlag::FirstMessage) &&
-        !firstMessageCaption.isEmpty())
+    // Categories that colour a message through its flags rather than through
+    // a highlight check carry their caption here.
+    struct FlaggedCaption {
+        MessageFlag flag;
+        QString text;
+        ColorType color;
+    };
+
+    const std::array flaggedCaptions{
+        FlaggedCaption{MessageFlag::FirstMessage,
+                       getSettings()->firstMessageCaption.getValue(),
+                       ColorType::FirstMessageHighlight},
+        FlaggedCaption{MessageFlag::RedeemedHighlight,
+                       getSettings()->redeemedHighlightCaption.getValue(),
+                       ColorType::RedeemedHighlight},
+        FlaggedCaption{
+            MessageFlag::ElevatedMessage,
+            getSettings()->elevatedMessageHighlightCaption.getValue(),
+            ColorType::ElevatedMessageHighlight},
+    };
+
+    for (const auto &entry : flaggedCaptions)
     {
-        auto captionColor =
-            *ColorProvider::instance().color(ColorType::FirstMessageHighlight);
+        if (!builder->flags.has(entry.flag) || entry.text.isEmpty())
+        {
+            continue;
+        }
+
+        auto captionColor = *ColorProvider::instance().color(entry.color);
         captionColor.setAlpha(255);
 
         builder.emplace<TextElement>(
-            firstMessageCaption, MessageElementFlag::FirstMessageMarker,
+            entry.text, MessageElementFlag::FirstMessageMarker,
             MessageColor(captionColor), FontStyle::ChatMediumSmall);
     }
 
