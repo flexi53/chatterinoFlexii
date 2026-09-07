@@ -696,6 +696,15 @@ void MessageLayoutContainer::addElement(MessageLayoutElement *element,
         yOffset -= (MARGIN.top() * this->scale_);
     }
 
+    // The first message caption is set a size down. Elements are aligned to
+    // the bottom of the line, so without lifting it, it would hang below the
+    // text it trails instead of sitting alongside it.
+    if (element->getCreator().getFlags().has(
+            MessageElementFlag::FirstMessageMarker))
+    {
+        yOffset -= (MARGIN.top() * this->scale_);
+    }
+
     if (getSettings()->removeSpacesBetweenEmotes &&
         element->getFlags().hasAny({MessageElementFlag::EmoteImage}) &&
         shouldRemoveSpaceBetweenEmotes())
