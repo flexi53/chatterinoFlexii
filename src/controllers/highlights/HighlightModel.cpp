@@ -83,6 +83,10 @@ void HighlightModel::afterInit()
     auto selfColor = ColorProvider::instance().color(ColorType::SelfHighlight);
     setColorItem(usernameRow[Column::Color], *selfColor, false);
 
+    // These rows are backed by settings, not by a phrase the user can
+    // edit, so a caption typed here would be silently discarded.
+    usernameRow[Column::Caption]->setFlags(Qt::NoItemFlags);
+
     this->insertCustomRow(usernameRow, HighlightRowIndexes::SelfHighlightRow);
 
     // Highlight settings for whispers
@@ -107,6 +111,10 @@ void HighlightModel::afterInit()
     auto whisperColor = ColorProvider::instance().color(ColorType::Whisper);
     setColorItem(whisperRow[Column::Color], *whisperColor, false);
 
+    // These rows are backed by settings, not by a phrase the user can
+    // edit, so a caption typed here would be silently discarded.
+    whisperRow[Column::Caption]->setFlags(Qt::NoItemFlags);
+
     this->insertCustomRow(whisperRow, HighlightRowIndexes::WhisperRow);
 
     // Highlight settings for subscription messages
@@ -128,6 +136,10 @@ void HighlightModel::afterInit()
 
     auto subColor = ColorProvider::instance().color(ColorType::Subscription);
     setColorItem(subRow[Column::Color], *subColor, false);
+
+    // These rows are backed by settings, not by a phrase the user can
+    // edit, so a caption typed here would be silently discarded.
+    subRow[Column::Caption]->setFlags(Qt::NoItemFlags);
 
     this->insertCustomRow(subRow, HighlightRowIndexes::SubRow);
 
@@ -153,6 +165,10 @@ void HighlightModel::afterInit()
     auto RedeemedColor =
         ColorProvider::instance().color(ColorType::RedeemedHighlight);
     setColorItem(redeemedRow[Column::Color], *RedeemedColor, false);
+
+    // These rows are backed by settings, not by a phrase the user can
+    // edit, so a caption typed here would be silently discarded.
+    redeemedRow[Column::Caption]->setFlags(Qt::NoItemFlags);
 
     this->insertCustomRow(redeemedRow, HighlightRowIndexes::RedeemedRow);
 
@@ -180,6 +196,10 @@ void HighlightModel::afterInit()
         ColorProvider::instance().color(ColorType::FirstMessageHighlight);
     setColorItem(firstMessageRow[Column::Color], *FirstMessageColor, false);
 
+    // These rows are backed by settings, not by a phrase the user can
+    // edit, so a caption typed here would be silently discarded.
+    firstMessageRow[Column::Caption]->setFlags(Qt::NoItemFlags);
+
     this->insertCustomRow(firstMessageRow,
                           HighlightRowIndexes::FirstMessageRow);
 
@@ -206,6 +226,10 @@ void HighlightModel::afterInit()
         ColorProvider::instance().color(ColorType::ElevatedMessageHighlight);
     setColorItem(elevatedMessageRow[Column::Color], *elevatedMessageColor,
                  false);
+
+    // These rows are backed by settings, not by a phrase the user can
+    // edit, so a caption typed here would be silently discarded.
+    elevatedMessageRow[Column::Caption]->setFlags(Qt::NoItemFlags);
 
     this->insertCustomRow(elevatedMessageRow,
                           HighlightRowIndexes::ElevatedMessageRow);
@@ -237,6 +261,10 @@ void HighlightModel::afterInit()
         ColorProvider::instance().color(ColorType::ThreadMessageHighlight);
     setColorItem(threadMessageRow[Column::Color], *threadMessageColor, false);
 
+    // These rows are backed by settings, not by a phrase the user can
+    // edit, so a caption typed here would be silently discarded.
+    threadMessageRow[Column::Caption]->setFlags(Qt::NoItemFlags);
+
     this->insertCustomRow(threadMessageRow,
                           HighlightRowIndexes::ThreadMessageRow);
 
@@ -264,6 +292,10 @@ void HighlightModel::afterInit()
         ColorProvider::instance().color(ColorType::AutomodHighlight);
     setColorItem(automodRow[Column::Color], *automodColor, false);
 
+    // These rows are backed by settings, not by a phrase the user can
+    // edit, so a caption typed here would be silently discarded.
+    automodRow[Column::Caption]->setFlags(Qt::NoItemFlags);
+
     this->insertCustomRow(automodRow, HighlightRowIndexes::AutomodRow);
 
     std::vector<QStandardItem *> watchStreakRow = this->createRow();
@@ -281,6 +313,10 @@ void HighlightModel::afterInit()
     auto watchStreakColor =
         ColorProvider::instance().color(ColorType::WatchStreak);
     setColorItem(watchStreakRow[Column::Color], *watchStreakColor, false);
+
+    // These rows are backed by settings, not by a phrase the user can
+    // edit, so a caption typed here would be silently discarded.
+    watchStreakRow[Column::Caption]->setFlags(Qt::NoItemFlags);
 
     this->insertCustomRow(watchStreakRow, HighlightRowIndexes::WatchStreakRow);
 }
