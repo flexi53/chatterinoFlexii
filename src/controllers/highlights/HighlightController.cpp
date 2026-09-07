@@ -331,6 +331,7 @@ void rebuildUserHighlights(Settings &settings,
                     highlightSoundUrl,           //
                     highlight.getColor(),        //
                     highlight.showInMentions(),  //
+                    highlight.getCaption(),      //
                 };
             }});
     }

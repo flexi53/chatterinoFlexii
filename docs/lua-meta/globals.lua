@@ -627,6 +627,7 @@ c2.MessageElementFlag = {
     BadgeSevenTV = 0,
     BadgeHomies = 0,
     FirstMessageMarker = 0,
+    HighlightCaption = 0,
     BadgeBttv = 0,
     BadgeFfz = 0,
     Badges = 0,

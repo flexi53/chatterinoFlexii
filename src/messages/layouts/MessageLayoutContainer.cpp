@@ -699,8 +699,9 @@ void MessageLayoutContainer::addElement(MessageLayoutElement *element,
     // The first message caption is set a size down. Elements are aligned to
     // the bottom of the line, so without lifting it, it would hang below the
     // text it trails instead of sitting alongside it.
-    if (element->getCreator().getFlags().has(
-            MessageElementFlag::FirstMessageMarker))
+    if (element->getCreator().getFlags().hasAny(
+            {MessageElementFlag::FirstMessageMarker,
+             MessageElementFlag::HighlightCaption}))
     {
         yOffset -= (MARGIN.top() * this->scale_);
     }

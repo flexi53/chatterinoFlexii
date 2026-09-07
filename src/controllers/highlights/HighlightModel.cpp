@@ -38,7 +38,8 @@ HighlightPhrase HighlightModel::getItemFromRow(
         row[Column::UseRegex]->data(Qt::CheckStateRole).toBool(),
         row[Column::CaseSensitive]->data(Qt::CheckStateRole).toBool(),
         row[Column::SoundPath]->data(Qt::UserRole).toString(),
-        highlightColor};
+        highlightColor,
+        row[Column::Caption]->data(Qt::DisplayRole).toString().trimmed()};
 }
 
 // turns a row in the model into a vector item
@@ -52,6 +53,7 @@ void HighlightModel::getRowFromItem(const HighlightPhrase &item,
     setBoolItem(row[Column::UseRegex], item.isRegex());
     setBoolItem(row[Column::CaseSensitive], item.isCaseSensitive());
     setFilePathItem(row[Column::SoundPath], item.getSoundUrl());
+    setStringItem(row[Column::Caption], item.getCaption());
     setColorItem(row[Column::Color], *item.getColor());
 }
 

@@ -43,8 +43,9 @@ bool HighlightPhrase::operator==(const HighlightPhrase &other) const
 HighlightPhrase::HighlightPhrase(const QString &pattern, bool showInMentions,
                                  bool hasAlert, bool hasSound, bool isRegex,
                                  bool isCaseSensitive, const QString &soundUrl,
-                                 QColor color)
+                                 QColor color, const QString &caption)
     : pattern_(pattern)
+    , caption_(caption)
     , showInMentions_(showInMentions)
     , hasAlert_(hasAlert)
     , hasSound_(hasSound)
@@ -65,8 +66,10 @@ HighlightPhrase::HighlightPhrase(const QString &pattern, bool showInMentions,
 HighlightPhrase::HighlightPhrase(const QString &pattern, bool showInMentions,
                                  bool hasAlert, bool hasSound, bool isRegex,
                                  bool isCaseSensitive, const QString &soundUrl,
-                                 std::shared_ptr<QColor> color)
+                                 std::shared_ptr<QColor> color,
+                                 const QString &caption)
     : pattern_(pattern)
+    , caption_(caption)
     , showInMentions_(showInMentions)
     , hasAlert_(hasAlert)
     , hasSound_(hasSound)
@@ -87,6 +90,11 @@ HighlightPhrase::HighlightPhrase(const QString &pattern, bool showInMentions,
 const QString &HighlightPhrase::getPattern() const
 {
     return this->pattern_;
+}
+
+const QString &HighlightPhrase::getCaption() const
+{
+    return this->caption_;
 }
 
 bool HighlightPhrase::showInMentions() const

@@ -5,6 +5,7 @@
 #pragma once
 
 #include <QColor>
+#include <QString>
 #include <QUrl>
 
 #include <memory>
@@ -16,7 +17,8 @@ namespace chatterino {
 struct HighlightResult {
     HighlightResult(bool _alert, bool _playSound,
                     std::optional<QUrl> _customSoundUrl,
-                    std::shared_ptr<QColor> _color, bool _showInMentions);
+                    std::shared_ptr<QColor> _color, bool _showInMentions,
+                    QString _caption = {});
 
     /**
      * @brief Construct an empty HighlightResult with all side-effects disabled
@@ -49,6 +51,12 @@ struct HighlightResult {
      * @brief true if highlight should show message in the /mentions split
      **/
     bool showInMentions{false};
+
+    /**
+     * @brief Free text to show next to the message, e.g. which channel a
+     * moderator belongs to. Empty when nothing should be shown.
+     **/
+    QString caption{};
 
     bool operator==(const HighlightResult &other) const;
     bool operator!=(const HighlightResult &other) const;

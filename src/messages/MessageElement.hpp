@@ -117,6 +117,10 @@ enum class MessageElementFlag : int64_t {
     /// message, the way Twitch labels them
     FirstMessageMarker = (1LL << 35),
 
+    /// Free text configured for a highlight, shown next to a matching
+    /// message - e.g. which channel a moderator belongs to
+    HighlightCaption = (1LL << 39),
+
     // Slot 8: BetterTTV
     // - BetterTTV Pro
     BadgeBttv = (1LL << 6),
@@ -168,8 +172,9 @@ enum class MessageElementFlag : int64_t {
     // `Username` but the username comes from Kick
     KickUsername = (1LL << 38),
 
-    Default = Timestamp | Badges | Username | FirstMessageMarker | BitsStatic |
-              EmoteImage | BitsAmount | Text | AlwaysShow,
+    Default = Timestamp | Badges | Username | FirstMessageMarker |
+              HighlightCaption | BitsStatic | EmoteImage | BitsAmount | Text |
+              AlwaysShow,
 };
 using MessageElementFlags = FlagsEnum<MessageElementFlag>;
 

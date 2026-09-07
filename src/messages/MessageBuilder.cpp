@@ -2195,6 +2195,20 @@ HighlightAlert MessageBuilder::parseHighlights(const QVariantMap &tags,
 
     this->message().highlightColor = highlightResult.color;
 
+    // A highlight can carry free text - e.g. which channel a moderator
+    // belongs to - which trails the message the same way the first message
+    // caption does.
+    if (!highlightResult.caption.isEmpty())
+    {
+        auto captionColor =
+            highlightResult.color ? *highlightResult.color : QColor(Qt::white);
+        captionColor.setAlpha(255);
+
+        this->emplace<TextElement>(
+            highlightResult.caption, MessageElementFlag::HighlightCaption,
+            MessageColor(captionColor), FontStyle::ChatMediumSmall);
+    }
+
     if (highlightResult.showInMentions)
     {
         this->message().flags.set(MessageFlag::ShowInMentions);
