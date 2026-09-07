@@ -98,7 +98,9 @@ jobs:
   windows:
     runs-on: windows-latest
     env:
-      CONAN_VERSION: 2.11.0
+      # Older Conan releases do not know the compilers on the current runner
+      # image and abort while detecting the profile.
+      CONAN_VERSION: 2.28.1
 
     steps:
       - uses: actions/checkout@v6
@@ -120,48 +122,53 @@ jobs:
           key: windows-conan-${{ hashFiles('**/conanfile.py') }}
           path: ~/.conan2/
 
-      - name: Install and Setup Conan
+      - name: Install Conan
         run: |
-          pip install conan==${{ env.CONAN_VERSION }}
+          python3 -c "import site; import sys; print(f'{site.USER_BASE}\\Python{sys.version_info.major}{sys.version_info.minor}\\Scripts')" >> "$GITHUB_PATH"
+          pip3 install --user "conan==${{ env.CONAN_VERSION }}"
+        shell: powershell
+
+      - name: Setup Conan
+        run: |
           conan --version
           conan profile detect -f
-        shell: bash
+        shell: powershell
 
       - name: Install dependencies
         run: |
           mkdir build
           cd build
-          conan install .. \
-              -s build_type=RelWithDebInfo \
-              -c tools.cmake.cmaketoolchain:generator="Ninja" \
-              -b missing \
-              --output-folder=. \
-              -o with_openssl3=True
-          conan cache clean --source --build --download "*"
-        shell: bash
+          conan install .. `
+              -s build_type=RelWithDebInfo `
+              -c tools.cmake.cmaketoolchain:generator="NMake Makefiles" `
+              -b missing `
+              --output-folder=. `
+              -o with_openssl3="True"
+        shell: powershell
 
       - name: Build
         shell: pwsh
         run: |
           cd build
           cmake `
-              -G Ninja `
+              -G"NMake Makefiles" `
               -DCMAKE_BUILD_TYPE=RelWithDebInfo `
               -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake" `
               -DUSE_PRECOMPILED_HEADERS=ON `
               -DBUILD_WITH_CRASHPAD=Off `
               -DCHATTERINO_PLUGINS=On `
               -DCHATTERINO_UPDATER=Off `
-              -DFORCE_JSON_GENERATION=On `
+              -DFORCE_JSON_GENERATION=Off `
               ..
-          ninja
+          set cl=/MP
+          nmake /S /NOLOGO
 
       - name: Bundle dependencies
         shell: pwsh
-        working-directory: build
         run: |
+          cd build
           windeployqt "bin/$Env:APP_NAME.exe" --release --no-compiler-runtime `
-              --no-translations --no-opengl-sw --dir ChattiFlexii/ --force-openssl
+              --no-translations --no-opengl-sw --force-openssl --dir ChattiFlexii/
           cp "bin/$Env:APP_NAME.exe" ChattiFlexii/
           ..\.CI\deploy-crt.ps1 ChattiFlexii
 
@@ -179,7 +186,9 @@ jobs:
 
   release:
     needs: [macos, windows]
-    if: github.event_name == 'push'
+    # Runs even if one platform failed, so a broken Windows build does not
+    # also withhold the working macOS download.
+    if: always() && github.event_name == 'push' && needs.macos.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
