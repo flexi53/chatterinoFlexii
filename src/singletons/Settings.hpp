@@ -293,6 +293,9 @@ public:
     /// Label a first-time chatter's message, the way Twitch does
     BoolSetting showFirstMessageMarker = {
         "/appearance/messages/firstMessageMarker", true};
+    /// The text of that label. Empty hides it.
+    QStringSetting firstMessageCaption = {
+        "/appearance/messages/firstMessageCaption", "FIRST"};
     BoolSetting animateSevenTVBadges = {"/appearance/badges/animateSeventv",
                                         true};
     QSizeSetting lastPopupSize = {

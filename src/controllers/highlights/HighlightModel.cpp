@@ -196,9 +196,9 @@ void HighlightModel::afterInit()
         ColorProvider::instance().color(ColorType::FirstMessageHighlight);
     setColorItem(firstMessageRow[Column::Color], *FirstMessageColor, false);
 
-    // These rows are backed by settings, not by a phrase the user can
-    // edit, so a caption typed here would be silently discarded.
-    firstMessageRow[Column::Caption]->setFlags(Qt::NoItemFlags);
+    // The one built-in row whose caption is configurable
+    setStringItem(firstMessageRow[Column::Caption],
+                  getSettings()->firstMessageCaption.getValue());
 
     this->insertCustomRow(firstMessageRow,
                           HighlightRowIndexes::FirstMessageRow);
@@ -498,6 +498,15 @@ void HighlightModel::customRowSetData(const std::vector<QStandardItem *> &row,
             // Case-sensitivity --> empty
         }
         break;
+        case Column::Caption: {
+            if (role == Qt::EditRole &&
+                rowIndex == HighlightRowIndexes::FirstMessageRow)
+            {
+                getSettings()->firstMessageCaption.setValue(value.toString());
+            }
+        }
+        break;
+
         case Column::SoundPath: {
             // Custom sound file
             if (role == Qt::UserRole)

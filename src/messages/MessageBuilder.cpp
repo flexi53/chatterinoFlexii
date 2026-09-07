@@ -1727,14 +1727,17 @@ std::pair<MessagePtrMut, HighlightAlert> MessageBuilder::makeIrcMessage(
     // caps and a size down so it reads as a label rather than as part of what
     // the user wrote, and in the highlight colour at full opacity - the tint
     // itself is far too transparent for text.
-    if (builder->flags.has(MessageFlag::FirstMessage))
+    const auto firstMessageCaption =
+        getSettings()->firstMessageCaption.getValue();
+    if (builder->flags.has(MessageFlag::FirstMessage) &&
+        !firstMessageCaption.isEmpty())
     {
         auto captionColor =
             *ColorProvider::instance().color(ColorType::FirstMessageHighlight);
         captionColor.setAlpha(255);
 
         builder.emplace<TextElement>(
-            u"FIRST"_s, MessageElementFlag::FirstMessageMarker,
+            firstMessageCaption, MessageElementFlag::FirstMessageMarker,
             MessageColor(captionColor), FontStyle::ChatMediumSmall);
     }
 
