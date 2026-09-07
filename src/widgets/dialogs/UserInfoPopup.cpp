@@ -14,7 +14,6 @@
 #include "controllers/commands/CommandController.hpp"
 #include "controllers/highlights/HighlightBlacklistUser.hpp"
 #include "controllers/hotkeys/HotkeyController.hpp"
-#include "controllers/moderation/ModerationHistory.hpp"
 #include "controllers/userdata/UserDataController.hpp"
 #include "messages/Message.hpp"
 #include "messages/MessageBuilder.hpp"
@@ -72,7 +71,6 @@ namespace {
 constexpr QStringView TEXT_FOLLOWERS = u"Followers: %1";
 constexpr QStringView TEXT_CREATED = u"Created: %1";
 /// Mirrors the warnings/timeouts/bans shorthand on Twitch's own mod card
-constexpr QStringView TEXT_MOD_HISTORY = u"Punishments: %1";
 constexpr QStringView TEXT_TITLE = u"%1's Usercard - #%2";
 constexpr QStringView TEXT_USER_ID = u"ID: ";
 constexpr QStringView TEXT_UNAVAILABLE = u"(not available)";
@@ -638,7 +636,6 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
                 .assign(&this->ui_.createdDateLabel);
             vbox.emplace<Label>("").assign(&this->ui_.followageLabel);
             vbox.emplace<Label>("").assign(&this->ui_.subageLabel);
-            vbox.emplace<Label>("").assign(&this->ui_.modHistoryLabel);
         }
     }
 
@@ -1110,7 +1107,6 @@ void UserInfoPopup::setData(const QString &name,
     if (!isId)
     {
         this->updateLatestMessages();
-        this->updateModerationHistory();
     }
     // If we're opening by ID, this will be called as soon as we get the information from twitch
 
@@ -1124,48 +1120,6 @@ void UserInfoPopup::setData(const QString &name,
     }
 }
 
-void UserInfoPopup::updateModerationHistory()
-{
-    if (this->ui_.modHistoryLabel == nullptr)
-    {
-        return;
-    }
-
-    QString channelID;
-    if (auto *twitchChannel =
-            dynamic_cast<TwitchChannel *>(this->underlyingChannel_.get()))
-    {
-        channelID = twitchChannel->roomId();
-    }
-
-    if (channelID.isEmpty() || this->userId_.isEmpty())
-    {
-        this->ui_.modHistoryLabel->setVisible(false);
-        return;
-    }
-
-    auto *history = getApp()->getModerationHistory();
-    if (history == nullptr)
-    {
-        this->ui_.modHistoryLabel->setVisible(false);
-        return;
-    }
-
-    const auto counts = history->counts(channelID, this->userId_);
-
-    // Shown even when nothing has been recorded yet, so it is visible that
-    // the channel is being watched rather than the line being broken.
-    this->ui_.modHistoryLabel->setText(
-        TEXT_MOD_HISTORY.arg(counts.toShortString()));
-    this->ui_.modHistoryLabel->setToolTip(
-        QStringLiteral("%1 warnings, %2 timeouts, %3 bans in this channel.\n"
-                       "Counted from moderation events since ChattiFlexii "
-                       "started recording them - not Twitch's own history.")
-            .arg(QString::number(counts.warnings),
-                 QString::number(counts.timeouts),
-                 QString::number(counts.bans)));
-    this->ui_.modHistoryLabel->setVisible(true);
-}
 
 void UserInfoPopup::updateLatestMessages()
 {
@@ -1248,9 +1202,6 @@ void UserInfoPopup::updateUserData()
         this->helixAvatarUrl_ = user.profileImageUrl;
         this->updateAvatarUrl();
         this->updateNotes();
-        // The counts are keyed by user id, which we only have now - the call
-        // made when the card opened had nothing to look up yet.
-        this->updateModerationHistory();
 
         // copyable button for login name of users with a localized username
         if (user.displayName.toLower() != user.login)

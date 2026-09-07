@@ -33,7 +33,6 @@
 #    include "controllers/plugins/PluginController.hpp"
 #endif
 #include "controllers/emotes/EmoteController.hpp"
-#include "controllers/moderation/ModerationHistory.hpp"
 #include "controllers/sound/MiniaudioBackend.hpp"
 #include "controllers/sound/NullBackend.hpp"
 #include "controllers/twitch/LiveController.hpp"
@@ -197,7 +196,6 @@ Application::Application(Settings &_settings, const Paths &paths,
     , bttvBadges(new BttvBadges)
     , seventvBadges(new SeventvBadges)
     , homiesBadges(new HomiesBadges)
-    , moderationHistory(new ModerationHistory)
     , seventvPaints(new SeventvPaints)
     , seventvPersonalEmotes(new SeventvPersonalEmotes)
     , userData(new UserDataController(paths))
@@ -468,12 +466,6 @@ HomiesBadges *Application::getHomiesBadges()
     return this->homiesBadges.get();
 }
 
-ModerationHistory *Application::getModerationHistory()
-{
-    // ModerationHistory handles its own locks, so it can be reached from the
-    // EventSub thread as well as the GUI thread
-    return this->moderationHistory.get();
-}
 
 IUserDataController *Application::getUserData()
 {

@@ -47,7 +47,6 @@ class FfzBadges;
 class BttvBadges;
 class SeventvBadges;
 class HomiesBadges;
-class ModerationHistory;
 class SeventvPersonalEmotes;
 class ImageUploader;
 class SeventvAPI;
@@ -105,7 +104,6 @@ public:
     virtual BttvBadges *getBttvBadges() = 0;
     virtual SeventvBadges *getSeventvBadges() = 0;
     virtual HomiesBadges *getHomiesBadges() = 0;
-    virtual ModerationHistory *getModerationHistory() = 0;
     virtual IUserDataController *getUserData() = 0;
     virtual ISoundController *getSound() = 0;
     virtual ITwitchLiveController *getTwitchLiveController() = 0;
@@ -185,7 +183,6 @@ private:
     std::unique_ptr<BttvBadges> bttvBadges;
     std::unique_ptr<SeventvBadges> seventvBadges;
     std::unique_ptr<HomiesBadges> homiesBadges;
-    std::unique_ptr<ModerationHistory> moderationHistory;
     std::unique_ptr<SeventvPaints> seventvPaints;
     std::unique_ptr<SeventvPersonalEmotes> seventvPersonalEmotes;
     std::unique_ptr<UserDataController> userData;
@@ -236,7 +233,6 @@ public:
     BttvBadges *getBttvBadges() override;
     SeventvBadges *getSeventvBadges() override;
     HomiesBadges *getHomiesBadges() override;
-    ModerationHistory *getModerationHistory() override;
     IUserDataController *getUserData() override;
     ISoundController *getSound() override;
     ITwitchLiveController *getTwitchLiveController() override;
