@@ -247,6 +247,10 @@ void WindowManager::updateWordTypeMask()
     flags.set(settings->showFirstMessageMarker ? MEF::FirstMessageMarker
                                                : MEF::None);
 
+    // Highlight captions are free text the user typed themselves, so there is
+    // nothing to toggle - an empty caption simply produces no element.
+    flags.set(MEF::HighlightCaption);
+
     // username
     flags.set(MEF::Username);
 
