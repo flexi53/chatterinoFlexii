@@ -54,6 +54,7 @@
 #include "widgets/Window.hpp"
 
 #include <QCheckBox>
+#include <QDateTime>
 #include <QDesktopServices>
 #include <QDir>
 #include <QFile>
@@ -138,11 +139,17 @@ constexpr int USERCARD_HISTORY_DAYS = 7;
 /// is available.
 constexpr size_t USERCARD_MAX_MESSAGES = 25;
 
-/// Identifies a message well enough to spot the same line showing up both in
-/// the channel's buffer and in the chat log on disk.
-QString messageDedupeKey(const QTime &time, const QString &text)
+/// When a message was sent, as well as we can tell. Twitch's own timestamp is
+/// the most reliable; failing that the time we parsed it, which is the same
+/// clock the logger writes with.
+QDateTime messageTime(const MessagePtr &message)
 {
-    return time.toString("HH:mm:ss") % u'\0' % text;
+    if (message->serverReceivedTime.isValid())
+    {
+        return message->serverReceivedTime.toLocalTime();
+    }
+
+    return {QDate::currentDate(), message->parseTime};
 }
 
 /// Reads the messages @a userName sent in @a channel over the last
@@ -151,11 +158,11 @@ QString messageDedupeKey(const QTime &time, const QString &text)
 /// The channel's own buffer only reaches back as far as its message limit,
 /// which on a busy channel is roughly an hour. Anything older has to come from
 /// the logs, so this is empty unless logging is turned on for the channel.
-/// Lines already present in @a alreadyShown are skipped so nothing appears
-/// twice.
+/// Lines from @a bufferStart onwards are skipped: everything from that point
+/// on is still in the channel's buffer and would otherwise show up twice.
 std::vector<MessagePtr> loadLoggedMessages(const QString &userName,
                                            const ChannelPtr &channel,
-                                           const QSet<QString> &alreadyShown)
+                                           const QDateTime &bufferStart)
 {
     std::vector<MessagePtr> messages;
 
@@ -233,7 +240,10 @@ std::vector<MessagePtr> loadLoggedMessages(const QString &userName,
             const auto time =
                 QTime::fromString(match.captured(1), timestampFormat);
 
-            if (alreadyShown.contains(messageDedupeKey(time, text)))
+            // A second either way: the logger stamps a line with its own
+            // clock reading, a moment after the message was parsed.
+            if (bufferStart.isValid() && time.isValid() &&
+                QDateTime(date, time) >= bufferStart.addSecs(-1))
             {
                 continue;  // still in the channel's buffer
             }
@@ -270,19 +280,24 @@ ChannelPtr filterMessages(const QString &userName, ChannelPtr channel)
 
     // What the channel still holds in memory
     std::vector<MessagePtr> live;
-    QSet<QString> liveKeys;
+    QDateTime bufferStart;
     for (const auto &message : snapshot)
     {
         if (checkMessageUserName(userName, message))
         {
             live.push_back(message);
-            liveKeys.insert(
-                messageDedupeKey(message->parseTime, message->messageText));
         }
     }
 
+    // The buffer holds every message from here on, so the logs only need to
+    // fill in what came before the user's oldest message still in memory.
+    if (!live.empty())
+    {
+        bufferStart = messageTime(live.front());
+    }
+
     // Anything older than the buffer comes from the chat logs on disk
-    auto combined = loadLoggedMessages(userName, channel, liveKeys);
+    auto combined = loadLoggedMessages(userName, channel, bufferStart);
     combined.insert(combined.end(), live.begin(), live.end());
 
     // Show at most USERCARD_MAX_MESSAGES, keeping the newest ones
@@ -1233,6 +1248,9 @@ void UserInfoPopup::updateUserData()
         this->helixAvatarUrl_ = user.profileImageUrl;
         this->updateAvatarUrl();
         this->updateNotes();
+        // The counts are keyed by user id, which we only have now - the call
+        // made when the card opened had nothing to look up yet.
+        this->updateModerationHistory();
 
         // copyable button for login name of users with a localized username
         if (user.displayName.toLower() != user.login)

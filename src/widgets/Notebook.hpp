@@ -170,6 +170,11 @@ public:
 
     bool isTabGroupCollapsed(const QString &name) const;
     void setTabGroupCollapsed(const QString &name, bool collapsed);
+
+    /// Whether the group ignores the "only show live tabs" filter.
+    bool isTabGroupAlwaysVisible(const QString &name) const;
+    void setTabGroupAlwaysVisible(const QString &name, bool alwaysVisible);
+    void toggleTabGroupAlwaysVisible(const QString &name);
     void toggleTabGroupCollapsed(const QString &name);
 
     /// @}
@@ -265,6 +270,9 @@ private:
     struct TabGroup {
         QString name;
         bool collapsed = false;
+        /// Exempts the group from "only show live tabs" - the tabs stay on
+        /// screen whether or not their channel is live.
+        bool alwaysVisible = false;
         QColor color;
         NotebookTabGroupHeader *header = nullptr;
     };
@@ -291,6 +299,10 @@ private:
     /// tab always stays visible, matching the behaviour of the tab visibility
     /// filter.
     bool isTabHiddenByGroup(const NotebookTab *tab) const;
+
+    /// Whether @a tab is shown regardless of the tab visibility filter because
+    /// its group is pinned open.
+    bool isTabPinnedByGroup(const NotebookTab *tab) const;
 
     bool containsPage(QWidget *page);
     Item *findItem(QWidget *page);

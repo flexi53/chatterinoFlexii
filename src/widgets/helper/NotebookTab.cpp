@@ -1452,6 +1452,16 @@ bool NotebookTab::isGroupCollapsed() const
     return this->notebook_->isTabGroupCollapsed(this->groupName_);
 }
 
+bool NotebookTab::isGroupAlwaysVisible() const
+{
+    if (this->groupName_.isEmpty())
+    {
+        return false;
+    }
+
+    return this->notebook_->isTabGroupAlwaysVisible(this->groupName_);
+}
+
 Notebook *NotebookTab::notebook() const
 {
     return this->notebook_;

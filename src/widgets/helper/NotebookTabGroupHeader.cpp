@@ -25,11 +25,23 @@ NotebookTabGroupHeader::NotebookTabGroupHeader(Notebook *notebook,
         this->notebook()->toggleTabGroupCollapsed(this->groupName_);
     });
 
+    this->alwaysVisibleAction_ =
+        this->groupMenu_.addAction("Always Show Group", [this] {
+            this->notebook()->toggleTabGroupAlwaysVisible(this->groupName_);
+        });
+    this->alwaysVisibleAction_->setCheckable(true);
+    this->alwaysVisibleAction_->setToolTip(
+        "Keep this group's tabs on screen even when \"Only show live tabs\" "
+        "is on and the channels are offline.");
+
     this->colorMenu_ = new QMenu("Group Color", &this->groupMenu_);
     this->groupMenu_.addMenu(this->colorMenu_);
 
     // The palette is rebuilt every time so the current colour shows as checked
     QObject::connect(&this->groupMenu_, &QMenu::aboutToShow, this, [this] {
+        this->alwaysVisibleAction_->setChecked(
+            this->notebook()->isTabGroupAlwaysVisible(this->groupName_));
+
         this->colorMenu_->clear();
         NotebookTab::buildColorMenu(
             this->colorMenu_, this,

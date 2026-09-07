@@ -89,6 +89,7 @@ struct TabDescriptor {
     // Name of the tab group this tab belongs to, empty if ungrouped
     QString group_;
     bool groupCollapsed_{false};
+    bool groupAlwaysVisible_{false};
 
     // User-chosen marker colour as "#rrggbb", empty if the tab is unmarked
     QString color_;

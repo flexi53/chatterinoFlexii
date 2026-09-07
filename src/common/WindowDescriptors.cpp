@@ -149,6 +149,8 @@ TabDescriptor TabDescriptor::loadFromJSON(const QJsonObject &tabObj)
     // Load tab group
     tab.group_ = tabObj.value("group").toString();
     tab.groupCollapsed_ = tabObj.value("groupCollapsed").toBool(false);
+    tab.groupAlwaysVisible_ =
+        tabObj.value("groupAlwaysVisible").toBool(false);
 
     // Load tab marker colour
     tab.color_ = tabObj.value("color").toString();

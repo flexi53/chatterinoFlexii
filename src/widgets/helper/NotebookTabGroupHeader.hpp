@@ -6,6 +6,7 @@
 
 #include "widgets/helper/NotebookTab.hpp"
 
+#include <QAction>
 #include <QMenu>
 #include <QString>
 
@@ -75,6 +76,7 @@ private:
 
     QMenu groupMenu_;
     QMenu *colorMenu_{};
+    QAction *alwaysVisibleAction_{};
 };
 
 }  // namespace chatterino

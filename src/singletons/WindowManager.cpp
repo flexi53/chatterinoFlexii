@@ -678,6 +678,8 @@ void WindowManager::encodeTab(SplitContainer *tab, bool isSelected,
     {
         obj.insert("group", tab->getTab()->getGroupName());
         obj.insert("groupCollapsed", tab->getTab()->isGroupCollapsed());
+        obj.insert("groupAlwaysVisible",
+                   tab->getTab()->isGroupAlwaysVisible());
     }
 
     // tab marker colour
@@ -1007,6 +1009,11 @@ void WindowManager::applyWindowLayout(const WindowLayout &layout)
             if (tab.groupCollapsed_)
             {
                 window.getNotebook().setTabGroupCollapsed(tab.group_, true);
+            }
+
+            if (tab.groupAlwaysVisible_)
+            {
+                window.getNotebook().setTabGroupAlwaysVisible(tab.group_, true);
             }
 
             // The first member carrying a colour decides the group's colour

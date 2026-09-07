@@ -786,6 +786,22 @@ void Notebook::performLayout(bool animated)
     std::vector<Item> filteredItems;
     filteredItems.reserve(this->items_.size() + this->tabGroups_.size());
 
+    // Which groups still have something to show. With "only show live tabs"
+    // on, a group whose channels are all offline drops out entirely instead of
+    // leaving an empty header behind - unless it is pinned open.
+    QSet<QString> groupsWithVisibleTabs;
+    if (this->tabVisibilityFilter_)
+    {
+        for (const auto &item : this->items_)
+        {
+            const auto &groupName = item.tab->getGroupName();
+            if (!groupName.isEmpty() && this->tabVisibilityFilter_(item.tab))
+            {
+                groupsWithVisibleTabs.insert(groupName);
+            }
+        }
+    }
+
     // Walk the unfiltered list so that a group's header is emitted even when
     // every one of its tabs is hidden - that is exactly the collapsed case.
     QSet<QString> emittedHeaders;
@@ -797,7 +813,9 @@ void Notebook::performLayout(bool animated)
             emittedHeaders.insert(groupName);
 
             auto *group = this->findTabGroup(groupName);
-            if (group != nullptr && group->header != nullptr)
+            if (group != nullptr && group->header != nullptr &&
+                (!this->tabVisibilityFilter_ || group->alwaysVisible ||
+                 groupsWithVisibleTabs.contains(groupName)))
             {
                 filteredItems.push_back(Item{.tab = group->header});
             }
@@ -808,7 +826,9 @@ void Notebook::performLayout(bool animated)
             continue;
         }
 
-        if (this->tabVisibilityFilter_ && !this->tabVisibilityFilter_(item.tab))
+        if (this->tabVisibilityFilter_ &&
+            !this->isTabPinnedByGroup(item.tab) &&
+            !this->tabVisibilityFilter_(item.tab))
         {
             continue;
         }
@@ -1337,12 +1357,25 @@ bool Notebook::shouldShowTab(const NotebookTab *tab) const
         return false;
     }
 
-    if (this->tabVisibilityFilter_)
+    if (this->tabVisibilityFilter_ && !this->isTabPinnedByGroup(tab))
     {
         return this->tabVisibilityFilter_(tab);
     }
 
     return true;
+}
+
+bool Notebook::isTabPinnedByGroup(const NotebookTab *tab) const
+{
+    const auto &groupName = tab->getGroupName();
+    if (groupName.isEmpty())
+    {
+        return false;
+    }
+
+    const auto *group = this->findTabGroup(groupName);
+
+    return group != nullptr && group->alwaysVisible;
 }
 
 Notebook::TabGroup *Notebook::findTabGroup(const QString &name)
@@ -1659,6 +1692,11 @@ void Notebook::showTabGroupsDialog()
                 row->setText(row->text() + "  - collapsed");
             }
 
+            if (this->isTabGroupAlwaysVisible(name))
+            {
+                row->setText(row->text() + "  - always shown");
+            }
+
             list->addItem(row);
             if (name == selected)
             {
@@ -1773,6 +1811,21 @@ void Notebook::showTabGroupsDialog()
                      });
     actions->addWidget(collapse);
 
+    auto *alwaysShow = new QPushButton("Always Show", dialog);
+    alwaysShow->setToolTip(
+        "Keep this group's tabs on screen even when \"Only show live tabs\" "
+        "is on and the channels are offline.");
+    QObject::connect(alwaysShow, &QPushButton::clicked, dialog,
+                     [this, selectedGroup, refresh] {
+                         const auto name = selectedGroup();
+                         if (!name.isEmpty())
+                         {
+                             this->toggleTabGroupAlwaysVisible(name);
+                             refresh();
+                         }
+                     });
+    actions->addWidget(alwaysShow);
+
     auto *ungroup = new QPushButton("Ungroup", dialog);
     QObject::connect(ungroup, &QPushButton::clicked, dialog,
                      [this, selectedGroup, refresh] {
@@ -1826,6 +1879,36 @@ void Notebook::setTabGroupCollapsed(const QString &name, bool collapsed)
 void Notebook::toggleTabGroupCollapsed(const QString &name)
 {
     this->setTabGroupCollapsed(name, !this->isTabGroupCollapsed(name));
+}
+
+bool Notebook::isTabGroupAlwaysVisible(const QString &name) const
+{
+    const auto *group = this->findTabGroup(name);
+
+    return group != nullptr && group->alwaysVisible;
+}
+
+void Notebook::setTabGroupAlwaysVisible(const QString &name,
+                                        bool alwaysVisible)
+{
+    auto *group = this->findTabGroup(name);
+    if (group == nullptr || group->alwaysVisible == alwaysVisible)
+    {
+        return;
+    }
+
+    group->alwaysVisible = alwaysVisible;
+
+    this->performLayout();
+    this->updateTabVisibility();
+
+    // Queue up save because: Tab group visibility changed
+    getApp()->getWindows()->queueSave();
+}
+
+void Notebook::toggleTabGroupAlwaysVisible(const QString &name)
+{
+    this->setTabGroupAlwaysVisible(name, !this->isTabGroupAlwaysVisible(name));
 }
 
 void Notebook::syncTabGroups()

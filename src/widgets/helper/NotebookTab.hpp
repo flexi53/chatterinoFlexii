@@ -59,6 +59,10 @@ public:
     /// false for ungrouped tabs.
     bool isGroupCollapsed() const;
 
+    /// Whether the group this tab belongs to is shown regardless of the
+    /// notebook's tab visibility filter. Always false for ungrouped tabs.
+    bool isGroupAlwaysVisible() const;
+
     bool isSelected() const;
     void setSelected(bool value);
 
