@@ -1252,9 +1252,14 @@ if (MSVC)
     target_compile_options(${LIBRARY_PROJECT} PUBLIC /EHsc /bigobj /utf-8)
 endif ()
 
+if (BUILD_APP)
+    # The executable is named after the fork on every platform, not just in
+    # the macOS bundle.
+    set_target_properties(${EXECUTABLE_PROJECT} PROPERTIES OUTPUT_NAME "ChattiFlexii")
+endif ()
+
 if (APPLE AND BUILD_APP)
     set_target_properties(${EXECUTABLE_PROJECT} PROPERTIES MACOSX_BUNDLE TRUE)
-    set_target_properties(${EXECUTABLE_PROJECT} PROPERTIES OUTPUT_NAME "ChattiFlexii")
     set_target_properties(${EXECUTABLE_PROJECT}
         PROPERTIES
         MACOSX_BUNDLE_BUNDLE_NAME "ChattiFlexii"

@@ -1,0 +1,213 @@
+---
+name: ChattiFlexii
+
+# Builds ready-to-run macOS and Windows packages on every push and
+# publishes them as a pre-release, so the current state can be downloaded
+# without building it.
+
+on:
+  push:
+    branches:
+      - flexii-7.5.5
+  workflow_dispatch:
+
+concurrency:
+  group: flexii-release-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  APP_NAME: ChattiFlexii
+  OUTPUT_DMG_PATH: ChattiFlexii-macOS-arm64.dmg
+  OUTPUT_ZIP_PATH: ChattiFlexii-windows-x64.zip
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    permissions:
+      contents: write # publish the pre-release
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          brew install boost openssl@3 rapidjson cmake ninja qt@6 create-dmg
+        shell: bash
+
+      - name: Build
+        run: |
+          set -ex
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
+            -DCMAKE_PREFIX_PATH="/opt/homebrew/opt/qt@6;/opt/homebrew/opt/openssl@3" \
+            -DCHATTERINO_PLUGINS=On \
+            -DCHATTERINO_UPDATER=Off \
+            -DCHATTERINO_NO_AVIF_PLUGIN=On \
+            -DUSE_PRECOMPILED_HEADERS=Off
+          cmake --build build --parallel "$(sysctl -n hw.logicalcpu)"
+        shell: bash
+
+      - name: Bundle dependencies
+        run: |
+          set -ex
+          cd build
+          mv "bin/$APP_NAME.app" "$APP_NAME.app"
+          /opt/homebrew/opt/qt@6/bin/macdeployqt "$APP_NAME.app" -verbose=1
+          # Extended attributes make codesign refuse the bundle
+          # ("resource fork, Finder information, or similar detritus")
+          xattr -cr "$APP_NAME.app"
+          # Ad-hoc signature, otherwise macOS refuses to start the app at all
+          codesign -s - --deep --force "$APP_NAME.app"
+          codesign -v "$APP_NAME.app"
+        shell: bash
+
+      - name: Verify the app is self-contained
+        run: |
+          set -e
+          cd build
+          # Anything still pointing at /opt/homebrew would only run on a machine
+          # that happens to have the same brew packages installed.
+          leftovers=$(otool -L "$APP_NAME.app/Contents/MacOS/$APP_NAME" \
+            | grep -c "/opt/homebrew" || true)
+          echo "Remaining Homebrew references: $leftovers"
+          if [ "$leftovers" -ne 0 ]; then
+            otool -L "$APP_NAME.app/Contents/MacOS/$APP_NAME" | grep "/opt/homebrew"
+            echo "ERROR: the bundle is not self-contained"
+            exit 1
+          fi
+        shell: bash
+
+      - name: Create DMG
+        env:
+          DMG_VOLUME_NAME: ChattiFlexii
+        run: |
+          cd build
+          ./../.CI/CreateDMG.sh
+        shell: bash
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.OUTPUT_DMG_PATH }}
+          path: build/${{ env.OUTPUT_DMG_PATH }}
+
+  windows:
+    runs-on: windows-latest
+    env:
+      CONAN_VERSION: 2.11.0
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Enable Developer Command Prompt
+        uses: ilammy/msvc-dev-cmd@v1.13.0
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Cache conan packages
+        uses: actions/cache@v5
+        with:
+          key: windows-conan-${{ hashFiles('**/conanfile.py') }}
+          path: ~/.conan2/
+
+      - name: Install and Setup Conan
+        run: |
+          pip install conan==${{ env.CONAN_VERSION }}
+          conan --version
+          conan profile detect -f
+        shell: bash
+
+      - name: Install dependencies
+        run: |
+          mkdir build
+          cd build
+          conan install .. \
+              -s build_type=RelWithDebInfo \
+              -c tools.cmake.cmaketoolchain:generator="Ninja" \
+              -b missing \
+              --output-folder=. \
+              -o with_openssl3=True
+          conan cache clean --source --build --download "*"
+        shell: bash
+
+      - name: Build
+        shell: pwsh
+        run: |
+          cd build
+          cmake `
+              -G Ninja `
+              -DCMAKE_BUILD_TYPE=RelWithDebInfo `
+              -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake" `
+              -DUSE_PRECOMPILED_HEADERS=ON `
+              -DBUILD_WITH_CRASHPAD=Off `
+              -DCHATTERINO_PLUGINS=On `
+              -DCHATTERINO_UPDATER=Off `
+              -DFORCE_JSON_GENERATION=On `
+              ..
+          ninja
+
+      - name: Bundle dependencies
+        shell: pwsh
+        working-directory: build
+        run: |
+          windeployqt "bin/$Env:APP_NAME.exe" --release --no-compiler-runtime `
+              --no-translations --no-opengl-sw --dir ChattiFlexii/ --force-openssl
+          cp "bin/$Env:APP_NAME.exe" ChattiFlexii/
+          ..\.CI\deploy-crt.ps1 ChattiFlexii
+
+      - name: Package
+        shell: pwsh
+        working-directory: build
+        run: |
+          7z a $Env:OUTPUT_ZIP_PATH ChattiFlexii/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.OUTPUT_ZIP_PATH }}
+          path: build/${{ env.OUTPUT_ZIP_PATH }}
+
+  release:
+    needs: [macos, windows]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts/
+          merge-multiple: true
+
+      - name: List what will be published
+        run: ls -la artifacts/
+
+      - name: Publish pre-release
+        uses: ncipollo/release-action@v1.21.0
+        with:
+          artifacts: "artifacts/*"
+          tag: latest
+          name: ChattiFlexii (latest build)
+          body: |
+            Automatically built from `${{ github.ref_name }}`
+            (commit ${{ github.sha }}).
+
+            **macOS**: Apple Silicon only, not notarised - on first start use
+            right click -> Open and confirm the warning.
+
+            **Windows**: unzip anywhere and run ChattiFlexii.exe.
+          prerelease: true
+          allowUpdates: true
+          replacesArtifacts: true
+          removeArtifacts: true

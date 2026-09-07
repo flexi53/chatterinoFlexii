@@ -1132,12 +1132,8 @@ void UserInfoPopup::updateModerationHistory()
     const auto counts =
         getApp()->getModerationHistory()->counts(channelID, this->userId_);
 
-    if (counts.isEmpty())
-    {
-        this->ui_.modHistoryLabel->setVisible(false);
-        return;
-    }
-
+    // Shown even when nothing has been recorded yet, so it is visible that
+    // the channel is being watched rather than the line being broken.
     this->ui_.modHistoryLabel->setText(
         TEXT_MOD_HISTORY.arg(counts.toShortString()));
     this->ui_.modHistoryLabel->setToolTip(
