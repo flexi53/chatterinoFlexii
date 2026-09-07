@@ -54,6 +54,11 @@ bool HighlightResult::operator==(const HighlightResult &other) const
         return false;
     }
 
+    if (this->caption != other.caption)
+    {
+        return false;
+    }
+
     return true;
 }
 
@@ -72,7 +77,7 @@ bool HighlightResult::empty() const
 bool HighlightResult::full() const
 {
     return this->alert && this->playSound && this->customSoundUrl.has_value() &&
-           this->color && this->showInMentions;
+           this->color && this->showInMentions && !this->caption.isEmpty();
 }
 
 std::ostream &operator<<(std::ostream &os, const HighlightResult &result)
