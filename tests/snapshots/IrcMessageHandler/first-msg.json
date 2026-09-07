@@ -78,22 +78,6 @@
                     "type": "BadgeElement"
                 },
                 {
-                    "color": "System",
-                    "flags": "FirstMessageMarker",
-                    "link": {
-                        "type": "None",
-                        "value": ""
-                    },
-                    "style": "ChatMediumBold",
-                    "tooltip": "",
-                    "trailingSpace": true,
-                    "type": "TextElement",
-                    "words": [
-                        "First",
-                        "message"
-                    ]
-                },
-                {
                     "color": "#ffeba2c0",
                     "flags": "Username",
                     "link": {
@@ -126,6 +110,21 @@
                     "tooltip": "Kappa<br>Twitch Emote",
                     "trailingSpace": true,
                     "type": "EmoteElement"
+                },
+                {
+                    "color": "#ff487f3f",
+                    "flags": "FirstMessageMarker",
+                    "link": {
+                        "type": "None",
+                        "value": ""
+                    },
+                    "style": "ChatMediumBold",
+                    "tooltip": "",
+                    "trailingSpace": true,
+                    "type": "TextElement",
+                    "words": [
+                        "First"
+                    ]
                 },
                 {
                     "background": "#ffa0a0a4",
