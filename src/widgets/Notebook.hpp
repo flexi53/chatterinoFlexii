@@ -304,6 +304,12 @@ private:
     /// its group is pinned open.
     bool isTabPinnedByGroup(const NotebookTab *tab) const;
 
+    /// Whether @a group's header belongs on screen. A header whose group has
+    /// nothing to show is a label for nothing, so it goes too, unless the
+    /// group is pinned open. Collapsing does not count as having nothing to
+    /// show - the header is the only way back out of it.
+    bool shouldShowTabGroupHeader(const TabGroup &group) const;
+
     bool containsPage(QWidget *page);
     Item *findItem(QWidget *page);
 

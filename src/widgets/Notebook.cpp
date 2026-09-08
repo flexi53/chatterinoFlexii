@@ -729,13 +729,11 @@ void Notebook::updateTabVisibility()
         item.tab->setVisible(this->shouldShowTab(item.tab));
     }
 
-    // A header is shown whenever tabs are shown at all - a collapsed group
-    // still needs its header to be expandable again.
     for (auto &group : this->tabGroups_)
     {
         if (group.header != nullptr)
         {
-            group.header->setVisible(this->showTabs_);
+            group.header->setVisible(this->shouldShowTabGroupHeader(group));
         }
     }
 }
@@ -786,19 +784,21 @@ void Notebook::performLayout(bool animated)
     std::vector<Item> filteredItems;
     filteredItems.reserve(this->items_.size() + this->tabGroups_.size());
 
-    // Which groups still have something to show. With "only show live tabs"
-    // on, a group whose channels are all offline drops out entirely instead of
-    // leaving an empty header behind - unless it is pinned open.
-    QSet<QString> groupsWithVisibleTabs;
-    if (this->tabVisibilityFilter_)
+    // Decide which headers belong on screen and hide the rest right here. A
+    // header that is left visible without being laid out keeps its old
+    // position and ends up drawn over whatever moved into its place.
+    QSet<QString> visibleHeaders;
+    for (auto &group : this->tabGroups_)
     {
-        for (const auto &item : this->items_)
+        const bool visible = this->shouldShowTabGroupHeader(group);
+        if (visible)
         {
-            const auto &groupName = item.tab->getGroupName();
-            if (!groupName.isEmpty() && this->tabVisibilityFilter_(item.tab))
-            {
-                groupsWithVisibleTabs.insert(groupName);
-            }
+            visibleHeaders.insert(group.name);
+        }
+
+        if (group.header != nullptr)
+        {
+            group.header->setVisible(visible);
         }
     }
 
@@ -814,8 +814,7 @@ void Notebook::performLayout(bool animated)
 
             auto *group = this->findTabGroup(groupName);
             if (group != nullptr && group->header != nullptr &&
-                (!this->tabVisibilityFilter_ || group->alwaysVisible ||
-                 groupsWithVisibleTabs.contains(groupName)))
+                visibleHeaders.contains(groupName))
             {
                 filteredItems.push_back(Item{.tab = group->header});
             }
@@ -1363,6 +1362,30 @@ bool Notebook::shouldShowTab(const NotebookTab *tab) const
     }
 
     return true;
+}
+
+bool Notebook::shouldShowTabGroupHeader(const TabGroup &group) const
+{
+    if (!this->showTabs_)
+    {
+        return false;
+    }
+
+    if (!this->tabVisibilityFilter_ || group.alwaysVisible)
+    {
+        return true;
+    }
+
+    for (const auto &item : this->items_)
+    {
+        if (item.tab->getGroupName() == group.name &&
+            this->tabVisibilityFilter_(item.tab))
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 bool Notebook::isTabPinnedByGroup(const NotebookTab *tab) const
