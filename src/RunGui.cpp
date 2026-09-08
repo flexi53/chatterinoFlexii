@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "RunGui.hpp"
+#include "util/WhatsNew.hpp"
 
 #include "Application.hpp"
 #include "common/Args.hpp"
@@ -23,6 +24,7 @@
 #include <QFile>
 #include <QPalette>
 #include <QStyleFactory>
+#include <QTimer>
 #include <Qt>
 #include <QtConcurrent>
 
@@ -288,6 +290,13 @@ void runGui(QApplication &a, const Paths &paths, Settings &settings,
 
     Application app(settings, paths, args, updates);
     app.initialize(settings, paths);
+
+    // Queued so it lands once the event loop is running and the main window
+    // has something to show underneath it.
+    QTimer::singleShot(0, [] {
+        showWhatsNew();
+    });
+
     app.run();
 
     chatterino::NetworkManager::deinit();
