@@ -866,6 +866,7 @@ void Notebook::performLayout(bool animated)
         .addButtonWidth = this->showAddButton_ ? tabHeight : 0,
         .lineThickness = static_cast<int>(2 * scale),
         .tabSpacer = std::max(1, static_cast<int>(scale)),
+        .rowSpacer = std::max(3, static_cast<int>(3 * scale)),
         .buttonWidth = tabHeight,
         .buttonHeight = tabHeight - 1,
         .items = filteredItems,
@@ -940,7 +941,7 @@ void Notebook::performHorizontalLayout(const LayoutContext &ctx, bool animated)
 
             if (!isFirst && (!fitsInLine || item.startsNewRow))
             {
-                y += item.tab->height() * reverse;
+                y += (item.tab->height() + ctx.rowSpacer) * reverse;
                 x = ctx.left;
                 firstInBottomRow = &item;
             }

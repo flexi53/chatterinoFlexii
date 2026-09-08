@@ -246,6 +246,9 @@ private:
         int addButtonWidth = 0;
         int lineThickness = 0;
         int tabSpacer = 0;
+        /// Air between two rows of tabs, so a wrapped tab bar does not read as
+        /// one solid block
+        int rowSpacer = 0;
 
         int buttonWidth = 0;
         int buttonHeight = 0;
