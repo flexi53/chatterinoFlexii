@@ -237,11 +237,28 @@ jobs:
       - name: List what will be published
         run: ls -la artifacts/
 
+      # The release action only sets the tag when it creates one, so an
+      # existing "latest" would keep pointing at whatever it was first made
+      # from - and the source archives GitHub hangs off the release would be
+      # of the wrong code.
+      - name: Point the tag at the commit we built
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -e
+          gh api -X PATCH "repos/$REPO/git/refs/tags/latest" \
+            -f "sha=$SHA" -F force=true \
+          || gh api -X POST "repos/$REPO/git/refs" \
+               -f ref=refs/tags/latest -f "sha=$SHA"
+
       - name: Publish pre-release
         uses: ncipollo/release-action@v1.21.0
         with:
           artifacts: "artifacts/*"
           tag: latest
+          commit: ${{ github.sha }}
           name: ChattiFlexii (latest build)
           body: |
             Automatically built from `${{ github.ref_name }}`
