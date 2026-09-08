@@ -301,10 +301,9 @@ public:
     BoolSetting showBadgesBttv = {"/appearance/badges/bttv", true};
     BoolSetting showBadgesSevenTV = {"/appearance/badges/seventv", true};
     BoolSetting showBadgesHomies = {"/appearance/badges/homies", true};
-    /// Label a first-time chatter's message, the way Twitch does
-    BoolSetting showFirstMessageMarker = {
-        "/appearance/messages/firstMessageMarker", true};
-    /// The text of that label. Empty hides it.
+    /// The label put on a first-time chatter's message, the way Twitch does.
+    /// Edited through the "First Messages" row on the highlights page like
+    /// every other caption; empty means no label.
     QStringSetting firstMessageCaption = {
         "/appearance/messages/firstMessageCaption", "FIRST"};
     BoolSetting animateSevenTVBadges = {"/appearance/badges/animateSeventv",

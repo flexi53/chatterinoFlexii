@@ -1151,10 +1151,6 @@ void GeneralPage::initLayout(GeneralPageView &layout)
     SettingWidget::checkbox("Homies", s.showBadgesHomies)
         ->setTooltip("Show custom badges from Chatterino Homies")
         ->addTo(layout);
-    SettingWidget::checkbox("First message", s.showFirstMessageMarker)
-        ->setTooltip("Label the first message a user ever sends in a channel, "
-                     "the way Twitch does")
-        ->addTo(layout);
     SettingWidget::checkbox("7TV", s.showBadgesSevenTV)
         ->addKeywords({"seventv"})
         ->setTooltip("Badges for 7TV admins, developers, and supporters")
