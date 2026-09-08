@@ -1,0 +1,13 @@
+{
+    "name": "FirstTimeCrossbannChecker",
+    "version": "1.3.0",
+    "homepage": "https://crossbanned.de",
+    "license": "MIT",
+    "authors": ["Benetastic@crossbanned.de"],
+    "description": "Prüft Firsttimechatter auf Crossbannreports. '/cbcheck' enable/disable per channel. '/cbcheck USERNAME or USERID' checkt manuell. '/cbcheck clean' aktiviert globales Feedback auch bei Usern ohne Reports.",
+    "permissions": [
+        { "type": "Network" },
+        { "type": "FilesystemRead" },
+        { "type": "FilesystemWrite" }
+    ]
+}

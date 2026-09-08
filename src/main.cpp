@@ -15,6 +15,7 @@
 #include "singletons/CrashHandler.hpp"
 #include "singletons/Paths.hpp"
 #include "singletons/Settings.hpp"
+#include "util/ProfileSetup.hpp"
 #include "singletons/Updates.hpp"
 #include "util/AttachToConsole.hpp"
 #include "util/IpcQueue.hpp"
@@ -136,6 +137,12 @@ int main(int argc, char **argv)
         qCInfo(chatterinoApp) << "Chatterino Qt SSL active backend protocols:"
                               << QSslSocket::supportedProtocols();
 #endif
+
+        // Both have to happen before anything reads the profile: a fresh
+        // install can be filled from an existing Chatterino, and the plugins
+        // we ship have to be on disk before the controller scans for them.
+        importExistingProfile(*paths);
+        installBundledPlugins(*paths);
 
         Settings settings(args, paths->settingsDirectory);
 

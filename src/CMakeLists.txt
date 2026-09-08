@@ -625,6 +625,8 @@ set(SOURCE_FILES
         util/LoadPixmap.hpp
         util/OnceFlag.cpp
         util/OnceFlag.hpp
+        util/ProfileSetup.cpp
+        util/ProfileSetup.hpp
         util/RapidjsonHelpers.cpp
         util/RapidjsonHelpers.hpp
         util/RatelimitBucket.cpp

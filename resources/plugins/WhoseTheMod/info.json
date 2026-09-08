@@ -1,0 +1,10 @@
+{
+  "name": "WhosTheMod",
+  "description": "Check which channels a Twitch user moderates. Usage: /wtm <username>",
+  "authors": ["Flexii"],
+  "homepage": "https://whosthemod.xyz",
+  "tags": ["twitch", "moderation"],
+  "version": "1.0.0",
+  "license": "MIT",
+  "permissions": [{"type": "Network"}]
+}
