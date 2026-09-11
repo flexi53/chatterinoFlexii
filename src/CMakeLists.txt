@@ -391,6 +391,7 @@ set(SOURCE_FILES
         providers/chatterino/ChatterinoBadges.cpp
         providers/chatterino/ChatterinoBadges.hpp
 
+        providers/colors/NamedColor.hpp
         providers/colors/ColorProvider.cpp
         providers/colors/ColorProvider.hpp
 

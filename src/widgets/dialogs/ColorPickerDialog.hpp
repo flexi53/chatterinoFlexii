@@ -6,6 +6,8 @@
 
 #include "widgets/BasePopup.hpp"
 
+#include <QVBoxLayout>
+
 namespace chatterino {
 
 class ColorPickerDialog : public BasePopup
@@ -25,7 +27,12 @@ public Q_SLOTS:
     void setColor(const QColor &color);
 
 private:
+    /// Fills the list of named colours from the settings. Called again after
+    /// one is added, renamed or dropped.
+    void rebuildNamedColors();
+
     QColor color_;
+    QVBoxLayout *namedColors_{};
 };
 
 }  // namespace chatterino

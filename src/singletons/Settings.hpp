@@ -20,6 +20,7 @@
 #include "controllers/logging/ChannelLog.hpp"
 #include "controllers/moderationactions/ModerationAction.hpp"
 #include "controllers/nicknames/Nickname.hpp"
+#include "providers/colors/NamedColor.hpp"
 #include "controllers/sound/ISoundController.hpp"
 #include "providers/emoji/EmojiStyle.hpp"
 #include "singletons/Toasts.hpp"
@@ -897,6 +898,11 @@ private:
     ChatterinoSetting<std::vector<FilterRecordPtr>> filterRecordsSetting = {
         "/filtering/filters"};
     ChatterinoSetting<std::vector<Nickname>> nicknamesSetting = {"/nicknames"};
+
+    /// Colours the user has named, so the picker can show what each one is
+    /// kept around for.
+    ChatterinoSetting<std::vector<NamedColor>> namedColorsSetting = {
+        "/namedColors"};
     ChatterinoSetting<std::vector<ModerationAction>> moderationActionsSetting =
         {"/moderation/actions"};
     ChatterinoSetting<std::vector<ChannelLog>> loggedChannelsSetting = {
@@ -911,6 +917,7 @@ public:
     SignalVector<IgnorePhrase> ignoredMessages;
     SignalVector<FilterRecordPtr> filterRecords;
     SignalVector<Nickname> nicknames;
+    SignalVector<NamedColor> namedColors;
     SignalVector<ModerationAction> moderationActions;
     SignalVector<ChannelLog> loggedChannels;
 

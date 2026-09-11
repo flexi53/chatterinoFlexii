@@ -223,6 +223,8 @@ Settings::Settings(const Args &args, const QString &settingsDirectory,
                            this->filterRecords);
     initializeSignalVector(this->signalHolder, this->nicknamesSetting,
                            this->nicknames);
+    initializeSignalVector(this->signalHolder, this->namedColorsSetting,
+                           this->namedColors);
     initializeSignalVector(this->signalHolder, this->moderationActionsSetting,
                            this->moderationActions);
     initializeSignalVector(this->signalHolder, this->loggedChannelsSetting,
