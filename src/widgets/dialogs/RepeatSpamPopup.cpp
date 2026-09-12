@@ -66,7 +66,7 @@ RepeatSpamPopup::RepeatSpamPopup(QString channel, QString login,
         auto channel = getApp()->getTwitch()->getChannelOrEmpty(this->channel_);
         if (!channel->isEmpty())
         {
-            auto command = QStringLiteral("/timeout %1 %2 Spam")
+            auto command = QStringLiteral("/timeout %1 %2")
                                .arg(this->login_)
                                .arg(this->seconds_);
             command =
