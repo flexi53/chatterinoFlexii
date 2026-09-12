@@ -45,6 +45,16 @@ The **First Messages** row starts out with `FIRST` in its caption, which
 labels a first-time chatter the way Twitch does. Clear the cell to switch it
 off; that is the same rule every caption follows.
 
+## Named colors
+
+The color picker keeps a list of colors you have named - "Mods",
+"Regulars" - above the recently used ones. Highlighting the next moderator is
+a click on "Mods" instead of hunting for the same shade again. Right click one
+to rename it, point it at the selected color, or remove it.
+
+A named color is a template, not a link: changing it later does not recolor
+highlights that already use it.
+
 ## Look
 
 Settings has a **Look** page with two choices:
@@ -55,11 +65,45 @@ Settings has a **Look** page with two choices:
 Group headers keep their classic shape in both, so they stay
 distinguishable from the tabs beneath them.
 
+The same page has colors for the **tab bar** - the space around the tabs -
+and for the **tabs** themselves: a background, a color for the selected tab,
+and a gradient, all of which work under either look. Tabs with new messages
+or a highlight keep their own color so they still stand out, and **Use theme
+colors** goes back to the theme.
+
 ## User card
 
 - Shows the last **7 days** of a user's messages instead of roughly the last
   hour, up to 25 of them. Anything older than the channel's own buffer is read
   back from the chat logs, so it needs logging switched on for that channel.
+
+## Moderation assistant
+
+In channels you moderate, a shield button sits next to the emote button. It
+opens the assistant for that channel, which learns from the timeouts and bans
+moderators hand out there.
+
+- **Off**, **Learn** or **Suggest**, chosen per channel
+- A case is the action - duration, moderator, reason - together with what the
+  user wrote before it
+- **Import from chat logs** reads the timeouts already in the channel's logs,
+  so there is something to go on from the first day
+- Once enough cases are collected, a message that resembles earlier ones gets
+  an orange suggestion at the end of the line, with the duration moderators
+  usually gave. Hovering it shows how many cases it rests on and how they
+  ended.
+- Clicking the suggestion **only puts the command into your input box**.
+  Nothing is sent until you press Enter.
+- How many cases it needs and how similar a message has to be are under
+  Settings -> Moderation -> Assistant
+
+"Similar" means similar wording. It is good at spam, repeated insults and
+links, and knows nothing about context - someone quoting a message to
+complain about it looks the same to it. That is why it suggests and never
+acts.
+
+Cases stay on your computer. Moderators, VIPs and the broadcaster never get
+suggestions, and neither do your own messages.
 
 ## Badges and Twitch
 

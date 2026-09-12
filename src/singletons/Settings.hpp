@@ -262,6 +262,16 @@ public:
                                              "#2a2a2a"};
     QStringSetting tabBarGradientBottomColor = {
         "/appearance/tabBar/gradientBottom", "#121212"};
+
+    /// Channels the moderation assistant runs in, as "channel:learn" or
+    /// "channel:suggest" separated by commas
+    QStringSetting modAssistModes = {"/moderation/assistant/modes", ""};
+    /// Suggestions start once a channel has collected this many cases
+    IntSetting modAssistMinCases = {"/moderation/assistant/minCases", 50};
+    /// ...and only when at least this many of them resemble the message
+    IntSetting modAssistMinSimilar = {"/moderation/assistant/minSimilar", 3};
+    /// How alike two messages have to be to count as similar, in percent
+    IntSetting modAssistSimilarity = {"/moderation/assistant/similarity", 60};
     BoolSetting hidePreferencesButton = {"/appearance/hidePreferencesButton",
                                          false};
     BoolSetting hideUserButton = {"/appearance/hideUserButton", false};

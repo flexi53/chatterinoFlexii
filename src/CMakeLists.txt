@@ -626,6 +626,8 @@ set(SOURCE_FILES
         util/LoadPixmap.hpp
         util/OnceFlag.cpp
         util/OnceFlag.hpp
+        controllers/moderation/ModerationAssistant.cpp
+        controllers/moderation/ModerationAssistant.hpp
         util/ProfileSetup.cpp
         util/ProfileSetup.hpp
         util/WhatsNew.cpp
@@ -768,6 +770,8 @@ set(SOURCE_FILES
         widgets/dialogs/SelectChannelDialog.hpp
         widgets/dialogs/SelectChannelFiltersDialog.cpp
         widgets/dialogs/SelectChannelFiltersDialog.hpp
+        widgets/dialogs/ModerationAssistantPopup.cpp
+        widgets/dialogs/ModerationAssistantPopup.hpp
         widgets/dialogs/SettingsDialog.cpp
         widgets/dialogs/SettingsDialog.hpp
         widgets/dialogs/UpdateDialog.cpp

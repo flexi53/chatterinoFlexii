@@ -31,7 +31,21 @@ struct Release {
 
 /// Newest first. Add to the top when something lands that is worth telling
 /// the user about; everything above what they last saw is shown at once.
-const std::array<Release, 1> RELEASES{{
+const std::array<Release, 2> RELEASES{{
+    {"13 September 2026",
+     {
+         "A moderation assistant, behind the shield button next to the emote "
+         "button in channels you moderate. It learns from the timeouts and "
+         "bans handed out there, and once switched to Suggest it marks "
+         "messages that look like earlier cases with the usual action and "
+         "duration. Clicking the mark only puts the command into your input "
+         "box.",
+         "Colors for the tab bar and for the tabs on the Look page - a "
+         "background, a selected tab and a gradient, under either look.",
+         "Name the colors you keep reusing in the color picker, so picking "
+         "\"Mods\" gives every moderator the same color.",
+         "A little more room between rows of tabs.",
+     }},
     {"8 September 2026",
      {
          "Tab groups: gather tabs under a named header, collapse them, colour "

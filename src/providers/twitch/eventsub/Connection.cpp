@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "providers/twitch/eventsub/Connection.hpp"
+#include "controllers/moderation/ModerationAssistant.hpp"
 
 #include "Application.hpp"
 #include "common/QLogging.hpp"
@@ -151,6 +152,51 @@ void Connection::onChannelChatMessage(
                  << payload.event.broadcasterUserLogin.c_str();
 }
 
+/// Hands a timeout or ban to the moderation assistant, together with what the
+/// user wrote before it. Does nothing in channels it is not collecting in.
+static void recordModerationCase(const ChannelPtr &channel,
+                                 const QDateTime &time,
+                                 const QString &moderator, const QString &user,
+                                 const QString &reason, int seconds)
+{
+    if (ModerationAssistant::instance().mode(channel->getName()) ==
+        ModAssistMode::Off)
+    {
+        return;
+    }
+
+    runInGuiThread([channel, time, moderator, user, reason, seconds] {
+        ModCase modCase;
+        modCase.time = time;
+        modCase.moderator = moderator;
+        modCase.user = user.toLower();
+        modCase.seconds = seconds;
+        modCase.reason = reason;
+
+        const auto snapshot = channel->getMessageSnapshot();
+        for (auto it = snapshot.rbegin();
+             it != snapshot.rend() && modCase.messages.size() < 3; ++it)
+        {
+            const auto &message = *it;
+            if (message->loginName.compare(user, Qt::CaseInsensitive) != 0 ||
+                message->flags.has(MessageFlag::System))
+            {
+                continue;
+            }
+            // Anything older says nothing about why this happened
+            if (message->serverReceivedTime.isValid() &&
+                message->serverReceivedTime.secsTo(time) > 600)
+            {
+                break;
+            }
+            modCase.messages.prepend(message->messageText);
+        }
+
+        ModerationAssistant::instance().record(channel->getName(),
+                                               std::move(modCase));
+    });
+}
+
 void Connection::onChannelModerate(
     const lib::messages::Metadata &metadata,
     const lib::payload::channel_moderate::v2::Payload &payload)
@@ -212,6 +258,31 @@ void Connection::onChannelModerate(
             if constexpr (CanHandleModMessage<Action>)
             {
                 handleModerateMessage(channel, now, payload.event, action);
+            }
+
+            // Timeouts and bans also go to the moderation assistant, which
+            // learns from them in channels it has been switched on for. That
+            // includes actions coming in through shared chat: the messages
+            // that led to them were in this chat too.
+            namespace moderate = lib::payload::channel_moderate::v2;
+            if constexpr (std::is_same_v<Action, moderate::Timeout> ||
+                          std::is_same_v<Action, moderate::Ban>)
+            {
+                int seconds = 0;
+                if constexpr (std::is_same_v<Action, moderate::Timeout>)
+                {
+                    const std::chrono::system_clock::time_point chronoNow{
+                        std::chrono::milliseconds{now.toMSecsSinceEpoch()}};
+                    seconds = std::max(
+                        1, static_cast<int>(
+                               std::chrono::round<std::chrono::seconds>(
+                                   action.expiresAt - chronoNow)
+                                   .count()));
+                }
+                recordModerationCase(channelPtr, now,
+                                     payload.event.moderatorUserLogin.qt(),
+                                     action.userLogin.qt(), action.reason.qt(),
+                                     seconds);
             }
         },
         payload.event.action);

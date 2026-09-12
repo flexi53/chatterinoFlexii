@@ -19,6 +19,7 @@
 #include "widgets/helper/IconDelegate.hpp"
 #include "widgets/settingspages/SettingWidget.hpp"
 
+#include <QFormLayout>
 #include <QFileDialog>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -225,6 +226,32 @@ ModerationPage::ModerationPage()
         });
 
     }  // logs end
+
+    auto assistant = tabs.appendTab(new QVBoxLayout, "Assistant");
+    {
+        auto *intro = new QLabel(
+            "The moderation assistant learns from timeouts and bans in "
+            "channels you moderate, and suggests an action when someone "
+            "writes something similar. Switch it on per channel with the "
+            "shield button next to the emote button. A suggestion only ever "
+            "puts the command into your input box - you decide whether to "
+            "send it.");
+        intro->setWordWrap(true);
+        assistant.append(intro);
+
+        auto *form = new QFormLayout;
+        form->addRow("Suggest once a channel has collected at least",
+                     this->createSpinBox(getSettings()->modAssistMinCases, 1,
+                                         2000));
+        form->addRow("Only when this many past cases are similar",
+                     this->createSpinBox(getSettings()->modAssistMinSimilar, 1,
+                                         50));
+        form->addRow("Similarity needed, in percent",
+                     this->createSpinBox(getSettings()->modAssistSimilarity,
+                                         10, 100));
+        assistant->addLayout(form);
+        assistant->addStretch(1);
+    }
 
     auto modMode = tabs.appendTab(new QVBoxLayout, "Moderation buttons");
     {

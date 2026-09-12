@@ -4,6 +4,10 @@
 
 #pragma once
 
+#include <pajlada/signals/scoped-connection.hpp>
+
+#include <optional>
+
 #include "messages/Message.hpp"
 #include "widgets/BaseWidget.hpp"
 
@@ -127,6 +131,8 @@ protected:
     void hideCompletionPopup();
     void insertCompletionText(const QString &input_) const;
     void openEmotePopup();
+    /// Shows the moderation assistant button only where the user moderates
+    void updateModAssistButton();
     void clearReplyTarget();
 
     void updateCancelReplyButton();
@@ -148,6 +154,8 @@ protected:
     Split *const split_;
     ChannelView *const channelView_;
     QPointer<EmotePopup> emotePopup_;
+    /// Follows the moderator status of the current channel
+    std::optional<pajlada::Signals::ScopedConnection> modStateConnection_;
     QPointer<InputCompletionPopup> inputCompletionPopup_;
 
     struct {
@@ -170,6 +178,7 @@ protected:
         LabelButton *sendButton;
         QLabel *sendWaitStatus;
         SvgButton *emoteButton;
+        SvgButton *modAssistButton;
     } ui_;
 
     MessagePtr replyTarget_ = nullptr;

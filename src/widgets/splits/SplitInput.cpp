@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "widgets/splits/SplitInput.hpp"
+#include "widgets/dialogs/ModerationAssistantPopup.hpp"
 
 #include "Application.hpp"
 #include "common/enums/MessageOverflow.hpp"
@@ -230,7 +231,23 @@ void SplitInput::initLayout()
                 .light = ":/buttons/emoteDark.svg",
             },
             nullptr, QSize{6, 3});
-        box->addWidget(this->ui_.emoteButton, 0, Qt::AlignRight);
+
+        this->ui_.modAssistButton = new SvgButton(
+            {
+                .dark = ":/buttons/modAssist.svg",
+                .light = ":/buttons/modAssistDark.svg",
+            },
+            nullptr, QSize{6, 3});
+        this->ui_.modAssistButton->setToolTip("Moderation assistant");
+        this->ui_.modAssistButton->hide();
+
+        auto *buttonRow = new QHBoxLayout;
+        buttonRow->setContentsMargins(0, 0, 0, 0);
+        buttonRow->setSpacing(0);
+        buttonRow->addStretch(1);
+        buttonRow->addWidget(this->ui_.modAssistButton);
+        buttonRow->addWidget(this->ui_.emoteButton);
+        box->addLayout(buttonRow);
     }
 
     // ---- misc
@@ -252,6 +269,34 @@ void SplitInput::initLayout()
     QObject::connect(this->ui_.emoteButton, &Button::leftClicked, [this] {
         this->openEmotePopup();
     });
+
+    // open the moderation assistant for this channel
+    QObject::connect(this->ui_.modAssistButton, &Button::leftClicked, [this] {
+        auto *popup = new ModerationAssistantPopup(
+            this->split_->getChannel()->getName(), this);
+        popup->show();
+    });
+
+    auto watchModState = [this] {
+        this->modStateConnection_.reset();
+        if (auto *twitch = dynamic_cast<TwitchChannel *>(
+                this->split_->getChannel().get()))
+        {
+            this->modStateConnection_.emplace(
+                twitch->userStateChanged.connect([this] {
+                    QMetaObject::invokeMethod(
+                        this,
+                        [this] {
+                            this->updateModAssistButton();
+                        },
+                        Qt::QueuedConnection);
+                }));
+        }
+        this->updateModAssistButton();
+    };
+    watchModState();
+    this->signalHolder_.managedConnect(this->split_->channelChanged,
+                                       watchModState);
 
     // clear input and remove reply thread
     QObject::connect(this->ui_.cancelReplyButton, &Button::leftClicked, [this] {
@@ -356,6 +401,9 @@ void SplitInput::updateEmoteButton()
     this->ui_.emoteButton->setFixedHeight(int(18 * scale));
     // Make button slightly wider so it's easier to click
     this->ui_.emoteButton->setFixedWidth(int(24 * scale));
+
+    this->ui_.modAssistButton->setFixedHeight(int(18 * scale));
+    this->ui_.modAssistButton->setFixedWidth(int(24 * scale));
 }
 
 void SplitInput::updateCancelReplyButton()
@@ -364,6 +412,16 @@ void SplitInput::updateCancelReplyButton()
 
     this->ui_.cancelReplyButton->setFixedHeight(int(12 * scale));
     this->ui_.cancelReplyButton->setFixedWidth(int(20 * scale));
+}
+
+void SplitInput::updateModAssistButton()
+{
+    // Timeouts and bans only reach moderators, so anywhere else there would
+    // be nothing to learn from
+    auto *twitch =
+        dynamic_cast<TwitchChannel *>(this->split_->getChannel().get());
+    this->ui_.modAssistButton->setVisible(
+        twitch != nullptr && (twitch->isMod() || twitch->isBroadcaster()));
 }
 
 void SplitInput::openEmotePopup()
