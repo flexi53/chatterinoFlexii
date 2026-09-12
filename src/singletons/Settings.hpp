@@ -252,6 +252,16 @@ public:
                                           "#3c3c3c"};
     QStringSetting tabGradientBottomColor = {
         "/appearance/tabs/gradientBottom", "#1c1c1c"};
+
+    /// The empty space of the tab bar around the tabs - what shows behind
+    /// them, not the tabs themselves. Empty leaves the window's background.
+    QStringSetting tabBarBackgroundColor = {
+        "/appearance/tabBar/backgroundColor", ""};
+    BoolSetting tabBarGradient = {"/appearance/tabBar/gradient", false};
+    QStringSetting tabBarGradientTopColor = {"/appearance/tabBar/gradientTop",
+                                             "#2a2a2a"};
+    QStringSetting tabBarGradientBottomColor = {
+        "/appearance/tabBar/gradientBottom", "#121212"};
     BoolSetting hidePreferencesButton = {"/appearance/hidePreferencesButton",
                                          false};
     BoolSetting hideUserButton = {"/appearance/hideUserButton", false};

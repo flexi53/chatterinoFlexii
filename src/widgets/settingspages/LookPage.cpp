@@ -51,17 +51,33 @@ void LookPage::initLayout(GeneralPageView &layout)
 
     SettingWidget::dropdown("Look", s.uiStyle)->addTo(layout);
 
-    layout.addTitle("Tab colors");
+    layout.addTitle("Tab bar");
     layout.addDescription(
-        "These work with either look. The selected tab and tabs with new "
-        "messages or highlights keep their own colors, so they still stand "
-        "out.");
+        "The space around the tabs, behind them. These work with either "
+        "look.");
+
+    SettingWidget::colorButton("Background", s.tabBarBackgroundColor)
+        ->addTo(layout);
+    SettingWidget::checkbox("Gradient", s.tabBarGradient)
+        ->setTooltip("Fill the tab bar with a gradient from top to bottom "
+                     "instead of a single color.")
+        ->addTo(layout);
+    SettingWidget::colorButton("Gradient top", s.tabBarGradientTopColor)
+        ->conditionallyEnabledBy(s.tabBarGradient)
+        ->addTo(layout);
+    SettingWidget::colorButton("Gradient bottom", s.tabBarGradientBottomColor)
+        ->conditionallyEnabledBy(s.tabBarGradient)
+        ->addTo(layout);
+
+    layout.addTitle("Tabs");
+    layout.addDescription(
+        "The tabs themselves. The selected tab and tabs with new messages or "
+        "highlights keep their own colors, so they still stand out.");
 
     SettingWidget::colorButton("Background", s.tabBackgroundColor)
         ->addTo(layout);
     SettingWidget::colorButton("Selected tab", s.tabSelectedBackgroundColor)
         ->addTo(layout);
-
     SettingWidget::checkbox("Gradient", s.tabGradient)
         ->setTooltip("Fill tabs with a gradient from top to bottom instead of "
                      "a single color. The selected tab and group headers are "
@@ -74,10 +90,12 @@ void LookPage::initLayout(GeneralPageView &layout)
         ->conditionallyEnabledBy(s.tabGradient)
         ->addTo(layout);
 
-    // Back to the theme. The gradient colors are kept, so switching it on
-    // again brings back what was set up before.
+    // Back to the theme for the tab bar and the tabs. The gradient colors are
+    // kept, so switching a gradient on again brings back what was set up.
     auto *reset = new QPushButton("Use theme colors");
     QObject::connect(reset, &QPushButton::clicked, [&s] {
+        s.tabBarBackgroundColor.setValue("");
+        s.tabBarGradient.setValue(false);
         s.tabBackgroundColor.setValue("");
         s.tabSelectedBackgroundColor.setValue("");
         s.tabGradient.setValue(false);

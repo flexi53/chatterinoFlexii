@@ -27,6 +27,7 @@
 #include "widgets/Window.hpp"
 
 #include <boost/foreach.hpp>
+#include <QLinearGradient>
 #include <QActionGroup>
 #include <QColorDialog>
 #include <QDebug>
@@ -87,6 +88,23 @@ Notebook::Notebook(QWidget *parent)
             draggedSplit->setParent(page);
             page->insertSplit(draggedSplit);
         });
+
+    // Repaint the tab bar when its colours are changed on the Look page
+    for (auto *setting : {&getSettings()->tabBarBackgroundColor,
+                          &getSettings()->tabBarGradientTopColor,
+                          &getSettings()->tabBarGradientBottomColor})
+    {
+        setting->connect(
+            [this](const auto &, const auto &) {
+                this->update();
+            },
+            this->signalHolder_, false);
+    }
+    getSettings()->tabBarGradient.connect(
+        [this](const auto &, const auto &) {
+            this->update();
+        },
+        this->signalHolder_, false);
 
     this->lockNotebookLayoutAction_ = new QAction("Lock Tab Layout", this);
 
@@ -1243,6 +1261,50 @@ void Notebook::paintEvent(QPaintEvent *event)
     auto scale = this->scale();
 
     QPainter painter(this);
+
+    // The empty space around the tabs. Nothing is painted here unless a
+    // colour was picked, so otherwise the window's own background shows
+    // through as it always has.
+    {
+        const auto *barSettings = getSettings();
+        const auto line = int(2 * scale);
+
+        QRect strip;
+        switch (this->tabLocation_)
+        {
+            case NotebookTabLocation::Top:
+                strip = QRect(0, 0, this->width(), this->lineOffset_);
+                break;
+            case NotebookTabLocation::Bottom:
+                strip = QRect(0, this->lineOffset_ + line, this->width(),
+                              this->height() - this->lineOffset_ - line);
+                break;
+            case NotebookTabLocation::Left:
+                strip = QRect(0, 0, this->lineOffset_, this->height());
+                break;
+            case NotebookTabLocation::Right:
+                strip = QRect(this->lineOffset_ + line, 0,
+                              this->width() - this->lineOffset_ - line,
+                              this->height());
+                break;
+        }
+
+        const QColor picked(barSettings->tabBarBackgroundColor.getValue());
+        const QColor top(barSettings->tabBarGradientTopColor.getValue());
+        const QColor bottom(barSettings->tabBarGradientBottomColor.getValue());
+
+        if (barSettings->tabBarGradient && top.isValid() && bottom.isValid())
+        {
+            QLinearGradient gradient(strip.topLeft(), strip.bottomLeft());
+            gradient.setColorAt(0.0, top);
+            gradient.setColorAt(1.0, bottom);
+            painter.fillRect(strip, gradient);
+        }
+        else if (picked.isValid())
+        {
+            painter.fillRect(strip, picked);
+        }
+    }
     if (this->tabLocation_ == NotebookTabLocation::Top ||
         this->tabLocation_ == NotebookTabLocation::Bottom)
     {
