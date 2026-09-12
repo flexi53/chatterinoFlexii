@@ -14,21 +14,28 @@
 #include "widgets/dialogs/RepeatSpamPopup.hpp"
 #include "widgets/Window.hpp"
 
-#include <algorithm>
 #include <QRegularExpression>
+
+#include <algorithm>
+#include <numeric>
 
 namespace {
 
 using namespace chatterino;
 
-/// This many identical messages in a row earn the first timeout
+/// This many of the same message in a row earn the first timeout
 constexpr int STREAK = 3;
 /// A longer pause between two of them and it no longer counts as in a row
 constexpr int MAX_GAP_SECONDS = 300;
-/// How many of their messages the window shows
-constexpr int HISTORY = 5;
+/// How many entries - messages and timeouts - the window shows
+constexpr int HISTORY = 8;
 /// Quiet for this long and they start with a clean slate
 constexpr int RESET_SECONDS = 30 * 60;
+/// Shorter messages only count as the same when they are identical - for
+/// "gg" or "hi" there is no such thing as nearly the same
+constexpr qsizetype MIN_FUZZY_LENGTH = 10;
+/// Twitch messages are at most 500 characters
+constexpr qsizetype MAX_COMPARE_LENGTH = 500;
 
 QString keyOf(const QString &channel, const QString &login)
 {
@@ -54,6 +61,62 @@ QString normalise(const QString &text)
         out.append(QString::fromUcs4(&cp, 1));
     }
     return out.simplified().toCaseFolded();
+}
+
+/// How many characters have to change to turn @a a into @a b
+qsizetype editDistance(const QString &a, const QString &b)
+{
+    std::vector<qsizetype> previous(b.size() + 1);
+    std::vector<qsizetype> current(b.size() + 1);
+    std::iota(previous.begin(), previous.end(), 0);
+
+    for (qsizetype i = 1; i <= a.size(); i++)
+    {
+        current[0] = i;
+        for (qsizetype j = 1; j <= b.size(); j++)
+        {
+            const qsizetype cost = a[i - 1] == b[j - 1] ? 0 : 1;
+            current[j] = std::min({previous[j] + 1, current[j - 1] + 1,
+                                   previous[j - 1] + cost});
+        }
+        std::swap(previous, current);
+    }
+    return previous[b.size()];
+}
+
+/// Whether two normalised messages count as the same one. Long enough ones
+/// may differ by as much as the similarity setting allows, since swapping a
+/// word is the cheapest way around a rule about repeating yourself.
+bool sameMessage(const QString &a, const QString &b)
+{
+    if (a == b)
+    {
+        return true;
+    }
+    if (std::min(a.size(), b.size()) < MIN_FUZZY_LENGTH)
+    {
+        return false;
+    }
+
+    const auto threshold = std::clamp(
+        getSettings()->repeatAlertSimilarity.getValue(), 40, 100);
+    if (threshold >= 100)
+    {
+        return false;
+    }
+
+    const auto left = a.left(MAX_COMPARE_LENGTH);
+    const auto right = b.left(MAX_COMPARE_LENGTH);
+    const auto allowed =
+        std::max(left.size(), right.size()) * (100 - threshold) / 100;
+
+    // The distance is at least the difference in length, so a pair too far
+    // apart in size is ruled out without working it out
+    if (std::abs(left.size() - right.size()) > allowed)
+    {
+        return false;
+    }
+    return editDistance(left, right) <= allowed;
 }
 
 /// The step for someone who has served @a timeoutsServed timeouts. Past the
@@ -146,7 +209,6 @@ void RepeatSpamDetector::onMessage(const QString &channelName,
 
     const auto time =
         messageTime.isValid() ? messageTime : QDateTime::currentDateTime();
-    const auto key = keyOf(channel, login);
 
     // Keeps the map from growing for as long as the app runs
     if (this->users_.size() > 5000)
@@ -159,7 +221,7 @@ void RepeatSpamDetector::onMessage(const QString &channelName,
         }
     }
 
-    auto &state = this->users_[key];
+    auto &state = this->users_[keyOf(channel, login)];
     if (state.lastActivity.isValid() &&
         state.lastActivity.secsTo(time) > RESET_SECONDS)
     {
@@ -173,31 +235,33 @@ void RepeatSpamDetector::onMessage(const QString &channelName,
         return;
     }
 
-    state.recent.append({time, text, normalised});
-    while (state.recent.size() > HISTORY)
+    state.history.append({time, text, normalised, -1});
+    while (state.history.size() > HISTORY)
     {
-        state.recent.removeFirst();
+        state.history.removeFirst();
     }
 
-    // The same message, back to back, each close enough to the one before
+    // Messages since the last timeout that count as this one, back to back,
+    // each close enough to the one after it. Each is held against the newest
+    // rather than its neighbour, so small changes cannot add up to a
+    // different message without it being noticed.
     int streak = 0;
-    for (auto i = state.recent.size() - 1; i >= 0; i--)
+    auto newer = time;
+    for (auto i = state.history.size() - 1; i >= 0; i--)
     {
-        const auto &said = state.recent[i];
-        if (said.normalised != normalised)
+        const auto &entry = state.history[i];
+        if (entry.timeoutSeconds >= 0 ||
+            !sameMessage(entry.normalised, normalised) ||
+            entry.time.secsTo(newer) > MAX_GAP_SECONDS)
         {
             break;
         }
-        if (i < state.recent.size() - 1 &&
-            said.time.secsTo(state.recent[i + 1].time) > MAX_GAP_SECONDS)
-        {
-            break;
-        }
+        newer = entry.time;
         streak++;
     }
 
-    const bool sameAsFlagged =
-        !state.flaggedText.isEmpty() && normalised == state.flaggedText;
+    const bool sameAsFlagged = !state.flaggedText.isEmpty() &&
+                               sameMessage(normalised, state.flaggedText);
 
     if (sameAsFlagged && state.timeouts > 0)
     {
@@ -229,18 +293,27 @@ void RepeatSpamDetector::onTimeout(const QString &channelName,
     }
 
     const auto key = keyOf(channel, loginName.toLower());
+    const auto now = QDateTime::currentDateTime();
 
     auto it = this->users_.find(key);
-    if (it != this->users_.end() && !it->flaggedText.isEmpty())
+    if (it != this->users_.end())
     {
-        it->timeouts++;
-        // The messages are gone with the timeout; what counts from here on is
-        // whether the flagged one comes back
-        it->recent.clear();
+        // Shown in the window, and the point from which repeats count again
+        it->history.append({now, {}, {}, std::max(0, seconds)});
+        while (it->history.size() > HISTORY)
+        {
+            it->history.removeFirst();
+        }
+
+        if (!it->flaggedText.isEmpty())
+        {
+            it->timeouts++;
+        }
+
         // The quiet time before a clean slate starts once the timeout is
         // over - otherwise a long one would wipe the very escalation it was
         // part of
-        it->lastActivity = QDateTime::currentDateTime().addSecs(seconds);
+        it->lastActivity = now.addSecs(seconds);
     }
 
     // Someone has already dealt with it
@@ -265,13 +338,13 @@ void RepeatSpamDetector::showAlert(const QString &channel, const QString &login,
         this->popups_.insert(key, popup);
     }
 
-    QList<QPair<QDateTime, QString>> messages;
-    for (const auto &said : state.recent)
+    QList<RepeatSpamPopup::Entry> history;
+    for (const auto &entry : state.history)
     {
-        messages.append({said.time, said.text});
+        history.append({entry.time, entry.text, entry.timeoutSeconds});
     }
 
-    popup->setCase(displayName.isEmpty() ? login : displayName, messages,
+    popup->setCase(displayName.isEmpty() ? login : displayName, history,
                    seconds, timeoutsServed);
     popup->show();
     popup->raise();

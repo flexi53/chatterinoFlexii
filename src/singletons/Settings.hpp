@@ -280,6 +280,13 @@ public:
     /// time the chatter carries on after serving one
     QStringSetting repeatAlertSteps = {"/moderation/repeatAlert/steps",
                                        "30s, 1m, 5m, 10m, 30m"};
+    /// How alike two messages have to be to count as the same one, in percent.
+    /// 100 only takes identical ones.
+    IntSetting repeatAlertSimilarity = {"/moderation/repeatAlert/similarity",
+                                        65};
+    /// Seconds before the alert window closes by itself, 0 for never
+    IntSetting repeatAlertAutoClose = {"/moderation/repeatAlert/autoClose",
+                                       15};
     BoolSetting hidePreferencesButton = {"/appearance/hidePreferencesButton",
                                          false};
     BoolSetting hideUserButton = {"/appearance/hideUserButton", false};

@@ -8,38 +8,51 @@
 
 #include <QDateTime>
 #include <QList>
-#include <QPair>
 #include <QString>
+#include <QTimer>
 
 class QLabel;
 class QPushButton;
 
 namespace chatterino {
 
-/// Shows a chatter's repeated messages with their times, and a button that
-/// hands out the timeout that fits.
+/// Shows a chatter's repeated messages and the timeouts in between, and a
+/// button that hands out the timeout that fits. Closes by itself after a
+/// while unless the pointer is resting on it.
 class RepeatSpamPopup : public BasePopup
 {
     Q_OBJECT
 
 public:
+    struct Entry {
+        QDateTime time;
+        QString text;
+        /// -1 for a message, otherwise the length of a timeout, 0 for a ban
+        int timeoutSeconds = -1;
+    };
+
     RepeatSpamPopup(QString channel, QString login, QWidget *parent);
 
-    /// Fills in the messages and the timeout the button offers.
-    /// @a timeoutsServed counts the timeouts the chatter has already sat out
-    /// for this message.
-    void setCase(const QString &displayName,
-                 const QList<QPair<QDateTime, QString>> &messages, int seconds,
-                 int timeoutsServed);
+    /// Fills in the history and the timeout the button offers, and starts
+    /// the countdown to closing again. @a timeoutsServed counts the timeouts
+    /// the chatter has already sat out for this message.
+    void setCase(const QString &displayName, const QList<Entry> &history,
+                 int seconds, int timeoutsServed);
 
 private:
+    void tick();
+
     QString channel_;
     QString login_;
     int seconds_ = 30;
+    /// Seconds until it closes by itself, 0 when it does not
+    int remaining_ = 0;
 
     QLabel *headline_{};
     QLabel *messages_{};
+    QPushButton *ignore_{};
     QPushButton *timeout_{};
+    QTimer countdown_;
 };
 
 }  // namespace chatterino

@@ -109,12 +109,22 @@ suggestions, and neither do your own messages.
 
 The same popup has a switch that watches for a chatter sending the same
 message three times in a row. When it happens a small window opens - without
-taking the keyboard from you - with their last messages and times and a
-timeout button. Each time they send that message again after having been
-timed out, by you or another moderator, the window comes back offering the
-next step up. The steps are set under Settings -> Moderation -> Assistant and
-start out as **30s, 1m, 5m, 10m, 30m**; past the last one it stays there. Case, extra spaces and the invisible character used to get
-past Twitch's duplicate check do not make a message different.
+taking the keyboard from you - with their recent messages, any timeouts in
+between, and a timeout button. Each time they send that message again after
+having been timed out, by you or another moderator, the window comes back
+offering the next step up.
+
+- The steps start out as **30s, 1m, 5m, 10m, 30m**; past the last one it
+  stays there
+- "The same message" ignores case, extra spaces and the invisible character
+  used to get past Twitch's duplicate check. Messages of 10 characters or
+  more also count when they are **nearly** the same - 65% alike to begin with -
+  so swapping a word does not get around it.
+- The window **closes by itself** after 15 seconds, counting down on the
+  Ignore button, and stays open while the mouse is over it
+
+Steps, similarity and the closing time are under Settings -> Moderation ->
+Assistant.
 
 ## Badges and Twitch
 

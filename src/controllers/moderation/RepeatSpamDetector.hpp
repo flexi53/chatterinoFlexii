@@ -16,10 +16,10 @@ namespace chatterino {
 
 class RepeatSpamPopup;
 
-/// Spots a chatter sending the same message over and over and puts the case
-/// in front of the moderator with the timeout that fits it: the first step
-/// for three in a row, the next one each time they carry on after serving a
-/// timeout.
+/// Spots a chatter sending the same message - or nearly the same - over and
+/// over, and puts the case in front of the moderator with the timeout that
+/// fits it: the first step for three in a row, the next one each time they
+/// carry on after serving a timeout.
 ///
 /// It only ever offers the timeout. Pressing the button is left to the user.
 /// Everything here runs on the GUI thread.
@@ -49,14 +49,17 @@ public:
 private:
     RepeatSpamDetector() = default;
 
-    struct Said {
+    struct Entry {
         QDateTime time;
         QString text;
         QString normalised;
+        /// -1 for a message, otherwise the length of a timeout, 0 for a ban
+        int timeoutSeconds = -1;
     };
 
     struct UserState {
-        QList<Said> recent;
+        /// Their recent messages and the timeouts in between, oldest first
+        QList<Entry> history;
         /// The message they were flagged for, normalised
         QString flaggedText;
         /// Timeouts they have served since being flagged

@@ -7,8 +7,10 @@
 #include "Application.hpp"
 #include "controllers/commands/CommandController.hpp"
 #include "providers/twitch/TwitchIrcServer.hpp"
+#include "singletons/Settings.hpp"
 #include "util/FormatTime.hpp"
 
+#include <QCursor>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
@@ -34,7 +36,7 @@ RepeatSpamPopup::RepeatSpamPopup(QString channel, QString login,
     // Pops up while the moderator may be typing - it must not take the
     // keyboard away from them
     this->setAttribute(Qt::WA_ShowWithoutActivating);
-    this->setMinimumWidth(420);
+    this->setMinimumWidth(440);
 
     auto *layout = new QVBoxLayout(this->getLayoutContainer());
     layout->setContentsMargins(12, 12, 12, 12);
@@ -52,13 +54,13 @@ RepeatSpamPopup::RepeatSpamPopup(QString channel, QString login,
 
     auto *buttons = new QHBoxLayout;
     buttons->addStretch(1);
-    auto *ignore = new QPushButton(QStringLiteral("Ignore"));
+    this->ignore_ = new QPushButton(QStringLiteral("Ignore"));
     this->timeout_ = new QPushButton;
-    buttons->addWidget(ignore);
+    buttons->addWidget(this->ignore_);
     buttons->addWidget(this->timeout_);
     layout->addLayout(buttons);
 
-    QObject::connect(ignore, &QPushButton::clicked, this, [this] {
+    QObject::connect(this->ignore_, &QPushButton::clicked, this, [this] {
         this->close();
     });
 
@@ -75,11 +77,16 @@ RepeatSpamPopup::RepeatSpamPopup(QString channel, QString login,
         }
         this->close();
     });
+
+    this->countdown_.setInterval(1000);
+    QObject::connect(&this->countdown_, &QTimer::timeout, this, [this] {
+        this->tick();
+    });
 }
 
 void RepeatSpamPopup::setCase(const QString &displayName,
-                              const QList<QPair<QDateTime, QString>> &messages,
-                              int seconds, int timeoutsServed)
+                              const QList<Entry> &history, int seconds,
+                              int timeoutsServed)
 {
     this->seconds_ = seconds;
 
@@ -108,17 +115,71 @@ void RepeatSpamPopup::setCase(const QString &displayName,
     }
 
     QStringList lines;
-    for (const auto &[time, text] : messages)
+    for (const auto &entry : history)
     {
-        lines.append(QStringLiteral("<tt>%1</tt>&nbsp;&nbsp;%2")
-                         .arg(time.toString(QStringLiteral("hh:mm:ss")),
-                              text.toHtmlEscaped()));
+        const auto time = entry.time.toString(QStringLiteral("hh:mm:ss"));
+        if (entry.timeoutSeconds < 0)
+        {
+            lines.append(QStringLiteral("<tt>%1</tt>&nbsp;&nbsp;%2")
+                             .arg(time, entry.text.toHtmlEscaped()));
+        }
+        else
+        {
+            lines.append(
+                QStringLiteral(
+                    "<tt>%1</tt>&nbsp;&nbsp;<i style=\"color:#9a9a9a\">"
+                    "— %2</i>")
+                    .arg(time,
+                         entry.timeoutSeconds > 0
+                             ? QStringLiteral("Timeout %1")
+                                   .arg(formatTime(entry.timeoutSeconds))
+                             : QStringLiteral("Ban")));
+        }
     }
     this->messages_->setText(lines.join(QStringLiteral("<br>")));
 
     this->timeout_->setText(
         QStringLiteral("Timeout %1").arg(formatTime(seconds)));
     this->timeout_->setDefault(true);
+
+    // Every new case starts the countdown over
+    this->remaining_ =
+        std::max(0, getSettings()->repeatAlertAutoClose.getValue());
+    if (this->remaining_ > 0)
+    {
+        this->ignore_->setText(
+            QStringLiteral("Ignore (%1)").arg(this->remaining_));
+        this->countdown_.start();
+    }
+    else
+    {
+        this->ignore_->setText(QStringLiteral("Ignore"));
+        this->countdown_.stop();
+    }
+}
+
+void RepeatSpamPopup::tick()
+{
+    if (this->remaining_ <= 0)
+    {
+        return;
+    }
+
+    // Held open while the pointer rests on it, so it cannot vanish from under
+    // a click on the timeout button
+    if (this->frameGeometry().contains(QCursor::pos()))
+    {
+        this->ignore_->setText(QStringLiteral("Ignore"));
+        return;
+    }
+
+    this->remaining_--;
+    if (this->remaining_ <= 0)
+    {
+        this->close();
+        return;
+    }
+    this->ignore_->setText(QStringLiteral("Ignore (%1)").arg(this->remaining_));
 }
 
 }  // namespace chatterino

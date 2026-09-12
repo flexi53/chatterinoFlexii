@@ -303,6 +303,27 @@ ModerationPage::ModerationPage()
 
         assistant.append(steps);
         assistant.append(stepsPreview);
+
+        auto *repeatForm = new QFormLayout;
+        auto *similarity =
+            this->createSpinBox(getSettings()->repeatAlertSimilarity, 40, 100);
+        similarity->setSuffix(" %");
+        similarity->setToolTip(
+            "Messages of 10 characters or more count as the same one when "
+            "they are at least this alike, so swapping a word does not get "
+            "around the rule. Shorter ones have to be identical. 100 only "
+            "takes identical messages.");
+        repeatForm->addRow("Count as the same message from", similarity);
+        auto *autoClose =
+            this->createSpinBox(getSettings()->repeatAlertAutoClose, 0, 300);
+        autoClose->setSuffix(" s");
+        autoClose->setSpecialValueText("never");
+        autoClose->setToolTip(
+            "The window closes by itself after this long. It stays open while "
+            "the mouse is over it.");
+        repeatForm->addRow("Close the window by itself after", autoClose);
+        assistant->addLayout(repeatForm);
+
         assistant->addStretch(1);
     }
 
