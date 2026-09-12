@@ -58,9 +58,10 @@ ModerationAssistantPopup::ModerationAssistantPopup(const QString &channel,
     auto *repeatAlert = new QCheckBox(QStringLiteral(
         "Alert when someone sends the same message three times in a row"));
     repeatAlert->setToolTip(QStringLiteral(
-        "Opens a window with their last messages and a 30 second timeout "
-        "button. If they send that message again after being timed out, the "
-        "window offers a minute. Works independently of the mode above."));
+        "Opens a window with their last messages and a timeout button. Each "
+        "time they carry on after serving a timeout, the button offers the "
+        "next step - the steps are set under Settings, Moderation, "
+        "Assistant. Works independently of the mode above."));
     repeatAlert->setChecked(
         RepeatSpamDetector::instance().isEnabled(this->channel_));
     QObject::connect(repeatAlert, &QCheckBox::toggled, this, [this](bool on) {

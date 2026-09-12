@@ -25,11 +25,12 @@ class RepeatSpamPopup : public BasePopup
 public:
     RepeatSpamPopup(QString channel, QString login, QWidget *parent);
 
-    /// Fills in the messages and the timeout the button offers. @a again
-    /// marks a chatter who has already served a timeout for this message.
+    /// Fills in the messages and the timeout the button offers.
+    /// @a timeoutsServed counts the timeouts the chatter has already sat out
+    /// for this message.
     void setCase(const QString &displayName,
                  const QList<QPair<QDateTime, QString>> &messages, int seconds,
-                 bool again);
+                 int timeoutsServed);
 
 private:
     QString channel_;

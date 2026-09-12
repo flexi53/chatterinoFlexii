@@ -554,8 +554,9 @@ void IrcMessageHandler::handleClearChatMessage(Communi::IrcMessage *message)
         // timeout, whoever gave it
         if (clearChat.username)
         {
-            RepeatSpamDetector::instance().onTimeout(chanName,
-                                                     *clearChat.username);
+            RepeatSpamDetector::instance().onTimeout(
+                chanName, *clearChat.username,
+                message->tags().value("ban-duration").toInt());
         }
     }
 

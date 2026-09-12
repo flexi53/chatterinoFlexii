@@ -79,17 +79,33 @@ RepeatSpamPopup::RepeatSpamPopup(QString channel, QString login,
 
 void RepeatSpamPopup::setCase(const QString &displayName,
                               const QList<QPair<QDateTime, QString>> &messages,
-                              int seconds, bool again)
+                              int seconds, int timeoutsServed)
 {
     this->seconds_ = seconds;
 
-    this->headline_->setText(
-        again ? QStringLiteral("<b>%1</b> sent the message again after being "
-                               "timed out.")
-                    .arg(displayName.toHtmlEscaped())
-              : QStringLiteral("<b>%1</b> sent the same message several times "
-                               "in a row.")
-                    .arg(displayName.toHtmlEscaped()));
+    const auto name = displayName.toHtmlEscaped();
+    if (timeoutsServed == 0)
+    {
+        this->headline_->setText(
+            QStringLiteral("<b>%1</b> sent the same message several times in "
+                           "a row.")
+                .arg(name));
+    }
+    else if (timeoutsServed == 1)
+    {
+        this->headline_->setText(
+            QStringLiteral("<b>%1</b> sent the message again after being "
+                           "timed out.")
+                .arg(name));
+    }
+    else
+    {
+        this->headline_->setText(
+            QStringLiteral("<b>%1</b> sent the message again after %2 "
+                           "timeouts.")
+                .arg(name)
+                .arg(timeoutsServed));
+    }
 
     QStringList lines;
     for (const auto &[time, text] : messages)

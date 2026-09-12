@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: MIT
 
+#include "util/FormatTime.hpp"
+#include "controllers/moderation/RepeatSpamDetector.hpp"
 #include "widgets/settingspages/ModerationPage.hpp"
 
 #include "Application.hpp"
@@ -19,6 +21,7 @@
 #include "widgets/helper/IconDelegate.hpp"
 #include "widgets/settingspages/SettingWidget.hpp"
 
+#include <QLineEdit>
 #include <QFormLayout>
 #include <QFileDialog>
 #include <QHBoxLayout>
@@ -250,6 +253,56 @@ ModerationPage::ModerationPage()
                      this->createSpinBox(getSettings()->modAssistSimilarity,
                                          10, 100));
         assistant->addLayout(form);
+
+        auto *repeatIntro = new QLabel(
+            "<br><b>Repeated messages</b><br>The timeouts the repeated "
+            "message alert offers, in order. The first is for sending the same "
+            "message three times in a row, the next for each time they carry "
+            "on after serving one. Past the last step it stays at the last.");
+        repeatIntro->setTextFormat(Qt::RichText);
+        repeatIntro->setWordWrap(true);
+        assistant.append(repeatIntro);
+
+        auto *steps = new QLineEdit(getSettings()->repeatAlertSteps.getValue());
+        steps->setPlaceholderText("30s, 1m, 5m, 10m, 30m");
+        auto *stepsPreview = new QLabel;
+        stepsPreview->setTextFormat(Qt::RichText);
+        stepsPreview->setWordWrap(true);
+
+        const auto showSteps = [stepsPreview](const QString &text) {
+            const auto parsed = RepeatSpamDetector::parseSteps(text);
+            if (parsed.empty())
+            {
+                stepsPreview->setText(QStringLiteral(
+                    "<span style=\"color:#e05050\">Not a list of durations - "
+                    "write something like 30s, 1m, 5m. The last valid list "
+                    "stays in use.</span>"));
+                return;
+            }
+
+            QStringList shown;
+            for (const auto seconds : parsed)
+            {
+                shown.append(formatTime(seconds));
+            }
+            stepsPreview->setText(shown.join(QStringLiteral(" → ")));
+        };
+        showSteps(steps->text());
+
+        QObject::connect(steps, &QLineEdit::textChanged, stepsPreview,
+                         showSteps);
+        // Only a list that reads is kept, so a half typed one never ends up
+        // deciding a timeout
+        QObject::connect(steps, &QLineEdit::editingFinished, steps, [steps] {
+            if (!RepeatSpamDetector::parseSteps(steps->text()).empty())
+            {
+                getSettings()->repeatAlertSteps.setValue(
+                    steps->text().trimmed());
+            }
+        });
+
+        assistant.append(steps);
+        assistant.append(stepsPreview);
         assistant->addStretch(1);
     }
 

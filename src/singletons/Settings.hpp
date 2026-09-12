@@ -276,6 +276,10 @@ public:
     /// separated by commas
     QStringSetting repeatAlertChannels = {"/moderation/repeatAlert/channels",
                                           ""};
+    /// The timeouts the repeated message alert offers, one step further each
+    /// time the chatter carries on after serving one
+    QStringSetting repeatAlertSteps = {"/moderation/repeatAlert/steps",
+                                       "30s, 1m, 5m, 10m, 30m"};
     BoolSetting hidePreferencesButton = {"/appearance/hidePreferencesButton",
                                          false};
     BoolSetting hideUserButton = {"/appearance/hideUserButton", false};

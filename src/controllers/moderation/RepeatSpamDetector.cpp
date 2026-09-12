@@ -14,6 +14,9 @@
 #include "widgets/dialogs/RepeatSpamPopup.hpp"
 #include "widgets/Window.hpp"
 
+#include <algorithm>
+#include <QRegularExpression>
+
 namespace {
 
 using namespace chatterino;
@@ -51,6 +54,15 @@ QString normalise(const QString &text)
         out.append(QString::fromUcs4(&cp, 1));
     }
     return out.simplified().toCaseFolded();
+}
+
+/// The step for someone who has served @a timeoutsServed timeouts. Past the
+/// last step it stays at the last.
+int stepFor(int timeoutsServed)
+{
+    const auto steps = RepeatSpamDetector::steps();
+    return steps[std::min<size_t>(static_cast<size_t>(timeoutsServed),
+                                  steps.size() - 1)];
 }
 
 QHash<QString, bool> parseChannels(const QString &value)
@@ -190,7 +202,8 @@ void RepeatSpamDetector::onMessage(const QString &channelName,
     if (sameAsFlagged && state.timeouts > 0)
     {
         // Already sat out a timeout for this one and sent it again
-        this->showAlert(channel, login, displayName, state, 60, true);
+        this->showAlert(channel, login, displayName, state,
+                        stepFor(state.timeouts), state.timeouts);
         return;
     }
 
@@ -201,12 +214,13 @@ void RepeatSpamDetector::onMessage(const QString &channelName,
             state.flaggedText = normalised;
             state.timeouts = 0;
         }
-        this->showAlert(channel, login, displayName, state, 30, false);
+        this->showAlert(channel, login, displayName, state,
+                        stepFor(state.timeouts), state.timeouts);
     }
 }
 
 void RepeatSpamDetector::onTimeout(const QString &channelName,
-                                   const QString &loginName)
+                                   const QString &loginName, int seconds)
 {
     const auto channel = channelName.toLower();
     if (!this->isEnabled(channel))
@@ -223,6 +237,10 @@ void RepeatSpamDetector::onTimeout(const QString &channelName,
         // The messages are gone with the timeout; what counts from here on is
         // whether the flagged one comes back
         it->recent.clear();
+        // The quiet time before a clean slate starts once the timeout is
+        // over - otherwise a long one would wipe the very escalation it was
+        // part of
+        it->lastActivity = QDateTime::currentDateTime().addSecs(seconds);
     }
 
     // Someone has already dealt with it
@@ -235,7 +253,7 @@ void RepeatSpamDetector::onTimeout(const QString &channelName,
 void RepeatSpamDetector::showAlert(const QString &channel, const QString &login,
                                    const QString &displayName,
                                    const UserState &state, int seconds,
-                                   bool again)
+                                   int timeoutsServed)
 {
     const auto key = keyOf(channel, login);
 
@@ -254,9 +272,77 @@ void RepeatSpamDetector::showAlert(const QString &channel, const QString &login,
     }
 
     popup->setCase(displayName.isEmpty() ? login : displayName, messages,
-                   seconds, again);
+                   seconds, timeoutsServed);
     popup->show();
     popup->raise();
+}
+
+std::vector<int> RepeatSpamDetector::steps()
+{
+    auto steps = parseSteps(getSettings()->repeatAlertSteps.getValue());
+    if (steps.empty())
+    {
+        // The rule this started out with, rather than no alert at all
+        steps = {30, 60};
+    }
+    return steps;
+}
+
+std::vector<int> RepeatSpamDetector::parseSteps(const QString &text)
+{
+    static const QRegularExpression separators(QStringLiteral(R"([,;>\s]+)"));
+    static const QRegularExpression part(
+        QStringLiteral(R"((\d+)([smhdw]?))"),
+        QRegularExpression::CaseInsensitiveOption);
+
+    // Twitch does not time anyone out for longer than two weeks
+    constexpr qint64 maxSeconds = 14 * 24 * 60 * 60;
+
+    std::vector<int> steps;
+    for (const auto &token : text.split(separators, Qt::SkipEmptyParts))
+    {
+        qint64 seconds = 0;
+        qsizetype consumed = 0;
+
+        auto it = part.globalMatch(token);
+        while (it.hasNext())
+        {
+            const auto match = it.next();
+            if (match.capturedStart() != consumed)
+            {
+                return {};
+            }
+            consumed = match.capturedEnd();
+
+            const qint64 value = match.captured(1).toLongLong();
+            const auto unit = match.captured(2).toLower();
+            switch (unit.isEmpty() ? 's' : unit.at(0).toLatin1())
+            {
+                case 'w':
+                    seconds += value * 7 * 24 * 60 * 60;
+                    break;
+                case 'd':
+                    seconds += value * 24 * 60 * 60;
+                    break;
+                case 'h':
+                    seconds += value * 60 * 60;
+                    break;
+                case 'm':
+                    seconds += value * 60;
+                    break;
+                default:
+                    seconds += value;
+                    break;
+            }
+        }
+
+        if (consumed != token.size() || seconds <= 0)
+        {
+            return {};
+        }
+        steps.push_back(static_cast<int>(std::min(seconds, maxSeconds)));
+    }
+    return steps;
 }
 
 }  // namespace chatterino

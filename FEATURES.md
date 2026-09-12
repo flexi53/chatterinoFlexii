@@ -110,9 +110,10 @@ suggestions, and neither do your own messages.
 The same popup has a switch that watches for a chatter sending the same
 message three times in a row. When it happens a small window opens - without
 taking the keyboard from you - with their last messages and times and a
-**Timeout 30s** button. If they send that message again after having been
-timed out, by you or another moderator, the window comes back offering
-**Timeout 1m**. Case, extra spaces and the invisible character used to get
+timeout button. Each time they send that message again after having been
+timed out, by you or another moderator, the window comes back offering the
+next step up. The steps are set under Settings -> Moderation -> Assistant and
+start out as **30s, 1m, 5m, 10m, 30m**; past the last one it stays there. Case, extra spaces and the invisible character used to get
 past Twitch's duplicate check do not make a message different.
 
 ## Badges and Twitch

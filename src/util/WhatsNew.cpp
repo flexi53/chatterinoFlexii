@@ -45,9 +45,9 @@ const std::array<Release, 2> RELEASES{{
          "Name the colors you keep reusing in the color picker, so picking "
          "\"Mods\" gives every moderator the same color.",
          "An alert for chatters sending the same message three times in a "
-         "row, with their messages and a 30 second timeout button - and a "
-         "minute if they carry on after it. Switched on per channel in the "
-         "moderation assistant.",
+         "row, with their messages and a timeout button that steps up each "
+         "time they carry on - 30s, 1m, 5m, 10m, 30m to begin with, and "
+         "adjustable. Switched on per channel in the moderation assistant.",
          "A little more room between rows of tabs.",
      }},
     {"8 September 2026",
