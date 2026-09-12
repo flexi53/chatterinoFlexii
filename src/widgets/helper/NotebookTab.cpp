@@ -117,6 +117,22 @@ NotebookTab::NotebookTab(Notebook *notebook)
             this->update();
         },
         this->managedConnections_);
+    for (auto *setting : {&getSettings()->tabBackgroundColor,
+                          &getSettings()->tabSelectedBackgroundColor,
+                          &getSettings()->tabGradientTopColor,
+                          &getSettings()->tabGradientBottomColor})
+    {
+        setting->connect(
+            [this](const auto &, const auto &) {
+                this->update();
+            },
+            this->managedConnections_, false);
+    }
+    getSettings()->tabGradient.connect(
+        [this](const auto &, const auto &) {
+            this->update();
+        },
+        this->managedConnections_, false);
 
     this->setMouseTracking(true);
 
@@ -918,6 +934,26 @@ void NotebookTab::paintEvent(QPaintEvent *)
         (windowFocused ? colors.backgrounds.regular
                        : colors.backgrounds.unfocused);
 
+    // A tab that wants attention - a highlight, new messages - keeps the
+    // theme's colour whatever was picked, so it still stands out.
+    const auto *lookSettings = getSettings();
+    const bool wantsAttention =
+        !this->selected_ &&
+        (this->highlightState_ == HighlightState::Highlighted ||
+         this->highlightState_ == HighlightState::NewMessage);
+
+    if (!wantsAttention)
+    {
+        const QColor picked(
+            this->selected_
+                ? lookSettings->tabSelectedBackgroundColor.getValue()
+                : lookSettings->tabBackgroundColor.getValue());
+        if (picked.isValid())
+        {
+            tabBackground = picked;
+        }
+    }
+
     auto selectionOffset = ceil((this->selected_ ? 0.f : 1.f) * scale);
 
     // fill the tab background
@@ -948,6 +984,23 @@ void NotebookTab::paintEvent(QPaintEvent *)
     painter.setClipPath(tabShape);
 
     painter.fillRect(bgRect, tabBackground);
+
+    // The gradient is a switch of its own, not part of a look. It leaves the
+    // selected tab flat so the open one is still obvious, and group headers
+    // keep their classic fill.
+    if (lookSettings->tabGradient && !this->selected_ && !wantsAttention &&
+        !this->hasFullyRoundedCorners())
+    {
+        const QColor top(lookSettings->tabGradientTopColor.getValue());
+        const QColor bottom(lookSettings->tabGradientBottomColor.getValue());
+        if (top.isValid() && bottom.isValid())
+        {
+            QLinearGradient gradient(bgRect.topLeft(), bgRect.bottomLeft());
+            gradient.setColorAt(0.0, top);
+            gradient.setColorAt(1.0, bottom);
+            painter.fillRect(bgRect, gradient);
+        }
+    }
 
     // Modern gives the tab some depth: light from above, a hairline rim.
     // Classic keeps the flat fill Chatterino has always had.

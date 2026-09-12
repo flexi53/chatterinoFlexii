@@ -240,6 +240,18 @@ public:
         "/appearance/uiStyle",
         UiStyle::Classic,
     };
+
+    /// Tab colours picked on the Look page. They apply whichever look is
+    /// chosen. An empty value leaves the colour to the theme.
+    QStringSetting tabBackgroundColor = {"/appearance/tabs/backgroundColor",
+                                         ""};
+    QStringSetting tabSelectedBackgroundColor = {
+        "/appearance/tabs/selectedBackgroundColor", ""};
+    BoolSetting tabGradient = {"/appearance/tabs/gradient", false};
+    QStringSetting tabGradientTopColor = {"/appearance/tabs/gradientTop",
+                                          "#3c3c3c"};
+    QStringSetting tabGradientBottomColor = {
+        "/appearance/tabs/gradientBottom", "#1c1c1c"};
     BoolSetting hidePreferencesButton = {"/appearance/hidePreferencesButton",
                                          false};
     BoolSetting hideUserButton = {"/appearance/hideUserButton", false};

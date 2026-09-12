@@ -9,6 +9,7 @@
 
 #include <QFrame>
 #include <QHBoxLayout>
+#include <QPushButton>
 #include <QVBoxLayout>
 
 namespace chatterino {
@@ -49,6 +50,39 @@ void LookPage::initLayout(GeneralPageView &layout)
         "away.");
 
     SettingWidget::dropdown("Look", s.uiStyle)->addTo(layout);
+
+    layout.addTitle("Tab colors");
+    layout.addDescription(
+        "These work with either look. The selected tab and tabs with new "
+        "messages or highlights keep their own colors, so they still stand "
+        "out.");
+
+    SettingWidget::colorButton("Background", s.tabBackgroundColor)
+        ->addTo(layout);
+    SettingWidget::colorButton("Selected tab", s.tabSelectedBackgroundColor)
+        ->addTo(layout);
+
+    SettingWidget::checkbox("Gradient", s.tabGradient)
+        ->setTooltip("Fill tabs with a gradient from top to bottom instead of "
+                     "a single color. The selected tab and group headers are "
+                     "left flat.")
+        ->addTo(layout);
+    SettingWidget::colorButton("Gradient top", s.tabGradientTopColor)
+        ->conditionallyEnabledBy(s.tabGradient)
+        ->addTo(layout);
+    SettingWidget::colorButton("Gradient bottom", s.tabGradientBottomColor)
+        ->conditionallyEnabledBy(s.tabGradient)
+        ->addTo(layout);
+
+    // Back to the theme. The gradient colors are kept, so switching it on
+    // again brings back what was set up before.
+    auto *reset = new QPushButton("Use theme colors");
+    QObject::connect(reset, &QPushButton::clicked, [&s] {
+        s.tabBackgroundColor.setValue("");
+        s.tabSelectedBackgroundColor.setValue("");
+        s.tabGradient.setValue(false);
+    });
+    layout.addWidget(reset);
 
     layout.addStretch();
 }

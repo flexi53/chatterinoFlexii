@@ -52,7 +52,10 @@ void ColorButton::paintEvent(QPaintEvent * /*event*/)
 
     auto rect = this->rect();
 
-    if (this->currentColor_.alpha() != 255)
+    // An invalid colour means none was picked. Showing it see-through keeps
+    // it from reading as black, which looks like a colour someone chose.
+    const bool empty = !this->currentColor_.isValid();
+    if (empty || this->currentColor_.alpha() != 255)
     {
         if (!this->checkerboardCacheValid_)
         {
@@ -76,7 +79,8 @@ void ColorButton::paintEvent(QPaintEvent * /*event*/)
         }
         painter.drawPixmap(rect.topLeft(), this->checkerboardCache_);
     }
-    painter.setBrush(this->currentColor_);
+    painter.setBrush(empty ? QBrush(Qt::NoBrush)
+                           : QBrush(this->currentColor_));
     painter.setPen({QColor(255, 255, 255, 127), 1});
     painter.drawRoundedRect(rect.x() + 1, rect.y() + 1, rect.width() - 2,
                             rect.height() - 2, 5, 5);
