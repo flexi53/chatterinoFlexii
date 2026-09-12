@@ -3,11 +3,13 @@
 // SPDX-License-Identifier: MIT
 
 #include "widgets/dialogs/ModerationAssistantPopup.hpp"
+#include "controllers/moderation/RepeatSpamDetector.hpp"
 
 #include "controllers/moderation/ModerationAssistant.hpp"
 #include "singletons/Settings.hpp"
 #include "util/FormatTime.hpp"
 
+#include <QCheckBox>
 #include <QComboBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -52,6 +54,19 @@ ModerationAssistantPopup::ModerationAssistantPopup(const QString &channel,
     modeRow->addWidget(this->mode_);
     modeRow->addStretch(1);
     layout->addLayout(modeRow);
+
+    auto *repeatAlert = new QCheckBox(QStringLiteral(
+        "Alert when someone sends the same message three times in a row"));
+    repeatAlert->setToolTip(QStringLiteral(
+        "Opens a window with their last messages and a 30 second timeout "
+        "button. If they send that message again after being timed out, the "
+        "window offers a minute. Works independently of the mode above."));
+    repeatAlert->setChecked(
+        RepeatSpamDetector::instance().isEnabled(this->channel_));
+    QObject::connect(repeatAlert, &QCheckBox::toggled, this, [this](bool on) {
+        RepeatSpamDetector::instance().setEnabled(this->channel_, on);
+    });
+    layout->addWidget(repeatAlert);
 
     this->status_ = new QLabel;
     layout->addWidget(this->status_);

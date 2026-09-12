@@ -105,6 +105,16 @@ acts.
 Cases stay on your computer. Moderators, VIPs and the broadcaster never get
 suggestions, and neither do your own messages.
 
+### Repeated messages
+
+The same popup has a switch that watches for a chatter sending the same
+message three times in a row. When it happens a small window opens - without
+taking the keyboard from you - with their last messages and times and a
+**Timeout 30s** button. If they send that message again after having been
+timed out, by you or another moderator, the window comes back offering
+**Timeout 1m**. Case, extra spaces and the invisible character used to get
+past Twitch's duplicate check do not make a message different.
+
 ## Badges and Twitch
 
 - **Chatterino Homies** badges, switchable under Appearance

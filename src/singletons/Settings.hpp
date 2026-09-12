@@ -272,6 +272,10 @@ public:
     IntSetting modAssistMinSimilar = {"/moderation/assistant/minSimilar", 3};
     /// How alike two messages have to be to count as similar, in percent
     IntSetting modAssistSimilarity = {"/moderation/assistant/similarity", 60};
+    /// Channels that raise an alert when a chatter repeats the same message,
+    /// separated by commas
+    QStringSetting repeatAlertChannels = {"/moderation/repeatAlert/channels",
+                                          ""};
     BoolSetting hidePreferencesButton = {"/appearance/hidePreferencesButton",
                                          false};
     BoolSetting hideUserButton = {"/appearance/hideUserButton", false};

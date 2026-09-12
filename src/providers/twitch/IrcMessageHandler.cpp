@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "providers/twitch/IrcMessageHandler.hpp"
+#include "controllers/moderation/RepeatSpamDetector.hpp"
 
 #include "Application.hpp"
 #include "common/Channel.hpp"
@@ -548,6 +549,14 @@ void IrcMessageHandler::handleClearChatMessage(Communi::IrcMessage *message)
         }
 
         chan->addOrReplaceTimeout(std::move(clearChat.message), time);
+
+        // Escalates the repeated message alert once they have served a
+        // timeout, whoever gave it
+        if (clearChat.username)
+        {
+            RepeatSpamDetector::instance().onTimeout(chanName,
+                                                     *clearChat.username);
+        }
     }
 
     if (getSettings()->hideModerated)
@@ -1269,6 +1278,16 @@ void IrcMessageHandler::addMessage(Communi::IrcMessage *message,
 
         sink.addMessage(msg, MessageContext::Original);
         chan->addRecentChatter(msg->displayName);
+
+        // Watches for a chatter repeating themselves, where that alert is on.
+        // Messages loaded from history are left out, or joining a channel
+        // would open a window for everything that happened before.
+        if (!isSub && !tags.contains("historical"))
+        {
+            RepeatSpamDetector::instance().onMessage(
+                chan->getName(), msg->loginName, msg->displayName, content,
+                tags.value("badges").toString(), msg->serverReceivedTime);
+        }
     }
 }
 

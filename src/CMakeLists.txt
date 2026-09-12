@@ -628,6 +628,8 @@ set(SOURCE_FILES
         util/OnceFlag.hpp
         controllers/moderation/ModerationAssistant.cpp
         controllers/moderation/ModerationAssistant.hpp
+        controllers/moderation/RepeatSpamDetector.cpp
+        controllers/moderation/RepeatSpamDetector.hpp
         util/ProfileSetup.cpp
         util/ProfileSetup.hpp
         util/WhatsNew.cpp
@@ -772,6 +774,8 @@ set(SOURCE_FILES
         widgets/dialogs/SelectChannelFiltersDialog.hpp
         widgets/dialogs/ModerationAssistantPopup.cpp
         widgets/dialogs/ModerationAssistantPopup.hpp
+        widgets/dialogs/RepeatSpamPopup.cpp
+        widgets/dialogs/RepeatSpamPopup.hpp
         widgets/dialogs/SettingsDialog.cpp
         widgets/dialogs/SettingsDialog.hpp
         widgets/dialogs/UpdateDialog.cpp
