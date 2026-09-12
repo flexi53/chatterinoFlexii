@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
+#include "widgets/dialogs/RepeatSpamPopup.hpp"
 #include "util/FormatTime.hpp"
 #include "controllers/moderation/RepeatSpamDetector.hpp"
 #include "widgets/settingspages/ModerationPage.hpp"
@@ -323,6 +324,44 @@ ModerationPage::ModerationPage()
             "the mouse is over it.");
         repeatForm->addRow("Close the window by itself after", autoClose);
         assistant->addLayout(repeatForm);
+
+        auto *testAlert = new QPushButton("Show a test alert");
+        testAlert->setToolTip(
+            "Opens the alert window with made up messages, so you can see how "
+            "it looks and behaves. Click again for the version after a "
+            "timeout. Its buttons do nothing.");
+        QObject::connect(testAlert, &QPushButton::clicked, this, [this] {
+            // Every other click shows the alert as it looks after a timeout
+            static bool afterTimeout = false;
+
+            const auto now = QDateTime::currentDateTime();
+            const auto steps = RepeatSpamDetector::steps();
+            QList<RepeatSpamPopup::Entry> history{
+                {now.addSecs(-40), "kauft jetzt merch", -1},
+                {now.addSecs(-36), "kauft jetzt merch", -1},
+                {now.addSecs(-31), "kauft zarbex merch", -1},
+            };
+
+            auto *popup = new RepeatSpamPopup("test", "testuser", this);
+            popup->setTestMode(true);
+            if (afterTimeout)
+            {
+                history.append({now.addSecs(-25), {}, steps.front()});
+                history.append({now, "kauft jetzt merch", -1});
+                popup->setCase("TestUser", history,
+                               steps[std::min<size_t>(1, steps.size() - 1)], 1);
+            }
+            else
+            {
+                popup->setCase("TestUser", history, steps.front(), 0);
+            }
+            afterTimeout = !afterTimeout;
+            popup->show();
+        });
+        auto *testRow = new QHBoxLayout;
+        testRow->addWidget(testAlert);
+        testRow->addStretch(1);
+        assistant->addLayout(testRow);
 
         assistant->addStretch(1);
     }

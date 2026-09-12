@@ -124,7 +124,8 @@ offering the next step up.
   Ignore button, and stays open while the mouse is over it
 
 Steps, similarity and the closing time are under Settings -> Moderation ->
-Assistant.
+Assistant, along with **Show a test alert**, which opens the window with made
+up messages and buttons that do nothing.
 
 ## Badges and Twitch
 

@@ -39,17 +39,23 @@ public:
     void setCase(const QString &displayName, const QList<Entry> &history,
                  int seconds, int timeoutsServed);
 
+    /// A test alert looks and behaves like a real one, but its buttons send
+    /// nothing
+    void setTestMode(bool test);
+
 private:
     void tick();
 
     QString channel_;
     QString login_;
     int seconds_ = 30;
+    bool test_ = false;
     /// Seconds until it closes by itself, 0 when it does not
     int remaining_ = 0;
 
     QLabel *headline_{};
     QLabel *messages_{};
+    QLabel *testNote_{};
     QPushButton *ignore_{};
     QPushButton *timeout_{};
     QTimer countdown_;

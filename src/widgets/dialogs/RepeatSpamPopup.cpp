@@ -52,6 +52,13 @@ RepeatSpamPopup::RepeatSpamPopup(QString channel, QString login,
     this->messages_->setTextInteractionFlags(Qt::TextSelectableByMouse);
     layout->addWidget(this->messages_, 1);
 
+    this->testNote_ = new QLabel(
+        QStringLiteral("<i style=\"color:#9a9a9a\">Test alert - made up "
+                       "messages, and the buttons do nothing.</i>"));
+    this->testNote_->setTextFormat(Qt::RichText);
+    this->testNote_->hide();
+    layout->addWidget(this->testNote_);
+
     auto *buttons = new QHBoxLayout;
     buttons->addStretch(1);
     this->ignore_ = new QPushButton(QStringLiteral("Ignore"));
@@ -66,7 +73,7 @@ RepeatSpamPopup::RepeatSpamPopup(QString channel, QString login,
 
     QObject::connect(this->timeout_, &QPushButton::clicked, this, [this] {
         auto channel = getApp()->getTwitch()->getChannelOrEmpty(this->channel_);
-        if (!channel->isEmpty())
+        if (!this->test_ && !channel->isEmpty())
         {
             auto command = QStringLiteral("/timeout %1 %2")
                                .arg(this->login_)
@@ -156,6 +163,15 @@ void RepeatSpamPopup::setCase(const QString &displayName,
         this->ignore_->setText(QStringLiteral("Ignore"));
         this->countdown_.stop();
     }
+}
+
+void RepeatSpamPopup::setTestMode(bool test)
+{
+    this->test_ = test;
+    this->testNote_->setVisible(test);
+    this->setWindowTitle(
+        test ? QStringLiteral("Repeated message - test")
+             : QStringLiteral("Repeated message - #%1").arg(this->channel_));
 }
 
 void RepeatSpamPopup::tick()
