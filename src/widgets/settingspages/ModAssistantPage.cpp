@@ -31,6 +31,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QPainter>
+#include <QPlainTextEdit>
 #include <QPointer>
 #include <QPushButton>
 #include <QScrollArea>
@@ -692,6 +693,40 @@ void ModAssistantPage::buildModHighlights(QVBoxLayout *layout)
             "er dessen Farbe und Caption, und die Profilbilder kommen dahinter.",
             true);
 
+    addHeading(body, "Bots ausschließen");
+    body->addWidget(this->createCheckBox(
+        "Alle Namen, die auf „bot“ enden, ausschließen",
+        getSettings()->modHighlightsIgnoreBotNames,
+        "Fängt auch Bots ab, die nicht in der Liste stehen, etwa sery_bot. "
+        "Schalt es aus, falls ein echter Mod so heißt."));
+    addText(body, "Diese nie markieren, Namen durch Kommas getrennt:");
+    {
+        auto *ignored = new QPlainTextEdit(
+            getSettings()->modHighlightsIgnoredUsers.getValue());
+        ignored->setPlaceholderText("fossabot, streamelements, …");
+        ignored->setToolTip(
+            "Wer hier steht, bekommt weder Profilbilder noch Farbe, egal in "
+            "welchem Kanal er Mod ist.");
+        // A few lines, so the whole list reads without scrolling sideways
+        ignored->setFixedHeight(ignored->fontMetrics().lineSpacing() * 3 + 16);
+
+        // Saved once typing pauses, not on every key
+        auto *save = new QTimer(ignored);
+        save->setSingleShot(true);
+        save->setInterval(500);
+        QObject::connect(save, &QTimer::timeout, ignored, [ignored] {
+            getSettings()->modHighlightsIgnoredUsers.setValue(
+                ignored->toPlainText().trimmed());
+        });
+        QObject::connect(ignored, &QPlainTextEdit::textChanged, save,
+                         qOverload<>(&QTimer::start));
+        body->addWidget(ignored);
+    }
+    addText(body,
+            "Bots wie fossabot sind in vielen Kanälen Mod und würden sonst "
+            "sämtliche Profilbilder bekommen.",
+            true);
+
     addHeading(body, "Kanäle");
     this->modSearch_ = new QLineEdit;
     this->modSearch_->setPlaceholderText("Kanal suchen …");
@@ -1081,7 +1116,7 @@ bool ModAssistantPage::filterElements(const QString &query)
         "mod",        "assistent", "assistant", "moderation", "spam",
         "emote",      "alarm",     "alert",     "vorschlag",  "timeout",
         "wiederholt", "fenster",   "reason",    "farbe",      "position",
-        "whosthemod", "highlight", "kanal",
+        "whosthemod", "highlight", "kanal",      "bot",
     };
 
     if (query.isEmpty())

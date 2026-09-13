@@ -85,6 +85,9 @@ private:
     void save() const;
     void refreshIfStale();
     void channelsChanged();
+    /// The bots to leave out changed - the captions are made again, nothing
+    /// is fetched
+    void exclusionsChanged();
     void fetch(const QStringList &channels);
     void fetchEach(const QStringList &channels);
     void store(const QString &channel, const QStringList &mods);

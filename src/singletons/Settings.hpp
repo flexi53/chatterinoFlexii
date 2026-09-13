@@ -330,6 +330,16 @@ public:
         "/moderation/modHighlights/colorEnabled", true};
     QStringSetting modHighlightsColor = {"/moderation/modHighlights/color",
                                          "#509146ff"};
+    /// Moderators never marked - bots, mostly - separated by commas
+    QStringSetting modHighlightsIgnoredUsers = {
+        "/moderation/modHighlights/ignoredUsers",
+        "fossabot, nightbot, moobot, aecrobot, streamelements, sery_bot, "
+        "botrixoficial, mixitupbot, streamerbot, streamlabs, restreambot, "
+        "kofistreambot, tangiabot, wizebot, vivbot, rainmaker, blerp, "
+        "pokemoncommunitygame"};
+    /// Whether any moderator whose name ends in "bot" is left out as well
+    BoolSetting modHighlightsIgnoreBotNames = {
+        "/moderation/modHighlights/ignoreBotNames", true};
     /// What the emote alert offers at each step: "delete" or a timeout length
     QStringSetting emoteAlertSteps = {"/moderation/emoteAlert/steps",
                                       "delete, delete, 30s"};

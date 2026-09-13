@@ -188,6 +188,10 @@ whosthemod.xyz knows, or type a channel name and press Enter to check it
 directly. A chatter's own user or badge highlight keeps its colour and
 caption; the pictures join it.
 
+Bots are left out: fossabot, nightbot, moobot, aecrobot, streamelements and
+other common ones are listed to begin with, the list can be edited, and any
+name ending in "bot" is left out too unless that is switched off.
+
 ## Badges and Twitch
 
 - **Chatterino Homies** badges, switchable under Appearance

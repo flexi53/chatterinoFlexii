@@ -20,6 +20,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QObject>
+#include <QRegularExpression>
 #include <QSaveFile>
 #include <QSet>
 #include <QTimer>
@@ -58,6 +59,41 @@ QStringList chosenChannels()
         }
     }
     return channels;
+}
+
+/// The moderators left out of the marking: the names listed, and where the
+/// user wants it any name ending in "bot"
+struct Exclusions {
+    QSet<QString> names;
+    bool botNames = false;
+
+    bool has(const QString &login) const
+    {
+        return this->names.contains(login) ||
+               (this->botNames && login.endsWith(QStringLiteral("bot")));
+    }
+};
+
+Exclusions exclusions()
+{
+    static const QRegularExpression separators(QStringLiteral("[\\s,;]+"));
+
+    Exclusions result;
+    const auto listed = getSettings()->modHighlightsIgnoredUsers.getValue();
+    for (auto name : listed.split(separators, Qt::SkipEmptyParts))
+    {
+        name = name.toLower();
+        while (name.startsWith(u'@') || name.startsWith(u'#'))
+        {
+            name.remove(0, 1);
+        }
+        if (!name.isEmpty())
+        {
+            result.names.insert(name);
+        }
+    }
+    result.botNames = getSettings()->modHighlightsIgnoreBotNames.getValue();
+    return result;
 }
 
 QStringList loginList(const QJsonArray &array)
@@ -132,6 +168,16 @@ void ModHighlights::start()
     getSettings()->modHighlightsEnabled.connect(
         [this](const auto &, auto) {
             this->refreshIfStale();
+        },
+        this->connections_, false);
+    getSettings()->modHighlightsIgnoredUsers.connect(
+        [this](const auto &, auto) {
+            this->exclusionsChanged();
+        },
+        this->connections_, false);
+    getSettings()->modHighlightsIgnoreBotNames.connect(
+        [this](const auto &, auto) {
+            this->exclusionsChanged();
         },
         this->connections_, false);
 
@@ -345,6 +391,16 @@ void ModHighlights::channelsChanged()
     this->refreshIfStale();
 }
 
+void ModHighlights::exclusionsChanged()
+{
+    const auto chosen = chosenChannels();
+    {
+        std::lock_guard lock(this->mutex_);
+        this->rebuildCaptionsLocked(chosen);
+    }
+    this->updated.invoke();
+}
+
 void ModHighlights::fetch(const QStringList &channels)
 {
     if (channels.isEmpty())
@@ -454,11 +510,18 @@ void ModHighlights::listsChanged()
 
 void ModHighlights::rebuildCaptionsLocked(const QStringList &chosen)
 {
+    const auto excluded = exclusions();
+
     this->captions_.clear();
     for (const auto &channel : chosen)
     {
         for (const auto &mod : this->mods_.value(channel))
         {
+            // Bots are mods everywhere and would carry every picture
+            if (excluded.has(mod))
+            {
+                continue;
+            }
             auto &caption = this->captions_[mod];
             if (!caption.isEmpty())
             {
