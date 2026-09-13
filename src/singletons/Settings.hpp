@@ -291,8 +291,11 @@ public:
     /// separated by commas
     QStringSetting emoteAlertChannels = {"/moderation/emoteAlert/channels",
                                          ""};
-    /// How many emotes a message made only of them needs to raise the alert
-    IntSetting emoteAlertMinEmotes = {"/moderation/emoteAlert/minEmotes", 10};
+    /// How many emotes within the counting window raise the emote alert
+    IntSetting emoteAlertMinEmotes = {"/moderation/emoteAlert/minEmotes", 8};
+    /// Seconds over which the emote alert adds up a chatter's emotes
+    IntSetting emoteAlertWindowSeconds = {
+        "/moderation/emoteAlert/windowSeconds", 60};
     /// What the emote alert offers at each step: "delete" or a timeout length
     QStringSetting emoteAlertSteps = {"/moderation/emoteAlert/steps",
                                       "delete, delete, 30s"};

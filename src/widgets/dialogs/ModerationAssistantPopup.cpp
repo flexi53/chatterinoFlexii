@@ -70,13 +70,12 @@ ModerationAssistantPopup::ModerationAssistantPopup(const QString &channel,
     });
     layout->addWidget(repeatAlert);
 
-    auto *emoteAlert = new QCheckBox(
-        QStringLiteral("Alert on messages made only of emotes"));
+    auto *emoteAlert = new QCheckBox(QStringLiteral("Alert on emote spam"));
     emoteAlert->setToolTip(QStringLiteral(
-        "Opens a window when someone sends a message made only of emotes, from "
-        "the number set under Settings, Moderation, Assistant. It offers to "
-        "delete the message at first and a timeout further on, as set there. "
-        "Works independently of the mode above."));
+        "Opens a window when someone floods the chat with emotes - adding up "
+        "their emotes over a short time, as set under Settings, Moderation, "
+        "Assistant. It offers to delete the messages at first and a timeout "
+        "further on. Works independently of the mode above."));
     emoteAlert->setChecked(
         EmoteSpamDetector::instance().isEnabled(this->channel_));
     QObject::connect(emoteAlert, &QCheckBox::toggled, this, [this](bool on) {

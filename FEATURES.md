@@ -133,17 +133,21 @@ Steps, similarity and the closing time are under Settings -> Moderation ->
 Assistant, along with **Show a test alert**, which opens the window with made
 up messages and buttons that do nothing.
 
-### Emote-only messages
+### Emote spam
 
-A second switch in the same popup watches for messages made only of emotes,
-from **10 emotes** to begin with. The same window comes up, offering what the
-steps say - to begin with **delete, delete, 30s**: the message is deleted the
-first two times, and the third time earns a timeout. The next step only comes
-once the chatter has actually had a message deleted or been timed out, by you
-or anyone else, so a hype moment someone let pass does not count against
-them. Emojis count as emotes; cheers do not. The number, the steps and a
-**Show a test emote alert** button are under Settings -> Moderation ->
-Assistant.
+A second switch in the same popup watches for chatters flooding the chat with
+emotes. It adds up the emotes of their messages over a short time - **8 within
+60 seconds** to begin with - counting the messages where emotes outweigh words,
+so a string of short bursts with the odd word in between counts as much as one
+long wall. The same window comes up, offering what the steps say - to begin
+with **delete, delete, 30s**. Delete takes down every message it counted.
+
+The next step only comes once the chatter has actually had a message deleted
+or been timed out, by you or anyone else, so a hype moment someone let pass
+does not count against them, and a burst that was ignored does not bring the
+window straight back. Emojis count as emotes; cheers do not. The number, the
+time, the steps and a **Show a test emote spam alert** button are under
+Settings -> Moderation -> Assistant.
 
 ## Badges and Twitch
 

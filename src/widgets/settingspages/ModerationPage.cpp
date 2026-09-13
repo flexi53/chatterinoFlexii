@@ -360,11 +360,13 @@ ModerationPage::ModerationPage()
         assistant->addLayout(testRow);
 
         auto *emoteIntro = new QLabel(
-            "<br><b>Emote-only messages</b><br>An alert for messages made "
-            "only of emotes, from the number set here. The steps say what it "
-            "offers each time: delete, or a timeout length. The next step "
-            "comes once the chatter has actually had a message deleted or been "
-            "timed out.");
+            "<br><b>Emote spam</b><br>An alert for chatters flooding the chat "
+            "with emotes. It adds up the emotes of their messages over the time "
+            "set here, counting the messages where emotes outweigh words - so "
+            "a string of short bursts counts as much as one long wall. The "
+            "steps say what it offers each time: delete, or a timeout length. "
+            "The next step comes once the chatter has actually had a message "
+            "deleted or been timed out.");
         emoteIntro->setTextFormat(Qt::RichText);
         emoteIntro->setWordWrap(true);
         assistant.append(emoteIntro);
@@ -374,6 +376,13 @@ ModerationPage::ModerationPage()
             this->createSpinBox(getSettings()->emoteAlertMinEmotes, 2, 200);
         minEmotes->setSuffix(" emotes");
         emoteForm->addRow("Alert from", minEmotes);
+        auto *emoteWindow =
+            this->createSpinBox(getSettings()->emoteAlertWindowSeconds, 5, 600);
+        emoteWindow->setSuffix(" s");
+        emoteWindow->setToolTip(
+            "How far back their emotes are added up. A single message with "
+            "enough emotes raises the alert on its own.");
+        emoteForm->addRow("Added up over", emoteWindow);
         assistant->addLayout(emoteForm);
 
         auto *emoteSteps =
@@ -420,7 +429,7 @@ ModerationPage::ModerationPage()
         assistant.append(emoteSteps);
         assistant.append(emotePreview);
 
-        auto *testEmote = new QPushButton("Show a test emote alert");
+        auto *testEmote = new QPushButton("Show a test emote spam alert");
         testEmote->setToolTip(
             "Opens the emote alert with made up messages. Each click moves on "
             "a step. Its buttons do nothing.");

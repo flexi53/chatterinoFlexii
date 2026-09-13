@@ -71,13 +71,13 @@ public:
     void setSuggestion(const QString &displayName,
                        const ModSuggestion &suggestion);
 
-    /// A message made only of @a emotes emotes. @a action is
-    /// EmoteSpamDetector::DELETE to delete @a messageIds, otherwise a timeout
-    /// length. @a actionsServed counts the deletions and timeouts the chatter
-    /// has already had, out of @a stepCount steps.
-    void setEmoteSpam(const QString &displayName, int emotes, int action,
-                      const QStringList &messageIds, int actionsServed,
-                      int stepCount);
+    /// @a emotes emotes across @a messages messages within @a window seconds.
+    /// @a action is EmoteSpamDetector::DELETE to delete @a messageIds,
+    /// otherwise a timeout length. @a actionsServed counts the deletions and
+    /// timeouts the chatter has already had, out of @a stepCount steps.
+    void setEmoteSpam(const QString &displayName, int emotes, int messages,
+                      int window, int action, const QStringList &messageIds,
+                      int actionsServed, int stepCount);
 
     /// The emote alert with made up lines, at step @a step
     void showTestEmoteSpam(int step);
@@ -95,8 +95,8 @@ private:
     void setAction(int seconds);
     /// Headline, why line and button for a suggestion
     void applySuggestion(const ModSuggestion &suggestion);
-    void applyEmoteSpam(int emotes, int action, int actionsServed,
-                        int stepCount);
+    void applyEmoteSpam(int emotes, int messages, int window, int action,
+                        int actionsServed, int stepCount);
     void setWhy(const QString &html, const QString &tooltip = {});
     void loadProfile();
     void restartCountdown();

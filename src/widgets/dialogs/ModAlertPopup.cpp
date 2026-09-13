@@ -679,29 +679,37 @@ void ModAlertPopup::setAction(int seconds)
 }
 
 void ModAlertPopup::setEmoteSpam(const QString &displayName, int emotes,
-                                 int action, const QStringList &messageIds,
+                                 int messages, int window, int action,
+                                 const QStringList &messageIds,
                                  int actionsServed, int stepCount)
 {
-    this->setWindowTitle(
-        QStringLiteral("Emote-only message - #%1").arg(this->channel_));
+    this->setWindowTitle(QStringLiteral("Emote spam - #%1").arg(this->channel_));
     this->kind_ = Kind::EmoteSpam;
     this->deleteIds_ = messageIds;
 
     this->showChatter(displayName);
-    this->applyEmoteSpam(emotes, action, actionsServed, stepCount);
+    this->applyEmoteSpam(emotes, messages, window, action, actionsServed,
+                         stepCount);
     this->showRecentLines();
     this->restartCountdown();
 }
 
-void ModAlertPopup::applyEmoteSpam(int emotes, int action, int actionsServed,
-                                   int stepCount)
+void ModAlertPopup::applyEmoteSpam(int emotes, int messages, int window,
+                                   int action, int actionsServed, int stepCount)
 {
     this->headline_->setText(
-        QStringLiteral("Sent a message made only of %1 emotes.").arg(emotes));
+        messages <= 1
+            ? QStringLiteral("Sent a message of %1 emotes.").arg(emotes)
+            : QStringLiteral("Sent %1 emotes across %2 messages in under %3 "
+                             "seconds.")
+                  .arg(emotes)
+                  .arg(messages)
+                  .arg(window));
     this->setWhy(
-        QStringLiteral("<b>Why</b>&nbsp;&nbsp;only emotes &middot; %1 of them, "
-                       "the alert starts at %2 &middot; step %3 of %4")
+        QStringLiteral("<b>Why</b>&nbsp;&nbsp;mostly emotes &middot; %1 within "
+                       "%2s, the alert starts at %3 &middot; step %4 of %5")
             .arg(emotes)
+            .arg(window)
             .arg(std::max(1, getSettings()->emoteAlertMinEmotes.getValue()))
             .arg(std::min(actionsServed, std::max(1, stepCount) - 1) + 1)
             .arg(std::max(1, stepCount)));
@@ -711,23 +719,33 @@ void ModAlertPopup::applyEmoteSpam(int emotes, int action, int actionsServed,
 void ModAlertPopup::showTestEmoteSpam(int step)
 {
     this->kind_ = Kind::EmoteSpam;
-    this->showTestChatter(QStringLiteral("Emote-only message - test"));
+    this->showTestChatter(QStringLiteral("Emote spam - test"));
 
     const QString name = QStringLiteral("TestUser");
     const auto now = QDateTime::currentDateTime();
     const auto steps = EmoteSpamDetector::steps();
-    const auto emotes = QStringLiteral("🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥");
 
-    for (int i = 0; i <= step; i++)
+    // Like a real flood: short bursts, now and then with a word in between
+    const QStringList lines{
+        QStringLiteral("🥕 👩‍🚒 🚒 🚒"),
+        QStringLiteral("Möhrchen 🥕 🥕 🥕"),
+        QStringLiteral("🥕 👩‍🚒 🥕"),
+        QStringLiteral("peeeeeeteeeeer 🥕 👩‍🚒"),
+    };
+    for (qsizetype i = 0; i < lines.size(); i++)
     {
         this->view_->addMessage(
-            makeTestMessage(name, emotes, now.addSecs(-40 * (step - i))),
+            makeTestMessage(name, lines[i],
+                            now.addSecs(-12 * (lines.size() - 1 - i))),
             MessageContext::Original);
     }
 
-    this->deleteIds_ = {QStringLiteral("test")};
+    this->deleteIds_ = {QStringLiteral("test1"), QStringLiteral("test2"),
+                        QStringLiteral("test3"), QStringLiteral("test4")};
     this->applyEmoteSpam(
-        12, steps[std::min<size_t>(static_cast<size_t>(step), steps.size() - 1)],
+        12, static_cast<int>(lines.size()),
+        std::max(1, getSettings()->emoteAlertWindowSeconds.getValue()),
+        steps[std::min<size_t>(static_cast<size_t>(step), steps.size() - 1)],
         step, static_cast<int>(steps.size()));
 
     this->messages_->setChannel(this->view_);

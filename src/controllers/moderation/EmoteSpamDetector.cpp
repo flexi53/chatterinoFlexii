@@ -109,19 +109,16 @@ void EmoteSpamDetector::onMessage(const QString &channelName,
         return;
     }
 
-    const auto emotes = emoteOnlyCount(*message);
-    if (emotes < std::max(1, getSettings()->emoteAlertMinEmotes.getValue()))
+    const auto emotes = emoteCount(*message);
+    if (emotes == 0)
     {
         return;
     }
 
-    // A repeated message alert already open for them says more
-    auto *open = ModAlertPopup::openFor(channel, login);
-    if (open != nullptr && open->kind() != ModAlertPopup::Kind::EmoteSpam)
-    {
-        return;
-    }
-
+    const auto *settings = getSettings();
+    const auto threshold = std::max(1, settings->emoteAlertMinEmotes.getValue());
+    const auto window =
+        std::max(1, settings->emoteAlertWindowSeconds.getValue());
     const auto now = QDateTime::currentDateTime();
 
     // Keeps the map from growing for as long as the app runs
@@ -142,17 +139,51 @@ void EmoteSpamDetector::onMessage(const QString &channelName,
         state = UserState{};
     }
     state.lastActivity = now;
-    state.alerted = true;
 
-    // A new window starts a new batch; an open one gathers what else they send
+    state.recent.append({now, emotes, message->id});
+    while (!state.recent.isEmpty() &&
+           state.recent.first().time.secsTo(now) > window)
+    {
+        state.recent.removeFirst();
+    }
+
+    int total = 0;
+    for (const auto &counted : state.recent)
+    {
+        total += counted.emotes;
+    }
+    if (total < threshold)
+    {
+        return;
+    }
+
+    // A repeated message alert already open for them says more
+    auto *open = ModAlertPopup::openFor(channel, login);
+    if (open != nullptr && open->kind() != ModAlertPopup::Kind::EmoteSpam)
+    {
+        return;
+    }
+
+    // An alert for this burst was let go - no new window until it has run out
+    if (open == nullptr && state.alerted && state.lastAlert.isValid() &&
+        state.lastAlert.secsTo(now) <= window)
+    {
+        return;
+    }
+
     if (open == nullptr)
     {
         state.pendingIds.clear();
     }
-    if (!message->id.isEmpty())
+    for (const auto &counted : state.recent)
     {
-        state.pendingIds.append(message->id);
+        if (!counted.id.isEmpty() && !state.pendingIds.contains(counted.id))
+        {
+            state.pendingIds.append(counted.id);
+        }
     }
+    state.alerted = true;
+    state.lastAlert = now;
 
     const auto steps = EmoteSpamDetector::steps();
     const auto action =
@@ -161,10 +192,10 @@ void EmoteSpamDetector::onMessage(const QString &channelName,
 
     auto *popup = ModAlertPopup::obtain(
         channel, login, &getApp()->getWindows()->getMainWindow());
-    popup->setEmoteSpam(message->displayName.isEmpty() ? login
-                                                       : message->displayName,
-                        emotes, action, state.pendingIds, state.actions,
-                        static_cast<int>(steps.size()));
+    popup->setEmoteSpam(
+        message->displayName.isEmpty() ? login : message->displayName, total,
+        static_cast<int>(state.recent.size()), window, action,
+        state.pendingIds, state.actions, static_cast<int>(steps.size()));
     popup->show();
     popup->raise();
 }
@@ -180,11 +211,16 @@ void EmoteSpamDetector::onAction(const QString &channelName,
 
     const auto login = loginName.toLower();
     auto it = this->users_.find(keyOf(channel, login));
-    if (it != this->users_.end() && it->alerted)
+    if (it != this->users_.end())
     {
         // One step per alert, however many messages the action took down
-        it->actions++;
-        it->alerted = false;
+        if (it->alerted)
+        {
+            it->actions++;
+            it->alerted = false;
+        }
+        // Dealt with - counting starts over from here
+        it->recent.clear();
         it->pendingIds.clear();
         it->lastActivity = QDateTime::currentDateTime();
     }
@@ -196,9 +232,10 @@ void EmoteSpamDetector::onAction(const QString &channelName,
     }
 }
 
-int EmoteSpamDetector::emoteOnlyCount(const Message &message)
+int EmoteSpamDetector::emoteCount(const Message &message)
 {
     int emotes = 0;
+    int words = 0;
     for (const auto &element : message.elements)
     {
         const auto flags = element->getFlags();
@@ -238,14 +275,16 @@ int EmoteSpamDetector::emoteOnlyCount(const Message &message)
             }
             for (const auto &word : text->words())
             {
-                if (!word.trimmed().isEmpty())
+                if (std::any_of(word.begin(), word.end(), [](QChar ch) {
+                        return ch.isLetterOrNumber();
+                    }))
                 {
-                    return 0;
+                    words++;
                 }
             }
         }
     }
-    return emotes;
+    return emotes > 0 && emotes >= words ? emotes : 0;
 }
 
 std::vector<int> EmoteSpamDetector::steps()

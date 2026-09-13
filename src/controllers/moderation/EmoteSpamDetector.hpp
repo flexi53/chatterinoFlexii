@@ -8,6 +8,7 @@
 
 #include <QDateTime>
 #include <QHash>
+#include <QList>
 #include <QString>
 #include <QStringList>
 
@@ -15,9 +16,13 @@
 
 namespace chatterino {
 
-/// Spots messages made only of emotes, from a set number of them, and puts
-/// the case in front of the moderator with what fits: deleting the message at
-/// first, a timeout further on. The next step comes once the chatter has
+/// Spots a chatter flooding the chat with emotes and puts the case in front
+/// of the moderator with what fits: deleting the messages at first, a timeout
+/// further on.
+///
+/// It adds up the emotes of a chatter's messages over a short time, counting
+/// the messages where emotes outweigh words - so a string of short bursts
+/// counts as much as one long wall. The next step comes once the chatter has
 /// actually had a message deleted or been timed out.
 ///
 /// It only ever offers the action. Pressing the button is left to the user.
@@ -25,7 +30,7 @@ namespace chatterino {
 class EmoteSpamDetector
 {
 public:
-    /// The step that deletes the message rather than timing anyone out
+    /// The step that deletes the messages rather than timing anyone out
     static constexpr int DELETE = -1;
 
     static EmoteSpamDetector &instance();
@@ -40,10 +45,10 @@ public:
     /// Someone deleted one of @a login's messages, or timed them out
     void onAction(const QString &channel, const QString &login);
 
-    /// How many emotes the message is made of, or 0 if there is anything
-    /// else in it. Cheers do not count - they pay the streamer rather than
-    /// fill the chat.
-    static int emoteOnlyCount(const Message &message);
+    /// How many emotes the message counts for: all of them if emotes
+    /// outweigh words, otherwise none. Cheers never count - they pay the
+    /// streamer rather than fill the chat.
+    static int emoteCount(const Message &message);
 
     /// What is on offer at each step: DELETE, or a timeout length in
     /// seconds. Never empty.
@@ -55,11 +60,20 @@ public:
 private:
     EmoteSpamDetector() = default;
 
+    struct Counted {
+        QDateTime time;
+        int emotes = 0;
+        QString id;
+    };
+
     struct UserState {
+        /// Their emote heavy messages within the counting window
+        QList<Counted> recent;
         /// Deletions and timeouts they have had since their first alert
         int actions = 0;
         /// An alert went up and nothing has been done about it yet
         bool alerted = false;
+        QDateTime lastAlert;
         /// The messages the open alert would delete
         QStringList pendingIds;
         QDateTime lastActivity;
