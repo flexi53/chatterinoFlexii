@@ -174,7 +174,19 @@ changed; whatever is picked is made bright, so the reason always stands out.
 Settings -> Mod-Assistent is split into tabs: **General** for what all alert
 windows share, then one each for **suggestions**, **repeated messages** and
 **emote spam** with everything about that alert - detection, steps, colour and
-its test button.
+its test button, and **Mod-Highlights** (below).
+
+### Mod highlights
+
+With the **WhoseTheMod** plugin switched on, the Mod-Assistent page has a
+**Mod-Highlights** tab: pick channels, and messages from their moderators are
+marked with the **profile pictures** of those channels at the end of the line -
+someone who moderates two of them gets both - on a background colour you can
+set or turn off. The mod lists come from whosthemod.xyz, are kept on your
+computer and fetched again every six hours. Search the channels
+whosthemod.xyz knows, or type a channel name and press Enter to check it
+directly. A chatter's own user or badge highlight keeps its colour and
+caption; the pictures join it.
 
 ## Badges and Twitch
 

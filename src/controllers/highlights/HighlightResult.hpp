@@ -58,6 +58,12 @@ struct HighlightResult {
      **/
     QString caption{};
 
+    /**
+     * @brief true if the caption joins one an earlier highlight already set,
+     * instead of giving way to it
+     **/
+    bool appendCaption{false};
+
     bool operator==(const HighlightResult &other) const;
     bool operator!=(const HighlightResult &other) const;
 

@@ -15,13 +15,13 @@
 #include "messages/layouts/MessageLayoutContext.hpp"
 #include "messages/layouts/MessageLayoutElement.hpp"
 #include "providers/emoji/Emojis.hpp"
+#include "providers/twitch/CaptionAvatars.hpp"
 #include "providers/twitch/TwitchEmotes.hpp"
+#include "singletons/Fonts.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
 #include "util/DebugCount.hpp"
 #include "util/Variant.hpp"
-#include "providers/twitch/CaptionAvatars.hpp"
-#include "singletons/Fonts.hpp"
 
 #include <QJsonArray>
 #include <QJsonObject>

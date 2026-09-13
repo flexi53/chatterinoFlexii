@@ -319,6 +319,17 @@ public:
                                          "#ff33f5"};
     QStringSetting modAlertColorSuggestion = {
         "/moderation/alerts/colorSuggestion", "#1ae8ff"};
+
+    /// Messages from moderators of the channels picked here are marked with
+    /// those channels' profile pictures. Needs the WhoseTheMod plugin.
+    BoolSetting modHighlightsEnabled = {"/moderation/modHighlights/enabled",
+                                        true};
+    ChatterinoSetting<std::vector<QString>> modHighlightChannels = {
+        "/moderation/modHighlights/channels", {}};
+    BoolSetting modHighlightsColorEnabled = {
+        "/moderation/modHighlights/colorEnabled", true};
+    QStringSetting modHighlightsColor = {"/moderation/modHighlights/color",
+                                         "#509146ff"};
     /// What the emote alert offers at each step: "delete" or a timeout length
     QStringSetting emoteAlertSteps = {"/moderation/emoteAlert/steps",
                                       "delete, delete, 30s"};

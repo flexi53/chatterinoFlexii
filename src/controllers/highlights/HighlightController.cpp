@@ -16,9 +16,11 @@
 #include "providers/colors/ColorProvider.hpp"
 #include "providers/kick/KickAccount.hpp"
 #include "providers/twitch/TwitchAccount.hpp"  // IWYU pragma: keep
+#include "controllers/moderation/ModHighlights.hpp"
+#include "providers/twitch/CaptionAvatars.hpp"
 #include "providers/twitch/TwitchBadge.hpp"
 #include "singletons/Settings.hpp"
-#include "providers/twitch/CaptionAvatars.hpp"
+#include "util/PostToThread.hpp"
 
 namespace {
 
@@ -395,6 +397,57 @@ void rebuildBadgeHighlights(Settings &settings,
     }
 }
 
+/// Moderators of the channels picked under Mod-Highlights. Checked last, so a
+/// highlight of the user's own keeps its colour and caption and the channel
+/// pictures join the caption.
+void rebuildModHighlights(std::vector<HighlightCheck> &checks)
+{
+    checks.emplace_back(HighlightCheck{
+        [](const auto &args, const auto &twitchBadges, const auto &senderName,
+           const auto &originalMessage, const auto &flags,
+           const auto self) -> std::optional<HighlightResult> {
+            (void)args;             // unused
+            (void)twitchBadges;     // unused
+            (void)originalMessage;  // unused
+            (void)flags;            // unused
+
+            if (self)
+            {
+                return std::nullopt;
+            }
+
+            auto caption = ModHighlights::instance().captionFor(senderName);
+            if (caption.isEmpty())
+            {
+                return std::nullopt;
+            }
+
+            // Without a colour of its own the message is marked with a clear
+            // one: it gets the pictures, and its background stays as it was
+            const auto *settings = getSettings();
+            QColor color(0, 0, 0, 0);
+            if (settings->modHighlightsColorEnabled.getValue())
+            {
+                const QColor picked(settings->modHighlightsColor.getValue());
+                if (picked.isValid())
+                {
+                    color = picked;
+                }
+            }
+
+            HighlightResult result{
+                false,                           // alert
+                false,                           // play sound
+                std::nullopt,                    // custom sound url
+                std::make_shared<QColor>(color), // color
+                false,                           // show in mentions
+                caption,                         // caption
+            };
+            result.appendCaption = true;
+            return result;
+        }});
+}
+
 }  // namespace
 
 namespace chatterino {
@@ -521,6 +574,8 @@ void HighlightController::rebuildChecks(Settings &settings)
 
     rebuildBadgeHighlights(settings, *checks);
 
+    rebuildModHighlights(*checks);
+
     // Twitch names in captions are looked up now, so their pictures are ready
     // by the time a highlighted message comes in
     QStringList captions{
@@ -546,7 +601,16 @@ void HighlightController::rebuildChecks(Settings &settings)
     {
         captions.append(highlight.getCaption());
     }
+    for (const auto &channel : settings.modHighlightChannels.getValue())
+    {
+        captions.append(u'@' + channel);
+    }
     captionavatars::prefetch(captions);
+
+    // Queued, so the mod lists start loading once the app is up
+    postToThread([] {
+        ModHighlights::instance().start();
+    });
 }
 
 std::pair<bool, HighlightResult> HighlightController::check(
@@ -629,6 +693,10 @@ std::pair<bool, HighlightResult> HighlightController::check(
                 if (result.caption.isEmpty())
                 {
                     result.caption = checkResult->caption;
+                }
+                else if (checkResult->appendCaption)
+                {
+                    result.caption += u' ' + checkResult->caption;
                 }
             }
 

@@ -34,6 +34,7 @@
 #include "providers/seventv/SeventvEmotes.hpp"
 #include "providers/seventv/SeventvPersonalEmotes.hpp"
 #include "providers/twitch/api/Helix.hpp"
+#include "providers/twitch/CaptionAvatars.hpp"
 #include "providers/twitch/ChannelPointReward.hpp"
 #include "providers/twitch/TwitchAccount.hpp"
 #include "providers/twitch/TwitchBadge.hpp"
@@ -54,7 +55,6 @@
 #include "util/QStringHash.hpp"
 #include "util/Variant.hpp"
 #include "widgets/Window.hpp"
-#include "providers/twitch/CaptionAvatars.hpp"
 
 #include <boost/variant.hpp>
 #include <QApplication>
