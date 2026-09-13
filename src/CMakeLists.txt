@@ -900,6 +900,10 @@ set(SOURCE_FILES
         widgets/settingspages/LookPage.hpp
         widgets/settingspages/ModAssistantPage.cpp
         widgets/settingspages/ModAssistantPage.hpp
+        widgets/settingspages/ModHighlightsPage.cpp
+        widgets/settingspages/ModHighlightsPage.hpp
+        widgets/settingspages/PageSections.cpp
+        widgets/settingspages/PageSections.hpp
         widgets/settingspages/ModerationPage.cpp
         widgets/settingspages/ModerationPage.hpp
         widgets/settingspages/NicknamesPage.cpp
