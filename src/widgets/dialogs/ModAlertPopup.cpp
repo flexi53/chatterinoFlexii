@@ -12,6 +12,8 @@
 #    include "util/MacOsHelpers.h"
 #endif
 
+#include "singletons/WindowManager.hpp"
+#include "widgets/Window.hpp"
 #include "Application.hpp"
 #include "common/Channel.hpp"
 #include "controllers/commands/CommandController.hpp"
@@ -432,23 +434,42 @@ void ModAlertPopup::present()
 {
 #ifdef Q_OS_MACOS
     const bool onAllSpaces = getSettings()->modAlertAlwaysOnTop.getValue();
+    // winId creates the native window, so what is set on it holds before it
+    // first shows
+    const auto view = static_cast<std::uintptr_t>(this->winId());
     if (onAllSpaces)
     {
-        // winId creates the native window, so this holds before it first
-        // shows
-        chatterinoShowOnAllSpaces(static_cast<std::uintptr_t>(this->winId()));
+        chatterinoShowOnAllSpaces(view);
     }
-#endif
 
+    const auto showHere = [this, onAllSpaces] {
+        const auto nativeView = static_cast<std::uintptr_t>(this->winId());
+        this->show();
+        // Qt's raise() activates the whole app on macOS, which would take
+        // the keyboard from whatever the moderator is typing into
+        chatterinoOrderFrontWithoutActivating(nativeView);
+        if (onAllSpaces)
+        {
+            chatterinoShowOnAllSpaces(nativeView);
+        }
+    };
+
+    // With the app on another space - a full screen app in front, say - a
+    // window shown now would open on that space and stay hidden there. Bring
+    // the app back first and show the window once its space is up.
+    auto &mainWindow = getApp()->getWindows()->getMainWindow();
+    if (!chatterinoIsOnActiveSpace(
+            static_cast<std::uintptr_t>(mainWindow.winId())))
+    {
+        chatterinoActivateApp();
+        QTimer::singleShot(600, this, showHere);
+        return;
+    }
+
+    showHere();
+#else
     this->show();
     this->raise();
-
-#ifdef Q_OS_MACOS
-    if (onAllSpaces)
-    {
-        // Again, in case showing it was what brought the window into being
-        chatterinoShowOnAllSpaces(static_cast<std::uintptr_t>(this->winId()));
-    }
 #endif
 }
 

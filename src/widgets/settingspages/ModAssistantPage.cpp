@@ -100,27 +100,24 @@ ModAssistantPage::ModAssistantPage()
         // Opens a test window, right away or after the delay above
         const auto openTest =
             [this, delayTests](std::function<void(ModAlertPopup *)> fill) {
-                const bool delayed = delayTests->isChecked();
-                const auto open = [this, delayed, fill] {
-                    // A delayed one sits on the main window like a real alert,
-                    // so it behaves the same with the settings out of sight
-                    auto *parent =
-                        delayed ? static_cast<QWidget *>(
-                                      &getApp()->getWindows()->getMainWindow())
-                                : static_cast<QWidget *>(this);
-                    auto *popup = new ModAlertPopup("test", "testuser", parent);
+                if (!delayTests->isChecked())
+                {
+                    auto *popup = new ModAlertPopup("test", "testuser", this);
                     fill(popup);
                     popup->present();
-                };
+                    return;
+                }
 
-                if (delayed)
-                {
-                    QTimer::singleShot(5000, this, open);
-                }
-                else
-                {
-                    open();
-                }
+                // Held by the main window, which outlives these settings, so
+                // closing them in the meantime does not call the test off. It
+                // also sits on the main window like a real alert does.
+                auto *mainWindow = &getApp()->getWindows()->getMainWindow();
+                QTimer::singleShot(5000, mainWindow, [mainWindow, fill] {
+                    auto *popup =
+                        new ModAlertPopup("test", "testuser", mainWindow);
+                    fill(popup);
+                    popup->present();
+                });
             };
 
         auto *suggestionsIntro = new QLabel(
