@@ -894,6 +894,8 @@ set(SOURCE_FILES
         widgets/settingspages/KeyboardSettingsPage.hpp
         widgets/settingspages/LookPage.cpp
         widgets/settingspages/LookPage.hpp
+        widgets/settingspages/ModAssistantPage.cpp
+        widgets/settingspages/ModAssistantPage.hpp
         widgets/settingspages/ModerationPage.cpp
         widgets/settingspages/ModerationPage.hpp
         widgets/settingspages/NicknamesPage.cpp

@@ -494,8 +494,7 @@ void ModerationAssistant::onMessage(const QString &channelName,
         channel, login, &getApp()->getWindows()->getMainWindow());
     popup->setSuggestion(displayName.isEmpty() ? login : displayName,
                          *suggestion);
-    popup->show();
-    popup->raise();
+    popup->present();
 }
 
 QStringList ModerationAssistant::detectReasons(const QStringList &messages)

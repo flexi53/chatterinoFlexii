@@ -99,12 +99,12 @@ moderators hand out there.
 - **Nothing happens unless you press the button.** The window closes by itself
   otherwise, and at most three suggestions are open at once
 - How many cases it needs and how similar a message has to be are under
-  Settings -> Moderation -> Assistant
+  Settings -> Mod-Assistent
 
 "Similar" means similar wording. It is good at spam, repeated insults and
 links, and knows nothing about context - someone quoting a message to
 complain about it looks the same to it. That is why it suggests and never
-acts. **Show a test suggestion** under Settings -> Moderation -> Assistant
+acts. **Show a test suggestion** under Settings -> Mod-Assistent
 opens one with made up messages.
 
 Cases stay on your computer. Moderators, VIPs and the broadcaster never get
@@ -129,8 +129,8 @@ offering the next step up.
 - The window **closes by itself** after 15 seconds, shown by a bar running
   down along its bottom, and stays open while the mouse is over it
 
-Steps, similarity and the closing time are under Settings -> Moderation ->
-Assistant, along with **Show a test alert**, which opens the window with made
+Steps, similarity and the closing time are under Settings ->
+Mod-Assistent, along with **Show a test alert**, which opens the window with made
 up messages and buttons that do nothing.
 
 ### Emote spam
@@ -147,7 +147,7 @@ or been timed out, by you or anyone else, so a hype moment someone let pass
 does not count against them, and a burst that was ignored does not bring the
 window straight back. Emojis count as emotes; cheers do not. The number, the
 time, the steps and a **Show a test emote spam alert** button are under
-Settings -> Moderation -> Assistant.
+Settings -> Mod-Assistent.
 
 ### All alert windows
 

@@ -328,8 +328,7 @@ void RepeatSpamDetector::showAlert(const QString &channel, const QString &login,
         channel, login, &getApp()->getWindows()->getMainWindow());
     popup->setCase(displayName.isEmpty() ? login : displayName, seconds,
                    timeoutsServed);
-    popup->show();
-    popup->raise();
+    popup->present();
 }
 
 std::vector<int> RepeatSpamDetector::steps()

@@ -196,8 +196,7 @@ void EmoteSpamDetector::onMessage(const QString &channelName,
         message->displayName.isEmpty() ? login : message->displayName, total,
         static_cast<int>(state.recent.size()), window, action,
         state.pendingIds, state.actions, static_cast<int>(steps.size()));
-    popup->show();
-    popup->raise();
+    popup->present();
 }
 
 void EmoteSpamDetector::onAction(const QString &channelName,

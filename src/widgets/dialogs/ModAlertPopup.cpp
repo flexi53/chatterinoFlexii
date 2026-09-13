@@ -8,6 +8,10 @@
 #include "controllers/moderation/ModerationAssistant.hpp"
 #include "widgets/dialogs/ModAlertPopup.hpp"
 
+#ifdef Q_OS_MACOS
+#    include "util/MacOsHelpers.h"
+#endif
+
 #include "Application.hpp"
 #include "common/Channel.hpp"
 #include "controllers/commands/CommandController.hpp"
@@ -422,6 +426,30 @@ void ModAlertPopup::closeFor(const QString &channel, const QString &login)
     {
         open->close();
     }
+}
+
+void ModAlertPopup::present()
+{
+#ifdef Q_OS_MACOS
+    const bool onAllSpaces = getSettings()->modAlertAlwaysOnTop.getValue();
+    if (onAllSpaces)
+    {
+        // winId creates the native window, so this holds before it first
+        // shows
+        chatterinoShowOnAllSpaces(static_cast<std::uintptr_t>(this->winId()));
+    }
+#endif
+
+    this->show();
+    this->raise();
+
+#ifdef Q_OS_MACOS
+    if (onAllSpaces)
+    {
+        // Again, in case showing it was what brought the window into being
+        chatterinoShowOnAllSpaces(static_cast<std::uintptr_t>(this->winId()));
+    }
+#endif
 }
 
 int ModAlertPopup::openCount()

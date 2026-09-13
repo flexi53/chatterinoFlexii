@@ -61,6 +61,11 @@ public:
     /// How many alerts are open right now
     static int openCount();
 
+    /// Shows the window and brings it to the front. On macOS it is also made
+    /// to show on every space, so it does not stay behind on a full screen
+    /// app's space when macOS switches back to the app.
+    void present();
+
     /// A repeated message alert offering a timeout of @a seconds.
     /// @a timeoutsServed counts the timeouts the chatter has already sat out
     /// for this message. Starts the countdown over.

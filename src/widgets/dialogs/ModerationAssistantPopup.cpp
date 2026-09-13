@@ -61,8 +61,8 @@ ModerationAssistantPopup::ModerationAssistantPopup(const QString &channel,
     repeatAlert->setToolTip(QStringLiteral(
         "Opens a window with their last messages and a timeout button. Each "
         "time they carry on after serving a timeout, the button offers the "
-        "next step - the steps are set under Settings, Moderation, "
-        "Assistant. Works independently of the mode above."));
+        "next step - the steps are set under Settings, "
+        "Mod-Assistent. Works independently of the mode above."));
     repeatAlert->setChecked(
         RepeatSpamDetector::instance().isEnabled(this->channel_));
     QObject::connect(repeatAlert, &QCheckBox::toggled, this, [this](bool on) {
@@ -73,8 +73,8 @@ ModerationAssistantPopup::ModerationAssistantPopup(const QString &channel,
     auto *emoteAlert = new QCheckBox(QStringLiteral("Alert on emote spam"));
     emoteAlert->setToolTip(QStringLiteral(
         "Opens a window when someone floods the chat with emotes - adding up "
-        "their emotes over a short time, as set under Settings, Moderation, "
-        "Assistant. It offers to delete the messages at first and a timeout "
+        "their emotes over a short time, as set under Settings, "
+        "Mod-Assistent. It offers to delete the messages at first and a timeout "
         "further on. Works independently of the mode above."));
     emoteAlert->setChecked(
         EmoteSpamDetector::instance().isEnabled(this->channel_));
