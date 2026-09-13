@@ -22,6 +22,7 @@
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSet>
+#include <QTimer>
 
 namespace {
 
@@ -267,9 +268,21 @@ void ColorPickerDialog::rebuildNamedColors()
         QObject::connect(
             button, &QWidget::customContextMenuRequested, this,
             [this, button, i, entry](const QPoint &pos) {
-                QMenu menu(button);
+                // Every action here rebuilds the list, which deletes this
+                // button. So the menu belongs to the dialog rather than to the
+                // button, the action is carried out once the menu has closed,
+                // and the list is rebuilt after the button's own signal is
+                // done - deleting it any sooner crashes.
+                QMenu menu(this);
+                const auto *rename = menu.addAction(u"Rename..."_s);
+                const auto *update = menu.addAction(u"Update to selected color"_s);
+                menu.addSeparator();
+                const auto *remove = menu.addAction(u"Remove"_s);
 
-                menu.addAction(u"Rename..."_s, [this, i, entry] {
+                const auto *chosen = menu.exec(button->mapToGlobal(pos));
+                auto &colors = getSettings()->namedColors;
+                if (chosen == rename)
+                {
                     bool accepted = false;
                     auto name = QInputDialog::getText(
                                     this, u"Rename color"_s, u"Name:"_s,
@@ -279,28 +292,26 @@ void ColorPickerDialog::rebuildNamedColors()
                     {
                         return;
                     }
-
-                    auto &colors = getSettings()->namedColors;
                     colors.removeAt(i);
                     colors.insert(NamedColor(name, entry.color()), i);
-                    this->rebuildNamedColors();
-                });
-
-                menu.addAction(u"Update to selected color"_s, [this, i, entry] {
-                    auto &colors = getSettings()->namedColors;
+                }
+                else if (chosen == update)
+                {
                     colors.removeAt(i);
                     colors.insert(NamedColor(entry.name(), this->color()), i);
+                }
+                else if (chosen == remove)
+                {
+                    colors.removeAt(i);
+                }
+                else
+                {
+                    return;
+                }
+
+                QTimer::singleShot(0, this, [this] {
                     this->rebuildNamedColors();
                 });
-
-                menu.addSeparator();
-
-                menu.addAction(u"Remove"_s, [this, i] {
-                    getSettings()->namedColors.removeAt(i);
-                    this->rebuildNamedColors();
-                });
-
-                menu.exec(button->mapToGlobal(pos));
             });
 
         this->namedColors_->addWidget(button);
