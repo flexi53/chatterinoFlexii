@@ -328,6 +328,12 @@ ModerationPage::ModerationPage()
                 }
             };
 
+        auto *suggestionsIntro = new QLabel(
+            "<br><b>Vorschläge</b><br>Wann der Assistent sich meldet.");
+        suggestionsIntro->setTextFormat(Qt::RichText);
+        suggestionsIntro->setWordWrap(true);
+        assistant.append(suggestionsIntro);
+
         auto *form = new QFormLayout;
         form->addRow("Vorschläge ab so vielen gesammelten Fällen",
                      this->createSpinBox(getSettings()->modAssistMinCases, 1,
