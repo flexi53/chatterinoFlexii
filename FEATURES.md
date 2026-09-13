@@ -92,7 +92,7 @@ moderators hand out there.
   opens a window laid out like a user card - the same one the repeated
   message alert uses - saying how many cases it resembles, what moderators
   gave, and offering the most common action on a button
-- It says **why**: what can be read off the message outright - a link, a
+- It gives a **reason**: what can be read off the message outright - a link, a
   repeated message, caps, character or emote spam, a wall of text - the
   words it shares with earlier cases, and the closest earlier case: what that
   chatter wrote and what they got for it. Hovering shows the next closest.
@@ -158,6 +158,16 @@ seconds, so you can switch to another program and watch it come up there.
 Drag one to the size and place you want and the next ones open that size and
 there, stepping aside when several are up at once; width and height can also
 be set directly, and the saved place reset.
+
+Every alert shows its **reason** at the top in a glowing box - "Same message
+repeated", "Emote spam", or what the assistant found - in a colour of its own
+for each kind of alert, which the running bar takes too. The colours can be
+changed; whatever is picked is made bright, so the reason always stands out.
+
+Settings -> Mod-Assistent is split into tabs: **General** for what all alert
+windows share, then one each for **suggestions**, **repeated messages** and
+**emote spam** with everything about that alert - detection, steps, colour and
+its test button.
 
 ## Badges and Twitch
 

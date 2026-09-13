@@ -311,6 +311,14 @@ public:
                                          false};
     IntSetting modAlertX = {"/moderation/alerts/x", 0};
     IntSetting modAlertY = {"/moderation/alerts/y", 0};
+    /// The colour each alert's reason stands out in. Shown lit up whatever is
+    /// picked, so the reason always catches the eye.
+    QStringSetting modAlertColorRepeat = {"/moderation/alerts/colorRepeat",
+                                          "#ffa31a"};
+    QStringSetting modAlertColorEmote = {"/moderation/alerts/colorEmote",
+                                         "#ff33f5"};
+    QStringSetting modAlertColorSuggestion = {
+        "/moderation/alerts/colorSuggestion", "#1ae8ff"};
     /// What the emote alert offers at each step: "delete" or a timeout length
     QStringSetting emoteAlertSteps = {"/moderation/emoteAlert/steps",
                                       "delete, delete, 30s"};

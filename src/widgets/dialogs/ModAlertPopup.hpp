@@ -7,6 +7,7 @@
 #include "widgets/BasePopup.hpp"
 
 #include <pajlada/signals/scoped-connection.hpp>
+#include <QColor>
 #include <QElapsedTimer>
 #include <QPoint>
 #include <QString>
@@ -15,6 +16,7 @@
 #include <memory>
 #include <optional>
 
+class QFrame;
 class QLabel;
 class QPushButton;
 
@@ -31,8 +33,8 @@ class PixmapButton;
 /// Twitch's timeout notices included - and a bar running down to the window
 /// closing by itself, above a button that hands out the action on offer.
 ///
-/// The repeated message alert and the moderation assistant's suggestions
-/// both use it, and a chatter never has more than one open at a time.
+/// The repeated message alert, the emote spam alert and the moderation
+/// assistant's suggestions all use it, and a chatter never has more than one open at a time.
 class ModAlertPopup : public BasePopup
 {
     Q_OBJECT
@@ -60,6 +62,16 @@ public:
     static void closeFor(const QString &channel, const QString &login);
     /// How many alerts are open right now
     static int openCount();
+
+    /// The colour an alert of @a kind sets its reason off in, lit up
+    static QColor reasonColor(Kind kind);
+    /// The colour an alert of @a kind starts out with
+    static QColor defaultReasonColor(Kind kind);
+    /// @a picked made bright and strong, so a reason in it always stands out.
+    /// Grey, black and white have no hue to light up and give @a fallback.
+    static QColor vividColor(const QColor &picked, const QColor &fallback);
+    /// Style sheet for the "REASON" chip in @a color
+    static QString reasonTagStyle(const QColor &color);
 
     /// Shows the window and brings it to the front. On macOS it is also made
     /// to show on every space, so it does not stay behind on a full screen
@@ -102,7 +114,10 @@ private:
     void applySuggestion(const ModSuggestion &suggestion);
     void applyEmoteSpam(int emotes, int messages, int window, int action,
                         int actionsServed, int stepCount);
-    void setWhy(const QString &html, const QString &tooltip = {});
+    /// The reason box: what the alert is about in a few words, set off in the
+    /// colour of its kind, with what backs it up underneath
+    void setReason(const QString &reason, const QString &details,
+                   const QString &tooltip = {});
     void loadProfile();
     void restartCountdown();
     /// Puts a window about to show for the first time where the moderator
@@ -130,7 +145,12 @@ private:
     Label *name_{};
     QLabel *details_{};
     QLabel *headline_{};
-    QLabel *why_{};
+    QFrame *reasonBox_{};
+    QLabel *reasonTag_{};
+    QLabel *reason_{};
+    QLabel *reasonDetails_{};
+    /// The colour of the reason shown, which the countdown bar takes too
+    QColor reasonColor_;
     ChannelView *messages_{};
     QLabel *testNote_{};
     QWidget *countdownBar_{};

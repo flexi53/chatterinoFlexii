@@ -31,6 +31,8 @@
 #include "widgets/Label.hpp"
 #include "util/WidgetHelpers.hpp"
 
+#include <QGraphicsDropShadowEffect>
+#include <QFrame>
 #include <QSizeGrip>
 #include <QEvent>
 #include <QLocale>
@@ -234,15 +236,26 @@ QString describeMatch(const ModMatch &match, bool html)
     return result;
 }
 
-/// The why line of a suggestion, and the next closest cases for its tooltip
-std::pair<QString, QString> describeSuggestion(const ModSuggestion &suggestion)
+QString capitalized(QString text)
 {
-    QStringList because;
-    if (!suggestion.messageReasons.isEmpty())
+    if (!text.isEmpty())
     {
-        because.append(
-            suggestion.messageReasons.join(QStringLiteral(" &middot; ")));
+        text[0] = text[0].toUpper();
     }
+    return text;
+}
+
+/// What a suggestion rests on: the reason in a few words, the closest case
+/// underneath it, and the next closest cases for the tooltip
+struct SuggestionReason {
+    QString reason;
+    QString details;
+    QString tooltip;
+};
+
+SuggestionReason describeSuggestion(const ModSuggestion &suggestion)
+{
+    QString shared;
     if (!suggestion.closest.empty() &&
         !suggestion.closest.front().sharedWords.isEmpty())
     {
@@ -255,30 +268,53 @@ std::pair<QString, QString> describeSuggestion(const ModSuggestion &suggestion)
                               : QStringLiteral("&ldquo;%1&rdquo;")
                                     .arg(word.toHtmlEscaped()));
         }
-        because.append(QStringLiteral("shares %1 with earlier cases")
-                           .arg(quoted.join(QStringLiteral(", "))));
+        shared = QStringLiteral("shares %1 with earlier cases")
+                     .arg(quoted.join(QStringLiteral(", ")));
     }
 
-    QStringList lines;
-    lines.append(QStringLiteral("<b>Why</b>&nbsp;&nbsp;%1")
-                     .arg(because.isEmpty()
-                              ? QStringLiteral("resembles earlier cases")
-                              : because.join(QStringLiteral(" &middot; "))));
+    SuggestionReason result;
+    QStringList details;
+    // What can be seen in the message itself leads; the words it has in
+    // common with earlier cases only when there is nothing else to name
+    if (!suggestion.messageReasons.isEmpty())
+    {
+        QStringList reasons;
+        for (const auto &reason : suggestion.messageReasons)
+        {
+            reasons.append(reason.toHtmlEscaped());
+        }
+        result.reason =
+            capitalized(reasons.join(QStringLiteral(" &middot; ")));
+        if (!shared.isEmpty())
+        {
+            details.append(capitalized(shared));
+        }
+    }
+    else if (!shared.isEmpty())
+    {
+        result.reason = capitalized(shared);
+    }
+    else
+    {
+        result.reason = QStringLiteral("Resembles earlier cases");
+    }
     if (!suggestion.closest.empty())
     {
-        lines.append(describeMatch(suggestion.closest.front(), true));
+        details.append(describeMatch(suggestion.closest.front(), true));
     }
+    result.details = details.join(QStringLiteral("<br>"));
 
     QStringList others;
     for (size_t i = 1; i < suggestion.closest.size(); i++)
     {
         others.append(describeMatch(suggestion.closest[i], false));
     }
-
-    return {lines.join(QStringLiteral("<br>")),
-            others.isEmpty()
-                ? QString()
-                : QStringLiteral("Also similar:\n") + others.join('\n')};
+    if (!others.isEmpty())
+    {
+        result.tooltip =
+            QStringLiteral("Also similar:\n") + others.join('\n');
+    }
+    return result;
 }
 
 /// Lines that belong on the card: what the chatter wrote, and the timeouts
@@ -357,12 +393,37 @@ ModAlertPopup::ModAlertPopup(QString channel, QString login, QWidget *parent)
     head->addLayout(who, 1);
     layout->addLayout(head);
 
-    // Why the window came up
-    this->why_ = new QLabel;
-    this->why_->setTextFormat(Qt::RichText);
-    this->why_->setWordWrap(true);
-    this->why_->hide();
-    layout->addWidget(this->why_);
+    // Why the window came up, set off in the alert's colour so it is taken in
+    // at a glance
+    this->reasonBox_ = new QFrame;
+    this->reasonBox_->setObjectName(QStringLiteral("reasonBox"));
+    auto *reasonLayout = new QVBoxLayout(this->reasonBox_);
+    reasonLayout->setContentsMargins(10, 8, 10, 8);
+    reasonLayout->setSpacing(5);
+    auto *reasonRow = new QHBoxLayout;
+    reasonRow->setSpacing(9);
+    this->reasonTag_ = new QLabel(QStringLiteral("REASON"));
+    this->reasonTag_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    auto *glow = new QGraphicsDropShadowEffect(this->reasonTag_);
+    glow->setOffset(0, 0);
+    glow->setBlurRadius(18);
+    this->reasonTag_->setGraphicsEffect(glow);
+    reasonRow->addWidget(this->reasonTag_, 0, Qt::AlignVCenter);
+    this->reason_ = new QLabel;
+    this->reason_->setTextFormat(Qt::RichText);
+    this->reason_->setWordWrap(true);
+    auto reasonFont = this->reason_->font();
+    reasonFont.setBold(true);
+    reasonFont.setPointSizeF(reasonFont.pointSizeF() * 1.15);
+    this->reason_->setFont(reasonFont);
+    reasonRow->addWidget(this->reason_, 1);
+    reasonLayout->addLayout(reasonRow);
+    this->reasonDetails_ = new QLabel;
+    this->reasonDetails_->setTextFormat(Qt::RichText);
+    this->reasonDetails_->setWordWrap(true);
+    reasonLayout->addWidget(this->reasonDetails_);
+    this->reasonBox_->hide();
+    layout->addWidget(this->reasonBox_);
 
     // What they wrote, as it looked in chat
     this->messages_ = new ChannelView(this, ChannelView::Context::UserCard,
@@ -614,9 +675,9 @@ void ModAlertPopup::setCase(const QString &displayName, int seconds,
     }
 
     const auto steps = RepeatSpamDetector::steps();
-    this->setWhy(
-        QStringLiteral("<b>Why</b>&nbsp;&nbsp;same message repeated &middot; "
-                       "step %1 of %2")
+    this->setReason(
+        QStringLiteral("Same message repeated"),
+        QStringLiteral("Step %1 of %2")
             .arg(std::min<size_t>(static_cast<size_t>(timeoutsServed),
                                   steps.size() - 1) +
                  1)
@@ -648,16 +709,99 @@ void ModAlertPopup::applySuggestion(const ModSuggestion &suggestion)
             .arg(suggestion.similarCases)
             .arg(suggestion.spread));
 
-    const auto [why, tooltip] = describeSuggestion(suggestion);
-    this->setWhy(why, tooltip);
+    const auto described = describeSuggestion(suggestion);
+    this->setReason(described.reason, described.details, described.tooltip);
     this->setAction(suggestion.seconds);
 }
 
-void ModAlertPopup::setWhy(const QString &html, const QString &tooltip)
+void ModAlertPopup::setReason(const QString &reason, const QString &details,
+                              const QString &tooltip)
 {
-    this->why_->setText(html);
-    this->why_->setToolTip(tooltip);
-    this->why_->setVisible(!html.isEmpty());
+    const auto color = reasonColor(this->kind_);
+    this->reasonColor_ = color;
+
+    this->reasonBox_->setStyleSheet(
+        QStringLiteral("QFrame#reasonBox { background: rgba(%1, %2, %3, 40); "
+                       "border: 1px solid rgba(%1, %2, %3, 120); "
+                       "border-left: 4px solid %4; border-radius: 6px; }")
+            .arg(color.red())
+            .arg(color.green())
+            .arg(color.blue())
+            .arg(color.name()));
+    this->reasonTag_->setStyleSheet(reasonTagStyle(color));
+    if (auto *glow = qobject_cast<QGraphicsDropShadowEffect *>(
+            this->reasonTag_->graphicsEffect()))
+    {
+        glow->setColor(color);
+    }
+
+    // Lit up text reads on a dark theme; on a light one it would glare, so
+    // the text goes deep in the same colour and the box carries the light
+    const auto textColor =
+        this->theme->isLightTheme() ? color.darker(190) : color;
+    this->reason_->setText(QStringLiteral("<span style=\"color:%1\">%2</span>")
+                               .arg(textColor.name(), reason));
+    this->reasonDetails_->setText(details);
+    this->reasonDetails_->setVisible(!details.isEmpty());
+    this->reasonBox_->setToolTip(tooltip);
+    this->reasonBox_->setVisible(!reason.isEmpty());
+}
+
+QColor ModAlertPopup::defaultReasonColor(Kind kind)
+{
+    switch (kind)
+    {
+        case Kind::RepeatedMessage:
+            return {QStringLiteral("#ffa31a")};
+        case Kind::EmoteSpam:
+            return {QStringLiteral("#ff33f5")};
+        case Kind::Suggestion:
+        default:
+            return {QStringLiteral("#1ae8ff")};
+    }
+}
+
+QColor ModAlertPopup::reasonColor(Kind kind)
+{
+    const auto *settings = getSettings();
+    QString picked;
+    switch (kind)
+    {
+        case Kind::RepeatedMessage:
+            picked = settings->modAlertColorRepeat.getValue();
+            break;
+        case Kind::EmoteSpam:
+            picked = settings->modAlertColorEmote.getValue();
+            break;
+        case Kind::Suggestion:
+        default:
+            picked = settings->modAlertColorSuggestion.getValue();
+            break;
+    }
+    return vividColor(QColor(picked), defaultReasonColor(kind));
+}
+
+QColor ModAlertPopup::vividColor(const QColor &picked, const QColor &fallback)
+{
+    const auto hasHue = [](const QColor &color) {
+        return color.isValid() && color.hsvHue() >= 0 &&
+               color.hsvSaturationF() >= 0.12F && color.valueF() >= 0.12F;
+    };
+    const auto source = hasHue(picked) ? picked : fallback;
+    return QColor::fromHsvF(source.hsvHueF(),
+                            std::max(0.8F, source.hsvSaturationF()), 1.0F);
+}
+
+QString ModAlertPopup::reasonTagStyle(const QColor &color)
+{
+    // Dark lettering on the light colours, white on the deep ones like blue
+    const auto luminance =
+        0.299 * color.red() + 0.587 * color.green() + 0.114 * color.blue();
+    return QStringLiteral("QLabel { background: %1; color: %2; "
+                          "border-radius: 4px; padding: 2px 8px; "
+                          "font-weight: bold; }")
+        .arg(color.name(), luminance > 140 ? QStringLiteral("#101010")
+                                           : QStringLiteral("#ffffff"));
 }
 
 void ModAlertPopup::showChatter(const QString &displayName)
@@ -732,6 +876,7 @@ void ModAlertPopup::showTestChatter(const QString &title)
 
 void ModAlertPopup::showTestCase(bool afterTimeout)
 {
+    this->kind_ = Kind::RepeatedMessage;
     this->showTestChatter(QStringLiteral("Repeated message - test"));
 
     const QString name = QStringLiteral("TestUser");
@@ -769,10 +914,11 @@ void ModAlertPopup::showTestCase(bool afterTimeout)
             QStringLiteral("Sent the same message several times in a row."));
         this->setAction(steps.front());
     }
-    this->setWhy(QStringLiteral("<b>Why</b>&nbsp;&nbsp;same message repeated "
-                                "&middot; step %1 of %2")
-                     .arg(afterTimeout ? std::min<size_t>(2, steps.size()) : 1)
-                     .arg(steps.size()));
+    this->setReason(
+        QStringLiteral("Same message repeated"),
+        QStringLiteral("Step %1 of %2")
+            .arg(afterTimeout ? std::min<size_t>(2, steps.size()) : 1)
+            .arg(steps.size()));
 
     this->messages_->setChannel(this->view_);
     this->restartCountdown();
@@ -874,9 +1020,10 @@ void ModAlertPopup::applyEmoteSpam(int emotes, int messages, int window,
                   .arg(emotes)
                   .arg(messages)
                   .arg(window));
-    this->setWhy(
-        QStringLiteral("<b>Why</b>&nbsp;&nbsp;mostly emotes &middot; %1 within "
-                       "%2s, the alert starts at %3 &middot; step %4 of %5")
+    this->setReason(
+        QStringLiteral("Emote spam"),
+        QStringLiteral("%1 emotes within %2s, the alert starts at %3 &middot; "
+                       "step %4 of %5")
             .arg(emotes)
             .arg(window)
             .arg(std::max(1, getSettings()->emoteAlertMinEmotes.getValue()))
@@ -1040,7 +1187,8 @@ void ModAlertPopup::tick()
         return;
     }
     bar->setState(double(this->remainingMs_) / double(this->totalMs_),
-                  this->theme->accent);
+                  this->reasonColor_.isValid() ? this->reasonColor_
+                                               : this->theme->accent);
 }
 
 }  // namespace chatterino
