@@ -15,6 +15,7 @@
 #include "singletons/Theme.hpp"
 #include "util/Helpers.hpp"
 
+#include <vector>
 #include <QDebug>
 #include <QMargins>
 #include <QPainter>
@@ -145,26 +146,84 @@ void MessageLayoutContainer::alignCaptionsRight()
         MessageElementFlag::HighlightCaption};
 
     const auto lastLineStart = this->lines_.back().startIndex;
+    const auto isCaption = [](const MessageLayoutElement *element) {
+        return element->getCreator().getFlags().hasAny(CAPTION_FLAGS);
+    };
+
+    // What comes after a caption in the message - the reply button - closes
+    // up behind the text once the caption moves right, instead of keeping the
+    // spot next to where the caption was. Each is moved left by the room the
+    // captions before it took up.
+    std::vector<qreal> closeUp(this->elements_.size() - lastLineStart, 0);
+    qreal captionRoom = 0;
+    qreal captionsWidth = 0;
+    qreal runStart = 0;
+    bool inRun = false;
+    for (size_t i = lastLineStart; i < this->elements_.size(); i++)
+    {
+        const auto *element = this->elements_[i].get();
+        if (isCaption(element))
+        {
+            if (!inRun)
+            {
+                runStart = element->getRect().x();
+                inRun = true;
+            }
+            captionsWidth += element->getRect().width();
+            continue;
+        }
+        if (inRun)
+        {
+            captionRoom += element->getRect().x() - runStart;
+            inRun = false;
+        }
+        closeUp[i - lastLineStart] = captionRoom;
+    }
 
     // How far right the captions may reach, and how far left they may go
     // before running into the message itself.
     qreal right = this->width_ - (MARGIN.right() * this->scale_);
-    qreal textEnd = 0;
-
-    for (size_t i = lastLineStart; i < this->elements_.size(); i++)
-    {
-        const auto *element = this->elements_[i].get();
-        if (!element->getCreator().getFlags().hasAny(CAPTION_FLAGS))
+    const auto textEndWith = [&](bool closedUp) {
+        qreal end = 0;
+        for (size_t i = lastLineStart; i < this->elements_.size(); i++)
         {
-            textEnd = std::max(textEnd, element->getRect().right());
+            const auto *element = this->elements_[i].get();
+            if (!isCaption(element))
+            {
+                end = std::max(end, element->getRect().right() -
+                                        (closedUp ? closeUp[i - lastLineStart]
+                                                  : 0));
+            }
         }
+        return end;
+    };
+
+    // Only closed up when every caption then fits at the right; otherwise
+    // the line stays as it was laid out, captions trailing the text
+    qreal textEnd = textEndWith(true);
+    if (captionRoom > 0 && right - captionsWidth > textEnd)
+    {
+        for (size_t i = lastLineStart; i < this->elements_.size(); i++)
+        {
+            auto *element = this->elements_[i].get();
+            const auto shift = closeUp[i - lastLineStart];
+            if (!isCaption(element) && shift > 0)
+            {
+                const auto rect = element->getRect();
+                element->setPosition(QPointF(rect.x() - shift, rect.y()));
+            }
+        }
+    }
+    else
+    {
+        textEnd = textEndWith(false);
     }
 
     // Walk backwards so several captions keep their relative order
     for (size_t i = this->elements_.size(); i-- > lastLineStart;)
     {
         auto *element = this->elements_[i].get();
-        if (!element->getCreator().getFlags().hasAny(CAPTION_FLAGS))
+        if (!isCaption(element))
         {
             continue;
         }
