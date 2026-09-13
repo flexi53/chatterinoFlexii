@@ -105,9 +105,12 @@ private:
     void setWhy(const QString &html, const QString &tooltip = {});
     void loadProfile();
     void restartCountdown();
-    /// Notes the size the window came up with, so a size the moderator
-    /// drags it to can be told apart
-    void rememberShownSize();
+    /// Puts a window about to show for the first time where the moderator
+    /// last moved one
+    void placeWindow();
+    /// Notes the size and place the window came up with, so a size or place
+    /// the moderator gives it can be told apart
+    void rememberShownGeometry();
     void tick();
 
     QString channel_;
@@ -120,6 +123,7 @@ private:
     bool test_ = false;
     /// Whether the window has come up once, so only that plays the ping
     bool announced_ = false;
+    bool placed_ = false;
     bool profileLoaded_ = false;
 
     PixmapButton *avatar_{};

@@ -106,6 +106,23 @@ ModAssistantPage::ModAssistantPage()
         alertHeight->setSpecialValueText("automatisch");
         alertHeight->setToolTip(sizeHint);
         alertsForm->addRow("Höhe", alertHeight);
+
+        auto *resetPosition = new QPushButton("Zurücksetzen");
+        resetPosition->setToolTip(
+            "Die Fenster öffnen wieder dort, wo das System sie hinsetzt, bis "
+            "du wieder eines verschiebst.");
+        getSettings()->modAlertPositionSaved.connect(
+            [resetPosition](const bool &saved, auto) {
+                resetPosition->setEnabled(saved);
+            },
+            this->managedConnections_);
+        QObject::connect(resetPosition, &QPushButton::clicked, [] {
+            getSettings()->modAlertPositionSaved.setValue(false);
+        });
+        auto *positionRow = new QHBoxLayout;
+        positionRow->addWidget(resetPosition);
+        positionRow->addStretch(1);
+        alertsForm->addRow("Gemerkte Position", positionRow);
         assistant->addLayout(alertsForm);
 
         auto *delayTests =
@@ -116,9 +133,9 @@ ModAssistantPage::ModAssistantPage()
         assistant.append(delayTests);
 
         auto *sizeTip = new QLabel(
-            "Tipp: Öffne einen Test-Alarm, zieh ihn an der Ecke unten rechts auf "
-            "die gewünschte Größe und schließ ihn - die nächsten Fenster öffnen "
-            "dann genauso groß.");
+            "Tipp: Öffne einen Test-Alarm, schieb ihn dorthin, wo er hin soll, zieh "
+            "ihn an der Ecke unten rechts auf die gewünschte Größe und schließ "
+            "ihn - die nächsten Fenster öffnen dann genau dort und genauso groß.");
         sizeTip->setWordWrap(true);
         sizeTip->setEnabled(false);
         assistant.append(sizeTip);

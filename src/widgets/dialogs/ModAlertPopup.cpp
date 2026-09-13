@@ -29,6 +29,7 @@
 #include "widgets/buttons/PixmapButton.hpp"
 #include "widgets/helper/ChannelView.hpp"
 #include "widgets/Label.hpp"
+#include "util/WidgetHelpers.hpp"
 
 #include <QSizeGrip>
 #include <QEvent>
@@ -71,6 +72,9 @@ FlagsEnum<BaseWindow::Flags> alertWindowFlags()
               getSettings()->modAlertAlwaysOnTop.getValue());
     return flags;
 }
+
+/// How far each alert opening while others are up sits from the one before
+constexpr int CASCADE_STEP = 28;
 
 QHash<QString, QPointer<ModAlertPopup>> &openAlerts()
 {
@@ -127,10 +131,10 @@ private:
     QColor color_{"#00aeef"};
 };
 
-/// Remembers the size a moderator drags an alert window to, so the next ones
-/// open the same size. Only a size they chose counts - a window that closes
-/// at the size it came up with leaves the setting as it was.
-class SizeKeeper : public QObject
+/// Remembers the size a moderator drags an alert window to and the place they
+/// move it to, so the next ones open the same. Only what they chose counts - a
+/// window that closes the way it came up leaves the settings as they were.
+class GeometryKeeper : public QObject
 {
 public:
     using QObject::QObject;
@@ -146,6 +150,13 @@ protected:
             {
                 getSettings()->modAlertWidth.setValue(window->width());
                 getSettings()->modAlertHeight.setValue(window->height());
+            }
+            const auto shownAt = window->property("alertShownPos");
+            if (shownAt.isValid() && window->pos() != shownAt.toPoint())
+            {
+                getSettings()->modAlertX.setValue(window->x());
+                getSettings()->modAlertY.setValue(window->y());
+                getSettings()->modAlertPositionSaved.setValue(true);
             }
         }
         return false;
@@ -435,7 +446,7 @@ ModAlertPopup::ModAlertPopup(QString channel, QString login, QWidget *parent)
         this->resize(width > 0 ? width : natural.width(),
                      height > 0 ? height : natural.height());
     }
-    this->installEventFilter(new SizeKeeper(this));
+    this->installEventFilter(new GeometryKeeper(this));
 }
 
 ModAlertPopup *ModAlertPopup::openFor(const QString &channel,
@@ -492,8 +503,9 @@ void ModAlertPopup::present()
 
     const auto showHere = [this, onAllSpaces] {
         const auto nativeView = static_cast<std::uintptr_t>(this->winId());
+        this->placeWindow();
         this->show();
-        this->rememberShownSize();
+        this->rememberShownGeometry();
         // Qt's raise() activates the whole app on macOS, which would take
         // the keyboard from whatever the moderator is typing into
         chatterinoOrderFrontWithoutActivating(nativeView);
@@ -517,19 +529,53 @@ void ModAlertPopup::present()
 
     showHere();
 #else
+    this->placeWindow();
     this->show();
-    this->rememberShownSize();
+    this->rememberShownGeometry();
     this->raise();
 #endif
 }
 
-void ModAlertPopup::rememberShownSize()
+void ModAlertPopup::placeWindow()
 {
-    // Only the first time: an alert updated after the moderator resized it
-    // must not pass their size off as the one it came up with
+    // Only before it first shows: an alert being updated stays where it is,
+    // wherever the moderator has put it since
+    if (this->placed_)
+    {
+        return;
+    }
+    this->placed_ = true;
+    if (!getSettings()->modAlertPositionSaved)
+    {
+        return;
+    }
+
+    // Alerts already up keep the saved place, so each further one steps down
+    // and to the right rather than hiding one behind it
+    int others = 0;
+    for (const auto &alert : openAlerts())
+    {
+        if (!alert.isNull() && alert.data() != this && alert->isVisible())
+        {
+            ++others;
+        }
+    }
+    const QPoint saved(getSettings()->modAlertX.getValue(),
+                       getSettings()->modAlertY.getValue());
+    // Bounds checked, so a place on a screen since unplugged still ends up on
+    // one that is there
+    this->moveTo(saved + QPoint(CASCADE_STEP, CASCADE_STEP) * others,
+                 widgets::BoundsChecking::DesiredPosition);
+}
+
+void ModAlertPopup::rememberShownGeometry()
+{
+    // Only the first time: an alert updated after the moderator resized or
+    // moved it must not pass that off as the way it came up
     if (!this->property("alertShownSize").isValid())
     {
         this->setProperty("alertShownSize", this->size());
+        this->setProperty("alertShownPos", this->pos());
     }
 }
 

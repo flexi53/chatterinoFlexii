@@ -305,6 +305,12 @@ public:
     /// to. 0 leaves that side to the window.
     IntSetting modAlertWidth = {"/moderation/alerts/width", 0};
     IntSetting modAlertHeight = {"/moderation/alerts/height", 0};
+    /// Where alert windows open, as the moderator last moved one - until
+    /// then the system places them
+    BoolSetting modAlertPositionSaved = {"/moderation/alerts/positionSaved",
+                                         false};
+    IntSetting modAlertX = {"/moderation/alerts/x", 0};
+    IntSetting modAlertY = {"/moderation/alerts/y", 0};
     /// What the emote alert offers at each step: "delete" or a timeout length
     QStringSetting emoteAlertSteps = {"/moderation/emoteAlert/steps",
                                       "delete, delete, 30s"};
