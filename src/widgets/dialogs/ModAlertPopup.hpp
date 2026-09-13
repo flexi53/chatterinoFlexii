@@ -21,6 +21,7 @@ class QPushButton;
 namespace chatterino {
 
 class Channel;
+struct ModSuggestion;
 class ChannelView;
 class Label;
 class PixmapButton;
@@ -53,11 +54,10 @@ public:
     /// for this message. Starts the countdown over.
     void setCase(const QString &displayName, int seconds, int timeoutsServed);
 
-    /// A suggestion from the moderation assistant: @a similarCases earlier
-    /// cases resemble the message, and moderators gave @a spread. A
-    /// @a seconds of 0 offers a ban.
-    void setSuggestion(const QString &displayName, int seconds,
-                       int similarCases, const QString &spread);
+    /// A suggestion from the moderation assistant, with what it rests on.
+    /// A suggested length of 0 offers a ban.
+    void setSuggestion(const QString &displayName,
+                       const ModSuggestion &suggestion);
 
     /// The repeated message alert with made up lines - the first one, or the
     /// one after a timeout - and buttons that send nothing
@@ -70,6 +70,9 @@ private:
     void showRecentLines();
     void showTestChatter(const QString &title);
     void setAction(int seconds);
+    /// Headline, why line and button for a suggestion
+    void applySuggestion(const ModSuggestion &suggestion);
+    void setWhy(const QString &html, const QString &tooltip = {});
     void loadProfile();
     void restartCountdown();
     void tick();
@@ -85,6 +88,7 @@ private:
     Label *name_{};
     QLabel *details_{};
     QLabel *headline_{};
+    QLabel *why_{};
     ChannelView *messages_{};
     QLabel *testNote_{};
     QWidget *countdownBar_{};

@@ -38,6 +38,20 @@ struct ModCase {
     QString reason;
     /// The user's last messages before the action, oldest first
     QStringList messages;
+    /// Why it happened, as far as can be told. For now what can be read off
+    /// the messages outright - a link, a repeated message and so on.
+    QStringList reasons;
+};
+
+/// An earlier case a message resembles, and what it has in common with it
+struct ModMatch {
+    ModCase modCase;
+    /// 0 to 1
+    double similarity = 0;
+    /// The message of that case the new one is closest to
+    QString matchedMessage;
+    /// Words the two share, longest first. A link shows as "a link".
+    QStringList sharedWords;
 };
 
 /// What the assistant would do about a message
@@ -46,8 +60,12 @@ struct ModSuggestion {
     int seconds = 0;
     /// How many past cases resemble the message
     int similarCases = 0;
-    /// The actions those cases ended in, e.g. "10m x7, 1h x2"
+    /// The actions those cases ended in, e.g. "10m ×7, 1h ×2"
     QString spread;
+    /// What can be read off the chatter's latest lines outright
+    QStringList messageReasons;
+    /// The closest of those cases, closest first, at most three
+    std::vector<ModMatch> closest;
 };
 
 /// Learns from the timeouts and bans moderators hand out in a channel, and
@@ -86,6 +104,11 @@ public:
     void onMessage(const QString &channel, const QString &login,
                    const QString &displayName, const QString &text,
                    const QString &badges);
+
+    /// The reasons that can be read off messages outright: a repeated
+    /// message, a link, caps, character or emote spam, a wall of text. The
+    /// last message is taken as the one that counted.
+    static QStringList detectReasons(const QStringList &messages);
 
     /// Reads timeouts and bans out of the channel's chat logs.
     /// @returns how many new cases were added, or -1 if there are no logs

@@ -99,13 +99,14 @@ ModerationAssistantPopup::ModerationAssistantPopup(const QString &channel,
         QStringLiteral("Search user, moderator, reason or message"));
     layout->addWidget(this->search_);
 
-    this->table_ = new QTableWidget(0, 6);
+    this->table_ = new QTableWidget(0, 7);
     this->table_->setHorizontalHeaderLabels({
         QStringLiteral("Time"),
         QStringLiteral("Moderator"),
         QStringLiteral("User"),
         QStringLiteral("Action"),
-        QStringLiteral("Reason"),
+        QStringLiteral("Mod comment"),
+        QStringLiteral("Detected"),
         QStringLiteral("What they wrote"),
     });
     this->table_->horizontalHeader()->setStretchLastSection(true);
@@ -208,6 +209,7 @@ void ModerationAssistantPopup::refresh()
             !modCase.user.contains(needle, Qt::CaseInsensitive) &&
             !modCase.moderator.contains(needle, Qt::CaseInsensitive) &&
             !modCase.reason.contains(needle, Qt::CaseInsensitive) &&
+            !modCase.reasons.join(' ').contains(needle, Qt::CaseInsensitive) &&
             !said.contains(needle, Qt::CaseInsensitive))
         {
             continue;
@@ -235,10 +237,13 @@ void ModerationAssistantPopup::refresh()
                     ? QStringLiteral("Timeout %1").arg(formatTime(modCase.seconds))
                     : QStringLiteral("Ban")));
         this->table_->setItem(row, 4, new QTableWidgetItem(modCase.reason));
+        this->table_->setItem(
+            row, 5,
+            new QTableWidgetItem(modCase.reasons.join(QStringLiteral(", "))));
 
         auto *saidItem = new QTableWidgetItem(said);
         saidItem->setToolTip(modCase.messages.join('\n'));
-        this->table_->setItem(row, 5, saidItem);
+        this->table_->setItem(row, 6, saidItem);
     }
 
     this->table_->resizeColumnsToContents();

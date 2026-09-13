@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
+#include "controllers/moderation/ModerationAssistant.hpp"
 #include "widgets/dialogs/ModAlertPopup.hpp"
 
 #include "Application.hpp"
@@ -20,6 +21,7 @@
 #include "widgets/helper/ChannelView.hpp"
 #include "widgets/Label.hpp"
 
+#include <QLocale>
 #include <QCursor>
 #include <QHash>
 #include <QHBoxLayout>
@@ -124,6 +126,102 @@ QPixmap initialAvatar(const QString &name, const QColor &color)
     return pixmap;
 }
 
+QString grey(const QString &html)
+{
+    return QStringLiteral("<span style=\"color:#9a9a9a\">%1</span>").arg(html);
+}
+
+QString elided(const QString &text, qsizetype length)
+{
+    return text.size() > length ? text.left(length - 1) + QStringLiteral("…")
+                                : text;
+}
+
+/// "Closest case · 86% alike · 11 Sep 21:53", what they wrote, what they got
+QString describeMatch(const ModMatch &match, bool html)
+{
+    const auto &modCase = match.modCase;
+    const auto when =
+        QLocale::c().toString(modCase.time, QStringLiteral("d MMM hh:mm"));
+    const auto outcome =
+        modCase.seconds > 0
+            ? QStringLiteral("Timeout %1").arg(formatTime(modCase.seconds))
+            : QStringLiteral("Ban");
+    const auto by = modCase.moderator.isEmpty()
+                        ? QString()
+                        : QStringLiteral(" by %1").arg(modCase.moderator);
+    const auto percent = qRound(match.similarity * 100);
+
+    if (!html)
+    {
+        return QStringLiteral("%1% alike · %2 · %3: %4 → %5%6")
+            .arg(QString::number(percent), when, modCase.user,
+                 elided(match.matchedMessage, 80), outcome, by);
+    }
+
+    auto result =
+        QStringLiteral("Closest case &middot; %1% alike &middot; %2<br>%3<br>"
+                       "&rarr; %4%5")
+            .arg(QString::number(percent), when,
+                 grey(QStringLiteral("%1: %2").arg(
+                     modCase.user.toHtmlEscaped(),
+                     elided(match.matchedMessage, 90).toHtmlEscaped())),
+                 outcome, by.toHtmlEscaped());
+    if (!modCase.reasons.isEmpty())
+    {
+        result += grey(QStringLiteral(" &middot; %1")
+                           .arg(modCase.reasons.join(", ").toHtmlEscaped()));
+    }
+    return result;
+}
+
+/// The why line of a suggestion, and the next closest cases for its tooltip
+std::pair<QString, QString> describeSuggestion(const ModSuggestion &suggestion)
+{
+    QStringList because;
+    if (!suggestion.messageReasons.isEmpty())
+    {
+        because.append(
+            suggestion.messageReasons.join(QStringLiteral(" &middot; ")));
+    }
+    if (!suggestion.closest.empty() &&
+        !suggestion.closest.front().sharedWords.isEmpty())
+    {
+        QStringList quoted;
+        for (const auto &word :
+             suggestion.closest.front().sharedWords.mid(0, 5))
+        {
+            quoted.append(word == QStringLiteral("a link")
+                              ? word
+                              : QStringLiteral("&ldquo;%1&rdquo;")
+                                    .arg(word.toHtmlEscaped()));
+        }
+        because.append(QStringLiteral("shares %1 with earlier cases")
+                           .arg(quoted.join(QStringLiteral(", "))));
+    }
+
+    QStringList lines;
+    lines.append(QStringLiteral("<b>Why</b>&nbsp;&nbsp;%1")
+                     .arg(because.isEmpty()
+                              ? QStringLiteral("resembles earlier cases")
+                              : because.join(QStringLiteral(" &middot; "))));
+    if (!suggestion.closest.empty())
+    {
+        lines.append(describeMatch(suggestion.closest.front(), true));
+    }
+
+    QStringList others;
+    for (size_t i = 1; i < suggestion.closest.size(); i++)
+    {
+        others.append(describeMatch(suggestion.closest[i], false));
+    }
+
+    return {lines.join(QStringLiteral("<br>")),
+            others.isEmpty()
+                ? QString()
+                : QStringLiteral("Also similar:\n") + others.join('\n')};
+}
+
 /// Lines that belong on the card: what the chatter wrote, and the timeouts
 /// and bans handed to them
 bool isAbout(const MessagePtr &message, const QString &login)
@@ -205,6 +303,13 @@ ModAlertPopup::ModAlertPopup(QString channel, QString login, QWidget *parent)
     who->addStretch(1);
     head->addLayout(who, 1);
     layout->addLayout(head);
+
+    // Why the window came up
+    this->why_ = new QLabel;
+    this->why_->setTextFormat(Qt::RichText);
+    this->why_->setWordWrap(true);
+    this->why_->hide();
+    layout->addWidget(this->why_);
 
     // What they wrote, as it looked in chat
     this->messages_ = new ChannelView(this, ChannelView::Context::UserCard,
@@ -321,27 +426,50 @@ void ModAlertPopup::setCase(const QString &displayName, int seconds,
                 .arg(timeoutsServed));
     }
 
+    const auto steps = RepeatSpamDetector::steps();
+    this->setWhy(
+        QStringLiteral("<b>Why</b>&nbsp;&nbsp;same message repeated &middot; "
+                       "step %1 of %2")
+            .arg(std::min<size_t>(static_cast<size_t>(timeoutsServed),
+                                  steps.size() - 1) +
+                 1)
+            .arg(steps.size()));
+
     this->showChatter(displayName);
     this->setAction(seconds);
     this->showRecentLines();
     this->restartCountdown();
 }
 
-void ModAlertPopup::setSuggestion(const QString &displayName, int seconds,
-                                  int similarCases, const QString &spread)
+void ModAlertPopup::setSuggestion(const QString &displayName,
+                                  const ModSuggestion &suggestion)
 {
     this->setWindowTitle(
         QStringLiteral("Moderation assistant - #%1").arg(this->channel_));
+    this->showChatter(displayName);
+    this->applySuggestion(suggestion);
+    this->showRecentLines();
+    this->restartCountdown();
+}
+
+void ModAlertPopup::applySuggestion(const ModSuggestion &suggestion)
+{
     this->headline_->setText(
         QStringLiteral("Resembles %1 earlier cases in this channel. "
                        "Moderators gave %2.")
-            .arg(similarCases)
-            .arg(spread));
+            .arg(suggestion.similarCases)
+            .arg(suggestion.spread));
 
-    this->showChatter(displayName);
-    this->setAction(seconds);
-    this->showRecentLines();
-    this->restartCountdown();
+    const auto [why, tooltip] = describeSuggestion(suggestion);
+    this->setWhy(why, tooltip);
+    this->setAction(suggestion.seconds);
+}
+
+void ModAlertPopup::setWhy(const QString &html, const QString &tooltip)
+{
+    this->why_->setText(html);
+    this->why_->setToolTip(tooltip);
+    this->why_->setVisible(!html.isEmpty());
 }
 
 void ModAlertPopup::showChatter(const QString &displayName)
@@ -453,6 +581,10 @@ void ModAlertPopup::showTestCase(bool afterTimeout)
             QStringLiteral("Sent the same message several times in a row."));
         this->setAction(steps.front());
     }
+    this->setWhy(QStringLiteral("<b>Why</b>&nbsp;&nbsp;same message repeated "
+                                "&middot; step %1 of %2")
+                     .arg(afterTimeout ? std::min<size_t>(2, steps.size()) : 1)
+                     .arg(steps.size()));
 
     this->messages_->setChannel(this->view_);
     this->restartCountdown();
@@ -471,11 +603,39 @@ void ModAlertPopup::showTestSuggestion()
         makeTestMessage(name, "gratis follower bei www.example.com", now),
         MessageContext::Original);
 
-    this->headline_->setText(QStringLiteral(
-        "Resembles 7 earlier cases in this channel. Moderators gave "
-        "5m ×6, 1h ×1."));
-    this->setAction(300);
+    // A made up suggestion, shown through the same path a real one takes
+    ModSuggestion suggestion{
+        .seconds = 300,
+        .similarCases = 7,
+        .spread = QStringLiteral("5m ×6, 1h ×1"),
+        .messageReasons = {QStringLiteral("link")},
+    };
 
+    const auto makeMatch = [&](const QString &user, const QString &moderator,
+                               const QString &message, int seconds,
+                               double similarity, qint64 daysAgo) {
+        ModMatch match;
+        match.modCase.time = now.addDays(-daysAgo).addSecs(-3600);
+        match.modCase.user = user;
+        match.modCase.moderator = moderator;
+        match.modCase.seconds = seconds;
+        match.modCase.messages = {message};
+        match.modCase.reasons = ModerationAssistant::detectReasons({message});
+        match.similarity = similarity;
+        match.matchedMessage = message;
+        match.sharedWords = {QStringLiteral("follower"),
+                             QStringLiteral("gratis"), QStringLiteral("a link")};
+        return match;
+    };
+    suggestion.closest.push_back(makeMatch("spammer99", "modxy",
+                                           "gratis follower bei www.example.net",
+                                           300, 0.86, 2));
+    suggestion.closest.push_back(makeMatch(
+        "werbebot", "", "follower gratis hier www.example.org", 300, 0.71, 4));
+    suggestion.closest.push_back(makeMatch(
+        "followme", "modxy", "gratis viewer und follower", 3600, 0.62, 5));
+
+    this->applySuggestion(suggestion);
     this->messages_->setChannel(this->view_);
     this->restartCountdown();
 }

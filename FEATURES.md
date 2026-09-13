@@ -92,6 +92,10 @@ moderators hand out there.
   opens a window laid out like a user card - the same one the repeated
   message alert uses - saying how many cases it resembles, what moderators
   gave, and offering the most common action on a button
+- It says **why**: what can be read off the message outright - a link, a
+  repeated message, caps, character or emote spam, a wall of text - the
+  words it shares with earlier cases, and the closest earlier case: what that
+  chatter wrote and what they got for it. Hovering shows the next closest.
 - **Nothing happens unless you press the button.** The window closes by itself
   otherwise, and at most three suggestions are open at once
 - How many cases it needs and how similar a message has to be are under

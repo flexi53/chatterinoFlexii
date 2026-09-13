@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
+#include "messages/Message.hpp"
 #include "widgets/Window.hpp"
 #include "widgets/dialogs/ModAlertPopup.hpp"
 #include "singletons/WindowManager.hpp"
@@ -192,6 +193,23 @@ int parseDuration(const QString &text)
     return seconds;
 }
 
+/// Text as far as telling repeats apart goes: without the invisible
+/// character used to get past Twitch's duplicate check, case or extra spaces
+QString normaliseForRepeat(const QString &text)
+{
+    QString out;
+    for (const auto codePoint : text.toUcs4())
+    {
+        const auto cp = static_cast<char32_t>(codePoint);
+        if (cp >= 0xE0000 && cp <= 0xE007F)
+        {
+            continue;
+        }
+        out.append(QString::fromUcs4(&cp, 1));
+    }
+    return out.simplified().toCaseFolded();
+}
+
 QString describe(int seconds)
 {
     return seconds > 0 ? formatTime(seconds) : QStringLiteral("ban");
@@ -304,23 +322,36 @@ std::optional<ModSuggestion> ModerationAssistant::suggest(
         return std::nullopt;
     }
 
+    struct Hit {
+        const Entry *entry;
+        double similarity;
+        qsizetype message;
+    };
+    std::vector<Hit> hits;
     QHash<int, int> outcomes;
-    int similar = 0;
+
     for (const auto &entry : channelData.entries)
     {
         double best = 0;
-        for (const auto &messageWords : entry.words)
+        qsizetype bestMessage = -1;
+        for (qsizetype i = 0; i < entry.words.size(); i++)
         {
-            best = std::max(best, similarity(words, messageWords));
+            const auto score = similarity(words, entry.words[i]);
+            if (score > best)
+            {
+                best = score;
+                bestMessage = i;
+            }
         }
 
         if (best >= threshold)
         {
             outcomes[entry.modCase.seconds]++;
-            similar++;
+            hits.push_back({&entry, best, bestMessage});
         }
     }
 
+    const auto similar = static_cast<int>(hits.size());
     if (similar < std::max(1, settings->modAssistMinSimilar.getValue()))
     {
         return std::nullopt;
@@ -347,16 +378,48 @@ std::optional<ModSuggestion> ModerationAssistant::suggest(
     QStringList spread;
     for (size_t i = 0; i < ranked.size() && i < 3; i++)
     {
-        spread.append(QStringLiteral("%1 ×%2").arg(describe(ranked[i].first),
-                                                   QString::number(
-                                                       ranked[i].second)));
+        spread.append(QStringLiteral("%1 ×%2").arg(
+            describe(ranked[i].first), QString::number(ranked[i].second)));
     }
 
-    return ModSuggestion{
+    ModSuggestion suggestion{
         .seconds = ranked.front().first,
         .similarCases = similar,
         .spread = spread.join(QStringLiteral(", ")),
     };
+
+    // The closest cases, so the window can show what the suggestion rests on
+    std::ranges::sort(hits, [](const Hit &a, const Hit &b) {
+        return a.similarity > b.similarity;
+    });
+    for (size_t i = 0; i < hits.size() && i < 3; i++)
+    {
+        const auto &hit = hits[i];
+
+        ModMatch match;
+        match.modCase = hit.entry->modCase;
+        match.similarity = hit.similarity;
+        match.matchedMessage = hit.entry->modCase.messages.value(hit.message);
+
+        const auto &caseWords = hit.entry->words[hit.message];
+        for (const auto &word : words)
+        {
+            if (caseWords.contains(word))
+            {
+                match.sharedWords.append(word == QStringLiteral("linkplaceholder")
+                                             ? QStringLiteral("a link")
+                                             : word);
+            }
+        }
+        std::sort(match.sharedWords.begin(), match.sharedWords.end(),
+                  [](const QString &a, const QString &b) {
+                      return a.size() > b.size();
+                  });
+
+        suggestion.closest.push_back(std::move(match));
+    }
+
+    return suggestion;
 }
 
 void ModerationAssistant::onMessage(const QString &channelName,
@@ -387,8 +450,8 @@ void ModerationAssistant::onMessage(const QString &channelName,
     }
 
     // Without moderator rights here the button could not do anything
-    auto *twitch = dynamic_cast<TwitchChannel *>(
-        getApp()->getTwitch()->getChannelOrEmpty(channel).get());
+    const auto channelPtr = getApp()->getTwitch()->getChannelOrEmpty(channel);
+    auto *twitch = dynamic_cast<TwitchChannel *>(channelPtr.get());
     if (twitch == nullptr || !(twitch->isMod() || twitch->isBroadcaster()))
     {
         return;
@@ -402,19 +465,112 @@ void ModerationAssistant::onMessage(const QString &channelName,
         return;
     }
 
-    const auto suggestion = this->suggest(channel, text);
+    auto suggestion = this->suggest(channel, text);
     if (!suggestion)
     {
         return;
     }
 
+    // What can be read off their latest lines outright
+    QStringList recent;
+    const auto snapshot = channelPtr->getMessageSnapshot();
+    for (auto it = snapshot.rbegin();
+         it != snapshot.rend() && recent.size() < MESSAGES_PER_CASE; ++it)
+    {
+        const auto &message = *it;
+        if (message->loginName.compare(login, Qt::CaseInsensitive) == 0 &&
+            !message->flags.has(MessageFlag::System))
+        {
+            recent.prepend(message->messageText);
+        }
+    }
+    if (recent.isEmpty())
+    {
+        recent.append(text);
+    }
+    suggestion->messageReasons = detectReasons(recent);
+
     auto *popup = ModAlertPopup::obtain(
         channel, login, &getApp()->getWindows()->getMainWindow());
     popup->setSuggestion(displayName.isEmpty() ? login : displayName,
-                         suggestion->seconds, suggestion->similarCases,
-                         suggestion->spread);
+                         *suggestion);
     popup->show();
     popup->raise();
+}
+
+QStringList ModerationAssistant::detectReasons(const QStringList &messages)
+{
+    QStringList reasons;
+    if (messages.isEmpty())
+    {
+        return reasons;
+    }
+
+    QSet<QString> seen;
+    bool repeated = false;
+    for (const auto &message : messages)
+    {
+        const auto normalised = normaliseForRepeat(message);
+        repeated = repeated || (!normalised.isEmpty() && seen.contains(normalised));
+        seen.insert(normalised);
+    }
+    if (repeated)
+    {
+        reasons.append(QStringLiteral("repeated message"));
+    }
+
+    const auto &last = messages.last();
+
+    static const QRegularExpression link(
+        QStringLiteral(
+            R"(https?://|www\.|\b[\w-]+\.(com|de|tv|gg|net|org|io|ly|me|xyz|shop)\b)"),
+        QRegularExpression::CaseInsensitiveOption);
+    if (link.match(last).hasMatch())
+    {
+        reasons.append(QStringLiteral("link"));
+    }
+
+    qsizetype letters = 0;
+    qsizetype upper = 0;
+    qsizetype symbols = 0;
+    for (const auto ch : last)
+    {
+        if (ch.isLetter())
+        {
+            letters++;
+            if (ch.isUpper())
+            {
+                upper++;
+            }
+        }
+        else if (!ch.isDigit() && !ch.isSpace())
+        {
+            symbols++;
+        }
+    }
+    if (letters >= 8 && upper * 10 >= letters * 7)
+    {
+        reasons.append(QStringLiteral("caps"));
+    }
+
+    const auto parts = last.split(' ', Qt::SkipEmptyParts);
+    QSet<QString> distinct;
+    for (const auto &part : parts)
+    {
+        distinct.insert(part.toLower());
+    }
+    if ((last.size() >= 6 && symbols * 2 >= last.size()) ||
+        (parts.size() >= 4 && distinct.size() * 3 <= parts.size()))
+    {
+        reasons.append(QStringLiteral("character or emote spam"));
+    }
+
+    if (last.size() >= 300)
+    {
+        reasons.append(QStringLiteral("wall of text"));
+    }
+
+    return reasons;
 }
 
 int ModerationAssistant::importFromLogs(const QString &channelName)
@@ -641,6 +797,11 @@ ModerationAssistant::ChannelData &ModerationAssistant::data(
         {
             modCase.messages.append(message.toString());
         }
+        for (const auto reason :
+             object.value(QStringLiteral("reasons")).toArray())
+        {
+            modCase.reasons.append(reason.toString());
+        }
 
         add(channelData, std::move(modCase));
     }
@@ -669,6 +830,8 @@ void ModerationAssistant::save(const QString &channel,
             {QStringLiteral("reason"), modCase.reason},
             {QStringLiteral("messages"),
              QJsonArray::fromStringList(modCase.messages)},
+            {QStringLiteral("reasons"),
+             QJsonArray::fromStringList(modCase.reasons)},
         });
     }
 
@@ -703,6 +866,11 @@ bool ModerationAssistant::add(ChannelData &channelData, ModCase modCase)
     for (const auto &message : modCase.messages)
     {
         entry.words.append(wordsOf(message));
+    }
+    // Filled in here unless something better already knows why
+    if (modCase.reasons.isEmpty())
+    {
+        modCase.reasons = detectReasons(modCase.messages);
     }
     entry.modCase = std::move(modCase);
 
