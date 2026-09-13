@@ -115,6 +115,8 @@ private:
     QStringList deleteIds_;
     Kind kind_ = Kind::Suggestion;
     bool test_ = false;
+    /// Whether the window has come up once, so only that plays the ping
+    bool announced_ = false;
     bool profileLoaded_ = false;
 
     PixmapButton *avatar_{};

@@ -413,12 +413,6 @@ ModAlertPopup *ModAlertPopup::obtain(const QString &channel,
 
     auto *popup = new ModAlertPopup(channel, login, parent);
     openAlerts().insert(alertKey(channel, login), popup);
-
-    // Only for a new alert - not for one already on screen being updated
-    if (getSettings()->modAlertSound)
-    {
-        getApp()->getSound()->play(QUrl(QStringLiteral("qrc:/sounds/ping2.wav")));
-    }
     return popup;
 }
 
@@ -432,6 +426,19 @@ void ModAlertPopup::closeFor(const QString &channel, const QString &login)
 
 void ModAlertPopup::present()
 {
+    // The ping goes with a window coming up, not with one already on screen
+    // being updated. Test windows come through here too, so they sound like
+    // the real thing.
+    if (!this->announced_)
+    {
+        this->announced_ = true;
+        if (getSettings()->modAlertSound)
+        {
+            getApp()->getSound()->play(
+                QUrl(QStringLiteral("qrc:/sounds/ping2.wav")));
+        }
+    }
+
 #ifdef Q_OS_MACOS
     const bool onAllSpaces = getSettings()->modAlertAlwaysOnTop.getValue();
     // winId creates the native window, so what is set on it holds before it
