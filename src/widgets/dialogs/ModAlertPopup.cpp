@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: MIT
 
+#include "controllers/sound/ISoundController.hpp"
+#include "common/FlagsEnum.hpp"
 #include "controllers/moderation/EmoteSpamDetector.hpp"
 #include "controllers/moderation/ModerationAssistant.hpp"
 #include "widgets/dialogs/ModAlertPopup.hpp"
@@ -49,6 +51,18 @@ constexpr int AVATAR_SIZE = 64;
 /// spam tends to come from
 constexpr qint64 NEW_ACCOUNT_DAYS = 30;
 constexpr int TICK_MS = 50;
+
+/// Alerts can be kept above every other program, so one that comes up while
+/// the stream is in front does not open unseen behind it
+FlagsEnum<BaseWindow::Flags> alertWindowFlags()
+{
+    FlagsEnum<BaseWindow::Flags> flags(BaseWindow::EnableCustomFrame,
+                                       BaseWindow::DisableLayoutSave,
+                                       BaseWindow::BoundsCheckOnShow);
+    flags.set(BaseWindow::TopMost,
+              getSettings()->modAlertAlwaysOnTop.getValue());
+    return flags;
+}
 
 QHash<QString, QPointer<ModAlertPopup>> &openAlerts()
 {
@@ -258,13 +272,7 @@ MessagePtr makeTestMessage(const QString &displayName, const QString &text,
 namespace chatterino {
 
 ModAlertPopup::ModAlertPopup(QString channel, QString login, QWidget *parent)
-    : BasePopup(
-          {
-              BaseWindow::EnableCustomFrame,
-              BaseWindow::DisableLayoutSave,
-              BaseWindow::BoundsCheckOnShow,
-          },
-          parent)
+    : BasePopup(alertWindowFlags(), parent)
     , channel_(std::move(channel))
     , login_(std::move(login))
 {
@@ -399,6 +407,12 @@ ModAlertPopup *ModAlertPopup::obtain(const QString &channel,
 
     auto *popup = new ModAlertPopup(channel, login, parent);
     openAlerts().insert(alertKey(channel, login), popup);
+
+    // Only for a new alert - not for one already on screen being updated
+    if (getSettings()->modAlertSound)
+    {
+        getApp()->getSound()->play(QUrl(QStringLiteral("qrc:/sounds/ping2.wav")));
+    }
     return popup;
 }
 

@@ -296,6 +296,11 @@ public:
     /// Seconds over which the emote alert adds up a chatter's emotes
     IntSetting emoteAlertWindowSeconds = {
         "/moderation/emoteAlert/windowSeconds", 60};
+    /// Keeps alert windows above every other program, so one that comes up
+    /// while something else is in front does not open unseen behind it
+    BoolSetting modAlertAlwaysOnTop = {"/moderation/alerts/alwaysOnTop", true};
+    /// Plays the ping when a new alert window comes up
+    BoolSetting modAlertSound = {"/moderation/alerts/sound", false};
     /// What the emote alert offers at each step: "delete" or a timeout length
     QStringSetting emoteAlertSteps = {"/moderation/emoteAlert/steps",
                                       "delete, delete, 30s"};

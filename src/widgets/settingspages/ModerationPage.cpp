@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: MIT
 
+#include "widgets/Window.hpp"
+#include "singletons/WindowManager.hpp"
 #include "controllers/moderation/EmoteSpamDetector.hpp"
 #include "widgets/dialogs/ModAlertPopup.hpp"
 #include "util/FormatTime.hpp"
@@ -23,6 +25,9 @@
 #include "widgets/helper/IconDelegate.hpp"
 #include "widgets/settingspages/SettingWidget.hpp"
 
+#include <functional>
+#include <QTimer>
+#include <QCheckBox>
 #include <QFrame>
 #include <QScrollArea>
 #include <QLineEdit>
@@ -259,6 +264,70 @@ ModerationPage::ModerationPage()
         intro->setWordWrap(true);
         assistant.append(intro);
 
+        auto *alertsIntro = new QLabel(
+            "<br><b>Alarm-Fenster</b><br>Gilt für alle Fenster weiter unten: "
+            "Vorschläge, wiederholte Nachrichten und Emote-Spam.");
+        alertsIntro->setTextFormat(Qt::RichText);
+        alertsIntro->setWordWrap(true);
+        assistant.append(alertsIntro);
+
+        assistant.append(this->createCheckBox(
+            "Immer im Vordergrund, auch über anderen Programmen",
+            getSettings()->modAlertAlwaysOnTop,
+            "Das Fenster liegt über jedem Programm, auch wenn gerade der "
+            "Browser oder ein Spiel vorne ist, und nimmt dir trotzdem nicht "
+            "den Fokus. Gilt für Fenster, die ab jetzt aufgehen."));
+        assistant.append(this->createCheckBox(
+            "Ton abspielen, wenn ein Alarm-Fenster aufgeht",
+            getSettings()->modAlertSound,
+            "Spielt den Hinweiston, sobald ein neues Alarm-Fenster aufgeht - "
+            "nicht, wenn ein offenes nur aktualisiert wird."));
+
+        auto *alertsForm = new QFormLayout;
+        auto *autoClose =
+            this->createSpinBox(getSettings()->repeatAlertAutoClose, 0, 300);
+        autoClose->setSuffix(" s");
+        autoClose->setSpecialValueText("nie");
+        autoClose->setToolTip(
+            "Nach dieser Zeit schließt sich das Fenster von selbst. Solange die "
+            "Maus darüber ist, bleibt es offen.");
+        alertsForm->addRow("Fenster schließt sich von selbst nach", autoClose);
+        assistant->addLayout(alertsForm);
+
+        auto *delayTests =
+            new QCheckBox("Test-Fenster erst nach 5 Sekunden öffnen");
+        delayTests->setToolTip(
+            "Damit du nach dem Klick in ein anderes Programm wechseln und "
+            "prüfen kannst, ob das Fenster dort vorne aufgeht.");
+        assistant.append(delayTests);
+
+        // Opens a test window, right away or after the delay above
+        const auto openTest =
+            [this, delayTests](std::function<void(ModAlertPopup *)> fill) {
+                const bool delayed = delayTests->isChecked();
+                const auto open = [this, delayed, fill] {
+                    // A delayed one sits on the main window like a real alert,
+                    // so it behaves the same with the settings out of sight
+                    auto *parent =
+                        delayed ? static_cast<QWidget *>(
+                                      &getApp()->getWindows()->getMainWindow())
+                                : static_cast<QWidget *>(this);
+                    auto *popup = new ModAlertPopup("test", "testuser", parent);
+                    fill(popup);
+                    popup->show();
+                    popup->raise();
+                };
+
+                if (delayed)
+                {
+                    QTimer::singleShot(5000, this, open);
+                }
+                else
+                {
+                    open();
+                }
+            };
+
         auto *form = new QFormLayout;
         form->addRow("Vorschläge ab so vielen gesammelten Fällen",
                      this->createSpinBox(getSettings()->modAssistMinCases, 1,
@@ -276,11 +345,12 @@ ModerationPage::ModerationPage()
             "Öffnet ein Vorschlagsfenster mit ausgedachten Nachrichten, damit "
             "du siehst, wie es aussieht und sich verhält. Die Knöpfe tun "
             "nichts.");
-        QObject::connect(testSuggestion, &QPushButton::clicked, this, [this] {
-            auto *popup = new ModAlertPopup("test", "testuser", this);
-            popup->showTestSuggestion();
-            popup->show();
-        });
+        QObject::connect(testSuggestion, &QPushButton::clicked, this,
+                         [openTest] {
+                             openTest([](ModAlertPopup *popup) {
+                                 popup->showTestSuggestion();
+                             });
+                         });
         auto *testSuggestionRow = new QHBoxLayout;
         testSuggestionRow->addWidget(testSuggestion);
         testSuggestionRow->addStretch(1);
@@ -347,14 +417,6 @@ ModerationPage::ModerationPage()
             "an der Regel vorbei. Kürzere müssen genau gleich sein. Bei 100 "
             "zählen nur genau gleiche.");
         repeatForm->addRow("Als gleiche Nachricht ab", similarity);
-        auto *autoClose =
-            this->createSpinBox(getSettings()->repeatAlertAutoClose, 0, 300);
-        autoClose->setSuffix(" s");
-        autoClose->setSpecialValueText("nie");
-        autoClose->setToolTip(
-            "Nach dieser Zeit schließt sich das Fenster von selbst. Solange die "
-            "Maus darüber ist, bleibt es offen.");
-        repeatForm->addRow("Fenster schließt sich von selbst nach", autoClose);
         assistant->addLayout(repeatForm);
 
         auto *testAlert = new QPushButton("Test-Alarm anzeigen");
@@ -362,14 +424,15 @@ ModerationPage::ModerationPage()
             "Öffnet den Alarm mit ausgedachten Nachrichten, damit du siehst, "
             "wie er aussieht und sich verhält. Nochmal klicken zeigt die "
             "Version nach einem Timeout. Die Knöpfe tun nichts.");
-        QObject::connect(testAlert, &QPushButton::clicked, this, [this] {
+        QObject::connect(testAlert, &QPushButton::clicked, this, [openTest] {
             // Every other click shows the alert as it looks after a timeout
             static bool afterTimeout = false;
-
-            auto *popup = new ModAlertPopup("test", "testuser", this);
-            popup->showTestCase(afterTimeout);
+            const bool variant = afterTimeout;
             afterTimeout = !afterTimeout;
-            popup->show();
+
+            openTest([variant](ModAlertPopup *popup) {
+                popup->showTestCase(variant);
+            });
         });
         auto *testRow = new QHBoxLayout;
         testRow->addWidget(testAlert);
@@ -451,13 +514,14 @@ ModerationPage::ModerationPage()
         testEmote->setToolTip(
             "Öffnet den Emote-Alarm mit ausgedachten Nachrichten. Jeder Klick "
             "geht eine Stufe weiter. Die Knöpfe tun nichts.");
-        QObject::connect(testEmote, &QPushButton::clicked, this, [this] {
+        QObject::connect(testEmote, &QPushButton::clicked, this, [openTest] {
             static int step = 0;
-
-            auto *popup = new ModAlertPopup("test", "testuser", this);
-            popup->showTestEmoteSpam(step);
+            const int current = step;
             step = (step + 1) % 3;
-            popup->show();
+
+            openTest([current](ModAlertPopup *popup) {
+                popup->showTestEmoteSpam(current);
+            });
         });
         auto *testEmoteRow = new QHBoxLayout;
         testEmoteRow->addWidget(testEmote);
