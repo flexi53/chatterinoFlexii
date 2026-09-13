@@ -23,6 +23,8 @@
 #include "widgets/helper/IconDelegate.hpp"
 #include "widgets/settingspages/SettingWidget.hpp"
 
+#include <QFrame>
+#include <QScrollArea>
 #include <QLineEdit>
 #include <QFormLayout>
 #include <QFileDialog>
@@ -232,34 +234,48 @@ ModerationPage::ModerationPage()
 
     }  // logs end
 
-    auto assistant = tabs.appendTab(new QVBoxLayout, "Assistant");
+    // Everything the assistant and its alerts can be told outgrows the
+    // window, so the tab scrolls instead of squeezing its rows together
+    auto assistantTab = tabs.appendTab(new QVBoxLayout, "Assistent");
+    auto *assistantScroll = new QScrollArea;
+    assistantScroll->setWidgetResizable(true);
+    assistantScroll->setFrameShape(QFrame::NoFrame);
+    assistantScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    assistantScroll->viewport()->setAutoFillBackground(false);
+    auto *assistantContent = new QWidget;
+    assistantContent->setAutoFillBackground(false);
+    auto *assistantLayout = new QVBoxLayout(assistantContent);
+    assistantScroll->setWidget(assistantContent);
+    assistantTab->addWidget(assistantScroll);
+    LayoutCreator<QVBoxLayout> assistant(assistantLayout);
     {
         auto *intro = new QLabel(
-            "The moderation assistant learns from timeouts and bans in "
-            "channels you moderate, and suggests an action when someone "
-            "writes something similar. Switch it on per channel with the "
-            "shield button next to the emote button. A suggestion opens a "
-            "window with the action moderators usually took - nothing happens "
-            "unless you press its button.");
+            "Der Moderations-Assistent lernt aus Timeouts und Banns in "
+            "Kanälen, in denen du Mod bist, und schlägt eine Aktion vor, wenn "
+            "jemand etwas Ähnliches schreibt. Eingeschaltet wird er pro Kanal "
+            "über den Schild-Knopf neben dem Emote-Knopf. Ein Vorschlag öffnet "
+            "ein Fenster mit der Aktion, die Mods meistens gegeben haben – es "
+            "passiert nichts, solange du nicht auf den Knopf drückst.");
         intro->setWordWrap(true);
         assistant.append(intro);
 
         auto *form = new QFormLayout;
-        form->addRow("Suggest once a channel has collected at least",
+        form->addRow("Vorschläge ab so vielen gesammelten Fällen",
                      this->createSpinBox(getSettings()->modAssistMinCases, 1,
                                          2000));
-        form->addRow("Only when this many past cases are similar",
+        form->addRow("Nur wenn so viele frühere Fälle ähnlich sind",
                      this->createSpinBox(getSettings()->modAssistMinSimilar, 1,
                                          50));
-        form->addRow("Similarity needed, in percent",
+        form->addRow("Nötige Ähnlichkeit in Prozent",
                      this->createSpinBox(getSettings()->modAssistSimilarity,
                                          10, 100));
         assistant->addLayout(form);
 
-        auto *testSuggestion = new QPushButton("Show a test suggestion");
+        auto *testSuggestion = new QPushButton("Test-Vorschlag anzeigen");
         testSuggestion->setToolTip(
-            "Opens a suggestion window with made up messages, so you can see "
-            "how it looks and behaves. Its buttons do nothing.");
+            "Öffnet ein Vorschlagsfenster mit ausgedachten Nachrichten, damit "
+            "du siehst, wie es aussieht und sich verhält. Die Knöpfe tun "
+            "nichts.");
         QObject::connect(testSuggestion, &QPushButton::clicked, this, [this] {
             auto *popup = new ModAlertPopup("test", "testuser", this);
             popup->showTestSuggestion();
@@ -271,10 +287,11 @@ ModerationPage::ModerationPage()
         assistant->addLayout(testSuggestionRow);
 
         auto *repeatIntro = new QLabel(
-            "<br><b>Repeated messages</b><br>The timeouts the repeated "
-            "message alert offers, in order. The first is for sending the same "
-            "message three times in a row, the next for each time they carry "
-            "on after serving one. Past the last step it stays at the last.");
+            "<br><b>Wiederholte Nachrichten</b><br>Die Timeouts, die der Alarm "
+            "für wiederholte Nachrichten der Reihe nach anbietet. Der erste "
+            "gilt für dreimal dieselbe Nachricht hintereinander, der nächste "
+            "jedes Mal, wenn der User nach einem abgesessenen Timeout "
+            "weitermacht. Nach der letzten Stufe bleibt es bei der letzten.");
         repeatIntro->setTextFormat(Qt::RichText);
         repeatIntro->setWordWrap(true);
         assistant.append(repeatIntro);
@@ -290,9 +307,9 @@ ModerationPage::ModerationPage()
             if (parsed.empty())
             {
                 stepsPreview->setText(QStringLiteral(
-                    "<span style=\"color:#e05050\">Not a list of durations - "
-                    "write something like 30s, 1m, 5m. The last valid list "
-                    "stays in use.</span>"));
+                    "<span style=\"color:#e05050\">Keine gültige Liste – "
+                    "schreib zum Beispiel 30s, 1m, 5m. Bis dahin gilt die "
+                    "letzte gültige Liste.</span>"));
                 return;
             }
 
@@ -325,26 +342,26 @@ ModerationPage::ModerationPage()
             this->createSpinBox(getSettings()->repeatAlertSimilarity, 40, 100);
         similarity->setSuffix(" %");
         similarity->setToolTip(
-            "Messages of 10 characters or more count as the same one when "
-            "they are at least this alike, so swapping a word does not get "
-            "around the rule. Shorter ones have to be identical. 100 only "
-            "takes identical messages.");
-        repeatForm->addRow("Count as the same message from", similarity);
+            "Nachrichten ab 10 Zeichen zählen als gleich, wenn sie mindestens "
+            "so ähnlich sind – so kommt man mit einem getauschten Wort nicht "
+            "an der Regel vorbei. Kürzere müssen genau gleich sein. Bei 100 "
+            "zählen nur genau gleiche.");
+        repeatForm->addRow("Als gleiche Nachricht ab", similarity);
         auto *autoClose =
             this->createSpinBox(getSettings()->repeatAlertAutoClose, 0, 300);
         autoClose->setSuffix(" s");
-        autoClose->setSpecialValueText("never");
+        autoClose->setSpecialValueText("nie");
         autoClose->setToolTip(
-            "The window closes by itself after this long. It stays open while "
-            "the mouse is over it.");
-        repeatForm->addRow("Close the window by itself after", autoClose);
+            "Nach dieser Zeit schließt sich das Fenster von selbst. Solange die "
+            "Maus darüber ist, bleibt es offen.");
+        repeatForm->addRow("Fenster schließt sich von selbst nach", autoClose);
         assistant->addLayout(repeatForm);
 
-        auto *testAlert = new QPushButton("Show a test alert");
+        auto *testAlert = new QPushButton("Test-Alarm anzeigen");
         testAlert->setToolTip(
-            "Opens the alert window with made up messages, so you can see how "
-            "it looks and behaves. Click again for the version after a "
-            "timeout. Its buttons do nothing.");
+            "Öffnet den Alarm mit ausgedachten Nachrichten, damit du siehst, "
+            "wie er aussieht und sich verhält. Nochmal klicken zeigt die "
+            "Version nach einem Timeout. Die Knöpfe tun nichts.");
         QObject::connect(testAlert, &QPushButton::clicked, this, [this] {
             // Every other click shows the alert as it looks after a timeout
             static bool afterTimeout = false;
@@ -360,13 +377,14 @@ ModerationPage::ModerationPage()
         assistant->addLayout(testRow);
 
         auto *emoteIntro = new QLabel(
-            "<br><b>Emote spam</b><br>An alert for chatters flooding the chat "
-            "with emotes. It adds up the emotes of their messages over the time "
-            "set here, counting the messages where emotes outweigh words - so "
-            "a string of short bursts counts as much as one long wall. The "
-            "steps say what it offers each time: delete, or a timeout length. "
-            "The next step comes once the chatter has actually had a message "
-            "deleted or been timed out.");
+            "<br><b>Emote-Spam</b><br>Ein Alarm für User, die den Chat mit "
+            "Emotes fluten. Er zählt die Emotes ihrer Nachrichten über die hier "
+            "eingestellte Zeit zusammen, und zwar aus allen Nachrichten, in "
+            "denen Emotes überwiegen – viele kurze Schwälle zählen also genauso "
+            "wie eine lange Emote-Wand. Die Stufen legen fest, was er jeweils "
+            "anbietet: löschen oder eine Timeout-Dauer. Die nächste Stufe kommt "
+            "erst, wenn wirklich eine Nachricht gelöscht oder der User "
+            "getimeoutet wurde.");
         emoteIntro->setTextFormat(Qt::RichText);
         emoteIntro->setWordWrap(true);
         assistant.append(emoteIntro);
@@ -374,20 +392,20 @@ ModerationPage::ModerationPage()
         auto *emoteForm = new QFormLayout;
         auto *minEmotes =
             this->createSpinBox(getSettings()->emoteAlertMinEmotes, 2, 200);
-        minEmotes->setSuffix(" emotes");
-        emoteForm->addRow("Alert from", minEmotes);
+        minEmotes->setSuffix(" Emotes");
+        emoteForm->addRow("Alarm ab", minEmotes);
         auto *emoteWindow =
             this->createSpinBox(getSettings()->emoteAlertWindowSeconds, 5, 600);
         emoteWindow->setSuffix(" s");
         emoteWindow->setToolTip(
-            "How far back their emotes are added up. A single message with "
-            "enough emotes raises the alert on its own.");
-        emoteForm->addRow("Added up over", emoteWindow);
+            "Wie weit zurück die Emotes zusammengezählt werden. Eine einzelne "
+            "Nachricht mit genug Emotes löst den Alarm auch allein aus.");
+        emoteForm->addRow("Zusammengezählt über", emoteWindow);
         assistant->addLayout(emoteForm);
 
         auto *emoteSteps =
             new QLineEdit(getSettings()->emoteAlertSteps.getValue());
-        emoteSteps->setPlaceholderText("delete, delete, 30s");
+        emoteSteps->setPlaceholderText("löschen, löschen, 30s");
         auto *emotePreview = new QLabel;
         emotePreview->setTextFormat(Qt::RichText);
         emotePreview->setWordWrap(true);
@@ -397,9 +415,9 @@ ModerationPage::ModerationPage()
             if (parsed.empty())
             {
                 emotePreview->setText(QStringLiteral(
-                    "<span style=\"color:#e05050\">Not a list of steps - write "
-                    "something like delete, delete, 30s. The last valid list "
-                    "stays in use.</span>"));
+                    "<span style=\"color:#e05050\">Keine gültige Liste – "
+                    "schreib zum Beispiel löschen, löschen, 30s. Bis dahin gilt "
+                    "die letzte gültige Liste.</span>"));
                 return;
             }
 
@@ -407,7 +425,7 @@ ModerationPage::ModerationPage()
             for (const auto step : parsed)
             {
                 shown.append(step == EmoteSpamDetector::DELETE
-                                 ? QStringLiteral("Delete")
+                                 ? QStringLiteral("Löschen")
                                  : formatTime(step));
             }
             emotePreview->setText(shown.join(QStringLiteral(" → ")));
@@ -429,10 +447,10 @@ ModerationPage::ModerationPage()
         assistant.append(emoteSteps);
         assistant.append(emotePreview);
 
-        auto *testEmote = new QPushButton("Show a test emote spam alert");
+        auto *testEmote = new QPushButton("Test-Alarm für Emote-Spam anzeigen");
         testEmote->setToolTip(
-            "Opens the emote alert with made up messages. Each click moves on "
-            "a step. Its buttons do nothing.");
+            "Öffnet den Emote-Alarm mit ausgedachten Nachrichten. Jeder Klick "
+            "geht eine Stufe weiter. Die Knöpfe tun nichts.");
         QObject::connect(testEmote, &QPushButton::clicked, this, [this] {
             static int step = 0;
 
