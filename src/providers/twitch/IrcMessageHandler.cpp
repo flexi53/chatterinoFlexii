@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
+#include "controllers/moderation/ModerationAssistant.hpp"
 #include "providers/twitch/IrcMessageHandler.hpp"
 #include "controllers/moderation/RepeatSpamDetector.hpp"
 
@@ -1280,14 +1281,19 @@ void IrcMessageHandler::addMessage(Communi::IrcMessage *message,
         sink.addMessage(msg, MessageContext::Original);
         chan->addRecentChatter(msg->displayName);
 
-        // Watches for a chatter repeating themselves, where that alert is on.
-        // Messages loaded from history are left out, or joining a channel
-        // would open a window for everything that happened before.
+        // The repeated message alert and the moderation assistant, where they
+        // are on. The alert goes first, so a chatter it has already opened a
+        // window for does not get a suggestion on top. Messages loaded from
+        // history are left out, or joining a channel would open a window for
+        // everything that happened before.
         if (!isSub && !tags.contains("historical"))
         {
             RepeatSpamDetector::instance().onMessage(
                 chan->getName(), msg->loginName, msg->displayName, content,
                 tags.value("badges").toString(), msg->serverReceivedTime);
+            ModerationAssistant::instance().onMessage(
+                chan->getName(), msg->loginName, msg->displayName, content,
+                tags.value("badges").toString());
         }
     }
 }

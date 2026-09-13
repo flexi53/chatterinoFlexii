@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: MIT
 
 #include "messages/MessageBuilder.hpp"
-#include "controllers/moderation/ModerationAssistant.hpp"
 
 #include "Application.hpp"
 #include "common/LinkParser.hpp"
@@ -1763,60 +1762,6 @@ std::pair<MessagePtrMut, HighlightAlert> MessageBuilder::makeIrcMessage(
         builder.emplace<TextElement>(
             entry.text, MessageElementFlag::FirstMessageMarker,
             MessageColor(captionColor), FontStyle::ChatMediumSmall);
-    }
-
-    // The moderation assistant's suggestion rides along like a caption: at
-    // the end of the last line, in a warning colour. Clicking it only puts
-    // the command into the input box - nothing is sent until the user does.
-    // The mode is checked first, so channels it is not suggesting in cost
-    // nothing.
-    if (twitchChannel != nullptr && !args.isReceivedWhisper &&
-        !tags.contains("historical") &&
-        ModerationAssistant::instance().mode(channel->getName()) ==
-            ModAssistMode::Suggest)
-    {
-        const auto badges = tags.value("badges").toString();
-        const bool privileged = badges.contains("broadcaster/") ||
-                                badges.contains("moderator/") ||
-                                badges.contains("vip/") ||
-                                badges.contains("staff/") ||
-                                badges.contains("admin/");
-        const bool fromSelf =
-            builder->loginName.compare(
-                getApp()->getAccounts()->twitch.getCurrent()->getUserName(),
-                Qt::CaseInsensitive) == 0;
-
-        if (!privileged && !fromSelf)
-        {
-            if (const auto suggestion = ModerationAssistant::instance().suggest(
-                    channel->getName(), content))
-            {
-                const auto command =
-                    suggestion->seconds > 0
-                        ? QStringLiteral("/timeout %1 %2")
-                              .arg(builder->loginName)
-                              .arg(suggestion->seconds)
-                        : QStringLiteral("/ban %1").arg(builder->loginName);
-                const auto label =
-                    suggestion->seconds > 0
-                        ? QStringLiteral("Suggest: timeout %1")
-                              .arg(formatTime(suggestion->seconds))
-                        : QStringLiteral("Suggest: ban");
-
-                builder
-                    .emplace<TextElement>(label,
-                                          MessageElementFlag::HighlightCaption,
-                                          MessageColor(QColor(255, 170, 0)),
-                                          FontStyle::ChatMediumSmall)
-                    ->setLink({Link::InsertText, command})
-                    ->setTooltip(
-                        QStringLiteral("%1 similar cases in this channel: %2\n"
-                                       "Click to put the command into your "
-                                       "input box.")
-                            .arg(suggestion->similarCases)
-                            .arg(suggestion->spread));
-            }
-        }
     }
 
     QString stylizedUsername =

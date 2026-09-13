@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-#include "widgets/dialogs/RepeatSpamPopup.hpp"
+#include "widgets/dialogs/ModAlertPopup.hpp"
 #include "util/FormatTime.hpp"
 #include "controllers/moderation/RepeatSpamDetector.hpp"
 #include "widgets/settingspages/ModerationPage.hpp"
@@ -237,9 +237,9 @@ ModerationPage::ModerationPage()
             "The moderation assistant learns from timeouts and bans in "
             "channels you moderate, and suggests an action when someone "
             "writes something similar. Switch it on per channel with the "
-            "shield button next to the emote button. A suggestion only ever "
-            "puts the command into your input box - you decide whether to "
-            "send it.");
+            "shield button next to the emote button. A suggestion opens a "
+            "window with the action moderators usually took - nothing happens "
+            "unless you press its button.");
         intro->setWordWrap(true);
         assistant.append(intro);
 
@@ -254,6 +254,20 @@ ModerationPage::ModerationPage()
                      this->createSpinBox(getSettings()->modAssistSimilarity,
                                          10, 100));
         assistant->addLayout(form);
+
+        auto *testSuggestion = new QPushButton("Show a test suggestion");
+        testSuggestion->setToolTip(
+            "Opens a suggestion window with made up messages, so you can see "
+            "how it looks and behaves. Its buttons do nothing.");
+        QObject::connect(testSuggestion, &QPushButton::clicked, this, [this] {
+            auto *popup = new ModAlertPopup("test", "testuser", this);
+            popup->showTestSuggestion();
+            popup->show();
+        });
+        auto *testSuggestionRow = new QHBoxLayout;
+        testSuggestionRow->addWidget(testSuggestion);
+        testSuggestionRow->addStretch(1);
+        assistant->addLayout(testSuggestionRow);
 
         auto *repeatIntro = new QLabel(
             "<br><b>Repeated messages</b><br>The timeouts the repeated "
@@ -334,7 +348,7 @@ ModerationPage::ModerationPage()
             // Every other click shows the alert as it looks after a timeout
             static bool afterTimeout = false;
 
-            auto *popup = new RepeatSpamPopup("test", "testuser", this);
+            auto *popup = new ModAlertPopup("test", "testuser", this);
             popup->showTestCase(afterTimeout);
             afterTimeout = !afterTimeout;
             popup->show();

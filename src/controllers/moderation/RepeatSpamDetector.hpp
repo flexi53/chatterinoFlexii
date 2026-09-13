@@ -14,8 +14,6 @@
 
 namespace chatterino {
 
-class RepeatSpamPopup;
-
 /// Spots a chatter sending the same message - or nearly the same - over and
 /// over, and puts the case in front of the moderator with the timeout that
 /// fits it: the first step for three in a row, the next one each time they
@@ -72,7 +70,6 @@ private:
                    int timeoutsServed);
 
     QHash<QString, UserState> users_;
-    QHash<QString, QPointer<RepeatSpamPopup>> popups_;
 };
 
 }  // namespace chatterino

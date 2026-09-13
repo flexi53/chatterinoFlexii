@@ -2,6 +2,13 @@
 //
 // SPDX-License-Identifier: MIT
 
+#include "widgets/Window.hpp"
+#include "widgets/dialogs/ModAlertPopup.hpp"
+#include "singletons/WindowManager.hpp"
+#include "providers/twitch/TwitchIrcServer.hpp"
+#include "providers/twitch/TwitchChannel.hpp"
+#include "providers/twitch/TwitchAccount.hpp"
+#include "controllers/accounts/AccountController.hpp"
 #include "controllers/moderation/ModerationAssistant.hpp"
 
 #include "Application.hpp"
@@ -33,6 +40,9 @@ constexpr int CONTEXT_SECONDS = 600;
 /// The same action seen twice - live and again in the logs - lands this
 /// close together
 constexpr int DUPLICATE_SECONDS = 5;
+/// A burst of lookalike messages - a raid, say - should not bury the screen
+/// in windows
+constexpr int MAX_SUGGESTION_WINDOWS = 3;
 
 QString storeDirectory()
 {
@@ -337,7 +347,7 @@ std::optional<ModSuggestion> ModerationAssistant::suggest(
     QStringList spread;
     for (size_t i = 0; i < ranked.size() && i < 3; i++)
     {
-        spread.append(QStringLiteral("%1 x%2").arg(describe(ranked[i].first),
+        spread.append(QStringLiteral("%1 ×%2").arg(describe(ranked[i].first),
                                                    QString::number(
                                                        ranked[i].second)));
     }
@@ -347,6 +357,64 @@ std::optional<ModSuggestion> ModerationAssistant::suggest(
         .similarCases = similar,
         .spread = spread.join(QStringLiteral(", ")),
     };
+}
+
+void ModerationAssistant::onMessage(const QString &channelName,
+                                    const QString &loginName,
+                                    const QString &displayName,
+                                    const QString &text, const QString &badges)
+{
+    // Checked first and without anything else, so channels that are not
+    // suggesting - nearly all of them - cost nothing
+    const auto channel = channelName.toLower();
+    if (this->mode(channel) != ModAssistMode::Suggest || loginName.isEmpty())
+    {
+        return;
+    }
+
+    if (badges.contains("broadcaster/") || badges.contains("moderator/") ||
+        badges.contains("vip/") || badges.contains("staff/") ||
+        badges.contains("admin/"))
+    {
+        return;
+    }
+
+    const auto login = loginName.toLower();
+    if (login ==
+        getApp()->getAccounts()->twitch.getCurrent()->getUserName().toLower())
+    {
+        return;
+    }
+
+    // Without moderator rights here the button could not do anything
+    auto *twitch = dynamic_cast<TwitchChannel *>(
+        getApp()->getTwitch()->getChannelOrEmpty(channel).get());
+    if (twitch == nullptr || !(twitch->isMod() || twitch->isBroadcaster()))
+    {
+        return;
+    }
+
+    // An alert already open for them - the repeated message one, say - says
+    // enough, and a flood of lookalikes gets a few windows rather than dozens
+    if (ModAlertPopup::openFor(channel, login) != nullptr ||
+        ModAlertPopup::openCount() >= MAX_SUGGESTION_WINDOWS)
+    {
+        return;
+    }
+
+    const auto suggestion = this->suggest(channel, text);
+    if (!suggestion)
+    {
+        return;
+    }
+
+    auto *popup = ModAlertPopup::obtain(
+        channel, login, &getApp()->getWindows()->getMainWindow());
+    popup->setSuggestion(displayName.isEmpty() ? login : displayName,
+                         suggestion->seconds, suggestion->similarCases,
+                         suggestion->spread);
+    popup->show();
+    popup->raise();
 }
 
 int ModerationAssistant::importFromLogs(const QString &channelName)

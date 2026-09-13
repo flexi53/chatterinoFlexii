@@ -36,10 +36,9 @@ const std::array<Release, 2> RELEASES{{
      {
          "A moderation assistant, behind the shield button next to the emote "
          "button in channels you moderate. It learns from the timeouts and "
-         "bans handed out there, and once switched to Suggest it marks "
-         "messages that look like earlier cases with the usual action and "
-         "duration. Clicking the mark only puts the command into your input "
-         "box.",
+         "bans handed out there, and once switched to Suggest a message that "
+         "looks like earlier cases opens a window with the action moderators "
+         "usually took - nothing happens unless you press its button.",
          "Colors for the tab bar and for the tabs on the Look page - a "
          "background, a selected tab and a gradient, under either look.",
          "Name the colors you keep reusing in the color picker, so picking "

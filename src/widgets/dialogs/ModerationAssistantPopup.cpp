@@ -74,10 +74,10 @@ ModerationAssistantPopup::ModerationAssistantPopup(const QString &channel,
 
     auto *explanation = new QLabel(QStringLiteral(
         "A case is a timeout or ban by any moderator here, together with what "
-        "the user wrote before it. Once enough have been collected, messages "
-        "that resemble earlier cases get a suggestion at the end of the line. "
-        "Clicking it puts the command into your input box - nothing is sent "
-        "until you press Enter."));
+        "the user wrote before it. Once enough have been collected, a message "
+        "that resembles earlier cases opens a window like the repeated "
+        "message alert, offering the action moderators usually took. Nothing "
+        "happens unless you press its button."));
     explanation->setWordWrap(true);
     explanation->setEnabled(false);
     layout->addWidget(explanation);

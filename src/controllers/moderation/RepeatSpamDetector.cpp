@@ -11,7 +11,7 @@
 #include "providers/twitch/TwitchIrcServer.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/WindowManager.hpp"
-#include "widgets/dialogs/RepeatSpamPopup.hpp"
+#include "widgets/dialogs/ModAlertPopup.hpp"
 #include "widgets/Window.hpp"
 
 #include <QRegularExpression>
@@ -316,27 +316,16 @@ void RepeatSpamDetector::onTimeout(const QString &channelName,
         it->lastActivity = now.addSecs(seconds);
     }
 
-    // Someone has already dealt with it
-    if (auto popup = this->popups_.value(key); !popup.isNull())
-    {
-        popup->close();
-    }
+    // Someone has already dealt with it - whichever alert is open for them
+    ModAlertPopup::closeFor(channel, loginName);
 }
 
 void RepeatSpamDetector::showAlert(const QString &channel, const QString &login,
                                    const QString &displayName, int seconds,
                                    int timeoutsServed)
 {
-    const auto key = keyOf(channel, login);
-
-    auto popup = this->popups_.value(key);
-    if (popup.isNull())
-    {
-        popup = new RepeatSpamPopup(
-            channel, login, &getApp()->getWindows()->getMainWindow());
-        this->popups_.insert(key, popup);
-    }
-
+    auto *popup = ModAlertPopup::obtain(
+        channel, login, &getApp()->getWindows()->getMainWindow());
     popup->setCase(displayName.isEmpty() ? login : displayName, seconds,
                    timeoutsServed);
     popup->show();

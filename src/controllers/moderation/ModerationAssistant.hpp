@@ -80,6 +80,13 @@ public:
     std::optional<ModSuggestion> suggest(const QString &channel,
                                          const QString &text) const;
 
+    /// A live chat message. Opens a suggestion for it if the channel is
+    /// suggesting and enough earlier cases resemble it. @a badges is the raw
+    /// badges tag.
+    void onMessage(const QString &channel, const QString &login,
+                   const QString &displayName, const QString &text,
+                   const QString &badges);
+
     /// Reads timeouts and bans out of the channel's chat logs.
     /// @returns how many new cases were added, or -1 if there are no logs
     int importFromLogs(const QString &channel);

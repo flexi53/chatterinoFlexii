@@ -88,19 +88,20 @@ moderators hand out there.
   user wrote before it
 - **Import from chat logs** reads the timeouts already in the channel's logs,
   so there is something to go on from the first day
-- Once enough cases are collected, a message that resembles earlier ones gets
-  an orange suggestion at the end of the line, with the duration moderators
-  usually gave. Hovering it shows how many cases it rests on and how they
-  ended.
-- Clicking the suggestion **only puts the command into your input box**.
-  Nothing is sent until you press Enter.
+- Once enough cases are collected, a message that resembles earlier ones
+  opens a window laid out like a user card - the same one the repeated
+  message alert uses - saying how many cases it resembles, what moderators
+  gave, and offering the most common action on a button
+- **Nothing happens unless you press the button.** The window closes by itself
+  otherwise, and at most three suggestions are open at once
 - How many cases it needs and how similar a message has to be are under
   Settings -> Moderation -> Assistant
 
 "Similar" means similar wording. It is good at spam, repeated insults and
 links, and knows nothing about context - someone quoting a message to
 complain about it looks the same to it. That is why it suggests and never
-acts.
+acts. **Show a test suggestion** under Settings -> Moderation -> Assistant
+opens one with made up messages.
 
 Cases stay on your computer. Moderators, VIPs and the broadcaster never get
 suggestions, and neither do your own messages.

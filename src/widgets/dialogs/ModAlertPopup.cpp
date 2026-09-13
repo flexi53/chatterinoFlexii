@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-#include "widgets/dialogs/RepeatSpamPopup.hpp"
+#include "widgets/dialogs/ModAlertPopup.hpp"
 
 #include "Application.hpp"
 #include "common/Channel.hpp"
@@ -21,6 +21,7 @@
 #include "widgets/Label.hpp"
 
 #include <QCursor>
+#include <QHash>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QNetworkAccessManager>
@@ -28,6 +29,7 @@
 #include <QNetworkRequest>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPointer>
 #include <QPushButton>
 #include <QVBoxLayout>
 
@@ -44,6 +46,17 @@ constexpr int AVATAR_SIZE = 64;
 /// spam tends to come from
 constexpr qint64 NEW_ACCOUNT_DAYS = 30;
 constexpr int TICK_MS = 50;
+
+QHash<QString, QPointer<ModAlertPopup>> &openAlerts()
+{
+    static QHash<QString, QPointer<ModAlertPopup>> alerts;
+    return alerts;
+}
+
+QString alertKey(const QString &channel, const QString &login)
+{
+    return channel.toLower() + '\n' + login.toLower();
+}
 
 /// A thin bar along the bottom that empties as the window's time runs out
 class CountdownBar : public QWidget
@@ -123,7 +136,7 @@ bool isAbout(const MessagePtr &message, const QString &login)
            message->timeoutUser.compare(login, Qt::CaseInsensitive) == 0;
 }
 
-/// A chat line for the test, built the way a real one reads
+/// A chat line for the tests, built the way a real one reads
 MessagePtr makeTestMessage(const QString &displayName, const QString &text,
                            const QDateTime &time)
 {
@@ -145,8 +158,7 @@ MessagePtr makeTestMessage(const QString &displayName, const QString &text,
 
 namespace chatterino {
 
-RepeatSpamPopup::RepeatSpamPopup(QString channel, QString login,
-                                 QWidget *parent)
+ModAlertPopup::ModAlertPopup(QString channel, QString login, QWidget *parent)
     : BasePopup(
           {
               BaseWindow::EnableCustomFrame,
@@ -157,8 +169,7 @@ RepeatSpamPopup::RepeatSpamPopup(QString channel, QString login,
     , channel_(std::move(channel))
     , login_(std::move(login))
 {
-    this->setWindowTitle(
-        QStringLiteral("Repeated message - #%1").arg(this->channel_));
+    this->setWindowTitle(QStringLiteral("#%1").arg(this->channel_));
     this->setAttribute(Qt::WA_DeleteOnClose);
     // Pops up while the moderator may be typing - it must not take the
     // keyboard away from them
@@ -206,8 +217,8 @@ RepeatSpamPopup::RepeatSpamPopup(QString channel, QString login,
     layout->addWidget(this->messages_, 1);
 
     this->testNote_ = new QLabel(
-        QStringLiteral("<i style=\"color:#9a9a9a\">Test alert - made up "
-                       "messages, and the buttons do nothing.</i>"));
+        QStringLiteral("<i style=\"color:#9a9a9a\">Test - made up messages, "
+                       "and the buttons do nothing.</i>"));
     this->testNote_->setTextFormat(Qt::RichText);
     this->testNote_->hide();
     layout->addWidget(this->testNote_);
@@ -231,9 +242,12 @@ RepeatSpamPopup::RepeatSpamPopup(QString channel, QString login,
         auto channel = getApp()->getTwitch()->getChannelOrEmpty(this->channel_);
         if (!this->test_ && !channel->isEmpty())
         {
-            auto command = QStringLiteral("/timeout %1 %2")
-                               .arg(this->login_)
-                               .arg(this->seconds_);
+            auto command =
+                this->seconds_ > 0
+                    ? QStringLiteral("/timeout %1 %2")
+                          .arg(this->login_)
+                          .arg(this->seconds_)
+                    : QStringLiteral("/ban %1").arg(this->login_);
             command =
                 getApp()->getCommands()->execCommand(command, channel, false);
             channel->sendMessage(command);
@@ -247,14 +261,94 @@ RepeatSpamPopup::RepeatSpamPopup(QString channel, QString login,
     });
 }
 
-void RepeatSpamPopup::setCase(const QString &displayName, int seconds,
-                              int timeoutsServed)
+ModAlertPopup *ModAlertPopup::openFor(const QString &channel,
+                                      const QString &login)
+{
+    return openAlerts().value(alertKey(channel, login)).data();
+}
+
+ModAlertPopup *ModAlertPopup::obtain(const QString &channel,
+                                     const QString &login, QWidget *parent)
+{
+    if (auto *open = openFor(channel, login))
+    {
+        return open;
+    }
+
+    auto *popup = new ModAlertPopup(channel, login, parent);
+    openAlerts().insert(alertKey(channel, login), popup);
+    return popup;
+}
+
+void ModAlertPopup::closeFor(const QString &channel, const QString &login)
+{
+    if (auto *open = openFor(channel, login))
+    {
+        open->close();
+    }
+}
+
+int ModAlertPopup::openCount()
+{
+    auto &alerts = openAlerts();
+    for (auto it = alerts.begin(); it != alerts.end();)
+    {
+        it = it->isNull() ? alerts.erase(it) : std::next(it);
+    }
+    return static_cast<int>(alerts.size());
+}
+
+void ModAlertPopup::setCase(const QString &displayName, int seconds,
+                            int timeoutsServed)
+{
+    this->setWindowTitle(
+        QStringLiteral("Repeated message - #%1").arg(this->channel_));
+
+    if (timeoutsServed == 0)
+    {
+        this->headline_->setText(
+            QStringLiteral("Sent the same message several times in a row."));
+    }
+    else if (timeoutsServed == 1)
+    {
+        this->headline_->setText(
+            QStringLiteral("Sent the message again after being timed out."));
+    }
+    else
+    {
+        this->headline_->setText(
+            QStringLiteral("Sent the message again after %1 timeouts.")
+                .arg(timeoutsServed));
+    }
+
+    this->showChatter(displayName);
+    this->setAction(seconds);
+    this->showRecentLines();
+    this->restartCountdown();
+}
+
+void ModAlertPopup::setSuggestion(const QString &displayName, int seconds,
+                                  int similarCases, const QString &spread)
+{
+    this->setWindowTitle(
+        QStringLiteral("Moderation assistant - #%1").arg(this->channel_));
+    this->headline_->setText(
+        QStringLiteral("Resembles %1 earlier cases in this channel. "
+                       "Moderators gave %2.")
+            .arg(similarCases)
+            .arg(spread));
+
+    this->showChatter(displayName);
+    this->setAction(seconds);
+    this->showRecentLines();
+    this->restartCountdown();
+}
+
+void ModAlertPopup::showChatter(const QString &displayName)
 {
     this->test_ = false;
     this->testNote_->hide();
     this->name_->setText(displayName);
-    this->setHeadline(timeoutsServed);
-    this->setTimeoutSeconds(seconds);
 
     if (!this->profileLoaded_)
     {
@@ -262,7 +356,10 @@ void RepeatSpamPopup::setCase(const QString &displayName, int seconds,
             initialAvatar(displayName, this->theme->accent));
         this->loadProfile();
     }
+}
 
+void ModAlertPopup::showRecentLines()
+{
     // Straight from the channel, so the lines look exactly as they did in
     // chat - badges, emotes and Twitch's own timeout notices included
     auto source = getApp()->getTwitch()->getChannelOrEmpty(this->channel_);
@@ -296,16 +393,14 @@ void RepeatSpamPopup::setCase(const QString &displayName, int seconds,
                 this->view_->addMessage(message, MessageContext::Repost);
             }
         }));
-
-    this->restartCountdown();
 }
 
-void RepeatSpamPopup::showTestCase(bool afterTimeout)
+void ModAlertPopup::showTestChatter(const QString &title)
 {
     this->test_ = true;
     this->profileLoaded_ = true;
     this->testNote_->show();
-    this->setWindowTitle(QStringLiteral("Repeated message - test"));
+    this->setWindowTitle(title);
 
     const QString name = QStringLiteral("TestUser");
     this->name_->setText(name);
@@ -314,12 +409,19 @@ void RepeatSpamPopup::showTestCase(bool afterTimeout)
         "days ago</span>"));
     this->avatar_->setPixmap(initialAvatar(name, this->theme->accent));
 
-    const auto now = QDateTime::currentDateTime();
-    const auto steps = RepeatSpamDetector::steps();
-
     this->liveMessages_.reset();
     this->view_ = std::make_shared<Channel>(QStringLiteral("test"),
                                             Channel::Type::None);
+}
+
+void ModAlertPopup::showTestCase(bool afterTimeout)
+{
+    this->showTestChatter(QStringLiteral("Repeated message - test"));
+
+    const QString name = QStringLiteral("TestUser");
+    const auto now = QDateTime::currentDateTime();
+    const auto steps = RepeatSpamDetector::steps();
+
     this->view_->addMessage(
         makeTestMessage(name, "kauft jetzt merch", now.addSecs(-40)),
         MessageContext::Original);
@@ -341,48 +443,53 @@ void RepeatSpamPopup::showTestCase(bool afterTimeout)
         this->view_->addMessage(
             makeTestMessage(name, "kauft jetzt merch", now),
             MessageContext::Original);
-        this->setHeadline(1);
-        this->setTimeoutSeconds(steps[std::min<size_t>(1, steps.size() - 1)]);
+        this->headline_->setText(
+            QStringLiteral("Sent the message again after being timed out."));
+        this->setAction(steps[std::min<size_t>(1, steps.size() - 1)]);
     }
     else
     {
-        this->setHeadline(0);
-        this->setTimeoutSeconds(steps.front());
+        this->headline_->setText(
+            QStringLiteral("Sent the same message several times in a row."));
+        this->setAction(steps.front());
     }
 
     this->messages_->setChannel(this->view_);
     this->restartCountdown();
 }
 
-void RepeatSpamPopup::setHeadline(int timeoutsServed)
+void ModAlertPopup::showTestSuggestion()
 {
-    if (timeoutsServed == 0)
-    {
-        this->headline_->setText(
-            QStringLiteral("Sent the same message several times in a row."));
-    }
-    else if (timeoutsServed == 1)
-    {
-        this->headline_->setText(
-            QStringLiteral("Sent the message again after being timed out."));
-    }
-    else
-    {
-        this->headline_->setText(
-            QStringLiteral("Sent the message again after %1 timeouts.")
-                .arg(timeoutsServed));
-    }
+    this->showTestChatter(QStringLiteral("Moderation assistant - test"));
+
+    const QString name = QStringLiteral("TestUser");
+    const auto now = QDateTime::currentDateTime();
+
+    this->view_->addMessage(makeTestMessage(name, "hey chat", now.addSecs(-20)),
+                            MessageContext::Original);
+    this->view_->addMessage(
+        makeTestMessage(name, "gratis follower bei www.example.com", now),
+        MessageContext::Original);
+
+    this->headline_->setText(QStringLiteral(
+        "Resembles 7 earlier cases in this channel. Moderators gave "
+        "5m ×6, 1h ×1."));
+    this->setAction(300);
+
+    this->messages_->setChannel(this->view_);
+    this->restartCountdown();
 }
 
-void RepeatSpamPopup::setTimeoutSeconds(int seconds)
+void ModAlertPopup::setAction(int seconds)
 {
     this->seconds_ = seconds;
     this->timeout_->setText(
-        QStringLiteral("Timeout %1").arg(formatTime(seconds)));
+        seconds > 0 ? QStringLiteral("Timeout %1").arg(formatTime(seconds))
+                    : QStringLiteral("Ban"));
     this->timeout_->setDefault(true);
 }
 
-void RepeatSpamPopup::loadProfile()
+void ModAlertPopup::loadProfile()
 {
     this->profileLoaded_ = true;
 
@@ -405,7 +512,7 @@ void RepeatSpamPopup::loadProfile()
                     days <= 0   ? QStringLiteral("today")
                     : days == 1 ? QStringLiteral("1 day ago")
                                 : QStringLiteral("%1 days ago").arg(days);
-                const auto created_ =
+                const auto createdText =
                     QStringLiteral("account created %1").arg(age);
 
                 this->details_->setText(
@@ -414,8 +521,8 @@ void RepeatSpamPopup::loadProfile()
                              days < NEW_ACCOUNT_DAYS
                                  ? QStringLiteral(
                                        "<span style=\"color:#ffaa00\">%1</span>")
-                                       .arg(created_)
-                                 : created_));
+                                       .arg(createdText)
+                                 : createdText));
                 this->details_->setToolTip(created.toString(Qt::ISODate));
             }
 
@@ -447,7 +554,7 @@ void RepeatSpamPopup::loadProfile()
         });
 }
 
-void RepeatSpamPopup::restartCountdown()
+void ModAlertPopup::restartCountdown()
 {
     const auto seconds =
         std::max(0, getSettings()->repeatAlertAutoClose.getValue());
@@ -471,7 +578,7 @@ void RepeatSpamPopup::restartCountdown()
     }
 }
 
-void RepeatSpamPopup::tick()
+void ModAlertPopup::tick()
 {
     const auto elapsed = this->sinceTick_.restart();
     if (this->remainingMs_ <= 0 || this->totalMs_ <= 0)
@@ -483,9 +590,9 @@ void RepeatSpamPopup::tick()
     const auto fraction = double(this->remainingMs_) / double(this->totalMs_);
 
     // Held while the pointer rests on the window, so it cannot vanish from
-    // under a click on the timeout button - the bar greys out to show it.
-    // Only once the pointer has moved, though: a window that happened to open
-    // under it would otherwise stay open for good.
+    // under a click on the button - the bar greys out to show it. Only once
+    // the pointer has moved, though: a window that happened to open under it
+    // would otherwise stay open for good.
     const auto pointer = QCursor::pos();
     this->pointerMoved_ = this->pointerMoved_ || pointer != this->pointerAtStart_;
     if (this->pointerMoved_ && this->frameGeometry().contains(pointer))
