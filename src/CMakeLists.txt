@@ -630,6 +630,8 @@ set(SOURCE_FILES
         controllers/moderation/ModerationAssistant.hpp
         controllers/moderation/RepeatSpamDetector.cpp
         controllers/moderation/RepeatSpamDetector.hpp
+        controllers/moderation/EmoteSpamDetector.cpp
+        controllers/moderation/EmoteSpamDetector.hpp
         util/ProfileSetup.cpp
         util/ProfileSetup.hpp
         util/WhatsNew.cpp

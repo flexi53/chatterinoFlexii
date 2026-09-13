@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
+#include "controllers/moderation/EmoteSpamDetector.hpp"
 #include "widgets/dialogs/ModAlertPopup.hpp"
 #include "util/FormatTime.hpp"
 #include "controllers/moderation/RepeatSpamDetector.hpp"
@@ -357,6 +358,84 @@ ModerationPage::ModerationPage()
         testRow->addWidget(testAlert);
         testRow->addStretch(1);
         assistant->addLayout(testRow);
+
+        auto *emoteIntro = new QLabel(
+            "<br><b>Emote-only messages</b><br>An alert for messages made "
+            "only of emotes, from the number set here. The steps say what it "
+            "offers each time: delete, or a timeout length. The next step "
+            "comes once the chatter has actually had a message deleted or been "
+            "timed out.");
+        emoteIntro->setTextFormat(Qt::RichText);
+        emoteIntro->setWordWrap(true);
+        assistant.append(emoteIntro);
+
+        auto *emoteForm = new QFormLayout;
+        auto *minEmotes =
+            this->createSpinBox(getSettings()->emoteAlertMinEmotes, 2, 200);
+        minEmotes->setSuffix(" emotes");
+        emoteForm->addRow("Alert from", minEmotes);
+        assistant->addLayout(emoteForm);
+
+        auto *emoteSteps =
+            new QLineEdit(getSettings()->emoteAlertSteps.getValue());
+        emoteSteps->setPlaceholderText("delete, delete, 30s");
+        auto *emotePreview = new QLabel;
+        emotePreview->setTextFormat(Qt::RichText);
+        emotePreview->setWordWrap(true);
+
+        const auto showEmoteSteps = [emotePreview](const QString &text) {
+            const auto parsed = EmoteSpamDetector::parseSteps(text);
+            if (parsed.empty())
+            {
+                emotePreview->setText(QStringLiteral(
+                    "<span style=\"color:#e05050\">Not a list of steps - write "
+                    "something like delete, delete, 30s. The last valid list "
+                    "stays in use.</span>"));
+                return;
+            }
+
+            QStringList shown;
+            for (const auto step : parsed)
+            {
+                shown.append(step == EmoteSpamDetector::DELETE
+                                 ? QStringLiteral("Delete")
+                                 : formatTime(step));
+            }
+            emotePreview->setText(shown.join(QStringLiteral(" → ")));
+        };
+        showEmoteSteps(emoteSteps->text());
+
+        QObject::connect(emoteSteps, &QLineEdit::textChanged, emotePreview,
+                         showEmoteSteps);
+        QObject::connect(emoteSteps, &QLineEdit::editingFinished, emoteSteps,
+                         [emoteSteps] {
+                             if (!EmoteSpamDetector::parseSteps(
+                                      emoteSteps->text())
+                                      .empty())
+                             {
+                                 getSettings()->emoteAlertSteps.setValue(
+                                     emoteSteps->text().trimmed());
+                             }
+                         });
+        assistant.append(emoteSteps);
+        assistant.append(emotePreview);
+
+        auto *testEmote = new QPushButton("Show a test emote alert");
+        testEmote->setToolTip(
+            "Opens the emote alert with made up messages. Each click moves on "
+            "a step. Its buttons do nothing.");
+        QObject::connect(testEmote, &QPushButton::clicked, this, [this] {
+            static int step = 0;
+
+            auto *popup = new ModAlertPopup("test", "testuser", this);
+            popup->showTestEmoteSpam(step);
+            step = (step + 1) % 3;
+            popup->show();
+        });
+        auto *testEmoteRow = new QHBoxLayout;
+        testEmoteRow->addWidget(testEmote);
+        testEmoteRow->addStretch(1);
+        assistant->addLayout(testEmoteRow);
 
         assistant->addStretch(1);
     }

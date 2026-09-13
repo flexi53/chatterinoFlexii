@@ -287,6 +287,15 @@ public:
     /// Seconds before the alert window closes by itself, 0 for never
     IntSetting repeatAlertAutoClose = {"/moderation/repeatAlert/autoClose",
                                        15};
+    /// Channels that raise an alert for messages made only of emotes,
+    /// separated by commas
+    QStringSetting emoteAlertChannels = {"/moderation/emoteAlert/channels",
+                                         ""};
+    /// How many emotes a message made only of them needs to raise the alert
+    IntSetting emoteAlertMinEmotes = {"/moderation/emoteAlert/minEmotes", 10};
+    /// What the emote alert offers at each step: "delete" or a timeout length
+    QStringSetting emoteAlertSteps = {"/moderation/emoteAlert/steps",
+                                      "delete, delete, 30s"};
     BoolSetting hidePreferencesButton = {"/appearance/hidePreferencesButton",
                                          false};
     BoolSetting hideUserButton = {"/appearance/hideUserButton", false};

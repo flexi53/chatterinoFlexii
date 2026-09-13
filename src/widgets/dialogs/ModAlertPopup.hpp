@@ -38,7 +38,19 @@ class ModAlertPopup : public BasePopup
     Q_OBJECT
 
 public:
+    enum class Kind {
+        RepeatedMessage,
+        EmoteSpam,
+        Suggestion,
+    };
+
     ModAlertPopup(QString channel, QString login, QWidget *parent);
+
+    /// Which alert the window is showing
+    Kind kind() const
+    {
+        return this->kind_;
+    }
 
     /// The alert open for this chatter, if there is one
     static ModAlertPopup *openFor(const QString &channel, const QString &login);
@@ -59,6 +71,17 @@ public:
     void setSuggestion(const QString &displayName,
                        const ModSuggestion &suggestion);
 
+    /// A message made only of @a emotes emotes. @a action is
+    /// EmoteSpamDetector::DELETE to delete @a messageIds, otherwise a timeout
+    /// length. @a actionsServed counts the deletions and timeouts the chatter
+    /// has already had, out of @a stepCount steps.
+    void setEmoteSpam(const QString &displayName, int emotes, int action,
+                      const QStringList &messageIds, int actionsServed,
+                      int stepCount);
+
+    /// The emote alert with made up lines, at step @a step
+    void showTestEmoteSpam(int step);
+
     /// The repeated message alert with made up lines - the first one, or the
     /// one after a timeout - and buttons that send nothing
     void showTestCase(bool afterTimeout);
@@ -72,6 +95,8 @@ private:
     void setAction(int seconds);
     /// Headline, why line and button for a suggestion
     void applySuggestion(const ModSuggestion &suggestion);
+    void applyEmoteSpam(int emotes, int action, int actionsServed,
+                        int stepCount);
     void setWhy(const QString &html, const QString &tooltip = {});
     void loadProfile();
     void restartCountdown();
@@ -79,8 +104,11 @@ private:
 
     QString channel_;
     QString login_;
-    /// Length of the timeout on offer, 0 for a ban
+    /// Length of the timeout on offer, 0 for a ban, negative to delete
     int seconds_ = 30;
+    /// The messages a delete takes down
+    QStringList deleteIds_;
+    Kind kind_ = Kind::Suggestion;
     bool test_ = false;
     bool profileLoaded_ = false;
 

@@ -49,6 +49,9 @@ const std::array<Release, 2> RELEASES{{
          "between and a timeout button that steps up each time they carry on "
          "(30s, 1m, 5m, 10m, 30m to begin with, adjustable). Switched on per "
          "channel in the moderation assistant.",
+         "An alert for messages made only of emotes, from a number you set: "
+         "delete, delete, then a 30 second timeout to begin with, adjustable "
+         "the same way.",
          "A little more room between rows of tabs.",
      }},
     {"8 September 2026",

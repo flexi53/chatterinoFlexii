@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
+#include "controllers/moderation/EmoteSpamDetector.hpp"
 #include "widgets/dialogs/ModerationAssistantPopup.hpp"
 #include "controllers/moderation/RepeatSpamDetector.hpp"
 
@@ -68,6 +69,20 @@ ModerationAssistantPopup::ModerationAssistantPopup(const QString &channel,
         RepeatSpamDetector::instance().setEnabled(this->channel_, on);
     });
     layout->addWidget(repeatAlert);
+
+    auto *emoteAlert = new QCheckBox(
+        QStringLiteral("Alert on messages made only of emotes"));
+    emoteAlert->setToolTip(QStringLiteral(
+        "Opens a window when someone sends a message made only of emotes, from "
+        "the number set under Settings, Moderation, Assistant. It offers to "
+        "delete the message at first and a timeout further on, as set there. "
+        "Works independently of the mode above."));
+    emoteAlert->setChecked(
+        EmoteSpamDetector::instance().isEnabled(this->channel_));
+    QObject::connect(emoteAlert, &QCheckBox::toggled, this, [this](bool on) {
+        EmoteSpamDetector::instance().setEnabled(this->channel_, on);
+    });
+    layout->addWidget(emoteAlert);
 
     this->status_ = new QLabel;
     layout->addWidget(this->status_);

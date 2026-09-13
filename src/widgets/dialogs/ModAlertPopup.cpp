@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
+#include "controllers/moderation/EmoteSpamDetector.hpp"
 #include "controllers/moderation/ModerationAssistant.hpp"
 #include "widgets/dialogs/ModAlertPopup.hpp"
 
@@ -347,15 +348,31 @@ ModAlertPopup::ModAlertPopup(QString channel, QString login, QWidget *parent)
         auto channel = getApp()->getTwitch()->getChannelOrEmpty(this->channel_);
         if (!this->test_ && !channel->isEmpty())
         {
-            auto command =
-                this->seconds_ > 0
-                    ? QStringLiteral("/timeout %1 %2")
-                          .arg(this->login_)
-                          .arg(this->seconds_)
-                    : QStringLiteral("/ban %1").arg(this->login_);
-            command =
-                getApp()->getCommands()->execCommand(command, channel, false);
-            channel->sendMessage(command);
+            QStringList commands;
+            if (this->seconds_ < 0)
+            {
+                for (const auto &id : this->deleteIds_)
+                {
+                    commands.append(QStringLiteral("/delete %1").arg(id));
+                }
+            }
+            else if (this->seconds_ > 0)
+            {
+                commands.append(QStringLiteral("/timeout %1 %2")
+                                    .arg(this->login_)
+                                    .arg(this->seconds_));
+            }
+            else
+            {
+                commands.append(QStringLiteral("/ban %1").arg(this->login_));
+            }
+
+            for (auto command : commands)
+            {
+                command = getApp()->getCommands()->execCommand(command, channel,
+                                                               false);
+                channel->sendMessage(command);
+            }
         }
         this->close();
     });
@@ -408,6 +425,7 @@ void ModAlertPopup::setCase(const QString &displayName, int seconds,
 {
     this->setWindowTitle(
         QStringLiteral("Repeated message - #%1").arg(this->channel_));
+    this->kind_ = Kind::RepeatedMessage;
 
     if (timeoutsServed == 0)
     {
@@ -446,6 +464,7 @@ void ModAlertPopup::setSuggestion(const QString &displayName,
 {
     this->setWindowTitle(
         QStringLiteral("Moderation assistant - #%1").arg(this->channel_));
+    this->kind_ = Kind::Suggestion;
     this->showChatter(displayName);
     this->applySuggestion(suggestion);
     this->showRecentLines();
@@ -643,10 +662,76 @@ void ModAlertPopup::showTestSuggestion()
 void ModAlertPopup::setAction(int seconds)
 {
     this->seconds_ = seconds;
-    this->timeout_->setText(
-        seconds > 0 ? QStringLiteral("Timeout %1").arg(formatTime(seconds))
-                    : QStringLiteral("Ban"));
+    if (seconds < 0)
+    {
+        this->timeout_->setText(
+            this->deleteIds_.size() > 1
+                ? QStringLiteral("Delete %1 messages").arg(this->deleteIds_.size())
+                : QStringLiteral("Delete message"));
+    }
+    else
+    {
+        this->timeout_->setText(
+            seconds > 0 ? QStringLiteral("Timeout %1").arg(formatTime(seconds))
+                        : QStringLiteral("Ban"));
+    }
     this->timeout_->setDefault(true);
+}
+
+void ModAlertPopup::setEmoteSpam(const QString &displayName, int emotes,
+                                 int action, const QStringList &messageIds,
+                                 int actionsServed, int stepCount)
+{
+    this->setWindowTitle(
+        QStringLiteral("Emote-only message - #%1").arg(this->channel_));
+    this->kind_ = Kind::EmoteSpam;
+    this->deleteIds_ = messageIds;
+
+    this->showChatter(displayName);
+    this->applyEmoteSpam(emotes, action, actionsServed, stepCount);
+    this->showRecentLines();
+    this->restartCountdown();
+}
+
+void ModAlertPopup::applyEmoteSpam(int emotes, int action, int actionsServed,
+                                   int stepCount)
+{
+    this->headline_->setText(
+        QStringLiteral("Sent a message made only of %1 emotes.").arg(emotes));
+    this->setWhy(
+        QStringLiteral("<b>Why</b>&nbsp;&nbsp;only emotes &middot; %1 of them, "
+                       "the alert starts at %2 &middot; step %3 of %4")
+            .arg(emotes)
+            .arg(std::max(1, getSettings()->emoteAlertMinEmotes.getValue()))
+            .arg(std::min(actionsServed, std::max(1, stepCount) - 1) + 1)
+            .arg(std::max(1, stepCount)));
+    this->setAction(action);
+}
+
+void ModAlertPopup::showTestEmoteSpam(int step)
+{
+    this->kind_ = Kind::EmoteSpam;
+    this->showTestChatter(QStringLiteral("Emote-only message - test"));
+
+    const QString name = QStringLiteral("TestUser");
+    const auto now = QDateTime::currentDateTime();
+    const auto steps = EmoteSpamDetector::steps();
+    const auto emotes = QStringLiteral("🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥");
+
+    for (int i = 0; i <= step; i++)
+    {
+        this->view_->addMessage(
+            makeTestMessage(name, emotes, now.addSecs(-40 * (step - i))),
+            MessageContext::Original);
+    }
+
+    this->deleteIds_ = {QStringLiteral("test")};
+    this->applyEmoteSpam(
+        12, steps[std::min<size_t>(static_cast<size_t>(step), steps.size() - 1)],
+        step, static_cast<int>(steps.size()));
+
+    this->messages_->setChannel(this->view_);
+    this->restartCountdown();
 }
 
 void ModAlertPopup::loadProfile()

@@ -133,6 +133,18 @@ Steps, similarity and the closing time are under Settings -> Moderation ->
 Assistant, along with **Show a test alert**, which opens the window with made
 up messages and buttons that do nothing.
 
+### Emote-only messages
+
+A second switch in the same popup watches for messages made only of emotes,
+from **10 emotes** to begin with. The same window comes up, offering what the
+steps say - to begin with **delete, delete, 30s**: the message is deleted the
+first two times, and the third time earns a timeout. The next step only comes
+once the chatter has actually had a message deleted or been timed out, by you
+or anyone else, so a hype moment someone let pass does not count against
+them. Emojis count as emotes; cheers do not. The number, the steps and a
+**Show a test emote alert** button are under Settings -> Moderation ->
+Assistant.
+
 ## Badges and Twitch
 
 - **Chatterino Homies** badges, switchable under Appearance

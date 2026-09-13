@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
+#include "controllers/moderation/EmoteSpamDetector.hpp"
 #include "controllers/moderation/ModerationAssistant.hpp"
 #include "providers/twitch/IrcMessageHandler.hpp"
 #include "controllers/moderation/RepeatSpamDetector.hpp"
@@ -558,6 +559,8 @@ void IrcMessageHandler::handleClearChatMessage(Communi::IrcMessage *message)
             RepeatSpamDetector::instance().onTimeout(
                 chanName, *clearChat.username,
                 message->tags().value("ban-duration").toInt());
+            EmoteSpamDetector::instance().onAction(chanName,
+                                                   *clearChat.username);
         }
     }
 
@@ -607,6 +610,11 @@ void IrcMessageHandler::handleClearMessageMessage(Communi::IrcMessage *message)
 
     msg->flags.set(MessageFlag::Disabled);
     msg->flags.set(MessageFlag::InvalidReplyTarget);
+
+    // A deleted message counts as a step for the emote alert, whoever
+    // deleted it
+    EmoteSpamDetector::instance().onAction(chanName, msg->loginName);
+
     if (!getSettings()->hideDeletionActions)
     {
         chan->addMessage(MessageBuilder::makeDeletionMessageFromIRC(msg),
@@ -1281,9 +1289,9 @@ void IrcMessageHandler::addMessage(Communi::IrcMessage *message,
         sink.addMessage(msg, MessageContext::Original);
         chan->addRecentChatter(msg->displayName);
 
-        // The repeated message alert and the moderation assistant, where they
-        // are on. The alert goes first, so a chatter it has already opened a
-        // window for does not get a suggestion on top. Messages loaded from
+        // The repeated message alert, the emote alert and the moderation
+        // assistant, where they are on - in that order, so a chatter one of
+        // them has already opened a window for does not get another on top. Messages loaded from
         // history are left out, or joining a channel would open a window for
         // everything that happened before.
         if (!isSub && !tags.contains("historical"))
@@ -1291,6 +1299,8 @@ void IrcMessageHandler::addMessage(Communi::IrcMessage *message,
             RepeatSpamDetector::instance().onMessage(
                 chan->getName(), msg->loginName, msg->displayName, content,
                 tags.value("badges").toString(), msg->serverReceivedTime);
+            EmoteSpamDetector::instance().onMessage(
+                chan->getName(), msg, tags.value("badges").toString());
             ModerationAssistant::instance().onMessage(
                 chan->getName(), msg->loginName, msg->displayName, content,
                 tags.value("badges").toString());
