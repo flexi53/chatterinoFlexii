@@ -68,8 +68,8 @@ private:
     };
 
     void showAlert(const QString &channel, const QString &login,
-                   const QString &displayName, const UserState &state,
-                   int seconds, int timeoutsServed);
+                   const QString &displayName, int seconds,
+                   int timeoutsServed);
 
     QHash<QString, UserState> users_;
     QHash<QString, QPointer<RepeatSpamPopup>> popups_;

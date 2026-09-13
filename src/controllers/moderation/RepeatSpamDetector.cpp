@@ -266,8 +266,8 @@ void RepeatSpamDetector::onMessage(const QString &channelName,
     if (sameAsFlagged && state.timeouts > 0)
     {
         // Already sat out a timeout for this one and sent it again
-        this->showAlert(channel, login, displayName, state,
-                        stepFor(state.timeouts), state.timeouts);
+        this->showAlert(channel, login, displayName, stepFor(state.timeouts),
+                        state.timeouts);
         return;
     }
 
@@ -278,8 +278,8 @@ void RepeatSpamDetector::onMessage(const QString &channelName,
             state.flaggedText = normalised;
             state.timeouts = 0;
         }
-        this->showAlert(channel, login, displayName, state,
-                        stepFor(state.timeouts), state.timeouts);
+        this->showAlert(channel, login, displayName, stepFor(state.timeouts),
+                        state.timeouts);
     }
 }
 
@@ -324,8 +324,7 @@ void RepeatSpamDetector::onTimeout(const QString &channelName,
 }
 
 void RepeatSpamDetector::showAlert(const QString &channel, const QString &login,
-                                   const QString &displayName,
-                                   const UserState &state, int seconds,
+                                   const QString &displayName, int seconds,
                                    int timeoutsServed)
 {
     const auto key = keyOf(channel, login);
@@ -338,14 +337,8 @@ void RepeatSpamDetector::showAlert(const QString &channel, const QString &login,
         this->popups_.insert(key, popup);
     }
 
-    QList<RepeatSpamPopup::Entry> history;
-    for (const auto &entry : state.history)
-    {
-        history.append({entry.time, entry.text, entry.timeoutSeconds});
-    }
-
-    popup->setCase(displayName.isEmpty() ? login : displayName, history,
-                   seconds, timeoutsServed);
+    popup->setCase(displayName.isEmpty() ? login : displayName, seconds,
+                   timeoutsServed);
     popup->show();
     popup->raise();
 }

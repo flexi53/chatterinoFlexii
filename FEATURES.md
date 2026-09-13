@@ -108,9 +108,10 @@ suggestions, and neither do your own messages.
 ### Repeated messages
 
 The same popup has a switch that watches for a chatter sending the same
-message three times in a row. When it happens a small window opens - without
-taking the keyboard from you - with their recent messages, any timeouts in
-between, and a timeout button. Each time they send that message again after
+message three times in a row. When it happens a window laid out like a user
+card opens - without taking the keyboard from you - with their picture and how
+old their account is, their recent messages as they looked in chat with
+Twitch's timeout notices in between, and a timeout button. Each time they send that message again after
 having been timed out, by you or another moderator, the window comes back
 offering the next step up.
 
@@ -120,8 +121,8 @@ offering the next step up.
   used to get past Twitch's duplicate check. Messages of 10 characters or
   more also count when they are **nearly** the same - 65% alike to begin with -
   so swapping a word does not get around it.
-- The window **closes by itself** after 15 seconds, counting down on the
-  Ignore button, and stays open while the mouse is over it
+- The window **closes by itself** after 15 seconds, shown by a bar running
+  down along its bottom, and stays open while the mouse is over it
 
 Steps, similarity and the closing time are under Settings -> Moderation ->
 Assistant, along with **Show a test alert**, which opens the window with made

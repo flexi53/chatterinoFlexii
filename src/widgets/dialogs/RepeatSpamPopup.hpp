@@ -6,59 +6,84 @@
 
 #include "widgets/BasePopup.hpp"
 
-#include <QDateTime>
-#include <QList>
+#include <pajlada/signals/scoped-connection.hpp>
+#include <QElapsedTimer>
+#include <QPoint>
 #include <QString>
 #include <QTimer>
+
+#include <memory>
+#include <optional>
 
 class QLabel;
 class QPushButton;
 
 namespace chatterino {
 
-/// Shows a chatter's repeated messages and the timeouts in between, and a
-/// button that hands out the timeout that fits. Closes by itself after a
-/// while unless the pointer is resting on it.
+class Channel;
+class ChannelView;
+class Label;
+class PixmapButton;
+
+/// The repeated message alert, laid out like a user card: who the chatter is
+/// and how old their account is, their recent messages as they appeared in
+/// chat - Twitch's timeout notices included - and a bar running down to the
+/// window closing by itself, above a button that hands out the timeout that
+/// fits.
 class RepeatSpamPopup : public BasePopup
 {
     Q_OBJECT
 
 public:
-    struct Entry {
-        QDateTime time;
-        QString text;
-        /// -1 for a message, otherwise the length of a timeout, 0 for a ban
-        int timeoutSeconds = -1;
-    };
-
     RepeatSpamPopup(QString channel, QString login, QWidget *parent);
 
-    /// Fills in the history and the timeout the button offers, and starts
-    /// the countdown to closing again. @a timeoutsServed counts the timeouts
-    /// the chatter has already sat out for this message.
-    void setCase(const QString &displayName, const QList<Entry> &history,
-                 int seconds, int timeoutsServed);
+    /// Shows the chatter's recent messages from the channel and offers a
+    /// timeout of @a seconds. @a timeoutsServed counts the timeouts they have
+    /// already sat out for this message. Starts the countdown over.
+    void setCase(const QString &displayName, int seconds, int timeoutsServed);
 
-    /// A test alert looks and behaves like a real one, but its buttons send
-    /// nothing
-    void setTestMode(bool test);
+    /// Shows the window with made up messages - the first alert, or the one
+    /// after a timeout - and buttons that send nothing
+    void showTestCase(bool afterTimeout);
 
 private:
+    void setHeadline(int timeoutsServed);
+    void setTimeoutSeconds(int seconds);
+    void loadProfile();
+    void restartCountdown();
     void tick();
 
     QString channel_;
     QString login_;
     int seconds_ = 30;
     bool test_ = false;
-    /// Seconds until it closes by itself, 0 when it does not
-    int remaining_ = 0;
+    bool profileLoaded_ = false;
 
+    PixmapButton *avatar_{};
+    Label *name_{};
+    QLabel *details_{};
     QLabel *headline_{};
-    QLabel *messages_{};
+    ChannelView *messages_{};
     QLabel *testNote_{};
+    QWidget *countdownBar_{};
     QPushButton *ignore_{};
     QPushButton *timeout_{};
+
+    std::shared_ptr<Channel> view_;
+    std::optional<pajlada::Signals::ScopedConnection> liveMessages_;
+
     QTimer countdown_;
+    QElapsedTimer sinceTick_;
+    qint64 totalMs_ = 0;
+    qint64 remainingMs_ = 0;
+    /// Where the pointer was when the countdown started. It only holds the
+    /// window open once it has moved - a window that opens under a resting
+    /// pointer would otherwise never close.
+    QPoint pointerAtStart_;
+    bool pointerMoved_ = false;
+
+    /// Lets network replies tell whether the window is still around
+    std::shared_ptr<bool> alive_ = std::make_shared<bool>(true);
 };
 
 }  // namespace chatterino

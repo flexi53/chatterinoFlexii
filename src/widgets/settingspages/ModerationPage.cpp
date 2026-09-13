@@ -334,27 +334,8 @@ ModerationPage::ModerationPage()
             // Every other click shows the alert as it looks after a timeout
             static bool afterTimeout = false;
 
-            const auto now = QDateTime::currentDateTime();
-            const auto steps = RepeatSpamDetector::steps();
-            QList<RepeatSpamPopup::Entry> history{
-                {now.addSecs(-40), "kauft jetzt merch", -1},
-                {now.addSecs(-36), "kauft jetzt merch", -1},
-                {now.addSecs(-31), "kauft zarbex merch", -1},
-            };
-
             auto *popup = new RepeatSpamPopup("test", "testuser", this);
-            popup->setTestMode(true);
-            if (afterTimeout)
-            {
-                history.append({now.addSecs(-25), {}, steps.front()});
-                history.append({now, "kauft jetzt merch", -1});
-                popup->setCase("TestUser", history,
-                               steps[std::min<size_t>(1, steps.size() - 1)], 1);
-            }
-            else
-            {
-                popup->setCase("TestUser", history, steps.front(), 0);
-            }
+            popup->showTestCase(afterTimeout);
             afterTimeout = !afterTimeout;
             popup->show();
         });
