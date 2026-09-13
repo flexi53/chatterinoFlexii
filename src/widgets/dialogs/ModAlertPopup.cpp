@@ -30,6 +30,8 @@
 #include "widgets/helper/ChannelView.hpp"
 #include "widgets/Label.hpp"
 
+#include <QSizeGrip>
+#include <QEvent>
 #include <QLocale>
 #include <QCursor>
 #include <QHash>
@@ -123,6 +125,31 @@ protected:
 private:
     double fraction_ = 1.0;
     QColor color_{"#00aeef"};
+};
+
+/// Remembers the size a moderator drags an alert window to, so the next ones
+/// open the same size. Only a size they chose counts - a window that closes
+/// at the size it came up with leaves the setting as it was.
+class SizeKeeper : public QObject
+{
+public:
+    using QObject::QObject;
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override
+    {
+        if (event->type() == QEvent::Hide)
+        {
+            const auto *window = static_cast<QWidget *>(watched);
+            const auto shown = window->property("alertShownSize").toSize();
+            if (shown.isValid() && window->size() != shown)
+            {
+                getSettings()->modAlertWidth.setValue(window->width());
+                getSettings()->modAlertHeight.setValue(window->height());
+            }
+        }
+        return false;
+    }
 };
 
 /// The picture until the real one arrives, and the one a test chatter gets:
@@ -352,6 +379,9 @@ ModAlertPopup::ModAlertPopup(QString channel, QString login, QWidget *parent)
     this->timeout_ = new QPushButton;
     buttons->addWidget(this->ignore_);
     buttons->addWidget(this->timeout_);
+    // Something to grab, since the window's size is meant to be changed
+    buttons->addWidget(new QSizeGrip(this), 0,
+                       Qt::AlignBottom | Qt::AlignRight);
     layout->addLayout(buttons);
 
     QObject::connect(this->ignore_, &QPushButton::clicked, this, [this] {
@@ -395,6 +425,17 @@ ModAlertPopup::ModAlertPopup(QString channel, QString login, QWidget *parent)
     QObject::connect(&this->countdown_, &QTimer::timeout, this, [this] {
         this->tick();
     });
+
+    // The size a moderator last dragged one to, where they did
+    const auto width = getSettings()->modAlertWidth.getValue();
+    const auto height = getSettings()->modAlertHeight.getValue();
+    if (width > 0 || height > 0)
+    {
+        const auto natural = this->sizeHint();
+        this->resize(width > 0 ? width : natural.width(),
+                     height > 0 ? height : natural.height());
+    }
+    this->installEventFilter(new SizeKeeper(this));
 }
 
 ModAlertPopup *ModAlertPopup::openFor(const QString &channel,
@@ -452,6 +493,7 @@ void ModAlertPopup::present()
     const auto showHere = [this, onAllSpaces] {
         const auto nativeView = static_cast<std::uintptr_t>(this->winId());
         this->show();
+        this->rememberShownSize();
         // Qt's raise() activates the whole app on macOS, which would take
         // the keyboard from whatever the moderator is typing into
         chatterinoOrderFrontWithoutActivating(nativeView);
@@ -476,8 +518,19 @@ void ModAlertPopup::present()
     showHere();
 #else
     this->show();
+    this->rememberShownSize();
     this->raise();
 #endif
+}
+
+void ModAlertPopup::rememberShownSize()
+{
+    // Only the first time: an alert updated after the moderator resized it
+    // must not pass their size off as the one it came up with
+    if (!this->property("alertShownSize").isValid())
+    {
+        this->setProperty("alertShownSize", this->size());
+    }
 }
 
 int ModAlertPopup::openCount()

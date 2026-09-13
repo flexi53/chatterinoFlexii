@@ -105,6 +105,9 @@ private:
     void setWhy(const QString &html, const QString &tooltip = {});
     void loadProfile();
     void restartCountdown();
+    /// Notes the size the window came up with, so a size the moderator
+    /// drags it to can be told apart
+    void rememberShownSize();
     void tick();
 
     QString channel_;

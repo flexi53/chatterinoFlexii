@@ -301,6 +301,10 @@ public:
     BoolSetting modAlertAlwaysOnTop = {"/moderation/alerts/alwaysOnTop", true};
     /// Plays the ping when a new alert window comes up
     BoolSetting modAlertSound = {"/moderation/alerts/sound", false};
+    /// The size alert windows open with, as the moderator last dragged one
+    /// to. 0 leaves that side to the window.
+    IntSetting modAlertWidth = {"/moderation/alerts/width", 0};
+    IntSetting modAlertHeight = {"/moderation/alerts/height", 0};
     /// What the emote alert offers at each step: "delete" or a timeout length
     QStringSetting emoteAlertSteps = {"/moderation/emoteAlert/steps",
                                       "delete, delete, 30s"};

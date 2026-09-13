@@ -88,6 +88,24 @@ ModAssistantPage::ModAssistantPage()
             "Nach dieser Zeit schließt sich das Fenster von selbst. Solange die "
             "Maus darüber ist, bleibt es offen.");
         alertsForm->addRow("Fenster schließt sich von selbst nach", autoClose);
+
+        const auto sizeHint = QStringLiteral(
+            "Du kannst ein Alarm-Fenster auch einfach an der Ecke unten rechts "
+            "größer ziehen - die Größe wird beim Schließen übernommen und gilt "
+            "für alle weiteren Fenster. Bei \"automatisch\" wählt das Fenster "
+            "seine Größe selbst.");
+        auto *alertWidth =
+            this->createSpinBox(getSettings()->modAlertWidth, 0, 3000);
+        alertWidth->setSuffix(" px");
+        alertWidth->setSpecialValueText("automatisch");
+        alertWidth->setToolTip(sizeHint);
+        alertsForm->addRow("Breite", alertWidth);
+        auto *alertHeight =
+            this->createSpinBox(getSettings()->modAlertHeight, 0, 3000);
+        alertHeight->setSuffix(" px");
+        alertHeight->setSpecialValueText("automatisch");
+        alertHeight->setToolTip(sizeHint);
+        alertsForm->addRow("Höhe", alertHeight);
         assistant->addLayout(alertsForm);
 
         auto *delayTests =
@@ -96,6 +114,14 @@ ModAssistantPage::ModAssistantPage()
             "Damit du nach dem Klick in ein anderes Programm wechseln und "
             "prüfen kannst, ob das Fenster dort vorne aufgeht.");
         assistant.append(delayTests);
+
+        auto *sizeTip = new QLabel(
+            "Tipp: Öffne einen Test-Alarm, zieh ihn an der Ecke unten rechts auf "
+            "die gewünschte Größe und schließ ihn - die nächsten Fenster öffnen "
+            "dann genauso groß.");
+        sizeTip->setWordWrap(true);
+        sizeTip->setEnabled(false);
+        assistant.append(sizeTip);
 
         // Opens a test window, right away or after the delay above
         const auto openTest =

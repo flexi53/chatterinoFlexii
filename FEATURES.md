@@ -155,6 +155,8 @@ They stay on top of every other program to begin with - over the browser or a
 game - without taking the keyboard from you, and can play the ping when a new
 one comes up (off to begin with). A test window can be held back five
 seconds, so you can switch to another program and watch it come up there.
+Drag one to the size you want and the next ones open that size; width and
+height can also be set directly.
 
 ## Badges and Twitch
 
