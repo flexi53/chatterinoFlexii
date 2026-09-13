@@ -168,6 +168,17 @@ private:
     const int padding_;
 };
 
+/// An image cut to a circle, like a profile picture
+class RoundImageLayoutElement : public ImageLayoutElement
+{
+public:
+    RoundImageLayoutElement(MessageElement &creator, ImagePtr image,
+                            QSizeF size);
+
+protected:
+    void paint(QPainter &painter, const MessageColors &messageColors) override;
+};
+
 // TEXT
 class TextLayoutElement : public MessageLayoutElement
 {

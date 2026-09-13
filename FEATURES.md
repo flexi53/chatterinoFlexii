@@ -39,6 +39,13 @@ highlight: small, lifted slightly off the baseline, pushed to the right hand
 edge of the message's last line. It was built to note which channel a
 moderator belongs to, but it takes any text.
 
+A Twitch name written as `@name` shows as that channel's **round profile
+picture** instead - `@zarbex @trymacs` for someone who moderates both, or
+mixed with text like `Mod @zarbex`. Hovering a picture shows the name, and
+clicking it opens the user card. Names are looked up on Twitch once; a name
+that is no Twitch user stays as text, so a typo is easy to spot. The reply
+button stays right behind the message, however long the caption.
+
 Changes take effect as you type them - no restart.
 
 The **First Messages** row starts out with `FIRST` in its caption, which

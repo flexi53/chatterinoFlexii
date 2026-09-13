@@ -489,6 +489,8 @@ set(SOURCE_FILES
 
         providers/twitch/ChannelPointReward.cpp
         providers/twitch/ChannelPointReward.hpp
+        providers/twitch/CaptionAvatars.cpp
+        providers/twitch/CaptionAvatars.hpp
         providers/twitch/IrcMessageHandler.cpp
         providers/twitch/IrcMessageHandler.hpp
         providers/twitch/PubSubClient.cpp

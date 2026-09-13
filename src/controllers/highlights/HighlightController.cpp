@@ -18,6 +18,7 @@
 #include "providers/twitch/TwitchAccount.hpp"  // IWYU pragma: keep
 #include "providers/twitch/TwitchBadge.hpp"
 #include "singletons/Settings.hpp"
+#include "providers/twitch/CaptionAvatars.hpp"
 
 namespace {
 
@@ -519,6 +520,33 @@ void HighlightController::rebuildChecks(Settings &settings)
     rebuildReplyThreadHighlight(settings, *checks);
 
     rebuildBadgeHighlights(settings, *checks);
+
+    // Twitch names in captions are looked up now, so their pictures are ready
+    // by the time a highlighted message comes in
+    QStringList captions{
+        settings.selfHighlightCaption.getValue(),
+        settings.whisperHighlightCaption.getValue(),
+        settings.subHighlightCaption.getValue(),
+        settings.threadHighlightCaption.getValue(),
+        settings.automodHighlightCaption.getValue(),
+        settings.selfMessageHighlightCaption.getValue(),
+        settings.firstMessageCaption.getValue(),
+        settings.redeemedHighlightCaption.getValue(),
+        settings.elevatedMessageHighlightCaption.getValue(),
+    };
+    for (const auto &highlight : *settings.highlightedMessages.readOnly())
+    {
+        captions.append(highlight.getCaption());
+    }
+    for (const auto &highlight : *settings.highlightedUsers.readOnly())
+    {
+        captions.append(highlight.getCaption());
+    }
+    for (const auto &highlight : *settings.highlightedBadges.readOnly())
+    {
+        captions.append(highlight.getCaption());
+    }
+    captionavatars::prefetch(captions);
 }
 
 std::pair<bool, HighlightResult> HighlightController::check(

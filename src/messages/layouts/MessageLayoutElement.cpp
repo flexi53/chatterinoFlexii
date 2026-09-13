@@ -416,6 +416,47 @@ void ImageWithCircleBackgroundLayoutElement::paint(
     }
 }
 
+RoundImageLayoutElement::RoundImageLayoutElement(MessageElement &creator,
+                                                 ImagePtr image, QSizeF size)
+    : ImageLayoutElement(creator, std::move(image), size)
+{
+}
+
+void RoundImageLayoutElement::paint(QPainter &painter,
+                                    const MessageColors & /*messageColors*/)
+{
+    if (this->image_ == nullptr)
+    {
+        return;
+    }
+
+    auto pixmap = this->image_->pixmapOrLoad();
+    if (!pixmap)
+    {
+        return;
+    }
+
+    // Painted as a textured circle rather than through a clip, which Qt does
+    // not smooth - the edge would come out jagged
+    const QRectF rect(this->getRect());
+    const auto ratio =
+        painter.device() != nullptr ? painter.device()->devicePixelRatioF() : 1.0;
+    auto scaled = pixmap->scaled((rect.size() * ratio).toSize(),
+                                 Qt::IgnoreAspectRatio,
+                                 Qt::SmoothTransformation);
+    scaled.setDevicePixelRatio(ratio);
+
+    QBrush brush(scaled);
+    brush.setTransform(QTransform::fromTranslate(rect.x(), rect.y()));
+
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(brush);
+    painter.drawEllipse(rect);
+    painter.restore();
+}
+
 //
 // TEXT
 //

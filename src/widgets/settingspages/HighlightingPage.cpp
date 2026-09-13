@@ -67,7 +67,10 @@ HighlightingPage::HighlightingPage()
                     "Play notification sounds and highlight messages based on "
                     "certain patterns.\n"
                     "Message highlights are prioritized over badge highlights "
-                    "and user highlights.");
+                    "and user highlights." "\n"
+                    "Caption: a note at the end of the line. Write a Twitch "
+                    "name as @name, e.g. @zarbex @trymacs, to show that "
+                    "channel's profile picture.");
 
                 auto *view =
                     highlights
@@ -116,7 +119,10 @@ HighlightingPage::HighlightingPage()
                     "Play notification sounds and highlight messages from "
                     "certain users.\n"
                     "User highlights are prioritized over badge highlights, "
-                    "but under message highlights.");
+                    "but under message highlights." "\n"
+                    "Caption: a note at the end of the line. Write a Twitch "
+                    "name as @name, e.g. @zarbex @trymacs, to show that "
+                    "channel's profile picture.");
                 EditableModelView *view =
                     pingUsers
                         .emplace<EditableModelView>(
@@ -171,7 +177,10 @@ HighlightingPage::HighlightingPage()
                     "Play notification sounds and highlight messages based on "
                     "user badges.\n"
                     "Badge highlights are prioritzed under user and message "
-                    "highlights.");
+                    "highlights." "\n"
+                    "Caption: a note at the end of the line. Write a Twitch "
+                    "name as @name, e.g. @zarbex @trymacs, to show that "
+                    "channel's profile picture.");
                 auto *view = badgeHighlights
                                  .emplace<EditableModelView>(
                                      (new BadgeHighlightModel(nullptr))

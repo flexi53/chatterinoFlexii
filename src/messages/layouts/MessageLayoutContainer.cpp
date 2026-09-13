@@ -15,13 +15,13 @@
 #include "singletons/Theme.hpp"
 #include "util/Helpers.hpp"
 
-#include <vector>
 #include <QDebug>
 #include <QMargins>
 #include <QPainter>
 #include <QVarLengthArray>
 
 #include <optional>
+#include <vector>
 
 namespace {
 
@@ -157,6 +157,7 @@ void MessageLayoutContainer::alignCaptionsRight()
     std::vector<qreal> closeUp(this->elements_.size() - lastLineStart, 0);
     qreal captionRoom = 0;
     qreal captionsWidth = 0;
+    int captionCount = 0;
     qreal runStart = 0;
     bool inRun = false;
     for (size_t i = lastLineStart; i < this->elements_.size(); i++)
@@ -170,6 +171,7 @@ void MessageLayoutContainer::alignCaptionsRight()
                 inRun = true;
             }
             captionsWidth += element->getRect().width();
+            ++captionCount;
             continue;
         }
         if (inRun)
@@ -181,8 +183,11 @@ void MessageLayoutContainer::alignCaptionsRight()
     }
 
     // How far right the captions may reach, and how far left they may go
-    // before running into the message itself.
+    // before running into the message itself. Captions keep a space between
+    // each other, so words and pictures in one do not run together.
     qreal right = this->width_ - (MARGIN.right() * this->scale_);
+    const qreal gap = this->spaceWidth_;
+    captionsWidth += gap * std::max(0, captionCount - 1);
     const auto textEndWith = [&](bool closedUp) {
         qreal end = 0;
         for (size_t i = lastLineStart; i < this->elements_.size(); i++)
@@ -237,7 +242,7 @@ void MessageLayoutContainer::alignCaptionsRight()
         }
 
         element->setPosition(QPointF(x, rect.y()));
-        right = x;
+        right = x - gap;
     }
 }
 
@@ -808,10 +813,13 @@ void MessageLayoutContainer::addElement(MessageLayoutElement *element,
 
     // The first message caption is set a size down. Elements are aligned to
     // the bottom of the line, so without lifting it, it would hang below the
-    // text it trails instead of sitting alongside it.
+    // text it trails instead of sitting alongside it. A profile picture in a
+    // caption is as tall as the text already and stays where it is.
     if (element->getCreator().getFlags().hasAny(
             {MessageElementFlag::FirstMessageMarker,
-             MessageElementFlag::HighlightCaption}))
+             MessageElementFlag::HighlightCaption}) &&
+        dynamic_cast<const CaptionAvatarElement *>(&element->getCreator()) ==
+            nullptr)
     {
         yOffset -= (MARGIN.top() * this->scale_);
     }

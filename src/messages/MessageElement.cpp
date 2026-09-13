@@ -20,6 +20,8 @@
 #include "singletons/Theme.hpp"
 #include "util/DebugCount.hpp"
 #include "util/Variant.hpp"
+#include "providers/twitch/CaptionAvatars.hpp"
+#include "singletons/Fonts.hpp"
 
 #include <QJsonArray>
 #include <QJsonObject>
@@ -215,6 +217,70 @@ QJsonObject CircularImageElement::toJson() const
 std::string_view CircularImageElement::type() const
 {
     return std::remove_pointer_t<decltype(this)>::TYPE;
+}
+
+// CAPTION AVATAR
+CaptionAvatarElement::CaptionAvatarElement(const QString &login,
+                                           const MessageColor &color,
+                                           MessageElementFlags flags)
+    : MessageElement(flags)
+    , login_(login)
+    , color_(color)
+    , fallback_(login, flags, color, FontStyle::ChatMediumSmall)
+{
+    this->setLink({Link::UserInfo, login});
+    this->setTooltip(login);
+    this->fallback_.setLink({Link::UserInfo, login});
+    this->fallback_.setTooltip(login);
+}
+
+void CaptionAvatarElement::addToContainer(MessageLayoutContainer &container,
+                                          const MessageLayoutContext &ctx)
+{
+    if (!ctx.flags.hasAny(this->getFlags()))
+    {
+        return;
+    }
+
+    auto image = captionavatars::image(this->login_);
+    if (!image)
+    {
+        this->fallback_.setTrailingSpace(this->hasTrailingSpace());
+        this->fallback_.addToContainer(container, ctx);
+        return;
+    }
+
+    this->setTooltip(captionavatars::displayName(this->login_));
+    // As tall as a line of chat text, so a caption of pictures leaves the
+    // height of the line alone
+    const qreal side = getApp()
+                           ->getFonts()
+                           ->getFontMetrics(FontStyle::ChatMedium,
+                                            container.getScale())
+                           .height();
+    container.addElement(
+        new RoundImageLayoutElement(*this, image, QSizeF(side, side)));
+}
+
+QJsonObject CaptionAvatarElement::toJson() const
+{
+    auto base = MessageElement::toJson();
+    base["type"_L1] = u"CaptionAvatarElement"_s;
+    base["login"_L1] = this->login_;
+    return base;
+}
+
+std::string_view CaptionAvatarElement::type() const
+{
+    return std::remove_pointer_t<decltype(this)>::TYPE;
+}
+
+std::unique_ptr<MessageElement> CaptionAvatarElement::clone() const
+{
+    auto el = std::make_unique<CaptionAvatarElement>(this->login_, this->color_,
+                                                     this->getFlags());
+    el->cloneFrom(*this);
+    return el;
 }
 
 // EMOTE

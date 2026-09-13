@@ -54,6 +54,7 @@
 #include "util/QStringHash.hpp"
 #include "util/Variant.hpp"
 #include "widgets/Window.hpp"
+#include "providers/twitch/CaptionAvatars.hpp"
 
 #include <boost/variant.hpp>
 #include <QApplication>
@@ -527,6 +528,41 @@ EmotePtr parseEmote(TwitchChannel *twitchChannel, const QString &userID,
     }
 
     return {};
+}
+
+/// Adds a caption to @a builder: its words as small text in @a color, and
+/// each Twitch name written as @name as that user's profile picture
+void appendCaption(chatterino::MessageBuilder &builder, const QString &caption,
+                   chatterino::MessageElementFlag flag, QColor color)
+{
+    using namespace chatterino;
+
+    // The highlight tint is far too transparent for text
+    color.setAlpha(255);
+
+    QStringList words;
+    const auto addWords = [&] {
+        if (!words.isEmpty())
+        {
+            builder.emplace<TextElement>(words.join(u' '), flag,
+                                         MessageColor(color),
+                                         FontStyle::ChatMediumSmall);
+            words.clear();
+        }
+    };
+
+    for (const auto &word : caption.split(u' ', Qt::SkipEmptyParts))
+    {
+        const auto login = captionavatars::loginOf(word);
+        if (login.isEmpty())
+        {
+            words.append(word);
+            continue;
+        }
+        addWords();
+        builder.emplace<CaptionAvatarElement>(login, MessageColor(color), flag);
+    }
+    addWords();
 }
 
 }  // namespace
@@ -1756,12 +1792,8 @@ std::pair<MessagePtrMut, HighlightAlert> MessageBuilder::makeIrcMessage(
             continue;
         }
 
-        auto captionColor = *ColorProvider::instance().color(entry.color);
-        captionColor.setAlpha(255);
-
-        builder.emplace<TextElement>(
-            entry.text, MessageElementFlag::FirstMessageMarker,
-            MessageColor(captionColor), FontStyle::ChatMediumSmall);
+        appendCaption(builder, entry.text, MessageElementFlag::FirstMessageMarker,
+                      *ColorProvider::instance().color(entry.color));
     }
 
     QString stylizedUsername =
@@ -2223,16 +2255,14 @@ HighlightAlert MessageBuilder::parseHighlights(const QVariantMap &tags,
 
     // A highlight can carry free text - e.g. which channel a moderator
     // belongs to - which trails the message the same way the first message
-    // caption does.
+    // caption does. Twitch names in it, written as @name, show as the
+    // channel's profile picture.
     if (!highlightResult.caption.isEmpty())
     {
-        auto captionColor =
-            highlightResult.color ? *highlightResult.color : QColor(Qt::white);
-        captionColor.setAlpha(255);
-
-        this->emplace<TextElement>(
-            highlightResult.caption, MessageElementFlag::HighlightCaption,
-            MessageColor(captionColor), FontStyle::ChatMediumSmall);
+        appendCaption(*this, highlightResult.caption,
+                      MessageElementFlag::HighlightCaption,
+                      highlightResult.color ? *highlightResult.color
+                                            : QColor(Qt::white));
     }
 
     if (highlightResult.showInMentions)
