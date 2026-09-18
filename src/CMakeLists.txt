@@ -346,6 +346,8 @@ set(SOURCE_FILES
         messages/MessageThread.cpp
         messages/MessageThread.hpp
 
+        messages/layouts/AlternateBackground.cpp
+        messages/layouts/AlternateBackground.hpp
         messages/layouts/MessageLayout.cpp
         messages/layouts/MessageLayout.hpp
         messages/layouts/MessageLayoutContainer.cpp

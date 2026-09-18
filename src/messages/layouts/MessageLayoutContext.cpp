@@ -4,6 +4,7 @@
 
 #include "messages/layouts/MessageLayoutContext.hpp"
 
+#include "messages/layouts/AlternateBackground.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
 
@@ -36,6 +37,12 @@ void MessageColors::applyTheme(Theme *theme, bool isOverlay,
     {
         this->channelBackground = theme->splits.background;
         applyColors(theme->messages);
+
+        // As far apart and in the colour set under Look -> Lesbarkeit
+        this->alternateBg = alternatebg::background(
+            this->regularBg, this->alternateBg,
+            getSettings()->alternateMessageStrength,
+            QColor(getSettings()->alternateMessageTint.getValue()));
     }
 
     this->messageSeperator = theme->splits.messageSeperator;

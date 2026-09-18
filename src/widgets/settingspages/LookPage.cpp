@@ -4,15 +4,36 @@
 
 #include "widgets/settingspages/LookPage.hpp"
 
+#include "messages/layouts/AlternateBackground.hpp"
 #include "singletons/Settings.hpp"
 #include "widgets/settingspages/SettingWidget.hpp"
 
+#include <QComboBox>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QPushButton>
 #include <QVBoxLayout>
 
+#include <algorithm>
+#include <cstdlib>
+
 namespace chatterino {
+
+namespace {
+
+/// Which of the strengths on offer @a strength is, or is closest to
+int strengthIndex(int strength)
+{
+    const auto &all = alternatebg::STRENGTHS;
+    return int(std::min_element(all.begin(), all.end(),
+                                [strength](int a, int b) {
+                                    return std::abs(a - strength) <
+                                           std::abs(b - strength);
+                                }) -
+               all.begin());
+}
+
+}  // namespace
 
 LookPage::LookPage()
     : view(GeneralPageView::withoutNavigation(this))
@@ -38,7 +59,6 @@ bool LookPage::filterElements(const QString &query)
     return false;
 }
 
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void LookPage::initLayout(GeneralPageView &layout)
 {
     auto &s = *getSettings();
@@ -101,6 +121,64 @@ void LookPage::initLayout(GeneralPageView &layout)
         s.tabGradient.setValue(false);
     });
     layout.addWidget(reset);
+
+    layout.addTitle("Lesbarkeit");
+    layout.addDescription(
+        "Jede zweite Nachricht bekommt einen etwas anderen Hintergrund, damit "
+        "man die Nachrichten auch im schnellen Chat auseinanderhält. Wie "
+        "deutlich und in welcher Farbe, stellst du hier ein; es wirkt sofort.");
+
+    SettingWidget::checkbox("Jede zweite Nachricht absetzen",
+                            s.alternateMessages)
+        ->setTooltip("Derselbe Schalter wie General -> Messages -> Alternate "
+                     "background color.")
+        ->addKeywords({"alternate", "background", "Hintergrund"})
+        ->addTo(layout);
+
+    auto *strength = layout.addDropdown<int>(
+        "Stärke", {"Wie im Theme", "Dezent", "Mittel", "Deutlich", "Stark"},
+        s.alternateMessageStrength,
+        [](int value) {
+            return strengthIndex(value);
+        },
+        [](const DropdownArgs &args) {
+            return alternatebg::STRENGTHS.at(std::clamp(
+                args.index, 0, int(alternatebg::STRENGTHS.size()) - 1));
+        },
+        false,
+        "Wie weit sich jede zweite Nachricht abhebt. „Wie im Theme“ ist der "
+        "leichte Grauton, den das Theme mitbringt.");
+
+    SettingWidget::colorButton("Farbton", s.alternateMessageTint)
+        ->setTooltip("Leer ist neutral: heller im dunklen Theme, dunkler im "
+                     "hellen. Mit einer Farbe - etwa einem leichten Violett - "
+                     "wird jede zweite Nachricht darin eingefärbt, so stark "
+                     "wie oben gewählt.")
+        ->conditionallyEnabledBy(s.alternateMessages)
+        ->addTo(layout);
+
+    SettingWidget::checkbox("Nur wechseln, wenn jemand anderes schreibt",
+                            s.alternateMessagesBySender)
+        ->setTooltip(
+            "Schreibt jemand mehrere Nachrichten hintereinander, behalten sie "
+            "denselben Hintergrund und lesen sich wie ein Block. Der "
+            "Hintergrund wechselt erst, wenn jemand anderes schreibt.")
+        ->conditionallyEnabledBy(s.alternateMessages)
+        ->addTo(layout);
+
+    s.alternateMessages.connect(
+        [strength](const bool &on, auto) {
+            strength->setEnabled(on);
+        },
+        this->managedConnections_);
+
+    // Back to the theme's own shade, without a colour
+    auto *neutral = new QPushButton("Wie im Theme");
+    QObject::connect(neutral, &QPushButton::clicked, [&s] {
+        s.alternateMessageStrength.setValue(0);
+        s.alternateMessageTint.setValue("");
+    });
+    layout.addWidget(neutral);
 
     layout.addStretch();
 }

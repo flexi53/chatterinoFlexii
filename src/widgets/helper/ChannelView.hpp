@@ -286,6 +286,9 @@ private:
     void messageReplaced(size_t hint, const MessagePtr &prev,
                          const MessagePtr &replacement);
     void messagesUpdated();
+    /// Gives every message its background again, after how it alternates
+    /// was changed
+    void refreshAlternateBackgrounds();
 
     void performLayout(bool causedByScrollbar = false,
                        bool causedByShow = false);
@@ -334,9 +337,6 @@ private:
 
     bool layoutQueued_ = false;
     bool bufferInvalidationQueued_ = false;
-
-    bool lastMessageHasAlternateBackground_ = false;
-    bool lastMessageHasAlternateBackgroundReverse_ = true;
 
     /// Tracks the area of animated elements in the last full repaint.
     /// If this is empty (QRect::isEmpty()), no animated element is shown.

@@ -226,6 +226,18 @@ public:
         "/appearance/messages/collapseMessagesMinLines", 0};
     BoolSetting alternateMessages = {
         "/appearance/messages/alternateMessageBackground", false};
+    /// How far every other message stands out, in percent - 0 is the
+    /// theme's own shade (see alternatebg::STRENGTHS)
+    IntSetting alternateMessageStrength = {
+        "/appearance/messages/alternateStrength", 0};
+    /// The colour every other message is tinted with - empty for lighter on
+    /// a dark theme and darker on a light one
+    QStringSetting alternateMessageTint = {"/appearance/messages/alternateTint",
+                                           ""};
+    /// Change the background only when someone else writes, so what one
+    /// chatter writes in a row reads as one block
+    BoolSetting alternateMessagesBySender = {
+        "/appearance/messages/alternateBySender", false};
     FloatSetting boldScale = {"/appearance/boldScale", 63};
     BoolSetting showTabCloseButton = {"/appearance/showTabCloseButton", true};
     /// Start every tab group on a row of its own, even when the group

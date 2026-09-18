@@ -81,6 +81,17 @@ and a gradient, all of which work under either look. Tabs with new messages
 or a highlight keep their own color so they still stand out, and **Use theme
 colors** goes back to the theme.
 
+### Readability
+
+Under **Lesbarkeit** on the same page, every other message can be set apart
+from the one before it, and made to stand out as much as you like - from the
+theme's faint grey through **Dezent**, **Mittel** and **Deutlich** to
+**Stark** - in a neutral shade or a colour of your own, such as a light
+violet. With **Nur wechseln, wenn jemand anderes schreibt** the background
+changes only when someone else writes, so several messages from one chatter
+in a row read as one block. It all shows in the chat at once, and **Wie im
+Theme** goes back to the theme's shade.
+
 ## User card
 
 - Shows the last **7 days** of a user's messages instead of roughly the last

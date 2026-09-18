@@ -10,7 +10,8 @@
 namespace chatterino {
 
 /// Everything about how the app looks that is a choice rather than a detail -
-/// currently the classic/modern switch.
+/// the classic/modern switch, the tab colours and how every other message
+/// stands out.
 class LookPage : public SettingsPage
 {
 public:

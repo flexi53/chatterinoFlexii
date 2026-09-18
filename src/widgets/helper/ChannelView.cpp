@@ -14,6 +14,7 @@
 #include "debug/Benchmark.hpp"
 #include "messages/Emote.hpp"
 #include "messages/Image.hpp"
+#include "messages/layouts/AlternateBackground.hpp"
 #include "messages/layouts/MessageLayout.hpp"
 #include "messages/layouts/MessageLayoutContext.hpp"
 #include "messages/layouts/MessageLayoutElement.hpp"
@@ -83,6 +84,25 @@ namespace {
 constexpr size_t TOOLTIP_EMOTE_ENTRIES_LIMIT = 7;
 
 using namespace chatterino;
+
+MessageLayout *raw(const std::optional<MessageLayoutPtr> &layout)
+{
+    return layout ? layout->get() : nullptr;
+}
+
+/// Gives @a layout the background it takes next to @a neighbour - the
+/// message before it, or the one after it when it goes in at the top
+void setBackgroundNextTo(MessageLayout &layout, MessageLayout *neighbour,
+                         ChannelView::Context context)
+{
+    // A user card - or an alert - shows one chatter, so changing only with
+    // the sender would leave every message there on one background
+    const bool bySender = context != ChannelView::Context::UserCard &&
+                          getSettings()->alternateMessagesBySender;
+    layout.flags.set(MessageLayoutFlag::AlternateBackground,
+                     alternatebg::alternateNextTo(
+                         neighbour, *layout.getMessage(), bySender));
+}
 
 constexpr int SCROLLBAR_PADDING = 8;
 
@@ -379,6 +399,35 @@ ChannelView::ChannelView(InternalCtor /*tag*/, QWidget *parent, Split *split,
                                     getSettings()->overlayBackgroundOpacity);
     this->messagePreferences_.connectSettings(getSettings(),
                                               this->signalHolder_);
+
+    // Look -> Lesbarkeit: how every other message stands out, and whether it
+    // changes with each message or only when someone else writes
+    getSettings()->alternateMessageStrength.connect(
+        [this] {
+            this->themeChangedEvent();
+        },
+        this->signalHolder_, false);
+    getSettings()->alternateMessageTint.connect(
+        [this] {
+            this->themeChangedEvent();
+        },
+        this->signalHolder_, false);
+    getSettings()->alternateMessagesBySender.connect(
+        [this] {
+            this->refreshAlternateBackgrounds();
+        },
+        this->signalHolder_, false);
+}
+
+void ChannelView::refreshAlternateBackgrounds()
+{
+    MessageLayout *previous = nullptr;
+    for (const auto &layout : this->messages_.getSnapshot())
+    {
+        setBackgroundNextTo(*layout, previous, this->context_);
+        previous = layout.get();
+    }
+    this->invalidateBuffers();
 }
 
 void ChannelView::initializeLayout()
@@ -812,9 +861,6 @@ void ChannelView::clearMessages()
     this->scrollBar_->setMinimum(0);
     this->queueLayout();
     this->update();
-
-    this->lastMessageHasAlternateBackground_ = false;
-    this->lastMessageHasAlternateBackgroundReverse_ = true;
 }
 
 Scrollbar &ChannelView::getScrollBar()
@@ -1025,12 +1071,8 @@ void ChannelView::setChannel(const ChannelPtr &underlyingChannel)
 
         auto messageLayout = std::make_shared<MessageLayout>(msg);
 
-        if (this->lastMessageHasAlternateBackground_)
-        {
-            messageLayout->flags.set(MessageLayoutFlag::AlternateBackground);
-        }
-        this->lastMessageHasAlternateBackground_ =
-            !this->lastMessageHasAlternateBackground_;
+        setBackgroundNextTo(*messageLayout, raw(this->messages_.last()),
+                            this->context_);
 
         if (underlyingChannel->shouldIgnoreHighlights())
         {
@@ -1182,16 +1224,12 @@ void ChannelView::messageAppended(MessagePtr &message,
 
     auto messageRef = std::make_shared<MessageLayout>(message);
 
-    if (this->lastMessageHasAlternateBackground_)
-    {
-        messageRef->flags.set(MessageLayoutFlag::AlternateBackground);
-    }
+    setBackgroundNextTo(*messageRef, raw(this->messages_.last()),
+                        this->context_);
     if (this->channel_->shouldIgnoreHighlights())
     {
         messageRef->flags.set(MessageLayoutFlag::IgnoreHighlights);
     }
-    this->lastMessageHasAlternateBackground_ =
-        !this->lastMessageHasAlternateBackground_;
 
     if (this->paused())
     {
@@ -1255,18 +1293,15 @@ void ChannelView::messageAddedAtStart(std::vector<MessagePtr> &messages)
     /// Create message layouts
     for (size_t i = 0; i < messages.size(); i++)
     {
-        auto message = messages.at(i);
-        auto layout = std::make_shared<MessageLayout>(message);
+        messageRefs.at(i) = std::make_shared<MessageLayout>(messages.at(i));
+    }
 
-        // alternate color
-        if (!this->lastMessageHasAlternateBackgroundReverse_)
-        {
-            layout->flags.set(MessageLayoutFlag::AlternateBackground);
-        }
-        this->lastMessageHasAlternateBackgroundReverse_ =
-            !this->lastMessageHasAlternateBackgroundReverse_;
-
-        messageRefs.at(i) = std::move(layout);
+    // alternate color, upwards from the message they go above
+    auto *below = raw(this->messages_.first());
+    for (auto it = messageRefs.rbegin(); it != messageRefs.rend(); ++it)
+    {
+        setBackgroundNextTo(**it, below, this->context_);
+        below = it->get();
     }
 
     /// Add the messages at the start
@@ -1334,19 +1369,13 @@ void ChannelView::messagesUpdated()
     this->scrollBar_->resetBounds();
     this->scrollBar_->setMaximum(qreal(snapshot.size()));
     this->scrollBar_->setMinimum(0);
-    this->lastMessageHasAlternateBackground_ = false;
-    this->lastMessageHasAlternateBackgroundReverse_ = true;
 
     for (const auto &msg : snapshot)
     {
         auto messageLayout = std::make_shared<MessageLayout>(msg);
 
-        if (this->lastMessageHasAlternateBackground_)
-        {
-            messageLayout->flags.set(MessageLayoutFlag::AlternateBackground);
-        }
-        this->lastMessageHasAlternateBackground_ =
-            !this->lastMessageHasAlternateBackground_;
+        setBackgroundNextTo(*messageLayout, raw(this->messages_.last()),
+                            this->context_);
 
         if (this->channel_->shouldIgnoreHighlights())
         {

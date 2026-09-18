@@ -9,6 +9,9 @@
 #include "controllers/moderation/ModHighlights.hpp"
 #include "controllers/moderation/RepeatSpamDetector.hpp"
 #include "controllers/moderation/StepEscalation.hpp"
+#include "messages/layouts/AlternateBackground.hpp"
+#include "messages/layouts/MessageLayout.hpp"
+#include "messages/Message.hpp"
 #include "providers/twitch/ProfilePictures.hpp"
 #include "Test.hpp"
 #include "util/ProfileSetup.hpp"
@@ -356,4 +359,83 @@ TEST(FlexiiProfile, NoImportIsAppliedWithoutAnExport)
     EXPECT_EQ(tabBarColor(readJson(target.path() + "/Settings/settings.json")),
               "#445566");
     EXPECT_FALSE(QFileInfo::exists(target.path() + "/PendingImport"));
+}
+
+namespace {
+
+std::shared_ptr<MessageLayout> messageFrom(const QString &login)
+{
+    auto message = std::make_shared<Message>();
+    message->loginName = login;
+    return std::make_shared<MessageLayout>(message);
+}
+
+/// Lays out messages from these senders one after another the way the chat
+/// does, and returns which ones got the alternate background
+std::vector<bool> backgrounds(const std::vector<QString> &senders,
+                              bool bySender)
+{
+    std::vector<bool> alternate;
+    std::shared_ptr<MessageLayout> previous;
+    for (const auto &sender : senders)
+    {
+        auto layout = messageFrom(sender);
+        layout->flags.set(MessageLayoutFlag::AlternateBackground,
+                          alternatebg::alternateNextTo(
+                              previous.get(), *layout->getMessage(), bySender));
+        alternate.push_back(
+            layout->flags.has(MessageLayoutFlag::AlternateBackground));
+        previous = layout;
+    }
+    return alternate;
+}
+
+}  // namespace
+
+TEST(FlexiiReadability, EveryOtherMessageStandsOut)
+{
+    EXPECT_EQ(backgrounds({"anna", "anna", "ben", "ben", "ben"}, false),
+              (std::vector<bool>{false, true, false, true, false}));
+}
+
+TEST(FlexiiReadability, OneSendersMessagesInARowKeepOneBackground)
+{
+    EXPECT_EQ(backgrounds({"anna", "anna", "ben", "ben", "ben", "anna"}, true),
+              (std::vector<bool>{false, false, true, true, true, false}));
+}
+
+TEST(FlexiiReadability, SystemMessagesInARowCountAsOneSender)
+{
+    EXPECT_EQ(backgrounds({"anna", "", "", "anna"}, true),
+              (std::vector<bool>{false, true, true, false}));
+}
+
+TEST(FlexiiReadability, ThemeShadeUntilAStrengthOrColourIsChosen)
+{
+    const QColor regular("#191919");
+    const QColor theme("#222222");
+    EXPECT_EQ(alternatebg::background(regular, theme, 0, QColor()), theme);
+}
+
+TEST(FlexiiReadability, NeutralIsLighterOnDarkAndDarkerOnLight)
+{
+    const auto dark =
+        alternatebg::background(QColor("#191919"), QColor(), 20, QColor());
+    EXPECT_EQ(dark, QColor(71, 71, 71));
+
+    const auto light =
+        alternatebg::background(QColor("#ffffff"), QColor(), 20, QColor());
+    EXPECT_EQ(light, QColor(204, 204, 204));
+}
+
+TEST(FlexiiReadability, AColourTintsAsStronglyAsChosen)
+{
+    const QColor regular("#191919");
+    const QColor violet("#9146ff");
+    EXPECT_EQ(alternatebg::background(regular, QColor(), 20, violet),
+              QColor(49, 34, 71));
+    // Left to the theme, a colour still shows - at the gentlest strength
+    EXPECT_EQ(alternatebg::background(regular, QColor(), 0, violet),
+              alternatebg::background(regular, QColor(),
+                                      alternatebg::TINT_STRENGTH, violet));
 }

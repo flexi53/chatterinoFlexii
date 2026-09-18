@@ -35,7 +35,17 @@ struct Release {
 
 /// Newest first. Add to the top when something lands that is worth telling
 /// the user about; everything above what they last saw is shown at once.
-const std::array<Release, 6> RELEASES{{
+const std::array<Release, 7> RELEASES{{
+    {"18 September 2026 (5)",
+     "18. September 2026 - Nachtrag 4",
+     {
+         "Der Chat liest sich leichter: Unter Einstellungen -> Look -> "
+         "Lesbarkeit stellst du ein, wie deutlich sich jede zweite Nachricht "
+         "abhebt - von dezent bis stark, neutral oder in einer eigenen Farbe.",
+         "Auf Wunsch wechselt der Hintergrund nur, wenn jemand anderes "
+         "schreibt. Mehrere Nachrichten desselben Users hintereinander lesen "
+         "sich dann wie ein Block.",
+     }},
     {"18 September 2026 (4)",
      "18. September 2026 - Nachtrag 3",
      {
