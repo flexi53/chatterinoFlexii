@@ -247,6 +247,7 @@ void SettingsDialog::addTabs()
 
     // clang-format off
     this->addTab([]{return new GeneralPage;},          "General",        ":/settings/about.svg", SettingsTabId::General);
+    this->ui_.tabContainer->addSpacing(16);
     this->addTab([]{return new LookPage;},             "Look",           ":/settings/about.svg");
     this->addTab([]{return new ModAssistantPage;},     "Mod-Assistent",  ":/settings/moderation.svg");
     this->addTab([]{return new ModHighlightsPage;},    "Mod-Highlights", ":/settings/notifications.svg");
