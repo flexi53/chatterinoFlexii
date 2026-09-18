@@ -110,6 +110,11 @@ public:
     /// last message is taken as the one that counted.
     static QStringList detectReasons(const QStringList &messages);
 
+    /// How a reason from detectReasons reads on screen. The reasons are
+    /// stored with the cases as they are, so cases collected before stay
+    /// readable whatever language the labels are in.
+    static QString reasonLabel(const QString &reason);
+
     /// Reads timeouts and bans out of the channel's chat logs.
     /// @returns how many new cases were added, or -1 if there are no logs
     int importFromLogs(const QString &channel);

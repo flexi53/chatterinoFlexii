@@ -207,9 +207,9 @@ void copyChatterinoProfile(const Paths &paths, const QString &source)
 
     QMessageBox::warning(
         nullptr, QStringLiteral("ChattiFlexii"),
-        QStringLiteral("Some of the settings could not be copied. Whatever "
-                       "came across is in place; the rest you will have to "
-                       "set up by hand. Chatterino itself is unchanged."));
+        QStringLiteral("Ein Teil der Einstellungen konnte nicht kopiert "
+                       "werden. Was ankam, ist übernommen; den Rest musst du "
+                       "selbst einstellen. Chatterino selbst ist unverändert."));
 }
 
 /// Asks for an export folder until one is picked, or the user gives up - then
@@ -222,7 +222,7 @@ QString askForExportFolder()
     while (true)
     {
         const auto folder = QFileDialog::getExistingDirectory(
-            nullptr, QStringLiteral("Choose a ChattiFlexii export"), start);
+            nullptr, QStringLiteral("ChattiFlexii-Export auswählen"), start);
         if (folder.isEmpty() || isProfileExport(folder))
         {
             return folder;
@@ -230,9 +230,9 @@ QString askForExportFolder()
 
         QMessageBox::warning(
             nullptr, QStringLiteral("ChattiFlexii"),
-            QStringLiteral("There is no ChattiFlexii export in that folder. "
-                           "Choose the \"ChattiFlexii-Export ...\" folder "
-                           "itself, not the one it is in."));
+            QStringLiteral("In diesem Ordner liegt kein ChattiFlexii-Export. "
+                           "Wähl den Ordner „ChattiFlexii-Export …“ selbst aus, "
+                           "nicht den Ordner, in dem er liegt."));
     }
 }
 
@@ -291,37 +291,40 @@ void importExistingProfile(const Paths &paths)
     {
         QMessageBox box;
         box.setIcon(QMessageBox::Question);
-        box.setWindowTitle(QStringLiteral("Welcome to ChattiFlexii"));
+        box.setWindowTitle(QStringLiteral("Willkommen bei ChattiFlexii"));
 
         QPushButton *copyChatterino = nullptr;
         if (!source.isEmpty())
         {
-            box.setText(QStringLiteral("Bring your Chatterino setup over?"));
+            box.setText(
+                QStringLiteral("Deine Chatterino-Einstellungen übernehmen?"));
             box.setInformativeText(
                 QStringLiteral(
-                    "Chatterino was found at\n%1\n\nIts tabs, highlights, "
-                    "commands, themes and plugins can be copied across so you "
-                    "start out where you left off. Chat logs are left behind. "
-                    "Chatterino itself is only read from - nothing is moved or "
-                    "deleted, and from here on the two keep their own "
-                    "settings.\n\nMoving over from ChattiFlexii on another "
-                    "computer? Import the folder made under Settings > Export "
-                    "& Import there, and everything is exactly as it was.")
+                    "Chatterino wurde gefunden unter\n%1\n\nTabs, Highlights, "
+                    "Befehle, Themes und Plugins lassen sich übernehmen, sodass "
+                    "du da weitermachst, wo du aufgehört hast. Chat-Logs "
+                    "bleiben zurück. Chatterino selbst wird nur gelesen - "
+                    "nichts wird verschoben oder gelöscht, und ab jetzt haben "
+                    "beide ihre eigenen Einstellungen.\n\nDu kommst von "
+                    "ChattiFlexii auf einem anderen Gerät? Dann importier den "
+                    "Ordner, den du dort unter Einstellungen → Export & Import "
+                    "erstellt hast - dann ist alles genau wie dort.")
                     .arg(QDir::toNativeSeparators(source)));
-            copyChatterino = box.addButton(QStringLiteral("Copy My Setup"),
-                                           QMessageBox::AcceptRole);
+            copyChatterino = box.addButton(
+                QStringLiteral("Chatterino übernehmen"), QMessageBox::AcceptRole);
         }
         else
         {
-            box.setText(QStringLiteral("Moving over from another computer?"));
+            box.setText(QStringLiteral("Kommst du von einem anderen Gerät?"));
             box.setInformativeText(QStringLiteral(
-                "Import the folder made under Settings > Export & Import in "
-                "ChattiFlexii on the other computer, and everything is exactly "
-                "as it was there."));
+                "Importier den Ordner, den du in ChattiFlexii auf dem anderen "
+                "Gerät unter Einstellungen → Export & Import erstellt hast, "
+                "dann ist alles genau wie dort."));
         }
         auto *importExport = box.addButton(
-            QStringLiteral("Import Export Folder..."), QMessageBox::ActionRole);
-        box.addButton(QStringLiteral("Start Fresh"), QMessageBox::RejectRole);
+            QStringLiteral("Export-Ordner importieren …"),
+            QMessageBox::ActionRole);
+        box.addButton(QStringLiteral("Neu anfangen"), QMessageBox::RejectRole);
         box.setDefaultButton(copyChatterino != nullptr ? copyChatterino
                                                        : importExport);
         box.exec();
@@ -470,7 +473,7 @@ void applyPendingImport(const Paths &paths)
     }
 
     const auto backup = root.absoluteFilePath(
-        QStringLiteral("Backup before import %1")
+        QStringLiteral("Sicherung vor Import %1")
             .arg(QDateTime::currentDateTime().toString(
                 QStringLiteral("yyyy-MM-dd HH-mm-ss"))));
     QDir().mkpath(backup);

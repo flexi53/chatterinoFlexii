@@ -23,6 +23,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QRegularExpression>
+#include <QHash>
 #include <QSaveFile>
 #include <QTextStream>
 
@@ -495,6 +496,20 @@ void ModerationAssistant::onMessage(const QString &channelName,
     popup->setSuggestion(displayName.isEmpty() ? login : displayName,
                          *suggestion);
     popup->present();
+}
+
+QString ModerationAssistant::reasonLabel(const QString &reason)
+{
+    static const QHash<QString, QString> labels{
+        {QStringLiteral("repeated message"),
+         QStringLiteral("wiederholte Nachricht")},
+        {QStringLiteral("link"), QStringLiteral("Link")},
+        {QStringLiteral("caps"), QStringLiteral("Großbuchstaben")},
+        {QStringLiteral("character or emote spam"),
+         QStringLiteral("Zeichen- oder Emote-Spam")},
+        {QStringLiteral("wall of text"), QStringLiteral("Textwand")},
+    };
+    return labels.value(reason, reason);
 }
 
 QStringList ModerationAssistant::detectReasons(const QStringList &messages)

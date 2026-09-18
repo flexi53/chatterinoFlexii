@@ -129,7 +129,7 @@ void TransferPage::buildImportTab(QVBoxLayout *layout)
     addText(layout,
             "1. Du wählst den Ordner „ChattiFlexii-Export …“ aus.<br>"
             "2. Deine jetzigen Einstellungen werden gesichert, in einen Ordner "
-            "„Backup before import …“ im ChattiFlexii-Datenordner.<br>"
+            "„Sicherung vor Import …“ im ChattiFlexii-Datenordner.<br>"
             "3. ChattiFlexii startet neu und übernimmt dabei den Export.");
     addText(layout,
             "Bist du hier schon bei Twitch angemeldet und der Export bringt "

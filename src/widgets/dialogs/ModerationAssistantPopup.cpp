@@ -2,11 +2,11 @@
 //
 // SPDX-License-Identifier: MIT
 
-#include "controllers/moderation/EmoteSpamDetector.hpp"
 #include "widgets/dialogs/ModerationAssistantPopup.hpp"
-#include "controllers/moderation/RepeatSpamDetector.hpp"
 
+#include "controllers/moderation/EmoteSpamDetector.hpp"
 #include "controllers/moderation/ModerationAssistant.hpp"
+#include "controllers/moderation/RepeatSpamDetector.hpp"
 #include "singletons/Settings.hpp"
 #include "util/FormatTime.hpp"
 
@@ -23,6 +23,21 @@
 
 namespace chatterino {
 
+namespace {
+
+/// The reasons detected for a case, as they read on screen
+QString detectedReasons(const ModCase &modCase)
+{
+    QStringList labels;
+    for (const auto &reason : modCase.reasons)
+    {
+        labels.append(ModerationAssistant::reasonLabel(reason));
+    }
+    return labels.join(QStringLiteral(", "));
+}
+
+}  // namespace
+
 ModerationAssistantPopup::ModerationAssistantPopup(const QString &channel,
                                                    QWidget *parent)
     : BasePopup(
@@ -35,7 +50,7 @@ ModerationAssistantPopup::ModerationAssistantPopup(const QString &channel,
     , channel_(channel.toLower())
 {
     this->setWindowTitle(
-        QStringLiteral("Moderation assistant - #%1").arg(this->channel_));
+        QStringLiteral("Mod-Assistent – #%1").arg(this->channel_));
     this->setAttribute(Qt::WA_DeleteOnClose);
     this->setMinimumSize(780, 500);
 
@@ -43,12 +58,12 @@ ModerationAssistantPopup::ModerationAssistantPopup(const QString &channel,
     layout->setContentsMargins(10, 10, 10, 10);
 
     auto *modeRow = new QHBoxLayout;
-    modeRow->addWidget(new QLabel(QStringLiteral("Mode:")));
+    modeRow->addWidget(new QLabel(QStringLiteral("Modus:")));
     this->mode_ = new QComboBox;
     this->mode_->addItems({
-        QStringLiteral("Off - collect nothing"),
-        QStringLiteral("Learn - collect cases"),
-        QStringLiteral("Suggest - collect cases and suggest"),
+        QStringLiteral("Aus – nichts sammeln"),
+        QStringLiteral("Lernen – Fälle sammeln"),
+        QStringLiteral("Vorschlagen – Fälle sammeln und vorschlagen"),
     });
     this->mode_->setCurrentIndex(static_cast<int>(
         ModerationAssistant::instance().mode(this->channel_)));
@@ -57,12 +72,12 @@ ModerationAssistantPopup::ModerationAssistantPopup(const QString &channel,
     layout->addLayout(modeRow);
 
     auto *repeatAlert = new QCheckBox(QStringLiteral(
-        "Alert when someone sends the same message three times in a row"));
+        "Alarm, wenn jemand dreimal hintereinander dieselbe Nachricht schreibt"));
     repeatAlert->setToolTip(QStringLiteral(
-        "Opens a window with their last messages and a timeout button. Each "
-        "time they carry on after serving a timeout, the button offers the "
-        "next step - the steps are set under Settings, "
-        "Mod-Assistent. Works independently of the mode above."));
+        "Öffnet ein Fenster mit den letzten Nachrichten und einem "
+        "Timeout-Knopf. Macht der User nach einem Timeout weiter, bietet der "
+        "Knopf die nächste Stufe an - die Stufen stellst du unter "
+        "Einstellungen → Mod-Assistent ein. Unabhängig vom Modus oben."));
     repeatAlert->setChecked(
         RepeatSpamDetector::instance().isEnabled(this->channel_));
     QObject::connect(repeatAlert, &QCheckBox::toggled, this, [this](bool on) {
@@ -70,12 +85,13 @@ ModerationAssistantPopup::ModerationAssistantPopup(const QString &channel,
     });
     layout->addWidget(repeatAlert);
 
-    auto *emoteAlert = new QCheckBox(QStringLiteral("Alert on emote spam"));
+    auto *emoteAlert = new QCheckBox(QStringLiteral("Alarm bei Emote-Spam"));
     emoteAlert->setToolTip(QStringLiteral(
-        "Opens a window when someone floods the chat with emotes - adding up "
-        "their emotes over a short time, as set under Settings, "
-        "Mod-Assistent. It offers to delete the messages at first and a timeout "
-        "further on. Works independently of the mode above."));
+        "Öffnet ein Fenster, wenn jemand den Chat mit Emotes flutet - die "
+        "Emotes werden über eine kurze Zeit zusammengezählt, wie unter "
+        "Einstellungen → Mod-Assistent eingestellt. Zuerst bietet es an, die "
+        "Nachrichten zu löschen, später einen Timeout. Unabhängig vom Modus "
+        "oben."));
     emoteAlert->setChecked(
         EmoteSpamDetector::instance().isEnabled(this->channel_));
     QObject::connect(emoteAlert, &QCheckBox::toggled, this, [this](bool on) {
@@ -87,22 +103,22 @@ ModerationAssistantPopup::ModerationAssistantPopup(const QString &channel,
     layout->addWidget(this->status_);
 
     auto *explanation = new QLabel(QStringLiteral(
-        "A case is a timeout or ban by any moderator here, together with what "
-        "the user wrote before it. Once enough have been collected, a message "
-        "that resembles earlier cases opens a window like the repeated "
-        "message alert, offering the action moderators usually took. Nothing "
-        "happens unless you press its button."));
+        "Ein Fall ist ein Timeout oder Bann eines Mods hier, zusammen mit dem, "
+        "was der User davor geschrieben hat. Sind genug gesammelt, öffnet eine "
+        "Nachricht, die früheren Fällen ähnelt, ein Fenster wie der Alarm für "
+        "wiederholte Nachrichten - mit der Aktion, die Mods meistens gegeben "
+        "haben. Es passiert nichts, solange du nicht auf den Knopf drückst."));
     explanation->setWordWrap(true);
     explanation->setEnabled(false);
     layout->addWidget(explanation);
 
     auto *actions = new QHBoxLayout;
     auto *importButton =
-        new QPushButton(QStringLiteral("Import from chat logs"));
+        new QPushButton(QStringLiteral("Aus Chat-Logs importieren"));
     importButton->setToolTip(QStringLiteral(
-        "Read the timeouts and bans already in this channel's chat logs, so "
-        "there is something to go on from the start."));
-    auto *removeButton = new QPushButton(QStringLiteral("Remove selected"));
+        "Liest die Timeouts und Banns, die schon in den Chat-Logs dieses "
+        "Kanals stehen, damit es von Anfang an etwas zum Lernen gibt."));
+    auto *removeButton = new QPushButton(QStringLiteral("Auswahl entfernen"));
     actions->addWidget(importButton);
     actions->addWidget(removeButton);
     actions->addStretch(1);
@@ -110,18 +126,18 @@ ModerationAssistantPopup::ModerationAssistantPopup(const QString &channel,
 
     this->search_ = new QLineEdit;
     this->search_->setPlaceholderText(
-        QStringLiteral("Search user, moderator, reason or message"));
+        QStringLiteral("User, Mod, Grund oder Nachricht suchen"));
     layout->addWidget(this->search_);
 
     this->table_ = new QTableWidget(0, 7);
     this->table_->setHorizontalHeaderLabels({
-        QStringLiteral("Time"),
-        QStringLiteral("Moderator"),
+        QStringLiteral("Zeit"),
+        QStringLiteral("Mod"),
         QStringLiteral("User"),
-        QStringLiteral("Action"),
-        QStringLiteral("Mod comment"),
-        QStringLiteral("Detected"),
-        QStringLiteral("What they wrote"),
+        QStringLiteral("Aktion"),
+        QStringLiteral("Mod-Kommentar"),
+        QStringLiteral("Erkannt"),
+        QStringLiteral("Was geschrieben wurde"),
     });
     this->table_->horizontalHeader()->setStretchLastSection(true);
     this->table_->verticalHeader()->setVisible(false);
@@ -149,14 +165,15 @@ ModerationAssistantPopup::ModerationAssistantPopup(const QString &channel,
         {
             QMessageBox::information(
                 this, QStringLiteral("Import"),
-                QStringLiteral("There are no chat logs for this channel yet. "
-                               "Logging has to be switched on for it first."));
+                QStringLiteral("Für diesen Kanal gibt es noch keine Chat-Logs. "
+                               "Dafür muss das Loggen für ihn eingeschaltet "
+                               "sein."));
         }
         else
         {
             QMessageBox::information(
                 this, QStringLiteral("Import"),
-                QStringLiteral("Added %1 new cases from the chat logs.")
+                QStringLiteral("%1 neue Fälle aus den Chat-Logs übernommen.")
                     .arg(added));
         }
         this->refresh();
@@ -187,28 +204,28 @@ void ModerationAssistantPopup::refresh()
     {
         case ModAssistMode::Off:
             this->status_->setText(
-                QStringLiteral("%1 cases stored. Switched off - nothing new "
-                               "is collected.")
+                QStringLiteral("%1 Fälle gespeichert. Ausgeschaltet - es wird "
+                               "nichts Neues gesammelt.")
                     .arg(count));
             break;
         case ModAssistMode::Learn:
             this->status_->setText(
                 count < minCases
-                    ? QStringLiteral("%1 of %2 cases collected.")
+                    ? QStringLiteral("%1 von %2 Fällen gesammelt.")
                           .arg(count)
                           .arg(minCases)
-                    : QStringLiteral("%1 cases collected - enough to switch "
-                                     "suggestions on.")
+                    : QStringLiteral("%1 Fälle gesammelt - genug, um "
+                                     "Vorschläge einzuschalten.")
                           .arg(count));
             break;
         case ModAssistMode::Suggest:
             this->status_->setText(
                 count < minCases
-                    ? QStringLiteral("%1 of %2 cases collected - suggestions "
-                                     "start once there are %2.")
+                    ? QStringLiteral("%1 von %2 Fällen gesammelt - Vorschläge "
+                                     "kommen ab %2.")
                           .arg(count)
                           .arg(minCases)
-                    : QStringLiteral("%1 cases collected - suggesting.")
+                    : QStringLiteral("%1 Fälle gesammelt - Vorschläge sind an.")
                           .arg(count));
             break;
     }
@@ -219,11 +236,12 @@ void ModerationAssistantPopup::refresh()
     for (const auto &modCase : cases)
     {
         const auto said = modCase.messages.join(QStringLiteral("  |  "));
+        const auto detected = detectedReasons(modCase);
         if (!needle.isEmpty() &&
             !modCase.user.contains(needle, Qt::CaseInsensitive) &&
             !modCase.moderator.contains(needle, Qt::CaseInsensitive) &&
             !modCase.reason.contains(needle, Qt::CaseInsensitive) &&
-            !modCase.reasons.join(' ').contains(needle, Qt::CaseInsensitive) &&
+            !detected.contains(needle, Qt::CaseInsensitive) &&
             !said.contains(needle, Qt::CaseInsensitive))
         {
             continue;
@@ -233,7 +251,7 @@ void ModerationAssistantPopup::refresh()
         this->table_->insertRow(row);
 
         auto *timeItem = new QTableWidgetItem(
-            modCase.time.toString(QStringLiteral("yyyy-MM-dd hh:mm")));
+            modCase.time.toString(QStringLiteral("dd.MM.yyyy HH:mm")));
         timeItem->setData(Qt::UserRole, modCase.time);
         timeItem->setData(Qt::UserRole + 1, modCase.user);
         this->table_->setItem(row, 0, timeItem);
@@ -249,11 +267,9 @@ void ModerationAssistantPopup::refresh()
             new QTableWidgetItem(
                 modCase.seconds > 0
                     ? QStringLiteral("Timeout %1").arg(formatTime(modCase.seconds))
-                    : QStringLiteral("Ban")));
+                    : QStringLiteral("Bann")));
         this->table_->setItem(row, 4, new QTableWidgetItem(modCase.reason));
-        this->table_->setItem(
-            row, 5,
-            new QTableWidgetItem(modCase.reasons.join(QStringLiteral(", "))));
+        this->table_->setItem(row, 5, new QTableWidgetItem(detected));
 
         auto *saidItem = new QTableWidgetItem(said);
         saidItem->setToolTip(modCase.messages.join('\n'));

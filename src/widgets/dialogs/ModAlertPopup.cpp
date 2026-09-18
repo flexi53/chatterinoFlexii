@@ -200,27 +200,27 @@ QString elided(const QString &text, qsizetype length)
 QString describeMatch(const ModMatch &match, bool html)
 {
     const auto &modCase = match.modCase;
-    const auto when =
-        QLocale::c().toString(modCase.time, QStringLiteral("d MMM hh:mm"));
+    const auto when = QLocale(QLocale::German)
+                          .toString(modCase.time, QStringLiteral("d. MMM HH:mm"));
     const auto outcome =
         modCase.seconds > 0
             ? QStringLiteral("Timeout %1").arg(formatTime(modCase.seconds))
-            : QStringLiteral("Ban");
+            : QStringLiteral("Bann");
     const auto by = modCase.moderator.isEmpty()
                         ? QString()
-                        : QStringLiteral(" by %1").arg(modCase.moderator);
+                        : QStringLiteral(" von %1").arg(modCase.moderator);
     const auto percent = qRound(match.similarity * 100);
 
     if (!html)
     {
-        return QStringLiteral("%1% alike · %2 · %3: %4 → %5%6")
+        return QStringLiteral("%1 % ähnlich · %2 · %3: %4 → %5%6")
             .arg(QString::number(percent), when, modCase.user,
                  elided(match.matchedMessage, 80), outcome, by);
     }
 
     auto result =
-        QStringLiteral("Closest case &middot; %1% alike &middot; %2<br>%3<br>"
-                       "&rarr; %4%5")
+        QStringLiteral("Ähnlichster Fall &middot; %1 % ähnlich &middot; "
+                       "%2<br>%3<br>&rarr; %4%5")
             .arg(QString::number(percent), when,
                  grey(QStringLiteral("%1: %2").arg(
                      modCase.user.toHtmlEscaped(),
@@ -228,8 +228,13 @@ QString describeMatch(const ModMatch &match, bool html)
                  outcome, by.toHtmlEscaped());
     if (!modCase.reasons.isEmpty())
     {
+        QStringList labels;
+        for (const auto &reason : modCase.reasons)
+        {
+            labels.append(ModerationAssistant::reasonLabel(reason));
+        }
         result += grey(QStringLiteral(" &middot; %1")
-                           .arg(modCase.reasons.join(", ").toHtmlEscaped()));
+                           .arg(labels.join(", ").toHtmlEscaped()));
     }
     return result;
 }
@@ -262,11 +267,11 @@ SuggestionReason describeSuggestion(const ModSuggestion &suggestion)
              suggestion.closest.front().sharedWords.mid(0, 5))
         {
             quoted.append(word == QStringLiteral("a link")
-                              ? word
-                              : QStringLiteral("&ldquo;%1&rdquo;")
+                              ? QStringLiteral("einen Link")
+                              : QStringLiteral("&bdquo;%1&ldquo;")
                                     .arg(word.toHtmlEscaped()));
         }
-        shared = QStringLiteral("shares %1 with earlier cases")
+        shared = QStringLiteral("teilt %1 mit früheren Fällen")
                      .arg(quoted.join(QStringLiteral(", ")));
     }
 
@@ -279,7 +284,8 @@ SuggestionReason describeSuggestion(const ModSuggestion &suggestion)
         QStringList reasons;
         for (const auto &reason : suggestion.messageReasons)
         {
-            reasons.append(reason.toHtmlEscaped());
+            reasons.append(
+                ModerationAssistant::reasonLabel(reason).toHtmlEscaped());
         }
         result.reason =
             capitalized(reasons.join(QStringLiteral(" &middot; ")));
@@ -294,7 +300,7 @@ SuggestionReason describeSuggestion(const ModSuggestion &suggestion)
     }
     else
     {
-        result.reason = QStringLiteral("Resembles earlier cases");
+        result.reason = QStringLiteral("Ähnelt früheren Fällen");
     }
     if (!suggestion.closest.empty())
     {
@@ -310,7 +316,7 @@ SuggestionReason describeSuggestion(const ModSuggestion &suggestion)
     if (!others.isEmpty())
     {
         result.tooltip =
-            QStringLiteral("Also similar:\n") + others.join('\n');
+            QStringLiteral("Ebenfalls ähnlich:\n") + others.join('\n');
     }
     return result;
 }
@@ -434,8 +440,8 @@ ModAlertPopup::ModAlertPopup(QString channel, QString login, QWidget *parent)
     layout->addWidget(this->messages_, 1);
 
     this->testNote_ = new QLabel(
-        QStringLiteral("<i style=\"color:#9a9a9a\">Test - made up messages, "
-                       "and the buttons do nothing.</i>"));
+        QStringLiteral("<i style=\"color:#9a9a9a\">Test - ausgedachte "
+                       "Nachrichten, die Knöpfe tun nichts.</i>"));
     this->testNote_->setTextFormat(Qt::RichText);
     this->testNote_->hide();
     layout->addWidget(this->testNote_);
@@ -445,7 +451,7 @@ ModAlertPopup::ModAlertPopup(QString channel, QString login, QWidget *parent)
 
     auto *buttons = new QHBoxLayout;
     buttons->addStretch(1);
-    this->ignore_ = new QPushButton(QStringLiteral("Ignore"));
+    this->ignore_ = new QPushButton(QStringLiteral("Ignorieren"));
     this->timeout_ = new QPushButton;
     buttons->addWidget(this->ignore_);
     buttons->addWidget(this->timeout_);
@@ -652,30 +658,33 @@ void ModAlertPopup::setCase(const QString &displayName, int seconds,
                             int timeoutsServed)
 {
     this->setWindowTitle(
-        QStringLiteral("Repeated message - #%1").arg(this->channel_));
+        QStringLiteral("Wiederholte Nachricht – #%1").arg(this->channel_));
     this->kind_ = Kind::RepeatedMessage;
 
     if (timeoutsServed == 0)
     {
         this->headline_->setText(
-            QStringLiteral("Sent the same message several times in a row."));
+            QStringLiteral("Hat dieselbe Nachricht mehrmals hintereinander "
+                           "geschickt."));
     }
     else if (timeoutsServed == 1)
     {
         this->headline_->setText(
-            QStringLiteral("Sent the message again after being timed out."));
+            QStringLiteral("Hat die Nachricht nach einem Timeout wieder "
+                           "geschickt."));
     }
     else
     {
         this->headline_->setText(
-            QStringLiteral("Sent the message again after %1 timeouts.")
+            QStringLiteral("Hat die Nachricht nach %1 Timeouts wieder "
+                           "geschickt.")
                 .arg(timeoutsServed));
     }
 
     const auto steps = RepeatSpamDetector::steps();
     this->setReason(
-        QStringLiteral("Same message repeated"),
-        QStringLiteral("Step %1 of %2")
+        QStringLiteral("Dieselbe Nachricht wiederholt"),
+        QStringLiteral("Stufe %1 von %2")
             .arg(std::min<size_t>(static_cast<size_t>(timeoutsServed),
                                   steps.size() - 1) +
                  1)
@@ -691,7 +700,7 @@ void ModAlertPopup::setSuggestion(const QString &displayName,
                                   const ModSuggestion &suggestion)
 {
     this->setWindowTitle(
-        QStringLiteral("Moderation assistant - #%1").arg(this->channel_));
+        QStringLiteral("Mod-Assistent – #%1").arg(this->channel_));
     this->kind_ = Kind::Suggestion;
     this->showChatter(displayName);
     this->applySuggestion(suggestion);
@@ -702,8 +711,8 @@ void ModAlertPopup::setSuggestion(const QString &displayName,
 void ModAlertPopup::applySuggestion(const ModSuggestion &suggestion)
 {
     this->headline_->setText(
-        QStringLiteral("Resembles %1 earlier cases in this channel. "
-                       "Moderators gave %2.")
+        QStringLiteral("Ähnelt %1 früheren Fällen in diesem Kanal. Mods "
+                       "gaben %2.")
             .arg(suggestion.similarCases)
             .arg(suggestion.spread));
 
@@ -865,8 +874,8 @@ void ModAlertPopup::showTestChatter(const QString &title)
     const QString name = QStringLiteral("TestUser");
     this->name_->setText(name);
     this->details_->setText(QStringLiteral(
-        "testuser &middot; <span style=\"color:#ffaa00\">account created 2 "
-        "days ago</span>"));
+        "testuser &middot; <span style=\"color:#ffaa00\">Account vor 2 Tagen "
+        "erstellt</span>"));
     this->avatar_->setPixmap(initialAvatar(name, this->theme->accent));
 
     this->liveMessages_.reset();
@@ -877,7 +886,7 @@ void ModAlertPopup::showTestChatter(const QString &title)
 void ModAlertPopup::showTestCase(bool afterTimeout)
 {
     this->kind_ = Kind::RepeatedMessage;
-    this->showTestChatter(QStringLiteral("Repeated message - test"));
+    this->showTestChatter(QStringLiteral("Wiederholte Nachricht – Test"));
 
     const QString name = QStringLiteral("TestUser");
     const auto now = QDateTime::currentDateTime();
@@ -905,18 +914,20 @@ void ModAlertPopup::showTestCase(bool afterTimeout)
             makeTestMessage(name, "kauft jetzt merch", now),
             MessageContext::Original);
         this->headline_->setText(
-            QStringLiteral("Sent the message again after being timed out."));
+            QStringLiteral("Hat die Nachricht nach einem Timeout wieder "
+                           "geschickt."));
         this->setAction(steps[std::min<size_t>(1, steps.size() - 1)]);
     }
     else
     {
         this->headline_->setText(
-            QStringLiteral("Sent the same message several times in a row."));
+            QStringLiteral("Hat dieselbe Nachricht mehrmals hintereinander "
+                           "geschickt."));
         this->setAction(steps.front());
     }
     this->setReason(
-        QStringLiteral("Same message repeated"),
-        QStringLiteral("Step %1 of %2")
+        QStringLiteral("Dieselbe Nachricht wiederholt"),
+        QStringLiteral("Stufe %1 von %2")
             .arg(afterTimeout ? std::min<size_t>(2, steps.size()) : 1)
             .arg(steps.size()));
 
@@ -926,7 +937,7 @@ void ModAlertPopup::showTestCase(bool afterTimeout)
 
 void ModAlertPopup::showTestSuggestion()
 {
-    this->showTestChatter(QStringLiteral("Moderation assistant - test"));
+    this->showTestChatter(QStringLiteral("Mod-Assistent – Test"));
 
     const QString name = QStringLiteral("TestUser");
     const auto now = QDateTime::currentDateTime();
@@ -981,14 +992,15 @@ void ModAlertPopup::setAction(int seconds)
     {
         this->timeout_->setText(
             this->deleteIds_.size() > 1
-                ? QStringLiteral("Delete %1 messages").arg(this->deleteIds_.size())
-                : QStringLiteral("Delete message"));
+                ? QStringLiteral("%1 Nachrichten löschen")
+                      .arg(this->deleteIds_.size())
+                : QStringLiteral("Nachricht löschen"));
     }
     else
     {
         this->timeout_->setText(
             seconds > 0 ? QStringLiteral("Timeout %1").arg(formatTime(seconds))
-                        : QStringLiteral("Ban"));
+                        : QStringLiteral("Bannen"));
     }
     this->timeout_->setDefault(true);
 }
@@ -998,7 +1010,7 @@ void ModAlertPopup::setEmoteSpam(const QString &displayName, int emotes,
                                  const QStringList &messageIds,
                                  int actionsServed, int stepCount)
 {
-    this->setWindowTitle(QStringLiteral("Emote spam - #%1").arg(this->channel_));
+    this->setWindowTitle(QStringLiteral("Emote-Spam – #%1").arg(this->channel_));
     this->kind_ = Kind::EmoteSpam;
     this->deleteIds_ = messageIds;
 
@@ -1014,16 +1026,17 @@ void ModAlertPopup::applyEmoteSpam(int emotes, int messages, int window,
 {
     this->headline_->setText(
         messages <= 1
-            ? QStringLiteral("Sent a message of %1 emotes.").arg(emotes)
-            : QStringLiteral("Sent %1 emotes across %2 messages in under %3 "
-                             "seconds.")
+            ? QStringLiteral("Hat eine Nachricht mit %1 Emotes geschickt.")
+                  .arg(emotes)
+            : QStringLiteral("Hat %1 Emotes in %2 Nachrichten in unter %3 "
+                             "Sekunden geschickt.")
                   .arg(emotes)
                   .arg(messages)
                   .arg(window));
     this->setReason(
-        QStringLiteral("Emote spam"),
-        QStringLiteral("%1 emotes within %2s, the alert starts at %3 &middot; "
-                       "step %4 of %5")
+        QStringLiteral("Emote-Spam"),
+        QStringLiteral("%1 Emotes in %2 s, Alarm ab %3 &middot; Stufe %4 von "
+                       "%5")
             .arg(emotes)
             .arg(window)
             .arg(std::max(1, getSettings()->emoteAlertMinEmotes.getValue()))
@@ -1035,7 +1048,7 @@ void ModAlertPopup::applyEmoteSpam(int emotes, int messages, int window,
 void ModAlertPopup::showTestEmoteSpam(int step)
 {
     this->kind_ = Kind::EmoteSpam;
-    this->showTestChatter(QStringLiteral("Emote spam - test"));
+    this->showTestChatter(QStringLiteral("Emote-Spam – Test"));
 
     const QString name = QStringLiteral("TestUser");
     const auto now = QDateTime::currentDateTime();
@@ -1081,11 +1094,11 @@ void ModAlertPopup::loadProfile()
 
             const auto days =
                 profile.createdAt.daysTo(QDateTime::currentDateTimeUtc());
-            const auto age = days <= 0   ? QStringLiteral("today")
-                             : days == 1 ? QStringLiteral("1 day ago")
-                                         : QStringLiteral("%1 days ago").arg(days);
             const auto createdText =
-                QStringLiteral("account created %1").arg(age);
+                days <= 0   ? QStringLiteral("Account heute erstellt")
+                : days == 1 ? QStringLiteral("Account gestern erstellt")
+                            : QStringLiteral("Account vor %1 Tagen erstellt")
+                                  .arg(days);
 
             this->details_->setText(
                 QStringLiteral("%1 &middot; %2")

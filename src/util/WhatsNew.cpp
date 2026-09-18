@@ -23,6 +23,10 @@
 namespace {
 
 struct Release {
+    /// What is remembered as seen. It never changes once a release is out -
+    /// the first ones were keyed by their English date, and changing a key
+    /// would show everyone everything again.
+    const char *id;
     /// Dated rather than numbered - the fork does not carry a version of its
     /// own, and a date says more about when something landed anyway.
     const char *date;
@@ -33,56 +37,61 @@ struct Release {
 /// the user about; everything above what they last saw is shown at once.
 const std::array<Release, 2> RELEASES{{
     {"13 September 2026",
+     "13. September 2026",
      {
-         "A moderation assistant, behind the shield button next to the emote "
-         "button in channels you moderate. It learns from the timeouts and "
-         "bans handed out there, and once switched to Suggest a message that "
-         "looks like earlier cases opens a window with the action moderators "
-         "usually took and why it came up - nothing happens unless you press "
-         "its button.",
-         "Colors for the tab bar and for the tabs on the Look page - a "
-         "background, a selected tab and a gradient, under either look.",
-         "Name the colors you keep reusing in the color picker, so picking "
-         "\"Mods\" gives every moderator the same color.",
-         "An alert for chatters sending the same message - or nearly the "
-         "same - three times in a row, with their messages, the timeouts in "
-         "between and a timeout button that steps up each time they carry on "
-         "(30s, 1m, 5m, 10m, 30m to begin with, adjustable). Switched on per "
-         "channel in the moderation assistant.",
-         "An alert for emote spam - emotes added up over a short time, so short "
-         "bursts count too: delete, delete, then a 30 second timeout to begin "
-         "with, adjustable the same way.",
-         "A little more room between rows of tabs.",
+         "Ein Mod-Assistent hinter dem Schild-Knopf neben dem Emote-Knopf in "
+         "Kanälen, in denen du Mod bist. Er lernt aus den Timeouts und Banns "
+         "dort, und auf „Vorschlagen“ gestellt öffnet eine Nachricht, die "
+         "früheren Fällen ähnelt, ein Fenster mit der Aktion, die Mods "
+         "meistens gegeben haben, und dem Grund dafür - es passiert nichts, "
+         "solange du nicht auf den Knopf drückst.",
+         "Farben für die Tab-Leiste und die Tabs auf der Look-Seite - "
+         "Hintergrund, ausgewählter Tab und Farbverlauf, in beiden Looks.",
+         "Benenne im Farbwähler die Farben, die du immer wieder nimmst - dann "
+         "bekommt mit einem Klick auf „Mods“ jeder Mod dieselbe Farbe.",
+         "Ein Alarm für User, die dieselbe - oder fast dieselbe - Nachricht "
+         "dreimal hintereinander schicken, mit ihren Nachrichten, den Timeouts "
+         "dazwischen und einem Timeout-Knopf, der jedes Mal eine Stufe höher "
+         "geht (anfangs 30s, 1m, 5m, 10m, 30m, einstellbar). Pro Kanal im "
+         "Mod-Assistenten einzuschalten.",
+         "Ein Alarm für Emote-Spam - die Emotes werden über kurze Zeit "
+         "zusammengezählt, sodass auch kurze Schwälle zählen: anfangs löschen, "
+         "löschen, dann 30 Sekunden Timeout, genauso einstellbar.",
+         "Etwas mehr Abstand zwischen den Tab-Reihen.",
      }},
     {"8 September 2026",
+     "8. September 2026",
      {
-         "Tab groups: gather tabs under a named header, collapse them, colour "
-         "a whole group at once, drag a group to move it, and pin one open so "
-         "it survives \"only show live tabs\".",
-         "A Caption column on every highlight page. What you type there is "
-         "drawn next to matching messages, at the end of the last line.",
-         "The first message label is a caption like any other now - it lives "
-         "in the First Messages row and starts out as FIRST.",
-         "A Look page in the settings, with the classic look and a modern one "
-         "that rounds things off.",
-         "The user card shows seven days of a user's messages instead of "
-         "roughly an hour.",
-         "Chatterino Homies badges, and 7TV badges that load when you join a "
-         "channel rather than when the user first writes.",
-         "The combined viewer count of a Stream Together in the split header.",
-         "Chat logs older than fourteen days are cleaned up at startup.",
-         "crossbanned and WhoseTheMod ship with the app. Switch them on under "
-         "Settings, Plugins.",
+         "Tab-Gruppen: Tabs unter einer benannten Überschrift sammeln, "
+         "einklappen, eine ganze Gruppe auf einmal einfärben, per Ziehen "
+         "verschieben und so festhalten, dass sie auch bei „nur Live-Tabs“ "
+         "sichtbar bleibt.",
+         "Eine Caption-Spalte auf allen Highlight-Seiten. Was du dort "
+         "einträgst, steht neben passenden Nachrichten am Ende der letzten "
+         "Zeile.",
+         "Das Label für erste Nachrichten ist jetzt eine Caption wie jede "
+         "andere - es steht in der Zeile First Messages und ist anfangs "
+         "FIRST.",
+         "Eine Look-Seite in den Einstellungen, mit dem klassischen Look und "
+         "einem modernen, der alles etwas abrundet.",
+         "Die Usercard zeigt sieben Tage Nachrichten eines Users statt etwa "
+         "einer Stunde.",
+         "Chatterino-Homies-Badges, und 7TV-Badges, die beim Betreten eines "
+         "Kanals laden statt erst, wenn der User schreibt.",
+         "Die gemeinsame Zuschauerzahl eines Stream Together im Split-Header.",
+         "Chat-Logs älter als vierzehn Tage werden beim Start aufgeräumt.",
+         "crossbanned und WhoseTheMod sind dabei. Einschalten unter "
+         "Einstellungen → Plugins.",
      }},
 }};
 
-QString buildBody(const QStringList &dates)
+QString buildBody(const QStringList &ids)
 {
     QString html;
 
     for (const auto &release : RELEASES)
     {
-        if (!dates.contains(QString::fromUtf8(release.date)))
+        if (!ids.contains(QString::fromUtf8(release.id)))
         {
             continue;
         }
@@ -108,7 +117,7 @@ namespace chatterino {
 
 void showWhatsNew()
 {
-    const auto newest = QString::fromUtf8(RELEASES.front().date);
+    const auto newest = QString::fromUtf8(RELEASES.front().id);
     const auto lastSeen = getSettings()->lastSeenChanges.getValue();
 
     if (lastSeen == newest)
@@ -121,13 +130,13 @@ void showWhatsNew()
     QStringList unseen;
     for (const auto &release : RELEASES)
     {
-        const auto date = QString::fromUtf8(release.date);
-        if (date == lastSeen)
+        const auto id = QString::fromUtf8(release.id);
+        if (id == lastSeen)
         {
             break;
         }
 
-        unseen.append(date);
+        unseen.append(id);
     }
 
     if (unseen.isEmpty())
@@ -140,7 +149,7 @@ void showWhatsNew()
 
     auto *dialog = new QDialog(parent);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
-    dialog->setWindowTitle(QStringLiteral("What's new in ChattiFlexii"));
+    dialog->setWindowTitle(QStringLiteral("Neu in ChattiFlexii"));
     dialog->setMinimumSize(480, 440);
 
     auto *layout = new QVBoxLayout(dialog);
@@ -158,7 +167,7 @@ void showWhatsNew()
     layout->addWidget(scroll, 1);
 
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok, dialog);
-    buttons->button(QDialogButtonBox::Ok)->setText(QStringLiteral("Got it"));
+    buttons->button(QDialogButtonBox::Ok)->setText(QStringLiteral("Alles klar"));
     QObject::connect(buttons, &QDialogButtonBox::accepted, dialog,
                      &QDialog::close);
     layout->addWidget(buttons);
