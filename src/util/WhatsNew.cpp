@@ -35,7 +35,32 @@ struct Release {
 
 /// Newest first. Add to the top when something lands that is worth telling
 /// the user about; everything above what they last saw is shown at once.
-const std::array<Release, 2> RELEASES{{
+const std::array<Release, 3> RELEASES{{
+    {"18 September 2026",
+     "18. September 2026",
+     {
+         "Der Mod-Assistent zeigt den Grund als leuchtende REASON-Box, in einer "
+         "eigenen, einstellbaren Farbe je Alarm-Art. Seine Einstellungen sind "
+         "in Reiter aufgeteilt.",
+         "Alarm-Fenster lassen sich größer ziehen und verschieben - Größe und "
+         "Ort werden gemerkt.",
+         "Captions können Profilbilder zeigen: Ein @name in einer Caption wird "
+         "zum runden Profilbild dieses Kanals.",
+         "Mod-Highlights: Kanäle auswählen, und deren Mods bekommen im Chat die "
+         "Profilbilder dieser Kanäle - Bots ausgenommen. Braucht das Plugin "
+         "WhoseTheMod.",
+         "Die Usercard zeigt, in welchen Kanälen jemand Mod ist.",
+         "Export & Import: Dein komplettes ChattiFlexii in einen Ordner packen "
+         "und auf einem anderen Gerät genau so übernehmen - auch gleich beim "
+         "ersten Start. Dazu automatische Sicherungen, auf Wunsch in iCloud "
+         "Drive.",
+         "Nachrichten anpinnen: /pin und /unpin, und „Pin“ im Moderate-Menü "
+         "einer Nachricht.",
+         "Alle Fenster, die ChattiFlexii mitbringt, sind jetzt auf Deutsch.",
+         "Behoben: der Absturz beim Ändern einer benannten Farbe, und der "
+         "Antwort-Knopf sitzt bei Nachrichten mit Caption wieder direkt hinter "
+         "dem Text.",
+     }},
     {"13 September 2026",
      "13. September 2026",
      {

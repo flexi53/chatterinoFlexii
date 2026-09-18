@@ -8,6 +8,9 @@ It installs alongside Chatterino under its own name, with its own icon and its
 own settings, so both can be used at the same time without getting in each
 other's way.
 
+The windows it adds - its settings pages, the alert windows, the moderation
+assistant, the welcome window and What's new - are in German.
+
 ## Tab groups
 
 Tabs can be gathered under a named header, which is drawn as a rounded chip in
@@ -83,6 +86,11 @@ colors** goes back to the theme.
 - Shows the last **7 days** of a user's messages instead of roughly the last
   hour, up to 25 of them. Anything older than the channel's own buffer is read
   back from the chat logs, so it needs logging switched on for that channel.
+- Shows where the user **moderates**: the pictures of those channels - the
+  ones picked under Mod-Highlights first - and an **Alle** button with the
+  whole list, former channels included. It asks whosthemod.xyz the way /wtm
+  in the WhoseTheMod plugin does, so it needs that plugin switched on, and it
+  can be turned off on the Mod-Highlights page.
 
 ## Moderation assistant
 
@@ -184,10 +192,10 @@ from their moderators are
 marked with the **profile pictures** of those channels at the end of the line -
 someone who moderates two of them gets both - on a background colour you can
 set or turn off. The mod lists come from whosthemod.xyz, are kept on your
-computer and fetched again every six hours. Search the channels
-whosthemod.xyz knows, or type a channel name and press Enter to check it
-directly. A chatter's own user or badge highlight keeps its colour and
-caption; the pictures join it.
+computer and fetched again every six hours. Type a channel name and press
+Enter: it is checked against the same public list /modcheck in the plugin
+shows, and added. A chatter's own user or badge highlight keeps its colour
+and caption; the pictures join it.
 
 Bots are left out, on a tab of their own: fossabot, nightbot, moobot,
 aecrobot, streamelements and other common ones are listed to begin with, the
@@ -207,6 +215,21 @@ your own devices only.
 own settings aside in a backup, restarts and comes up exactly as it was on the
 first one. A login already there is kept when the export brings none. On a new
 computer the welcome window offers the same import on first start.
+
+**Automatic backups**, on a third tab and off to begin with, make such an
+export by themselves every few days - seven to begin with - into
+"ChattiFlexii-Sicherungen" in iCloud Drive where there is one, otherwise in
+Documents, and keep the newest five. A backup is imported like any export and
+never holds the Twitch login.
+
+## Pinning messages
+
+Moderators can pin messages without the Twitch website: **/pin text** sends
+a message and pins it for 20 minutes, **/pin -d none text** until the stream
+ends, and **/unpin** takes it down. A message's **Moderate** menu has **Pin**
+- until the stream ends, or for 1, 10 or 30 minutes - and **Unpin**. This is
+taken over from Chatterino ahead of its next release; the banner Chatterino
+shows above the chat for the pinned message is left out.
 
 ## Badges and Twitch
 
