@@ -55,6 +55,21 @@ The **First Messages** row starts out with `FIRST` in its caption, which
 labels a first-time chatter the way Twitch does. Clear the cell to switch it
 off; that is the same rule every caption follows.
 
+## Spelling variants
+
+Next to **Add** on the Messages highlights page, **Mit Schreibweisen...**
+turns a word or short phrase into a highlight that also finds it written
+differently. From `follower` it makes a pattern that finds `f0ll0w3r`,
+`fооllower` with Cyrillic letters, `föllower`, `fooollower`, `folower`,
+`f.o.l.l.o.w.e.r` and `f o l l o w e r` - and `dämlich` as `daemlich`,
+`damlich` or `d.a.e.m.l.i.c.h`. Each kind of disguise can be switched off,
+and **Nur als eigenes Wort** keeps `lol` from matching `lollipop`.
+
+The window shows examples of what the pattern finds, the pattern itself to
+copy, and a field to try it on a message first - which also says when the
+word is there only inside a longer one. The highlight it adds starts with
+the word as a comment, so it is easy to spot in the list.
+
 ## Named colors
 
 The color picker keeps a list of colors you have named - "Mods",

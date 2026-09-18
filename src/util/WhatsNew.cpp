@@ -35,7 +35,17 @@ struct Release {
 
 /// Newest first. Add to the top when something lands that is worth telling
 /// the user about; everything above what they last saw is shown at once.
-const std::array<Release, 7> RELEASES{{
+const std::array<Release, 8> RELEASES{{
+    {"19 September 2026",
+     "19. September 2026",
+     {
+         "Highlights mit Schreibweisen: Unter Einstellungen -> Highlights -> "
+         "Messages macht \"Mit Schreibweisen...\" aus einem Wort ein "
+         "Highlight, das es auch abgewandelt findet - f0ll0w3r, "
+         "f.o.l.l.o.w.e.r, fooollower, mit kyrillischen Buchstaben oder "
+         "daemlich statt dämlich. Vorher kannst du es an einer Nachricht "
+         "ausprobieren.",
+     }},
     {"18 September 2026 (5)",
      "18. September 2026 - Nachtrag 4",
      {

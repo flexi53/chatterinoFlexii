@@ -19,6 +19,7 @@
 #include "widgets/dialogs/BadgePickerDialog.hpp"
 #include "widgets/dialogs/ColorPickerDialog.hpp"
 #include "widgets/helper/color/ColorItemDelegate.hpp"
+#include "widgets/dialogs/SpellingVariantsDialog.hpp"
 #include "widgets/helper/EditableModelView.hpp"
 
 #include <QFileDialog>
@@ -79,6 +80,17 @@ HighlightingPage::HighlightingPage()
                                 ->initialized(
                                     &getSettings()->highlightedMessages))
                         .getElement();
+                // A word in, a regex out that also finds it written
+                // differently - f0ll0w3r, f.o.l.l.o.w
+                auto *variants = new QPushButton("Mit Schreibweisen...");
+                variants->setToolTip(
+                    "Aus einem Wort ein Highlight machen, das es auch "
+                    "abgewandelt findet: f0ll0w3r, f.o.l.l.o.w.e.r, "
+                    "fooollower, mit kyrillischen Buchstaben.");
+                QObject::connect(variants, &QPushButton::clicked, [this] {
+                    (new SpellingVariantsDialog(this))->show();
+                });
+                view->addCustomButton(variants);
                 view->addRegexHelpLink();
                 view->setTitles({"Pattern", "Show in\nMentions",
                                  "Flash\ntaskbar", "Enable\nregex",

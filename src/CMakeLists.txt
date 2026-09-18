@@ -662,6 +662,8 @@ set(SOURCE_FILES
         util/SelfCheck.hpp
         util/SharedPtrElementLess.hpp
         util/SignalListener.hpp
+        util/SpellingVariants.cpp
+        util/SpellingVariants.hpp
         util/StreamLink.cpp
         util/StreamLink.hpp
         util/ThreadGuard.hpp
@@ -794,6 +796,8 @@ set(SOURCE_FILES
         widgets/dialogs/ModAlertPopup.hpp
         widgets/dialogs/SettingsDialog.cpp
         widgets/dialogs/SettingsDialog.hpp
+        widgets/dialogs/SpellingVariantsDialog.cpp
+        widgets/dialogs/SpellingVariantsDialog.hpp
         widgets/dialogs/UpdateDialog.cpp
         widgets/dialogs/UpdateDialog.hpp
         widgets/dialogs/UserInfoPopup.cpp

@@ -15,6 +15,7 @@
 #include "providers/twitch/ProfilePictures.hpp"
 #include "Test.hpp"
 #include "util/ProfileSetup.hpp"
+#include "util/SpellingVariants.hpp"
 #include "util/Twitch.hpp"
 #include "widgets/dialogs/ModAlertPopup.hpp"
 
@@ -438,4 +439,101 @@ TEST(FlexiiReadability, AColourTintsAsStronglyAsChosen)
     EXPECT_EQ(alternatebg::background(regular, QColor(), 0, violet),
               alternatebg::background(regular, QColor(),
                                       alternatebg::TINT_STRENGTH, violet));
+}
+
+namespace {
+
+bool finds(const QString &word, const QString &message,
+           const spelling::Options &options = {})
+{
+    return spelling::compile(spelling::pattern(word, options))
+        .match(message)
+        .hasMatch();
+}
+
+}  // namespace
+
+TEST(FlexiiSpelling, FindsTheWordAsItIs)
+{
+    EXPECT_TRUE(finds("follower", "gratis follower hier"));
+    EXPECT_TRUE(finds("follower", "FOLLOWER"));
+}
+
+TEST(FlexiiSpelling, FindsItDisguised)
+{
+    for (const auto *message :
+         {"f0ll0w3r", "f\u043Ellower", "f o l l o w e r", "f.o.l.l.o.w.e.r",
+          "fooollower", "folower", "f\u00F3llower", "fol.lower"})
+    {
+        EXPECT_TRUE(finds("follower", QString::fromUtf8(message))) << message;
+    }
+}
+
+TEST(FlexiiSpelling, LeavesOtherWordsAlone)
+{
+    EXPECT_FALSE(finds("follower", "flower"));
+    EXPECT_FALSE(finds("lol", "lollipop"));
+    EXPECT_FALSE(finds("follower", "followers"));
+
+    spelling::Options inside;
+    inside.wholeWord = false;
+    EXPECT_TRUE(finds("follower", "followers", inside));
+}
+
+TEST(FlexiiSpelling, UmlautsWrittenOut)
+{
+    for (const auto *message : {"daemlich", "damlich", "D\u00C4MLICH", "d4emlich"})
+    {
+        EXPECT_TRUE(finds(QString::fromUtf8("d\u00E4mlich"),
+                          QString::fromUtf8(message)))
+            << message;
+    }
+    EXPECT_TRUE(finds(QString::fromUtf8("d\u00E4mlich"), "d.a.e.m.l.i.c.h"));
+    EXPECT_TRUE(finds(QString::fromUtf8("schei\u00DFe"), "scheisse"));
+    EXPECT_TRUE(finds(QString::fromUtf8("schei\u00DFe"), "s c h e i s s e"));
+}
+
+TEST(FlexiiSpelling, PhrasesWithOrWithoutTheGap)
+{
+    for (const auto *message :
+         {"gratis follower", "gratis-follower", "gratisfollower",
+          "gratis   f0llower"})
+    {
+        EXPECT_TRUE(finds("gratis follower", message)) << message;
+    }
+}
+
+TEST(FlexiiSpelling, OnlyWhatIsSwitchedOn)
+{
+    const spelling::Options none{false, false, false, false, false};
+    EXPECT_EQ(spelling::pattern("lol", none), "(?#lol)lol");
+    EXPECT_TRUE(finds("lol", "xlolx", none));
+    EXPECT_FALSE(finds("lol", "l0l", none));
+    EXPECT_FALSE(finds("lol", "l o l", none));
+}
+
+TEST(FlexiiSpelling, EveryExampleIsFound)
+{
+    for (const auto *word : {"follower", "d\u00E4mlich", "gratis follower",
+                             "lol", "scheisse"})
+    {
+        const auto text = QString::fromUtf8(word);
+        const auto examples = spelling::examples(text, {});
+        EXPECT_FALSE(examples.empty()) << word;
+        for (const auto &example : examples)
+        {
+            EXPECT_TRUE(finds(text, example.text))
+                << word << " -> " << example.text.toStdString();
+        }
+    }
+}
+
+TEST(FlexiiSpelling, AnyInputGivesAValidPattern)
+{
+    for (const auto *word : {"a+b (c)] ^-\\", "[x]", "$$$", "#1 fan"})
+    {
+        const auto pattern = spelling::pattern(QString::fromUtf8(word), {});
+        EXPECT_TRUE(spelling::compile(pattern).isValid()) << word;
+    }
+    EXPECT_TRUE(spelling::pattern("   ", {}).isEmpty());
 }
