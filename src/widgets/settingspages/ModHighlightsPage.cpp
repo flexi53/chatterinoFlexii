@@ -146,6 +146,11 @@ void ModHighlightsPage::buildGeneralTab(QVBoxLayout *layout)
     layout->addWidget(this->createCheckBox(
         "Mods der ausgewählten Kanäle markieren",
         getSettings()->modHighlightsEnabled));
+    layout->addWidget(this->createCheckBox(
+        "In der Usercard zeigen, in welchen Kanälen jemand Mod ist",
+        getSettings()->modHighlightsUserCard,
+        "Fragt beim Öffnen einer Usercard whosthemod.xyz, so wie /wtm im "
+        "Plugin, und zeigt die Kanalbilder unter dem Namen."));
 
     addHeading(layout, "Aussehen");
     layout->addWidget(this->createCheckBox(

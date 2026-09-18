@@ -237,6 +237,52 @@ void ModHighlights::checkChannel(const QString &channel, QObject *caller,
         .execute();
 }
 
+void ModHighlights::lookUpModChannels(
+    const QString &login, QObject *caller,
+    std::function<void(const ModChannelsOfUser &)> done)
+{
+    // Answers kept for a while, by login. GUI thread only.
+    static QHash<QString, std::pair<QDateTime, ModChannelsOfUser>> answers;
+    constexpr qint64 KEEP_SECONDS = 10 * 60;
+
+    const auto key = login.toLower();
+    const auto kept = answers.constFind(key);
+    if (kept != answers.constEnd() &&
+        kept->first.secsTo(QDateTime::currentDateTimeUtc()) < KEEP_SECONDS)
+    {
+        done(kept->second);
+        return;
+    }
+
+    NetworkRequest(API_BASE + QStringLiteral("/check?user=") + key,
+                   NetworkRequestType::Get)
+        .timeout(TIMEOUT_MS)
+        .caller(caller)
+        .onSuccess([key, done](const NetworkResult &result) {
+            const auto root = result.parseJson();
+            if (!root.contains(QStringLiteral("channels")))
+            {
+                return;
+            }
+
+            ModChannelsOfUser found;
+            found.channels =
+                loginList(root.value(QStringLiteral("channels")).toArray());
+            found.total = std::max(
+                root.value(QStringLiteral("total")).toInt(),
+                static_cast<int>(found.channels.size()));
+            found.former = loginList(
+                root.value(QStringLiteral("former_channels")).toArray());
+            found.formerTotal = std::max(
+                root.value(QStringLiteral("former_total")).toInt(),
+                static_cast<int>(found.former.size()));
+
+            answers.insert(key, {QDateTime::currentDateTimeUtc(), found});
+            done(found);
+        })
+        .execute();
+}
+
 void ModHighlights::load()
 {
     QFile file(storePath());

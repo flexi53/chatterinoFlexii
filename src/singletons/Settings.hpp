@@ -324,6 +324,9 @@ public:
     /// those channels' profile pictures. Needs the WhoseTheMod plugin.
     BoolSetting modHighlightsEnabled = {"/moderation/modHighlights/enabled",
                                         true};
+    /// Whether the user card shows where someone moderates
+    BoolSetting modHighlightsUserCard = {"/moderation/modHighlights/userCard",
+                                         true};
     ChatterinoSetting<std::vector<QString>> modHighlightChannels = {
         "/moderation/modHighlights/channels", {}};
     BoolSetting modHighlightsColorEnabled = {

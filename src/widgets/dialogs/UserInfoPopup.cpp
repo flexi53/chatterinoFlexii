@@ -44,6 +44,7 @@
 #include "widgets/helper/InvisibleSizeGrip.hpp"
 #include "widgets/helper/Line.hpp"
 #include "widgets/helper/LiveIndicator.hpp"
+#include "widgets/helper/ModChannelsRow.hpp"
 #include "widgets/helper/ScalingSpacerItem.hpp"
 #include "widgets/Label.hpp"
 #include "widgets/MarkdownLabel.hpp"
@@ -636,6 +637,8 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
                 .assign(&this->ui_.createdDateLabel);
             vbox.emplace<Label>("").assign(&this->ui_.followageLabel);
             vbox.emplace<Label>("").assign(&this->ui_.subageLabel);
+            // Where they moderate, as the WhoseTheMod plugin knows it
+            vbox.emplace<ModChannelsRow>().assign(&this->ui_.modChannels);
         }
     }
 
@@ -1200,6 +1203,7 @@ void UserInfoPopup::updateUserData()
 
         this->userId_ = user.id;
         this->helixAvatarUrl_ = user.profileImageUrl;
+        this->ui_.modChannels->showFor(user.login);
         this->updateAvatarUrl();
         this->updateNotes();
 

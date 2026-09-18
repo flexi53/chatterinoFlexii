@@ -18,6 +18,15 @@ class QObject;
 
 namespace chatterino {
 
+/// Where someone moderates, as whosthemod.xyz knows it
+struct ModChannelsOfUser {
+    QStringList channels;
+    /// How many there are, which can be more than are listed
+    int total = 0;
+    QStringList former;
+    int formerTotal = 0;
+};
+
 /// Marks messages from moderators of the channels the user picked with those
 /// channels' profile pictures - someone who moderates two of them gets both.
 ///
@@ -54,6 +63,12 @@ public:
     /// the number of mods, or -1 when it could not be asked.
     void checkChannel(const QString &channel, QObject *caller,
                       std::function<void(int)> done);
+
+    /// Where @a login moderates, as /wtm in the plugin shows it. Answers are
+    /// kept for a few minutes, so opening a user card again asks nobody.
+    /// Calls back only when there is an answer. GUI thread only.
+    void lookUpModChannels(const QString &login, QObject *caller,
+                           std::function<void(const ModChannelsOfUser &)> done);
 
     /// The mod lists or the chosen channels changed
     pajlada::Signals::NoArgSignal updated;

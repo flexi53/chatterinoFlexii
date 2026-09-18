@@ -28,6 +28,7 @@ class EditUserNotesDialog;
 class ChannelView;
 class Split;
 struct HelixUser;
+class ModChannelsRow;
 class LabelButton;
 class PixmapButton;
 class LiveIndicator;
@@ -120,6 +121,7 @@ private:
         Label *userIDLabel = nullptr;
         Label *followageLabel = nullptr;
         Label *subageLabel = nullptr;
+        ModChannelsRow *modChannels = nullptr;
 
         LiveIndicator *liveIndicator = nullptr;
 
