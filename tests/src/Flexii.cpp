@@ -8,6 +8,7 @@
 #include "controllers/moderation/EmoteSpamDetector.hpp"
 #include "controllers/moderation/ModHighlights.hpp"
 #include "controllers/moderation/RepeatSpamDetector.hpp"
+#include "controllers/moderation/StepEscalation.hpp"
 #include "providers/twitch/ProfilePictures.hpp"
 #include "Test.hpp"
 #include "util/ProfileSetup.hpp"
@@ -125,46 +126,56 @@ TEST(FlexiiSteps, EmoteSpamStepsDeleteFirst)
     EXPECT_TRUE(EmoteSpamDetector::parseSteps("löschen, weg").empty());
 }
 
-// ----- repeated message escalation -----
+// ----- stepping up -----
 
 TEST(FlexiiEscalation, FirstOfferIsTheFirstStep)
 {
-    RepeatEscalation escalation;
-    EXPECT_EQ(escalation.repeat(), 0);
+    StepEscalation escalation;
+    EXPECT_EQ(escalation.more(1, 3), 0);
 }
 
-TEST(FlexiiEscalation, IgnoredAlertsStepUpEveryThreeRepeats)
+TEST(FlexiiEscalation, IgnoredRepeatsStepUpEveryThree)
 {
-    RepeatEscalation escalation;
-    EXPECT_EQ(escalation.repeat(), 0);
+    StepEscalation escalation;
+    EXPECT_EQ(escalation.more(1, 3), 0);
     // Nobody acts - they carry on
-    EXPECT_EQ(escalation.repeat(), std::nullopt);
-    EXPECT_EQ(escalation.repeat(), std::nullopt);
-    EXPECT_EQ(escalation.repeat(), 1);
-    EXPECT_EQ(escalation.repeat(), std::nullopt);
-    EXPECT_EQ(escalation.repeat(), std::nullopt);
-    EXPECT_EQ(escalation.repeat(), 2);
-    EXPECT_EQ(escalation.timeouts, 0);
+    EXPECT_EQ(escalation.more(1, 3), std::nullopt);
+    EXPECT_EQ(escalation.more(1, 3), std::nullopt);
+    EXPECT_EQ(escalation.more(1, 3), 1);
+    EXPECT_EQ(escalation.more(1, 3), std::nullopt);
+    EXPECT_EQ(escalation.more(1, 3), std::nullopt);
+    EXPECT_EQ(escalation.more(1, 3), 2);
+    EXPECT_EQ(escalation.actions, 0);
 }
 
-TEST(FlexiiEscalation, ATimeoutBringsTheNextStepAtOnce)
+TEST(FlexiiEscalation, IgnoredEmoteFloodsStepUpAsManyEmotesAgain)
 {
-    RepeatEscalation escalation;
-    EXPECT_EQ(escalation.repeat(), 0);
-    escalation.timedOut();
-    EXPECT_EQ(escalation.repeat(), 1);
-    EXPECT_EQ(escalation.timeouts, 1);
+    StepEscalation escalation;
+    // The alert starts at 8 emotes
+    EXPECT_EQ(escalation.more(9, 8), 0);
+    EXPECT_EQ(escalation.more(3, 8), std::nullopt);
+    EXPECT_EQ(escalation.more(4, 8), std::nullopt);
+    EXPECT_EQ(escalation.more(2, 8), 1);
 }
 
-TEST(FlexiiEscalation, TimeoutsAndIgnoredAlertsAddUp)
+TEST(FlexiiEscalation, AnActionBringsTheNextStepAtOnce)
 {
-    RepeatEscalation escalation;
-    EXPECT_EQ(escalation.repeat(), 0);
-    escalation.repeat();
-    escalation.repeat();
-    EXPECT_EQ(escalation.repeat(), 1);  // ignored, stepped up
-    escalation.timedOut();              // the 1 minute was given
-    EXPECT_EQ(escalation.repeat(), 2);  // next one straight away
+    StepEscalation escalation;
+    EXPECT_EQ(escalation.more(1, 3), 0);
+    escalation.actedOn();
+    EXPECT_EQ(escalation.more(1, 3), 1);
+    EXPECT_EQ(escalation.actions, 1);
+}
+
+TEST(FlexiiEscalation, ActionsAndIgnoredAlertsAddUp)
+{
+    StepEscalation escalation;
+    EXPECT_EQ(escalation.more(1, 3), 0);
+    escalation.more(1, 3);
+    escalation.more(1, 3);
+    EXPECT_EQ(escalation.more(1, 3), 1);  // ignored, stepped up
+    escalation.actedOn();                  // the 1 minute was given
+    EXPECT_EQ(escalation.more(1, 3), 2);  // next one straight away
 }
 
 // ----- Twitch names -----

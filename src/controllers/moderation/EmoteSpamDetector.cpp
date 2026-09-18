@@ -26,6 +26,8 @@ using namespace chatterino;
 
 /// Quiet for this long and they start with a clean slate
 constexpr int RESET_SECONDS = 30 * 60;
+/// The most messages one alert deletes
+constexpr qsizetype MAX_DELETED = 30;
 
 QString keyOf(const QString &channel, const QString &login)
 {
@@ -152,10 +154,6 @@ void EmoteSpamDetector::onMessage(const QString &channelName,
     {
         total += counted.emotes;
     }
-    if (total < threshold)
-    {
-        return;
-    }
 
     // A repeated message alert already open for them says more
     auto *open = ModAlertPopup::openFor(channel, login);
@@ -164,17 +162,17 @@ void EmoteSpamDetector::onMessage(const QString &channelName,
         return;
     }
 
-    // An alert for this burst was let go - no new window until it has run out
-    if (open == nullptr && state.alerted && state.lastAlert.isValid() &&
-        state.lastAlert.secsTo(now) <= window)
+    // Until the first offer it takes the full amount within the window; after
+    // it, what they send on counts towards the next step up
+    if (!state.escalation.offered)
     {
-        return;
-    }
-
-    if (open == nullptr)
-    {
+        if (total < threshold)
+        {
+            return;
+        }
         state.pendingIds.clear();
     }
+
     for (const auto &counted : state.recent)
     {
         if (!counted.id.isEmpty() && !state.pendingIds.contains(counted.id))
@@ -182,21 +180,35 @@ void EmoteSpamDetector::onMessage(const QString &channelName,
             state.pendingIds.append(counted.id);
         }
     }
-    state.alerted = true;
-    state.lastAlert = now;
+    // Deleting a whole afternoon of them one by one would take a while
+    while (state.pendingIds.size() > MAX_DELETED)
+    {
+        state.pendingIds.removeFirst();
+    }
+
+    const auto offer = state.escalation.more(emotes, threshold);
+    if (!offer && open == nullptr)
+    {
+        // Offered and let go - back once they have flooded as much again
+        return;
+    }
 
     const auto steps = EmoteSpamDetector::steps();
+    const auto level = state.escalation.level;
     const auto action =
-        steps[std::min<size_t>(static_cast<size_t>(state.actions),
-                               steps.size() - 1)];
+        steps[std::min<size_t>(static_cast<size_t>(level), steps.size() - 1)];
 
     auto *popup = ModAlertPopup::obtain(
         channel, login, &getApp()->getWindows()->getMainWindow());
     popup->setEmoteSpam(
         message->displayName.isEmpty() ? login : message->displayName, total,
         static_cast<int>(state.recent.size()), window, action,
-        state.pendingIds, state.actions, static_cast<int>(steps.size()));
-    popup->present();
+        state.pendingIds, level, state.escalation.actions,
+        static_cast<int>(steps.size()));
+    if (offer)
+    {
+        popup->present();
+    }
 }
 
 void EmoteSpamDetector::onAction(const QString &channelName,
@@ -213,10 +225,9 @@ void EmoteSpamDetector::onAction(const QString &channelName,
     if (it != this->users_.end())
     {
         // One step per alert, however many messages the action took down
-        if (it->alerted)
+        if (it->escalation.offered)
         {
-            it->actions++;
-            it->alerted = false;
+            it->escalation.actedOn();
         }
         // Dealt with - counting starts over from here
         it->recent.clear();

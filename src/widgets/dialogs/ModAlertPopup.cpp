@@ -42,6 +42,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QFontMetrics>
 #include <QHash>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -52,6 +53,7 @@
 #include <QVBoxLayout>
 
 #include <algorithm>
+#include <climits>
 
 namespace {
 
@@ -453,51 +455,21 @@ ModAlertPopup::ModAlertPopup(QString channel, QString login, QWidget *parent)
     this->countdownBar_ = new CountdownBar(this);
     layout->addWidget(this->countdownBar_);
 
+    // Ignore on the left, then a button for each action there is - the one
+    // recommended lit up in the alert's colour
     auto *buttons = new QHBoxLayout;
-    buttons->addStretch(1);
     this->ignore_ = new QPushButton(QStringLiteral("Ignorieren"));
-    this->timeout_ = new QPushButton;
     buttons->addWidget(this->ignore_);
-    buttons->addWidget(this->timeout_);
+    buttons->addStretch(1);
+    this->actions_ = new QHBoxLayout;
+    this->actions_->setSpacing(4);
+    buttons->addLayout(this->actions_);
     // Something to grab, since the window's size is meant to be changed
     buttons->addWidget(new QSizeGrip(this), 0,
                        Qt::AlignBottom | Qt::AlignRight);
     layout->addLayout(buttons);
 
     QObject::connect(this->ignore_, &QPushButton::clicked, this, [this] {
-        this->close();
-    });
-
-    QObject::connect(this->timeout_, &QPushButton::clicked, this, [this] {
-        auto channel = getApp()->getTwitch()->getChannelOrEmpty(this->channel_);
-        if (!this->test_ && !channel->isEmpty())
-        {
-            QStringList commands;
-            if (this->seconds_ < 0)
-            {
-                for (const auto &id : this->deleteIds_)
-                {
-                    commands.append(QStringLiteral("/delete %1").arg(id));
-                }
-            }
-            else if (this->seconds_ > 0)
-            {
-                commands.append(QStringLiteral("/timeout %1 %2")
-                                    .arg(this->login_)
-                                    .arg(this->seconds_));
-            }
-            else
-            {
-                commands.append(QStringLiteral("/ban %1").arg(this->login_));
-            }
-
-            for (auto command : commands)
-            {
-                command = getApp()->getCommands()->execCommand(command, channel,
-                                                               false);
-                channel->sendMessage(command);
-            }
-        }
         this->close();
     });
 
@@ -697,7 +669,7 @@ void ModAlertPopup::setCase(const QString &displayName, int seconds, int step,
             .arg(steps.size()));
 
     this->showChatter(displayName);
-    this->setAction(seconds);
+    this->setActions(seconds);
     this->showRecentLines();
     this->restartCountdown();
 }
@@ -724,7 +696,7 @@ void ModAlertPopup::applySuggestion(const ModSuggestion &suggestion)
 
     const auto described = describeSuggestion(suggestion);
     this->setReason(described.reason, described.details, described.tooltip);
-    this->setAction(suggestion.seconds);
+    this->setActions(suggestion.seconds);
 }
 
 void ModAlertPopup::setReason(const QString &reason, const QString &details,
@@ -984,14 +956,14 @@ void ModAlertPopup::showTestCase(bool afterTimeout)
         this->headline_->setText(
             QStringLiteral("Hat die Nachricht nach einem Timeout wieder "
                            "geschickt."));
-        this->setAction(steps[std::min<size_t>(1, steps.size() - 1)]);
+        this->setActions(steps[std::min<size_t>(1, steps.size() - 1)]);
     }
     else
     {
         this->headline_->setText(
             QStringLiteral("Hat dieselbe Nachricht mehrmals hintereinander "
                            "geschickt."));
-        this->setAction(steps.front());
+        this->setActions(steps.front());
     }
     this->setReason(
         QStringLiteral("Dieselbe Nachricht wiederholt"),
@@ -1053,29 +1025,160 @@ void ModAlertPopup::showTestSuggestion()
     this->restartCountdown();
 }
 
-void ModAlertPopup::setAction(int seconds)
+void ModAlertPopup::setActions(int recommended)
 {
-    this->seconds_ = seconds;
-    if (seconds < 0)
+    while (auto *item = this->actions_->takeAt(0))
     {
-        this->timeout_->setText(
-            this->deleteIds_.size() > 1
-                ? QStringLiteral("%1 Nachrichten löschen")
-                      .arg(this->deleteIds_.size())
-                : QStringLiteral("Nachricht löschen"));
+        delete item->widget();
+        delete item;
     }
-    else
+
+    // Every timeout from both alerts' steps, so there is a choice whichever
+    // alert this is - and deleting where there is something to delete
+    std::vector<int> choices;
+    const auto add = [&choices](int value) {
+        if (std::find(choices.begin(), choices.end(), value) == choices.end())
+        {
+            choices.push_back(value);
+        }
+    };
+    if (!this->deleteIds_.isEmpty())
     {
-        this->timeout_->setText(
-            seconds > 0 ? QStringLiteral("Timeout %1").arg(formatTime(seconds))
-                        : QStringLiteral("Bannen"));
+        add(EmoteSpamDetector::DELETE);
     }
-    this->timeout_->setDefault(true);
+    for (const auto steps :
+         {RepeatSpamDetector::steps(), EmoteSpamDetector::steps()})
+    {
+        for (const auto step : steps)
+        {
+            if (step > 0)
+            {
+                add(step);
+            }
+        }
+    }
+    add(recommended);
+    // Deleting first, then the timeouts from short to long, a ban last
+    std::sort(choices.begin(), choices.end(), [](int a, int b) {
+        const auto rank = [](int value) -> qint64 {
+            return value < 0 ? -1 : value == 0 ? INT_MAX : value;
+        };
+        return rank(a) < rank(b);
+    });
+
+    const auto color = reasonColor(this->kind_);
+    bool timeoutsLabelled = false;
+    for (const auto value : choices)
+    {
+        if (value > 0 && !timeoutsLabelled)
+        {
+            if (this->actions_->count() > 0)
+            {
+                this->actions_->addSpacing(10);
+            }
+            auto *label = new QLabel(QStringLiteral("Timeout"));
+            label->setStyleSheet(QStringLiteral("color: #9a9a9a;"));
+            this->actions_->addWidget(label);
+            timeoutsLabelled = true;
+        }
+
+        QString text;
+        QString tooltip;
+        if (value < 0)
+        {
+            text = this->deleteIds_.size() > 1
+                       ? QStringLiteral("%1 löschen").arg(this->deleteIds_.size())
+                       : QStringLiteral("Löschen");
+            tooltip = this->deleteIds_.size() > 1
+                          ? QStringLiteral("Die %1 gezählten Nachrichten löschen")
+                                .arg(this->deleteIds_.size())
+                          : QStringLiteral("Die Nachricht löschen");
+        }
+        else if (value == 0)
+        {
+            text = QStringLiteral("Bannen");
+            tooltip = QStringLiteral("%1 bannen").arg(this->login_);
+        }
+        else
+        {
+            text = formatTime(value);
+            tooltip = QStringLiteral("%1 für %2 timeouten")
+                          .arg(this->login_, formatTime(value));
+        }
+
+        auto *button = new QPushButton(text);
+        button->setToolTip(tooltip);
+        if (value == recommended)
+        {
+            button->setToolTip(tooltip + QStringLiteral(" - empfohlen"));
+            button->setStyleSheet(
+                QStringLiteral("QPushButton { border: 2px solid %1; "
+                               "border-radius: 5px; padding: 3px 10px; "
+                               "background: rgba(%2, %3, %4, 45); }")
+                    .arg(color.name())
+                    .arg(color.red())
+                    .arg(color.green())
+                    .arg(color.blue()));
+            auto *glow = new QGraphicsDropShadowEffect(button);
+            glow->setOffset(0, 0);
+            glow->setBlurRadius(16);
+            glow->setColor(color);
+            button->setGraphicsEffect(glow);
+            // Bold through the font, not the style sheet, so the button is
+            // sized for it
+            auto font = button->font();
+            font.setBold(true);
+            button->setFont(font);
+        }
+        // As wide as its text and no wider, so every choice fits in a row
+        button->setFixedWidth(std::max(
+            40, QFontMetrics(button->font()).horizontalAdvance(text) + 24));
+        QObject::connect(button, &QPushButton::clicked, this, [this, value] {
+            this->act(value);
+        });
+        this->actions_->addWidget(button);
+    }
+
+    // Wider than the smallest window only when there are that many choices
+    this->setMinimumWidth(std::max(480, this->layout()->minimumSize().width()));
+}
+
+void ModAlertPopup::act(int action)
+{
+    auto channel = getApp()->getTwitch()->getChannelOrEmpty(this->channel_);
+    if (!this->test_ && !channel->isEmpty())
+    {
+        QStringList commands;
+        if (action < 0)
+        {
+            for (const auto &id : this->deleteIds_)
+            {
+                commands.append(QStringLiteral("/delete %1").arg(id));
+            }
+        }
+        else if (action > 0)
+        {
+            commands.append(
+                QStringLiteral("/timeout %1 %2").arg(this->login_).arg(action));
+        }
+        else
+        {
+            commands.append(QStringLiteral("/ban %1").arg(this->login_));
+        }
+
+        for (auto command : commands)
+        {
+            command =
+                getApp()->getCommands()->execCommand(command, channel, false);
+            channel->sendMessage(command);
+        }
+    }
+    this->close();
 }
 
 void ModAlertPopup::setEmoteSpam(const QString &displayName, int emotes,
                                  int messages, int window, int action,
-                                 const QStringList &messageIds,
+                                 const QStringList &messageIds, int step,
                                  int actionsServed, int stepCount)
 {
     this->setWindowTitle(QStringLiteral("Emote-Spam – #%1").arg(this->channel_));
@@ -1083,24 +1186,33 @@ void ModAlertPopup::setEmoteSpam(const QString &displayName, int emotes,
     this->deleteIds_ = messageIds;
 
     this->showChatter(displayName);
-    this->applyEmoteSpam(emotes, messages, window, action, actionsServed,
+    this->applyEmoteSpam(emotes, messages, window, action, step, actionsServed,
                          stepCount);
     this->showRecentLines();
     this->restartCountdown();
 }
 
 void ModAlertPopup::applyEmoteSpam(int emotes, int messages, int window,
-                                   int action, int actionsServed, int stepCount)
+                                   int action, int step, int actionsServed,
+                                   int stepCount)
 {
-    this->headline_->setText(
-        messages <= 1
-            ? QStringLiteral("Hat eine Nachricht mit %1 Emotes geschickt.")
-                  .arg(emotes)
-            : QStringLiteral("Hat %1 Emotes in %2 Nachrichten in unter %3 "
-                             "Sekunden geschickt.")
-                  .arg(emotes)
-                  .arg(messages)
-                  .arg(window));
+    if (step > actionsServed)
+    {
+        this->headline_->setText(QStringLiteral(
+            "Flutet weiter mit Emotes, ohne dass jemand eingegriffen hat."));
+    }
+    else
+    {
+        this->headline_->setText(
+            messages <= 1
+                ? QStringLiteral("Hat eine Nachricht mit %1 Emotes geschickt.")
+                      .arg(emotes)
+                : QStringLiteral("Hat %1 Emotes in %2 Nachrichten in unter %3 "
+                                 "Sekunden geschickt.")
+                      .arg(emotes)
+                      .arg(messages)
+                      .arg(window));
+    }
     this->setReason(
         QStringLiteral("Emote-Spam"),
         QStringLiteral("%1 Emotes in %2 s, Alarm ab %3 &middot; Stufe %4 von "
@@ -1108,9 +1220,9 @@ void ModAlertPopup::applyEmoteSpam(int emotes, int messages, int window,
             .arg(emotes)
             .arg(window)
             .arg(std::max(1, getSettings()->emoteAlertMinEmotes.getValue()))
-            .arg(std::min(actionsServed, std::max(1, stepCount) - 1) + 1)
+            .arg(std::min(std::max(0, step), std::max(1, stepCount) - 1) + 1)
             .arg(std::max(1, stepCount)));
-    this->setAction(action);
+    this->setActions(action);
 }
 
 void ModAlertPopup::showTestEmoteSpam(int step)
@@ -1143,7 +1255,7 @@ void ModAlertPopup::showTestEmoteSpam(int step)
         12, static_cast<int>(lines.size()),
         std::max(1, getSettings()->emoteAlertWindowSeconds.getValue()),
         steps[std::min<size_t>(static_cast<size_t>(step), steps.size() - 1)],
-        step, static_cast<int>(steps.size()));
+        step, step, static_cast<int>(steps.size()));
 
     this->messages_->setChannel(this->view_);
     this->restartCountdown();

@@ -20,6 +20,7 @@
 #include <vector>
 
 class QFrame;
+class QHBoxLayout;
 class QLabel;
 class QPushButton;
 
@@ -104,11 +105,13 @@ public:
 
     /// @a emotes emotes across @a messages messages within @a window seconds.
     /// @a action is EmoteSpamDetector::DELETE to delete @a messageIds,
-    /// otherwise a timeout length. @a actionsServed counts the deletions and
-    /// timeouts the chatter has already had, out of @a stepCount steps.
+    /// otherwise a timeout length, at step @a step of @a stepCount counted
+    /// from 0. @a actionsServed counts the deletions and timeouts the chatter
+    /// has had; a step higher than that means nobody acted on an earlier
+    /// alert.
     void setEmoteSpam(const QString &displayName, int emotes, int messages,
                       int window, int action, const QStringList &messageIds,
-                      int actionsServed, int stepCount);
+                      int step, int actionsServed, int stepCount);
 
     /// The emote alert with made up lines, at step @a step
     void showTestEmoteSpam(int step);
@@ -123,11 +126,16 @@ private:
     void showChatter(const QString &displayName);
     void showRecentLines();
     void showTestChatter(const QString &title);
-    void setAction(int seconds);
+    /// A button for each action there is, the one recommended - DELETE, a
+    /// timeout length, or 0 for a ban - lit up in the alert's colour, so a
+    /// special case can still get something else
+    void setActions(int recommended);
+    /// Carries out @a action and closes the window
+    void act(int action);
     /// Headline, why line and button for a suggestion
     void applySuggestion(const ModSuggestion &suggestion);
     void applyEmoteSpam(int emotes, int messages, int window, int action,
-                        int actionsServed, int stepCount);
+                        int step, int actionsServed, int stepCount);
     /// The reason box: what the alert is about in a few words, set off in the
     /// colour of its kind, with what backs it up underneath
     void setReason(const QString &reason, const QString &details,
@@ -144,8 +152,6 @@ private:
 
     QString channel_;
     QString login_;
-    /// Length of the timeout on offer, 0 for a ban, negative to delete
-    int seconds_ = 30;
     /// The messages a delete takes down
     QStringList deleteIds_;
     Kind kind_ = Kind::Suggestion;
@@ -169,7 +175,8 @@ private:
     QLabel *testNote_{};
     QWidget *countdownBar_{};
     QPushButton *ignore_{};
-    QPushButton *timeout_{};
+    /// The action buttons, rebuilt for each alert
+    QHBoxLayout *actions_{};
 
     std::shared_ptr<Channel> view_;
     std::optional<pajlada::Signals::ScopedConnection> liveMessages_;

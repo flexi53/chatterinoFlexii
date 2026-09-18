@@ -270,10 +270,10 @@ void RepeatSpamDetector::onMessage(const QString &channelName,
         }
         // A message of its own, flagged afresh
         state.flaggedText = normalised;
-        state.escalation = RepeatEscalation{};
+        state.escalation = StepEscalation{};
     }
 
-    if (state.escalation.repeat())
+    if (state.escalation.more(1, STREAK))
     {
         this->showAlert(channel, login, displayName, state.escalation);
     }
@@ -303,7 +303,7 @@ void RepeatSpamDetector::onTimeout(const QString &channelName,
 
         if (!it->flaggedText.isEmpty())
         {
-            it->escalation.timedOut();
+            it->escalation.actedOn();
         }
 
         // The quiet time before a clean slate starts once the timeout is
@@ -318,41 +318,14 @@ void RepeatSpamDetector::onTimeout(const QString &channelName,
 
 void RepeatSpamDetector::showAlert(const QString &channel, const QString &login,
                                    const QString &displayName,
-                                   const RepeatEscalation &escalation)
+                                   const StepEscalation &escalation)
 {
     auto *popup = ModAlertPopup::obtain(
         channel, login, &getApp()->getWindows()->getMainWindow());
     popup->setCase(displayName.isEmpty() ? login : displayName,
                    stepFor(escalation.level), escalation.level,
-                   escalation.timeouts);
+                   escalation.actions);
     popup->present();
-}
-
-std::optional<int> RepeatEscalation::repeat()
-{
-    if (!this->offered)
-    {
-        this->offered = true;
-        this->sinceOffer = 0;
-        return this->level;
-    }
-
-    // Offered already and nobody has acted: back a step higher once they
-    // have kept at it as long as it took to be flagged in the first place
-    if (++this->sinceOffer < STREAK)
-    {
-        return std::nullopt;
-    }
-    this->sinceOffer = 0;
-    return ++this->level;
-}
-
-void RepeatEscalation::timedOut()
-{
-    this->timeouts++;
-    this->level++;
-    this->offered = false;
-    this->sinceOffer = 0;
 }
 
 std::vector<int> RepeatSpamDetector::steps()

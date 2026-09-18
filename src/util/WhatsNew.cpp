@@ -35,7 +35,17 @@ struct Release {
 
 /// Newest first. Add to the top when something lands that is worth telling
 /// the user about; everything above what they last saw is shown at once.
-const std::array<Release, 5> RELEASES{{
+const std::array<Release, 6> RELEASES{{
+    {"18 September 2026 (4)",
+     "18. September 2026 - Nachtrag 3",
+     {
+         "Auch der Emote-Spam-Alarm geht eine Stufe höher, wenn niemand "
+         "eingreift: Flutet jemand nach einem ignorierten Alarm weiter, kommt "
+         "er mit der nächsten Stufe wieder.",
+         "Im Alarm-Fenster gibt es jetzt für jede Aktion einen Knopf - Löschen "
+         "und alle Timeout-Dauern. Die empfohlene leuchtet in der Farbe des "
+         "Reasons; für Sonderfälle wählst du einfach eine andere.",
+     }},
     {"18 September 2026 (3)",
      "18. September 2026 - Nachtrag 2",
      {

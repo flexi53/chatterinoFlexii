@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "controllers/moderation/StepEscalation.hpp"
 #include "messages/Message.hpp"
 
 #include <QDateTime>
@@ -23,7 +24,8 @@ namespace chatterino {
 /// It adds up the emotes of a chatter's messages over a short time, counting
 /// the messages where emotes outweigh words - so a string of short bursts
 /// counts as much as one long wall. The next step comes once the chatter has
-/// actually had a message deleted or been timed out.
+/// had a message deleted or been timed out - or when nobody acts and they
+/// flood as much again.
 ///
 /// It only ever offers the action. Pressing the button is left to the user.
 /// Everything here runs on the GUI thread.
@@ -69,12 +71,8 @@ private:
     struct UserState {
         /// Their emote heavy messages within the counting window
         QList<Counted> recent;
-        /// Deletions and timeouts they have had since their first alert
-        int actions = 0;
-        /// An alert went up and nothing has been done about it yet
-        bool alerted = false;
-        QDateTime lastAlert;
-        /// The messages the open alert would delete
+        StepEscalation escalation;
+        /// The messages the alert would delete
         QStringList pendingIds;
         QDateTime lastActivity;
     };

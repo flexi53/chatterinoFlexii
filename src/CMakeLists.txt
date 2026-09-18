@@ -634,6 +634,8 @@ set(SOURCE_FILES
         controllers/moderation/ModerationAssistant.hpp
         controllers/moderation/RepeatSpamDetector.cpp
         controllers/moderation/RepeatSpamDetector.hpp
+        controllers/moderation/StepEscalation.cpp
+        controllers/moderation/StepEscalation.hpp
         controllers/moderation/ModHighlights.cpp
         controllers/moderation/ModHighlights.hpp
         controllers/moderation/EmoteSpamDetector.cpp

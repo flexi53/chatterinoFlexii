@@ -159,12 +159,12 @@ so a string of short bursts with the odd word in between counts as much as one
 long wall. The same window comes up, offering what the steps say - to begin
 with **delete, delete, 30s**. Delete takes down every message it counted.
 
-The next step only comes once the chatter has actually had a message deleted
-or been timed out, by you or anyone else, so a hype moment someone let pass
-does not count against them, and a burst that was ignored does not bring the
-window straight back. Emojis count as emotes; cheers do not. The number, the
-time, the steps and a **Show a test emote spam alert** button are under
-Settings -> Mod-Assistent.
+The next step comes once the chatter has had a message deleted or been timed
+out, by you or anyone else - or, when nobody acts, once they have flooded as
+many emotes again as the alert starts at: an ignored alert comes back a step
+higher rather than at the first step again. Emojis count as emotes; cheers do
+not. The number, the time, the steps and a **Show a test emote spam alert**
+button are under Settings -> Mod-Assistent.
 
 ### All alert windows
 
@@ -177,6 +177,11 @@ seconds, so you can switch to another program and watch it come up there.
 Drag one to the size and place you want and the next ones open that size and
 there, stepping aside when several are up at once; width and height can also
 be set directly, and the saved place reset.
+
+At the bottom of every alert is a button for each action - deleting where
+there is something to delete, and every timeout from the steps - with the one
+recommended lit up in the alert's colour, so a special case can still get
+something else. None of them is a default, so no key press sets one off.
 
 Every alert shows its **reason** at the top in a glowing box - "Same message
 repeated", "Emote spam", or what the assistant found - in a colour of its own
