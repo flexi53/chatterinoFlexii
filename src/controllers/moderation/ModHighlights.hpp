@@ -42,6 +42,12 @@ public:
     /// Whether plugins are on and WhoseTheMod is among them
     static bool pluginAvailable();
 
+    /// Whether @a login is left out of the marking by @a ignoredList - names
+    /// separated by commas, spaces or semicolons - or, with
+    /// @a ignoreBotNames, by ending in "bot"
+    static bool isExcludedMod(const QString &login, const QString &ignoredList,
+                              bool ignoreBotNames);
+
     /// The chosen channels @a login moderates, as a caption of @names - empty
     /// when there are none, or the feature is off. Safe from any thread.
     QString captionFor(const QString &login) const;

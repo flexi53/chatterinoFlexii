@@ -70,12 +70,11 @@ struct Exclusions {
     }
 };
 
-Exclusions exclusions()
+Exclusions exclusionsFrom(const QString &listed, bool botNames)
 {
     static const QRegularExpression separators(QStringLiteral("[\\s,;]+"));
 
     Exclusions result;
-    const auto listed = getSettings()->modHighlightsIgnoredUsers.getValue();
     for (auto name : listed.split(separators, Qt::SkipEmptyParts))
     {
         name = name.toLower();
@@ -88,8 +87,14 @@ Exclusions exclusions()
             result.names.insert(name);
         }
     }
-    result.botNames = getSettings()->modHighlightsIgnoreBotNames.getValue();
+    result.botNames = botNames;
     return result;
+}
+
+Exclusions exclusions()
+{
+    return exclusionsFrom(getSettings()->modHighlightsIgnoredUsers.getValue(),
+                          getSettings()->modHighlightsIgnoreBotNames.getValue());
 }
 
 QStringList loginList(const QJsonArray &array)
@@ -115,6 +120,13 @@ ModHighlights &ModHighlights::instance()
     // Never destroyed, so nothing is torn down after the settings at exit
     static auto *highlights = new ModHighlights;
     return *highlights;
+}
+
+bool ModHighlights::isExcludedMod(const QString &login,
+                                  const QString &ignoredList,
+                                  bool ignoreBotNames)
+{
+    return exclusionsFrom(ignoredList, ignoreBotNames).has(login.toLower());
 }
 
 bool ModHighlights::pluginAvailable()

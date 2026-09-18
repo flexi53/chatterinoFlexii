@@ -3,7 +3,8 @@ name: ChattiFlexii
 
 # Builds ready-to-run macOS and Windows packages on every push and
 # publishes them as a pre-release, so the current state can be downloaded
-# without building it.
+# without building it - but only once the tests of what ChattiFlexii adds
+# have passed.
 
 on:
   push:
@@ -219,11 +220,49 @@ jobs:
           name: ${{ env.OUTPUT_ZIP_PATH }}
           path: build/${{ env.OUTPUT_ZIP_PATH }}
 
+  tests:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          brew install boost openssl@3 rapidjson cmake ninja qt@6
+        shell: bash
+
+      - name: Build the tests
+        run: |
+          set -ex
+          cmake -S . -B build-tests -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="/opt/homebrew/opt/qt@6;/opt/homebrew/opt/openssl@3" \
+            -DCHATTERINO_PLUGINS=On \
+            -DCHATTERINO_UPDATER=Off \
+            -DCHATTERINO_NO_AVIF_PLUGIN=On \
+            -DUSE_PRECOMPILED_HEADERS=Off \
+            -DBUILD_TESTS=On \
+            -DBUILD_APP=Off
+          cmake --build build-tests --target chatterino-test --parallel "$(sysctl -n hw.logicalcpu)"
+        shell: bash
+
+      # Only the tests of what ChattiFlexii adds: Chatterino's own network
+      # tests need an httpbin service the runner does not have.
+      - name: Run the tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: ./build-tests/bin/chatterino-test --gtest_filter='Flexii*'
+        shell: bash
+
   release:
-    needs: [macos, windows]
+    needs: [macos, windows, tests]
     # Runs even if one platform failed, so a broken Windows build does not
-    # also withhold the working macOS download.
-    if: always() && github.event_name == 'push' && needs.macos.result == 'success'
+    # also withhold the working macOS download. Failing tests withhold both.
+    if: >-
+      always() && github.event_name == 'push' &&
+      needs.macos.result == 'success' && needs.tests.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
