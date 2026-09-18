@@ -29,6 +29,7 @@
 #include "widgets/settingspages/NicknamesPage.hpp"
 #include "widgets/settingspages/NotificationPage.hpp"
 #include "widgets/settingspages/PluginsPage.hpp"
+#include "widgets/settingspages/TransferPage.hpp"
 
 #include <QDialogButtonBox>
 #include <QFile>
@@ -249,6 +250,7 @@ void SettingsDialog::addTabs()
     this->addTab([]{return new LookPage;},             "Look",           ":/settings/about.svg");
     this->addTab([]{return new ModAssistantPage;},     "Mod-Assistent",  ":/settings/moderation.svg");
     this->addTab([]{return new ModHighlightsPage;},    "Mod-Highlights", ":/settings/notifications.svg");
+    this->addTab([]{return new TransferPage;},         "Export & Import", ":/settings/externaltools.svg");
     this->ui_.tabContainer->addSpacing(16);
     this->addTab([]{return new AccountsPage;},         "Accounts",       ":/settings/accounts.svg", SettingsTabId::Accounts);
     this->addTab([]{return new NicknamesPage;},        "Nicknames",      ":/settings/accounts.svg");

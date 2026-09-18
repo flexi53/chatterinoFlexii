@@ -194,6 +194,20 @@ aecrobot, streamelements and other common ones are listed to begin with, the
 list can be edited, and any name ending in "bot" is left out too unless that
 is switched off.
 
+## Moving to another computer
+
+Settings has an **Export & Import** page. **Export** puts the whole setup -
+settings, tabs and tab groups, highlights, commands, hotkeys, named colours,
+the mod assistant's cases, mod highlights, themes and plugins with their data -
+into one folder on the desktop, ready to AirDrop or copy over. Chat logs and
+the cache stay behind, and so does the Twitch login unless you tick it - for
+your own devices only.
+
+**Import** takes such a folder on the other computer: ChattiFlexii sets its
+own settings aside in a backup, restarts and comes up exactly as it was on the
+first one. A login already there is kept when the export brings none. On a new
+computer the welcome window offers the same import on first start.
+
 ## Badges and Twitch
 
 - **Chatterino Homies** badges, switchable under Appearance

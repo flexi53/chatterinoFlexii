@@ -904,6 +904,8 @@ set(SOURCE_FILES
         widgets/settingspages/ModHighlightsPage.hpp
         widgets/settingspages/PageSections.cpp
         widgets/settingspages/PageSections.hpp
+        widgets/settingspages/TransferPage.cpp
+        widgets/settingspages/TransferPage.hpp
         widgets/settingspages/ModerationPage.cpp
         widgets/settingspages/ModerationPage.hpp
         widgets/settingspages/NicknamesPage.cpp

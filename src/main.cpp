@@ -138,9 +138,11 @@ int main(int argc, char **argv)
                               << QSslSocket::supportedProtocols();
 #endif
 
-        // Both have to happen before anything reads the profile: a fresh
-        // install can be filled from an existing Chatterino, and the plugins
+        // All of these have to happen before anything reads the profile: an
+        // import chosen under Export & Import replaces it, a fresh install can
+        // be filled from an existing Chatterino or an export, and the plugins
         // we ship have to be on disk before the controller scans for them.
+        applyPendingImport(*paths);
         importExistingProfile(*paths);
         installBundledPlugins(*paths);
 
