@@ -34,6 +34,14 @@ void importExistingProfile(const Paths &paths);
 /// first. Returns the folder, or an empty string and the reason in @a error.
 QString exportProfile(const Paths &paths, bool includeLogin, QString &error);
 
+/// exportProfile for the profile in @a rootDirectory, into a folder in
+/// @a parentFolder named @a namePrefix and the time - what backups and the
+/// tests use
+QString exportProfileTo(
+    const QString &rootDirectory, const QString &parentFolder,
+    bool includeLogin, QString &error,
+    const QString &namePrefix = QStringLiteral("ChattiFlexii-Export"));
+
 /// Whether @a folder holds an export written by exportProfile
 bool isProfileExport(const QString &folder);
 
@@ -43,6 +51,9 @@ bool isProfileExport(const QString &folder);
 /// not be copied.
 bool stageProfileImport(const Paths &paths, const QString &folder,
                         QString &error);
+/// stageProfileImport for the profile in @a rootDirectory
+bool stageProfileImportAt(const QString &rootDirectory, const QString &folder,
+                          QString &error);
 
 /// Carries out an import set aside by stageProfileImport: this profile's
 /// settings move to a backup folder and the export takes their place. A login
@@ -50,6 +61,8 @@ bool stageProfileImport(const Paths &paths, const QString &folder,
 ///
 /// Must run before the settings are read.
 void applyPendingImport(const Paths &paths);
+/// applyPendingImport for the profile in @a rootDirectory
+void applyPendingImportAt(const QString &rootDirectory);
 
 /// Starts the app again once this process has exited, so an import set aside
 /// is applied without the user having to reopen it. Returns false if the

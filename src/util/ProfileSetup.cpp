@@ -361,18 +361,19 @@ void importExistingProfile(const Paths &paths)
     }
 }
 
-QString exportProfile(const Paths &paths, bool includeLogin, QString &error)
+QString exportProfileTo(const QString &rootDirectory,
+                        const QString &parentFolder, bool includeLogin,
+                        QString &error, const QString &namePrefix)
 {
-    const QDir desktop(
-        QStandardPaths::writableLocation(QStandardPaths::DesktopLocation));
+    const QDir parent(parentFolder);
     const auto stamp = QDateTime::currentDateTime().toString(
         QStringLiteral("yyyy-MM-dd HH-mm"));
     auto folder =
-        desktop.absoluteFilePath(QStringLiteral("ChattiFlexii-Export %1").arg(stamp));
+        parent.absoluteFilePath(QStringLiteral("%1 %2").arg(namePrefix, stamp));
     for (int n = 2; QFileInfo::exists(folder); n++)
     {
-        folder = desktop.absoluteFilePath(
-            QStringLiteral("ChattiFlexii-Export %1 (%2)").arg(stamp).arg(n));
+        folder = parent.absoluteFilePath(
+            QStringLiteral("%1 %2 (%3)").arg(namePrefix, stamp).arg(n));
     }
     if (!QDir().mkpath(folder))
     {
@@ -390,7 +391,7 @@ QString exportProfile(const Paths &paths, bool includeLogin, QString &error)
                (!includeLogin && name.startsWith(QStringLiteral("credentials")));
     };
 
-    const QDir root(paths.rootAppDataDirectory);
+    const QDir root(rootDirectory);
     bool ok = true;
     for (const auto &part : PROFILE_CONTENTS)
     {
@@ -435,6 +436,14 @@ QString exportProfile(const Paths &paths, bool includeLogin, QString &error)
     return folder;
 }
 
+QString exportProfile(const Paths &paths, bool includeLogin, QString &error)
+{
+    return exportProfileTo(
+        paths.rootAppDataDirectory,
+        QStandardPaths::writableLocation(QStandardPaths::DesktopLocation),
+        includeLogin, error);
+}
+
 bool isProfileExport(const QString &folder)
 {
     return QFileInfo::exists(QDir(folder).absoluteFilePath(EXPORT_MARKER));
@@ -443,8 +452,13 @@ bool isProfileExport(const QString &folder)
 bool stageProfileImport(const Paths &paths, const QString &folder,
                         QString &error)
 {
-    const auto pending =
-        QDir(paths.rootAppDataDirectory).absoluteFilePath(PENDING_IMPORT);
+    return stageProfileImportAt(paths.rootAppDataDirectory, folder, error);
+}
+
+bool stageProfileImportAt(const QString &rootDirectory, const QString &folder,
+                          QString &error)
+{
+    const auto pending = QDir(rootDirectory).absoluteFilePath(PENDING_IMPORT);
     // One chosen earlier that never got applied gives way
     QDir(pending).removeRecursively();
 
@@ -459,7 +473,14 @@ bool stageProfileImport(const Paths &paths, const QString &folder,
 
 void applyPendingImport(const Paths &paths)
 {
-    const QDir root(paths.rootAppDataDirectory);
+    applyPendingImportAt(paths.rootAppDataDirectory);
+}
+
+void applyPendingImportAt(const QString &rootDirectory)
+{
+    const QDir root(rootDirectory);
+    const auto settingsDirectory =
+        root.absoluteFilePath(QStringLiteral("Settings"));
     const auto pending = root.absoluteFilePath(PENDING_IMPORT);
     if (!QFileInfo::exists(pending))
     {
@@ -480,7 +501,7 @@ void applyPendingImport(const Paths &paths)
 
     // The login this computer already has, kept when the export brings none
     const auto accounts =
-        readJsonObject(QDir(paths.settingsDirectory)
+        readJsonObject(QDir(settingsDirectory)
                            .absoluteFilePath(QStringLiteral("settings.json")))
             .value(QStringLiteral("accounts"))
             .toObject();
@@ -507,7 +528,7 @@ void applyPendingImport(const Paths &paths)
         }
     }
 
-    const QDir settingsDir(paths.settingsDirectory);
+    const QDir settingsDir(settingsDirectory);
     const auto settingsPath =
         settingsDir.absoluteFilePath(QStringLiteral("settings.json"));
     auto settings = readJsonObject(settingsPath);

@@ -25,6 +25,8 @@ public:
 private:
     void buildExportTab(QVBoxLayout *layout);
     void buildImportTab(QVBoxLayout *layout);
+    void buildBackupTab(QVBoxLayout *layout);
+    void showBackupState();
     void exportNow();
     void importNow();
 
@@ -32,6 +34,8 @@ private:
     QLabel *exportStatus_{};
     QPushButton *reveal_{};
     QString lastExport_;
+    QLabel *backupFolder_{};
+    QLabel *backupStatus_{};
 };
 
 }  // namespace chatterino

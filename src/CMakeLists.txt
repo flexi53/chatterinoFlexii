@@ -642,6 +642,8 @@ set(SOURCE_FILES
         util/ProfileSetup.hpp
         util/RoundPixmap.cpp
         util/RoundPixmap.hpp
+        util/AutoBackup.cpp
+        util/AutoBackup.hpp
         util/WhatsNew.cpp
         util/WhatsNew.hpp
         util/RapidjsonHelpers.cpp

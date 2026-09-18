@@ -8,6 +8,7 @@
 #include "singletons/Paths.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/WindowManager.hpp"
+#include "util/AutoBackup.hpp"
 #include "util/ProfileSetup.hpp"
 #include "widgets/settingspages/PageSections.hpp"
 
@@ -17,6 +18,9 @@
 #include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFormLayout>
+#include <QHBoxLayout>
+#include <QLocale>
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
@@ -50,6 +54,8 @@ TransferPage::TransferPage()
     outer->addWidget(tabs);
     this->buildExportTab(addPageTab(tabs, "Exportieren"));
     this->buildImportTab(addPageTab(tabs, "Importieren"));
+    this->buildBackupTab(addPageTab(tabs, "Automatische Sicherung"));
+    this->showBackupState();
 }
 
 void TransferPage::buildExportTab(QVBoxLayout *layout)
@@ -151,6 +157,115 @@ void TransferPage::buildImportTab(QVBoxLayout *layout)
     layout->addStretch(1);
 }
 
+void TransferPage::buildBackupTab(QVBoxLayout *layout)
+{
+    addText(layout,
+            "Legt regelmäßig von selbst einen Export an - falls mal etwas "
+            "kaputtgeht oder du ein Gerät neu einrichtest. Eine Sicherung holst "
+            "du wie jeden Export unter „Importieren“ zurück. Der Twitch-Login "
+            "ist nie dabei.");
+    layout->addWidget(this->createCheckBox("Automatisch sichern",
+                                           getSettings()->autoBackupEnabled));
+
+    auto *form = new QFormLayout;
+    auto *days = this->createSpinBox(getSettings()->autoBackupDays, 1, 30);
+    days->setPrefix("alle ");
+    days->setSuffix(" Tage");
+    form->addRow("Wie oft", days);
+    auto *keep = this->createSpinBox(getSettings()->autoBackupKeep, 1, 50);
+    keep->setSuffix(" Sicherungen");
+    form->addRow("Behalten", keep);
+    layout->addLayout(form);
+    addText(layout,
+            "Ältere Sicherungen werden gelöscht - nur Ordner, die ChattiFlexii "
+            "selbst als „ChattiFlexii-Sicherung …“ angelegt hat.",
+            true);
+
+    addHeading(layout, "Ordner");
+    this->backupFolder_ = addText(layout, QString());
+    this->backupFolder_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    auto *change = new QPushButton("Ändern …");
+    auto *reset = new QPushButton("Standardordner");
+    auto *open = new QPushButton(QStringLiteral("Im %1 zeigen").arg(FILE_MANAGER));
+    auto *folderRow = new QHBoxLayout;
+    folderRow->addWidget(change);
+    folderRow->addWidget(reset);
+    folderRow->addWidget(open);
+    folderRow->addStretch(1);
+    layout->addLayout(folderRow);
+    addText(layout,
+            "Standard ist „ChattiFlexii-Sicherungen“ in iCloud Drive, sonst in "
+            "Dokumente. In iCloud Drive hast du die Sicherungen auch auf deinen "
+            "anderen Geräten.",
+            true);
+
+    addHeading(layout, "Jetzt");
+    auto *now = new QPushButton("Jetzt sichern");
+    addButtonRow(layout, now);
+    this->backupStatus_ = addText(layout, QString());
+
+    layout->addStretch(1);
+
+    QObject::connect(change, &QPushButton::clicked, this, [this] {
+        const auto chosen = QFileDialog::getExistingDirectory(
+            this, "Ordner für Sicherungen", autobackup::folder());
+        if (!chosen.isEmpty())
+        {
+            getSettings()->autoBackupFolder.setValue(chosen);
+        }
+    });
+    QObject::connect(reset, &QPushButton::clicked, this, [] {
+        getSettings()->autoBackupFolder.setValue(QString());
+    });
+    QObject::connect(open, &QPushButton::clicked, this, [] {
+        const auto target = autobackup::folder();
+        QDir().mkpath(target);
+        QDesktopServices::openUrl(QUrl::fromLocalFile(target));
+    });
+    QObject::connect(now, &QPushButton::clicked, this, [this] {
+        QString error;
+        const auto made = autobackup::backUpNow(error);
+        this->showBackupState();
+        if (made.isEmpty())
+        {
+            this->backupStatus_->setText(
+                QStringLiteral("<span style=\"color:#e05050\">%1</span>")
+                    .arg(error.toHtmlEscaped()));
+        }
+    });
+
+    getSettings()->autoBackupFolder.connect(
+        [this](const auto &, auto) {
+            this->showBackupState();
+        },
+        this->managedConnections_, false);
+    getSettings()->autoBackupLast.connect(
+        [this](const auto &, auto) {
+            this->showBackupState();
+        },
+        this->managedConnections_, false);
+}
+
+void TransferPage::showBackupState()
+{
+    if (this->backupFolder_ == nullptr || this->backupStatus_ == nullptr)
+    {
+        return;
+    }
+
+    this->backupFolder_->setText(
+        QDir::toNativeSeparators(autobackup::folder()).toHtmlEscaped());
+
+    const auto last = autobackup::lastBackup();
+    this->backupStatus_->setText(
+        last.isValid()
+            ? QStringLiteral("Letzte Sicherung: %1")
+                  .arg(QLocale(QLocale::German)
+                           .toString(last.toLocalTime(),
+                                     QStringLiteral("dd.MM.yyyy HH:mm")))
+            : QStringLiteral("Noch keine Sicherung."));
+}
+
 void TransferPage::exportNow()
 {
     // Settings and tabs are otherwise only written when the app closes, and
@@ -233,7 +348,7 @@ void TransferPage::importNow()
 bool TransferPage::filterElements(const QString &query)
 {
     static const QStringList keywords{
-        "export", "import",  "übertragen", "backup", "sicherung",
+        "export", "import",  "übertragen", "backup", "sicherung", "icloud",
         "airdrop", "macbook", "computer",  "gerät",
     };
 

@@ -341,6 +341,16 @@ public:
         "kofistreambot, tangiabot, wizebot, vivbot, rainmaker, blerp, "
         "pokemoncommunitygame"};
     /// Whether any moderator whose name ends in "bot" is left out as well
+    /// Automatic backups of the whole profile, made every few days into a
+    /// folder of the user's choosing - see Export & Import
+    BoolSetting autoBackupEnabled = {"/backup/enabled", false};
+    IntSetting autoBackupDays = {"/backup/days", 7};
+    IntSetting autoBackupKeep = {"/backup/keep", 5};
+    /// Empty for the default folder
+    QStringSetting autoBackupFolder = {"/backup/folder", ""};
+    /// When the last one was made, ISO 8601 in UTC
+    QStringSetting autoBackupLast = {"/backup/last", ""};
+
     BoolSetting modHighlightsIgnoreBotNames = {
         "/moderation/modHighlights/ignoreBotNames", true};
     /// What the emote alert offers at each step: "delete" or a timeout length
