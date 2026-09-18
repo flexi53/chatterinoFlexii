@@ -267,8 +267,10 @@ ChattiFlexii finds a newer setup from the other computer there, it asks:
 backed up first; **Meine behalten** puts this one in its place; **Später**
 asks again at the next start. It never takes anything without asking, and
 never writes over a setup from the other computer that has not been
-answered. The Twitch login stays on each computer, and where windows sit
-does not count as a change, since each computer has its own screens.
+answered. The Twitch login stays on each computer, and so does the way the
+windows are arranged: taking a setup brings the settings and the tabs, but
+the main window, popups and alert windows keep their places and sizes on
+this computer's screens - and moving a window is not a change to pass on.
 
 ## Pinning messages
 

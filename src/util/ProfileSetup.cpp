@@ -455,10 +455,15 @@ bool stageProfileImport(const Paths &paths, const QString &folder,
     return stageProfileImportAt(paths.rootAppDataDirectory, folder, error);
 }
 
+QString pendingImportFolder(const QString &rootDirectory)
+{
+    return QDir(rootDirectory).absoluteFilePath(PENDING_IMPORT);
+}
+
 bool stageProfileImportAt(const QString &rootDirectory, const QString &folder,
                           QString &error)
 {
-    const auto pending = QDir(rootDirectory).absoluteFilePath(PENDING_IMPORT);
+    const auto pending = pendingImportFolder(rootDirectory);
     // One chosen earlier that never got applied gives way
     QDir(pending).removeRecursively();
 

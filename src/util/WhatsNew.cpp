@@ -35,7 +35,15 @@ struct Release {
 
 /// Newest first. Add to the top when something lands that is worth telling
 /// the user about; everything above what they last saw is shown at once.
-const std::array<Release, 9> RELEASES{{
+const std::array<Release, 10> RELEASES{{
+    {"19 September 2026 (3)",
+     "19. September 2026 - Nachtrag 2",
+     {
+         "Beim Abgleich bleiben deine Fenster, wo sie sind: Übernimmst du die "
+         "Einstellungen vom anderen Computer, kommen Einstellungen und Tabs "
+         "mit, aber Hauptfenster, Popups und Alarmfenster behalten Platz und "
+         "Größe auf diesem Bildschirm.",
+     }},
     {"19 September 2026 (2)",
      "19. September 2026 - Nachtrag",
      {

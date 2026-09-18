@@ -689,3 +689,97 @@ TEST(FlexiiSync, FingerprintLeavesOutLoginAndWindowPlaces)
     writeJson(layout, tabs);
     EXPECT_NE(profilesync::fingerprint(root.path()), before);
 }
+
+TEST(FlexiiSync, TakingASetupKeepsTheWindowsWhereTheyAreHere)
+{
+    QTemporaryDir local;
+    QTemporaryDir staged;
+    ASSERT_TRUE(local.isValid() && staged.isValid());
+
+    // Here: the main window on the laptop screen, one popup, alerts placed
+    writeJson(local.path() + "/Settings/window-layout.json",
+              {{"windows",
+                QJsonArray{
+                    QJsonObject{{"type", "main"},
+                                {"x", 0},
+                                {"y", 25},
+                                {"width", 1400},
+                                {"height", 860},
+                                {"tabs", QJsonArray{"here"}}},
+                    QJsonObject{{"type", "popup"},
+                                {"x", 100},
+                                {"y", 100},
+                                {"width", 500},
+                                {"height", 400},
+                                {"tabs", QJsonArray{"popup here"}}},
+                }}});
+    writeJson(local.path() + "/Settings/settings.json",
+              {{"moderation",
+                QJsonObject{{"alerts", QJsonObject{{"x", 40},
+                                                   {"y", 50},
+                                                   {"positionSaved", true},
+                                                   {"sound", false}}}}},
+               {"appearance", QJsonObject{{"uiStyle", "classic"}}}});
+
+    // From the other computer: on its second screen, maximized, two popups,
+    // other tabs and settings
+    writeJson(staged.path() + "/Settings/window-layout.json",
+              {{"windows",
+                QJsonArray{
+                    QJsonObject{{"type", "main"},
+                                {"x", -3000},
+                                {"y", -400},
+                                {"width", 1080},
+                                {"height", 1215},
+                                {"state", "maximized"},
+                                {"tabs", QJsonArray{"there"}}},
+                    QJsonObject{{"type", "popup"},
+                                {"x", -3000},
+                                {"y", 997},
+                                {"tabs", QJsonArray{"popup there"}}},
+                    QJsonObject{{"type", "popup"},
+                                {"x", -2000},
+                                {"y", 10},
+                                {"tabs", QJsonArray{"second popup"}}},
+                }}});
+    writeJson(staged.path() + "/Settings/settings.json",
+              {{"moderation",
+                QJsonObject{{"alerts", QJsonObject{{"x", -2770},
+                                                   {"y", 63},
+                                                   {"width", 603},
+                                                   {"positionSaved", true},
+                                                   {"sound", true}}}}},
+               {"appearance", QJsonObject{{"uiStyle", "modern"}}}});
+
+    const auto fingerprint = profilesync::fingerprint(staged.path());
+    profilesync::keepWindowPlaces(local.path(), staged.path());
+    // Still the same setup - or the two computers would hand it back and
+    // forth for ever
+    EXPECT_EQ(profilesync::fingerprint(staged.path()), fingerprint);
+
+    const auto layout =
+        readJson(staged.path() + "/Settings/window-layout.json");
+    const auto windows = layout["windows"].toArray();
+    ASSERT_EQ(windows.size(), 3);
+    const auto main = windows[0].toObject();
+    EXPECT_EQ(main["x"].toInt(), 0);
+    EXPECT_EQ(main["width"].toInt(), 1400);
+    EXPECT_FALSE(main.contains("state"));
+    // Its tabs came along
+    EXPECT_EQ(main["tabs"].toArray()[0].toString(), "there");
+    EXPECT_EQ(windows[1].toObject()["x"].toInt(), 100);
+    EXPECT_EQ(windows[1].toObject()["tabs"].toArray()[0].toString(),
+              "popup there");
+    // No popup here to take the place of: it keeps its own
+    EXPECT_EQ(windows[2].toObject()["x"].toInt(), -2000);
+
+    const auto settings = readJson(staged.path() + "/Settings/settings.json");
+    const auto alerts = settings["moderation"].toObject()["alerts"].toObject();
+    EXPECT_EQ(alerts["x"].toInt(), 40);
+    EXPECT_EQ(alerts["y"].toInt(), 50);
+    EXPECT_FALSE(alerts.contains("width"));
+    // Everything else is the other computer's
+    EXPECT_TRUE(alerts["sound"].toBool());
+    EXPECT_EQ(settings["appearance"].toObject()["uiStyle"].toString(),
+              "modern");
+}

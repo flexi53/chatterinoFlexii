@@ -10,7 +10,8 @@
 #include <optional>
 
 /// Keeps the setup alike on the user's computers - the Mac and the MacBook -
-/// through the backup folder, which iCloud Drive carries between them. Each
+/// through the backup folder, which iCloud Drive carries between them. Where
+/// the windows sit stays with each computer. Each
 /// computer leaves its setup there as "ChattiFlexii-Abgleich" when it
 /// changed, and offers to take the other one's when that is newer. Nothing is
 /// ever taken without asking, and a setup from another computer that has not
@@ -28,6 +29,8 @@ struct Shared {
     QString written;
     /// fingerprint() of what it holds, to tell it has fully arrived
     QString fingerprint;
+    /// Which way the fingerprint was worked out; 1 for the first version
+    int format = 1;
 };
 
 enum class Step {
@@ -64,6 +67,12 @@ QString sharedFolder();
 
 /// What waits in @a folder, if a setup does
 std::optional<Shared> readShared(const QString &folder);
+
+/// Puts where this computer's windows sit, and how big they are, into the
+/// setup staged in @a stagedRoot, from the one in @a localRoot - so taking
+/// another computer's setup brings its settings and tabs but leaves the
+/// windows arranged as they were here, on this computer's screens
+void keepWindowPlaces(const QString &localRoot, const QString &stagedRoot);
 
 /// Looks soon after start and every half hour after, and leaves this
 /// computer's setup in the folder on the way out. Called once the app is up;

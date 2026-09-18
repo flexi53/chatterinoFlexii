@@ -19,6 +19,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -32,7 +33,9 @@
 #include <QSysInfo>
 #include <QTimer>
 
+#include <array>
 #include <chrono>
+#include <vector>
 
 namespace chatterino::profilesync {
 
@@ -47,6 +50,9 @@ const QString SHARED_NAME = QStringLiteral("ChattiFlexii-Abgleich");
 const QString FRESH_PREFIX = QStringLiteral("ChattiFlexii-Abgleich (neu)");
 /// Written into the shared setup, next to the export's own marker
 const QString SHARED_MARKER = QStringLiteral("chattiflexii-abgleich.json");
+/// How fingerprint() works - a setup from a version that worked it out
+/// otherwise cannot be checked against it
+constexpr int FORMAT = 2;
 
 /// Setup offers already answered with "Später" since the app started
 QSet<QString> &putOff()
@@ -93,6 +99,64 @@ void removePath(QJsonObject &object, QStringList path)
     removePath(inner, path);
     object.insert(key, inner);
 }
+
+/// The value at @a path, or an undefined one
+QJsonValue valueAt(const QJsonObject &object, QStringList path)
+{
+    QJsonValue value = object;
+    for (const auto &key : path)
+    {
+        if (!value.isObject())
+        {
+            return QJsonValue::Undefined;
+        }
+        value = value.toObject().value(key);
+    }
+    return value;
+}
+
+/// Sets the value at @a path, making the objects on the way as needed - or
+/// removes it, for an undefined @a value
+void setAt(QJsonObject &object, QStringList path, const QJsonValue &value)
+{
+    if (path.isEmpty())
+    {
+        return;
+    }
+    const auto key = path.takeFirst();
+    if (path.isEmpty())
+    {
+        if (value.isUndefined())
+        {
+            object.remove(key);
+        }
+        else
+        {
+            object.insert(key, value);
+        }
+        return;
+    }
+    auto inner = object.value(key).toObject();
+    setAt(inner, path, value);
+    object.insert(key, inner);
+}
+
+/// What says where a window sits and how big it is, in window-layout.json
+const std::array<QLatin1String, 6> WINDOW_PLACE{
+    QLatin1String("x"),     QLatin1String("y"),
+    QLatin1String("width"), QLatin1String("height"),
+    QLatin1String("state"), QLatin1String("emotePopup"),
+};
+
+/// The same for the alert windows and popups, in settings.json
+const std::vector<QStringList> SETTINGS_PLACES{
+    {"moderation", "alerts", "x"},
+    {"moderation", "alerts", "y"},
+    {"moderation", "alerts", "width"},
+    {"moderation", "alerts", "height"},
+    {"moderation", "alerts", "positionSaved"},
+    {"appearance", "lastPopup"},
+};
 
 QString rootDirectory()
 {
@@ -149,6 +213,7 @@ bool write(QString &error)
                        {QStringLiteral("computerName"), thisComputerName()},
                        {QStringLiteral("written"), written},
                        {QStringLiteral("fingerprint"), print},
+                       {QStringLiteral("format"), FORMAT},
                    }))
     {
         QDir(fresh).removeRecursively();
@@ -192,7 +257,10 @@ QString describe(const Shared &shared)
 void take(const Shared &shared)
 {
     QString error;
-    if (fingerprint(sharedFolder()) != shared.fingerprint)
+    // Only checked when it was worked out the same way - one from another
+    // version is taken as it is
+    if (shared.format == FORMAT &&
+        fingerprint(sharedFolder()) != shared.fingerprint)
     {
         QMessageBox::information(
             &getApp()->getWindows()->getMainWindow(),
@@ -208,6 +276,10 @@ void take(const Shared &shared)
                              QStringLiteral("Abgleich"), error);
         return;
     }
+    // The windows stay where they are on this computer's screens
+    getSettings()->requestSave();
+    getApp()->getWindows()->save();
+    keepWindowPlaces(rootDirectory(), pendingImportFolder(rootDirectory()));
     if (!relaunchAfterExit())
     {
         QMessageBox::information(
@@ -299,20 +371,20 @@ QString fingerprint(const QString &rootDirectory)
     values.remove(QStringLiteral("update"));
     removePath(values, {"backup", "last"});
     removePath(values, {"misc", "lastSeenChanges"});
-    // Where windows sit depends on the screens each computer has - comparing
-    // it would have the two offer each other their setup at every switch
-    removePath(values, {"moderation", "alerts", "x"});
-    removePath(values, {"moderation", "alerts", "y"});
-    removePath(values, {"appearance", "lastPopup"});
+    // Where windows sit stays with each computer - see keepWindowPlaces
+    for (const auto &place : SETTINGS_PLACES)
+    {
+        removePath(values, place);
+    }
 
     auto layout = readJson(settings.absoluteFilePath("window-layout.json"));
     QJsonArray windows;
     for (const auto &value : layout.value(QStringLiteral("windows")).toArray())
     {
         auto window = value.toObject();
-        for (const auto *key : {"x", "y", "width", "height", "emotePopup"})
+        for (const auto &key : WINDOW_PLACE)
         {
-            window.remove(QLatin1String(key));
+            window.remove(key);
         }
         windows.append(window);
     }
@@ -387,7 +459,68 @@ std::optional<Shared> readShared(const QString &folder)
         .computerName = marker.value(QStringLiteral("computerName")).toString(),
         .written = written,
         .fingerprint = marker.value(QStringLiteral("fingerprint")).toString(),
+        .format = marker.value(QStringLiteral("format")).toInt(1),
     };
+}
+
+void keepWindowPlaces(const QString &localRoot, const QString &stagedRoot)
+{
+    const QDir local(QDir(localRoot).absoluteFilePath("Settings"));
+    const QDir staged(QDir(stagedRoot).absoluteFilePath("Settings"));
+
+    // The main window takes the main window's place here, and popups the
+    // places of the popups here in turn. A window with no counterpart here
+    // keeps the place it came with.
+    const auto layoutFile = staged.absoluteFilePath("window-layout.json");
+    auto layout = readJson(layoutFile);
+    const auto here = readJson(local.absoluteFilePath("window-layout.json"))
+                          .value(QStringLiteral("windows"))
+                          .toArray();
+    QJsonArray windows;
+    QHash<QString, int> seen;
+    for (const auto &value : layout.value(QStringLiteral("windows")).toArray())
+    {
+        auto window = value.toObject();
+        const auto type = window.value(QStringLiteral("type")).toString();
+        const auto nth = seen[type]++;
+        int count = 0;
+        for (const auto &hereValue : here)
+        {
+            const auto hereWindow = hereValue.toObject();
+            if (hereWindow.value(QStringLiteral("type")).toString() != type ||
+                count++ != nth)
+            {
+                continue;
+            }
+            for (const auto &key : WINDOW_PLACE)
+            {
+                if (hereWindow.contains(key))
+                {
+                    window.insert(key, hereWindow.value(key));
+                }
+                else
+                {
+                    window.remove(key);
+                }
+            }
+            break;
+        }
+        windows.append(window);
+    }
+    if (!layout.isEmpty())
+    {
+        layout.insert(QStringLiteral("windows"), windows);
+        writeJson(layoutFile, layout);
+    }
+
+    const auto settingsFile = staged.absoluteFilePath("settings.json");
+    auto values = readJson(settingsFile);
+    const auto hereValues = readJson(local.absoluteFilePath("settings.json"));
+    for (const auto &place : SETTINGS_PLACES)
+    {
+        setAt(values, place, valueAt(hereValues, place));
+    }
+    writeJson(settingsFile, values);
 }
 
 QString syncNow(bool fromUser)

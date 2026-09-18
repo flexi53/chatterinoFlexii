@@ -54,6 +54,8 @@ bool stageProfileImport(const Paths &paths, const QString &folder,
 /// stageProfileImport for the profile in @a rootDirectory
 bool stageProfileImportAt(const QString &rootDirectory, const QString &folder,
                           QString &error);
+/// Where an import staged for the profile in @a rootDirectory waits
+QString pendingImportFolder(const QString &rootDirectory);
 
 /// Carries out an import set aside by stageProfileImport: this profile's
 /// settings move to a backup folder and the export takes their place. A login
