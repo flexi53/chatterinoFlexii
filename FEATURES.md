@@ -167,8 +167,10 @@ Settings -> Mod-Assistent.
 ### All alert windows
 
 They stay on top of every other program to begin with - over the browser or a
-game - without taking the keyboard from you, and can play the ping when a new
-one comes up (off to begin with). A test window can be held back five
+game - without taking the keyboard from you, and can play a sound when a new one
+comes up (off to begin with) - its own for each kind of alert, picked from
+five that come with the app or any file, so an alert is told from a live
+notification by ear. A test window can be held back five
 seconds, so you can switch to another program and watch it come up there.
 Drag one to the size and place you want and the next ones open that size and
 there, stepping aside when several are up at once; width and height can also
@@ -217,9 +219,10 @@ first one. A login already there is kept when the export brings none. On a new
 computer the welcome window offers the same import on first start.
 
 **Automatic backups**, on a third tab and off to begin with, make such an
-export by themselves every few days - seven to begin with - into
-"ChattiFlexii-Sicherungen" in iCloud Drive where there is one, otherwise in
-Documents, and keep the newest five. A backup is imported like any export and
+export by themselves every day, every three days, every week or every two
+weeks - weekly to begin with - into "ChattiFlexii-Sicherungen" in iCloud
+Drive where there is one, otherwise in Documents. There is only ever one
+backup: the next replaces it, once it is complete. A backup is imported like any export and
 never holds the Twitch login.
 
 ## Pinning messages

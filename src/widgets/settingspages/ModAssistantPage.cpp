@@ -7,6 +7,7 @@
 #include "Application.hpp"
 #include "controllers/moderation/EmoteSpamDetector.hpp"
 #include "controllers/moderation/RepeatSpamDetector.hpp"
+#include "controllers/sound/ISoundController.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/WindowManager.hpp"
 #include "util/FormatTime.hpp"
@@ -17,11 +18,15 @@
 #include "widgets/Window.hpp"
 
 #include <QCheckBox>
+#include <QComboBox>
+#include <QFileDialog>
+#include <QFileInfo>
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QSignalBlocker>
 #include <QSpinBox>
 #include <QTabWidget>
 #include <QTimer>
@@ -123,8 +128,14 @@ ModAssistantPage::ModAssistantPage()
     general->addWidget(this->createCheckBox(
         "Ton abspielen, wenn ein Alarm-Fenster aufgeht",
         getSettings()->modAlertSound,
-        "Spielt den Hinweiston, sobald ein neues Alarm-Fenster aufgeht - "
-        "nicht, wenn ein offenes nur aktualisiert wird."));
+        "Spielt einen Ton, sobald ein neues Alarm-Fenster aufgeht - nicht, "
+        "wenn ein offenes nur aktualisiert wird. Welcher Ton, stellst du im "
+        "Reiter der jeweiligen Alarm-Art ein."));
+    addText(general,
+            "Jede Alarm-Art hat ihren eigenen Ton, eingestellt in ihrem Reiter. "
+            "Den Ton für Live-Benachrichtigungen und Highlights stellst du dort "
+            "ein: Einstellungen → Live Notifications bzw. Highlights.",
+            true);
     {
         auto *form = new QFormLayout;
         auto *autoClose =
@@ -278,6 +289,76 @@ ModAssistantPage::ModAssistantPage()
                 true);
     };
 
+    // The sound one kind of alert plays - apart from the ping everything else
+    // plays, so an alert is told from a live notification by ear
+    const auto addSound = [this](QVBoxLayout *layout, QStringSetting &setting) {
+        addHeading(layout, "Ton");
+
+        auto *choice = new QComboBox;
+        auto *listen = new QPushButton("Anhören");
+        const auto fill = [choice, &setting] {
+            const QSignalBlocker blocker(choice);
+            choice->clear();
+            choice->addItem("Standard-Ping (wie Highlights und Live)", QString());
+            for (const auto &[value, name] : ModAlertPopup::builtInSounds())
+            {
+                choice->addItem(name, value);
+            }
+            const auto current = setting.getValue();
+            if (!current.isEmpty() &&
+                !current.startsWith(QStringLiteral("builtin:")))
+            {
+                choice->addItem(QStringLiteral("Eigene: %1")
+                                    .arg(QFileInfo(current).fileName()),
+                                current);
+            }
+            choice->addItem("Eigene Datei …", QStringLiteral("__choose__"));
+            const auto index = choice->findData(current);
+            choice->setCurrentIndex(index >= 0 ? index : 0);
+        };
+        fill();
+        setting.connect(
+            [fill](const auto &, auto) {
+                fill();
+            },
+            this->managedConnections_, false);
+
+        QObject::connect(
+            choice, &QComboBox::activated, this,
+            [this, choice, &setting, fill](int index) {
+                const auto value = choice->itemData(index).toString();
+                if (value != QStringLiteral("__choose__"))
+                {
+                    setting.setValue(value);
+                    return;
+                }
+                const auto file = QFileDialog::getOpenFileName(
+                    this, "Ton auswählen", QString(),
+                    "Töne (*.wav *.mp3 *.ogg *.flac)");
+                if (file.isEmpty())
+                {
+                    fill();
+                    return;
+                }
+                setting.setValue(file);
+            });
+        QObject::connect(listen, &QPushButton::clicked, this, [&setting] {
+            getApp()->getSound()->play(
+                ModAlertPopup::soundUrl(setting.getValue()));
+        });
+
+        auto *row = new QHBoxLayout;
+        row->addWidget(choice);
+        row->addWidget(listen);
+        row->addStretch(1);
+        auto *form = new QFormLayout;
+        form->addRow("Ton", row);
+        layout->addLayout(form);
+        addText(layout,
+                "Spielt nur, wenn unter „Allgemein“ der Ton eingeschaltet ist.",
+                true);
+    };
+
     // ----- Vorschläge -----
     addText(suggestions,
             "Der Assistent lernt aus Timeouts und Banns, die Mods in deinen "
@@ -307,6 +388,7 @@ ModAssistantPage::ModAssistantPage()
 
     addColor(suggestions, getSettings()->modAlertColorSuggestion,
              ModAlertPopup::Kind::Suggestion);
+    addSound(suggestions, getSettings()->modAlertSoundSuggestion);
 
     addHeading(suggestions, "Testen");
     {
@@ -365,6 +447,7 @@ ModAssistantPage::ModAssistantPage()
 
     addColor(repeats, getSettings()->modAlertColorRepeat,
              ModAlertPopup::Kind::RepeatedMessage);
+    addSound(repeats, getSettings()->modAlertSoundRepeat);
 
     addHeading(repeats, "Testen");
     {
@@ -435,6 +518,7 @@ ModAssistantPage::ModAssistantPage()
 
     addColor(emotes, getSettings()->modAlertColorEmote,
              ModAlertPopup::Kind::EmoteSpam);
+    addSound(emotes, getSettings()->modAlertSoundEmote);
 
     addHeading(emotes, "Testen");
     {

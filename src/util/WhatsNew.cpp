@@ -35,7 +35,18 @@ struct Release {
 
 /// Newest first. Add to the top when something lands that is worth telling
 /// the user about; everything above what they last saw is shown at once.
-const std::array<Release, 3> RELEASES{{
+const std::array<Release, 4> RELEASES{{
+    {"18 September 2026 (2)",
+     "18. September 2026 - Nachtrag",
+     {
+         "Jede Art von Mod-Alarm hat ihren eigenen Ton, damit du ihn nicht mit "
+         "dem Live-Ping verwechselst - fünf neue Töne sind dabei, oder eine "
+         "eigene Datei. Einstellbar im Mod-Assistenten, im Reiter der "
+         "jeweiligen Alarm-Art.",
+         "Die automatische Sicherung läuft jeden Tag, alle 3 Tage, jede Woche "
+         "oder alle 2 Wochen, und es gibt immer nur eine Sicherung, die jedes "
+         "Mal ersetzt wird.",
+     }},
     {"18 September 2026",
      "18. September 2026",
      {

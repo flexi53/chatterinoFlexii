@@ -23,6 +23,7 @@
 #include "messages/MessageElement.hpp"
 #include "providers/twitch/ProfilePictures.hpp"
 #include "providers/twitch/TwitchIrcServer.hpp"
+#include "singletons/Paths.hpp"
 #include "util/RoundPixmap.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
@@ -38,6 +39,9 @@
 #include <QEvent>
 #include <QLocale>
 #include <QCursor>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QHash>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -551,8 +555,7 @@ void ModAlertPopup::present()
         this->announced_ = true;
         if (getSettings()->modAlertSound)
         {
-            getApp()->getSound()->play(
-                QUrl(QStringLiteral("qrc:/sounds/ping2.wav")));
+            getApp()->getSound()->play(soundFor(this->kind_));
         }
     }
 
@@ -811,6 +814,68 @@ QString ModAlertPopup::reasonTagStyle(const QColor &color)
                           "font-weight: bold; }")
         .arg(color.name(), luminance > 140 ? QStringLiteral("#101010")
                                            : QStringLiteral("#ffffff"));
+}
+
+std::vector<std::pair<QString, QString>> ModAlertPopup::builtInSounds()
+{
+    return {
+        {QStringLiteral("builtin:zweiton"), QStringLiteral("Zweiton")},
+        {QStringLiteral("builtin:glocke"), QStringLiteral("Glocke")},
+        {QStringLiteral("builtin:dringend"), QStringLiteral("Dringend")},
+        {QStringLiteral("builtin:tief"), QStringLiteral("Tief")},
+        {QStringLiteral("builtin:kurz"), QStringLiteral("Kurz")},
+    };
+}
+
+QUrl ModAlertPopup::soundUrl(const QString &choice)
+{
+    const QUrl ping(QStringLiteral("qrc:/sounds/ping2.wav"));
+    if (choice.startsWith(QStringLiteral("builtin:")))
+    {
+        const auto name =
+            QStringLiteral("alert-%1.wav").arg(choice.mid(QStringLiteral("builtin:").size()));
+        const QString resource = QStringLiteral(":/sounds/") + name;
+        if (!QFileInfo::exists(resource))
+        {
+            return ping;
+        }
+
+        const QDir folder(QDir(getApp()->getPaths().miscDirectory)
+                              .absoluteFilePath(QStringLiteral("alert-sounds")));
+        const auto path = folder.absoluteFilePath(name);
+        // Copied again when a newer app brings a different sound
+        if (QFileInfo(path).size() != QFileInfo(resource).size())
+        {
+            QDir().mkpath(folder.absolutePath());
+            QFile::remove(path);
+            if (!QFile::copy(resource, path))
+            {
+                return ping;
+            }
+        }
+        return QUrl::fromLocalFile(path);
+    }
+
+    if (!choice.isEmpty() && QFileInfo::exists(choice))
+    {
+        return QUrl::fromLocalFile(choice);
+    }
+    return ping;
+}
+
+QUrl ModAlertPopup::soundFor(Kind kind)
+{
+    const auto *settings = getSettings();
+    switch (kind)
+    {
+        case Kind::RepeatedMessage:
+            return soundUrl(settings->modAlertSoundRepeat.getValue());
+        case Kind::EmoteSpam:
+            return soundUrl(settings->modAlertSoundEmote.getValue());
+        case Kind::Suggestion:
+        default:
+            return soundUrl(settings->modAlertSoundSuggestion.getValue());
+    }
 }
 
 void ModAlertPopup::showChatter(const QString &displayName)

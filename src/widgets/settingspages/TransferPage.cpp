@@ -14,6 +14,7 @@
 
 #include <QApplication>
 #include <QCheckBox>
+#include <QComboBox>
 #include <QDesktopServices>
 #include <QDir>
 #include <QFileDialog>
@@ -24,10 +25,14 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QSignalBlocker>
 #include <QStandardPaths>
 #include <QTabWidget>
 #include <QUrl>
 #include <QVBoxLayout>
+
+#include <utility>
+#include <vector>
 
 namespace chatterino {
 
@@ -167,18 +172,34 @@ void TransferPage::buildBackupTab(QVBoxLayout *layout)
     layout->addWidget(this->createCheckBox("Automatisch sichern",
                                            getSettings()->autoBackupEnabled));
 
+    // How often, as the four steps that make sense rather than a free number
+    auto *often = new QComboBox;
+    const std::vector<std::pair<QString, int>> schedules{
+        {"Jeden Tag", 1},
+        {"Alle 3 Tage", 3},
+        {"Jede Woche", 7},
+        {"Alle 2 Wochen", 14},
+    };
+    for (const auto &[name, days] : schedules)
+    {
+        often->addItem(name, days);
+    }
+    getSettings()->autoBackupDays.connect(
+        [often](const int &days, auto) {
+            const auto index = often->findData(days);
+            const QSignalBlocker blocker(often);
+            often->setCurrentIndex(index >= 0 ? index : often->findData(7));
+        },
+        this->managedConnections_);
+    QObject::connect(often, &QComboBox::activated, this, [often](int index) {
+        getSettings()->autoBackupDays.setValue(often->itemData(index).toInt());
+    });
     auto *form = new QFormLayout;
-    auto *days = this->createSpinBox(getSettings()->autoBackupDays, 1, 30);
-    days->setPrefix("alle ");
-    days->setSuffix(" Tage");
-    form->addRow("Wie oft", days);
-    auto *keep = this->createSpinBox(getSettings()->autoBackupKeep, 1, 50);
-    keep->setSuffix(" Sicherungen");
-    form->addRow("Behalten", keep);
+    form->addRow("Wie oft", often);
     layout->addLayout(form);
     addText(layout,
-            "Ältere Sicherungen werden gelöscht - nur Ordner, die ChattiFlexii "
-            "selbst als „ChattiFlexii-Sicherung …“ angelegt hat.",
+            "Es gibt immer nur eine Sicherung, „ChattiFlexii-Sicherung“: Jede "
+            "neue ersetzt die vorige - aber erst, wenn sie vollständig ist.",
             true);
 
     addHeading(layout, "Ordner");

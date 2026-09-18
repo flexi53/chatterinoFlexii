@@ -29,9 +29,11 @@ namespace {
 constexpr auto FIRST_CHECK = std::chrono::minutes(2);
 constexpr auto CHECK_EVERY = std::chrono::hours(6);
 
-/// Backups are named apart from exports made by hand, so pruning only ever
-/// touches its own
-const QString BACKUP_PREFIX = QStringLiteral("ChattiFlexii-Sicherung");
+/// The one backup there is, replaced by each new one
+const QString BACKUP_NAME = QStringLiteral("ChattiFlexii-Sicherung");
+/// What a new backup is called until it is complete and takes the old one's
+/// place
+const QString FRESH_PREFIX = QStringLiteral("ChattiFlexii-Sicherung (neu)");
 
 bool due()
 {
@@ -45,24 +47,21 @@ bool due()
                                   qint64(days) * 24 * 60 * 60;
 }
 
-/// Deletes all but the newest @a keep backups in @a folder. Only folders this
-/// wrote are touched: named like a backup, and marked as an export.
-void prune(const QString &folder, int keep)
+/// Backups other than the one kept: those an earlier version dated, and a new
+/// one left unfinished. Only folders this wrote are touched - marked as an
+/// export, or named as a new backup.
+void removeOthers(const QDir &dir)
 {
-    const QDir dir(folder);
-    // The time in the name sorts newest last, so reversed the newest lead
-    const auto entries = dir.entryInfoList(
-        {BACKUP_PREFIX + QStringLiteral("*")},
-        QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name | QDir::Reversed);
-
-    int kept = 0;
-    for (const auto &entry : entries)
+    for (const auto &entry : dir.entryInfoList(
+             {BACKUP_NAME + QStringLiteral("*")},
+             QDir::Dirs | QDir::NoDotAndDotDot))
     {
-        if (!isProfileExport(entry.absoluteFilePath()))
+        if (entry.fileName() == BACKUP_NAME)
         {
             continue;
         }
-        if (++kept > keep)
+        if (entry.fileName().startsWith(FRESH_PREFIX) ||
+            isProfileExport(entry.absoluteFilePath()))
         {
             QDir(entry.absoluteFilePath()).removeRecursively();
         }
@@ -134,18 +133,47 @@ QString backUpNow(QString &error)
                     .arg(QDir::toNativeSeparators(target));
         return {};
     }
+    const QDir dir(target);
+    const auto kept = dir.absoluteFilePath(BACKUP_NAME);
+    if (QFileInfo::exists(kept) && !isProfileExport(kept))
+    {
+        error = QStringLiteral("Im Ordner liegt schon „%1“, aber keine "
+                               "Sicherung - er wird nicht überschrieben.")
+                    .arg(BACKUP_NAME);
+        return {};
+    }
 
-    const auto made =
+    // Written next to the old one first, so a backup that fails never costs
+    // the last good one
+    const auto fresh =
         exportProfileTo(getApp()->getPaths().rootAppDataDirectory, target,
-                        false, error, BACKUP_PREFIX);
-    if (made.isEmpty())
+                        false, error, FRESH_PREFIX);
+    if (fresh.isEmpty())
     {
         return {};
     }
 
+    if (QFileInfo::exists(kept) && !QDir(kept).removeRecursively())
+    {
+        QDir(fresh).removeRecursively();
+        error = QStringLiteral("Die vorige Sicherung ließ sich nicht ersetzen.");
+        return {};
+    }
+
+    auto made = kept;
+    if (!QDir().rename(fresh, kept))
+    {
+        // Still a complete backup, just under its interim name
+        qCWarning(chatterinoApp) << "Could not rename the backup" << fresh;
+        made = fresh;
+    }
+    else
+    {
+        removeOthers(dir);
+    }
+
     getSettings()->autoBackupLast.setValue(
         QDateTime::currentDateTimeUtc().toString(Qt::ISODate));
-    prune(target, std::max(1, getSettings()->autoBackupKeep.getValue()));
     return made;
 }
 

@@ -21,6 +21,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QTemporaryDir>
+#include <QUrl>
 
 #include <vector>
 
@@ -170,6 +171,36 @@ TEST(FlexiiColors, GreyBlackAndWhiteFallBack)
     {
         EXPECT_EQ(ModAlertPopup::vividColor(colorless, fallback).hsvHue(),
                   fallback.hsvHue());
+    }
+}
+
+// ----- alert sounds -----
+
+TEST(FlexiiSounds, NoChoicePlaysThePing)
+{
+    EXPECT_EQ(ModAlertPopup::soundUrl(""), QUrl("qrc:/sounds/ping2.wav"));
+}
+
+TEST(FlexiiSounds, AFileThatIsGoneFallsBackToThePing)
+{
+    EXPECT_EQ(ModAlertPopup::soundUrl("/nowhere/at/all.wav"),
+              QUrl("qrc:/sounds/ping2.wav"));
+}
+
+TEST(FlexiiSounds, AChosenFileIsPlayedAsItIs)
+{
+    QTemporaryDir dir;
+    const auto path = dir.path() + "/mine.wav";
+    writeText(path, "RIFF");
+    EXPECT_EQ(ModAlertPopup::soundUrl(path), QUrl::fromLocalFile(path));
+}
+
+TEST(FlexiiSounds, EveryBuiltInSoundComesWithTheApp)
+{
+    for (const auto &[value, name] : ModAlertPopup::builtInSounds())
+    {
+        const auto file = ":/sounds/alert-" + value.mid(8) + ".wav";
+        EXPECT_TRUE(QFile::exists(file)) << file;
     }
 }
 

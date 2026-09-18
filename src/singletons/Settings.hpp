@@ -301,6 +301,14 @@ public:
     BoolSetting modAlertAlwaysOnTop = {"/moderation/alerts/alwaysOnTop", true};
     /// Plays the ping when a new alert window comes up
     BoolSetting modAlertSound = {"/moderation/alerts/sound", false};
+    /// The sound each kind of alert plays: empty for the ping everything else
+    /// plays, "builtin:<name>" for one that comes with the app, or a file
+    QStringSetting modAlertSoundRepeat = {"/moderation/alerts/soundRepeat",
+                                          "builtin:zweiton"};
+    QStringSetting modAlertSoundEmote = {"/moderation/alerts/soundEmote",
+                                         "builtin:dringend"};
+    QStringSetting modAlertSoundSuggestion = {
+        "/moderation/alerts/soundSuggestion", "builtin:glocke"};
     /// The size alert windows open with, as the moderator last dragged one
     /// to. 0 leaves that side to the window.
     IntSetting modAlertWidth = {"/moderation/alerts/width", 0};
@@ -341,11 +349,11 @@ public:
         "kofistreambot, tangiabot, wizebot, vivbot, rainmaker, blerp, "
         "pokemoncommunitygame"};
     /// Whether any moderator whose name ends in "bot" is left out as well
-    /// Automatic backups of the whole profile, made every few days into a
-    /// folder of the user's choosing - see Export & Import
+    /// An automatic backup of the whole profile, made every so many days into
+    /// a folder of the user's choosing and replaced each time - see Export &
+    /// Import
     BoolSetting autoBackupEnabled = {"/backup/enabled", false};
     IntSetting autoBackupDays = {"/backup/days", 7};
-    IntSetting autoBackupKeep = {"/backup/keep", 5};
     /// Empty for the default folder
     QStringSetting autoBackupFolder = {"/backup/folder", ""};
     /// When the last one was made, ISO 8601 in UTC

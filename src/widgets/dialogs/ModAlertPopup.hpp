@@ -12,9 +12,12 @@
 #include <QPoint>
 #include <QString>
 #include <QTimer>
+#include <QUrl>
 
 #include <memory>
 #include <optional>
+#include <utility>
+#include <vector>
 
 class QFrame;
 class QLabel;
@@ -72,6 +75,15 @@ public:
     static QColor vividColor(const QColor &picked, const QColor &fallback);
     /// Style sheet for the "REASON" chip in @a color
     static QString reasonTagStyle(const QColor &color);
+
+    /// The sounds that come with the app, as setting value and name
+    static std::vector<std::pair<QString, QString>> builtInSounds();
+    /// What a sound setting plays: the ping for an empty one or a file that
+    /// is gone. The sound backend only plays files, so a built-in sound is
+    /// copied out of the app the first time it is wanted.
+    static QUrl soundUrl(const QString &choice);
+    /// The sound an alert of @a kind plays
+    static QUrl soundFor(Kind kind);
 
     /// Shows the window and brings it to the front. On macOS it is also made
     /// to show on every space, so it does not stay behind on a full screen
