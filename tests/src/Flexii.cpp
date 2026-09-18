@@ -15,14 +15,17 @@
 #include "providers/twitch/ProfilePictures.hpp"
 #include "Test.hpp"
 #include "util/ProfileSetup.hpp"
+#include "util/ProfileSync.hpp"
 #include "util/SpellingVariants.hpp"
 #include "util/Twitch.hpp"
+#include "util/UpdateCheck.hpp"
 #include "widgets/dialogs/ModAlertPopup.hpp"
 
 #include <QColor>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QTemporaryDir>
@@ -536,4 +539,153 @@ TEST(FlexiiSpelling, AnyInputGivesAValidPattern)
         EXPECT_TRUE(spelling::compile(pattern).isValid()) << word;
     }
     EXPECT_TRUE(spelling::pattern("   ", {}).isEmpty());
+}
+
+namespace {
+
+QJsonObject releaseJson(const QString &body)
+{
+    return {
+        {"body", body},
+        {"published_at", "2026-09-19T10:00:00Z"},
+        {"assets",
+         QJsonArray{
+             QJsonObject{
+                 {"name", "ChattiFlexii-windows-x64.zip"},
+                 {"browser_download_url", "https://example.com/win.zip"},
+                 {"updated_at", "2026-09-19T10:05:00Z"},
+             },
+             QJsonObject{
+                 {"name", "ChattiFlexii-macOS-arm64.dmg"},
+                 {"browser_download_url", "https://example.com/mac.dmg"},
+                 {"updated_at", "2026-09-19T10:06:00Z"},
+             },
+         }},
+    };
+}
+
+const QString COMMIT = "8efbc9422aa6d0c2c1f3b3a1f0e8d7c6b5a49382";
+
+}  // namespace
+
+TEST(FlexiiUpdate, ReadsTheReleaseForThisComputer)
+{
+    const auto release = updatecheck::parseRelease(
+        releaseJson("Automatically built from `flexii-7.5.5`\n(commit " +
+                    COMMIT + ")."),
+        "ChattiFlexii-macOS-arm64.dmg");
+    ASSERT_TRUE(release.has_value());
+    EXPECT_EQ(release->commit, COMMIT);
+    EXPECT_EQ(release->downloadUrl, "https://example.com/mac.dmg");
+    EXPECT_EQ(release->published,
+              QDateTime::fromString("2026-09-19T10:06:00Z", Qt::ISODate));
+}
+
+TEST(FlexiiUpdate, NothingWithoutACommitOrADownload)
+{
+    EXPECT_FALSE(updatecheck::parseRelease(releaseJson("no commit here"),
+                                           "ChattiFlexii-macOS-arm64.dmg"));
+    EXPECT_FALSE(updatecheck::parseRelease(
+        releaseJson("(commit " + COMMIT + ")"), "ChattiFlexii-linux.AppImage"));
+}
+
+TEST(FlexiiUpdate, NewerOnlyWhenBuiltFromAnotherCommit)
+{
+    const updatecheck::Release release{COMMIT, "https://example.com", {}};
+    // The app knows its commit in short
+    EXPECT_FALSE(updatecheck::isNewer(release, "8efbc9422"));
+    EXPECT_FALSE(updatecheck::isNewer(release, COMMIT));
+    EXPECT_TRUE(updatecheck::isNewer(release, "a9ca32cc0"));
+    // Nothing to compare with: no offer
+    EXPECT_FALSE(updatecheck::isNewer(release, "GIT-REPOSITORY-NOT-FOUND"));
+    EXPECT_FALSE(updatecheck::isNewer(release, ""));
+}
+
+namespace {
+
+profilesync::Shared sharedFrom(const QString &computer, const QString &written,
+                               const QString &fingerprint)
+{
+    return {computer, computer + " name", written, fingerprint};
+}
+
+}  // namespace
+
+TEST(FlexiiSync, WritesWhatChanged)
+{
+    using profilesync::Step;
+    // Nothing in the folder yet
+    EXPECT_EQ(profilesync::decide(std::nullopt, "mac", "", "A", ""),
+              Step::Write);
+    // Its own setup there, and nothing changed since
+    EXPECT_EQ(profilesync::decide(sharedFrom("mac", "t1", "A"), "mac", "t1",
+                                  "A", "A"),
+              Step::Nothing);
+    // Changed since
+    EXPECT_EQ(profilesync::decide(sharedFrom("mac", "t1", "A"), "mac", "t1",
+                                  "B", "A"),
+              Step::Write);
+}
+
+TEST(FlexiiSync, OffersAnotherComputersNewerSetupAndNeverWritesOverIt)
+{
+    using profilesync::Step;
+    // The MacBook left something new - even with changes here, it is offered
+    // rather than written over
+    EXPECT_EQ(profilesync::decide(sharedFrom("macbook", "t2", "C"), "mac", "t1",
+                                  "B", "A"),
+              Step::Offer);
+    // Once answered, what changed here is written again
+    EXPECT_EQ(profilesync::decide(sharedFrom("macbook", "t2", "C"), "mac", "t2",
+                                  "B", "A"),
+              Step::Write);
+    // The same as here: nothing to take
+    EXPECT_EQ(profilesync::decide(sharedFrom("macbook", "t2", "B"), "mac", "t1",
+                                  "B", "A"),
+              Step::Settle);
+}
+
+TEST(FlexiiSync, FingerprintLeavesOutLoginAndWindowPlaces)
+{
+    QTemporaryDir root;
+    ASSERT_TRUE(root.isValid());
+    const auto settings = root.path() + "/Settings/settings.json";
+    const auto layout = root.path() + "/Settings/window-layout.json";
+
+    const QJsonObject tabs{{"windows",
+                            QJsonArray{QJsonObject{{"type", "main"},
+                                                   {"x", 10},
+                                                   {"y", 20},
+                                                   {"width", 800},
+                                                   {"tabs", QJsonArray{"a"}}}}}};
+    writeJson(settings,
+              {{"appearance", QJsonObject{{"uiStyle", "modern"}}},
+               {"accounts", QJsonObject{{"current", "fx_flexii"}}},
+               {"sync", QJsonObject{{"base", "t1"}}},
+               {"backup", QJsonObject{{"last", "x"}, {"days", 7}}}});
+    writeJson(layout, tabs);
+    const auto before = profilesync::fingerprint(root.path());
+
+    // Another login, another sync state, another backup time, the window
+    // elsewhere: the same setup
+    writeJson(settings,
+              {{"appearance", QJsonObject{{"uiStyle", "modern"}}},
+               {"accounts", QJsonObject{{"current", "someone"}}},
+               {"sync", QJsonObject{{"base", "t9"}}},
+               {"backup", QJsonObject{{"last", "y"}, {"days", 7}}}});
+    writeJson(layout,
+              {{"windows",
+                QJsonArray{QJsonObject{{"type", "main"},
+                                       {"x", -3000},
+                                       {"y", 5},
+                                       {"width", 1200},
+                                       {"tabs", QJsonArray{"a"}}}}}});
+    EXPECT_EQ(profilesync::fingerprint(root.path()), before);
+
+    // A setting, or a tab, changed: another setup
+    writeJson(settings,
+              {{"appearance", QJsonObject{{"uiStyle", "classic"}}},
+               {"backup", QJsonObject{{"days", 7}}}});
+    writeJson(layout, tabs);
+    EXPECT_NE(profilesync::fingerprint(root.path()), before);
 }

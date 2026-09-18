@@ -371,6 +371,23 @@ public:
     /// When the last one was made, ISO 8601 in UTC
     QStringSetting autoBackupLast = {"/backup/last", ""};
 
+    /// Look on GitHub for a newer download - only the downloads do, see
+    /// updatecheck
+    BoolSetting updateCheckEnabled = {"/update/check", true};
+    /// A newer download put off with "Später", and until when (ISO 8601 in
+    /// UTC) it is not offered again
+    QStringSetting updateSnoozedCommit = {"/update/snoozedCommit", ""};
+    QStringSetting updateSnoozedUntil = {"/update/snoozedUntil", ""};
+
+    /// Keep the setup alike on the user's computers through the backup
+    /// folder - see profilesync
+    BoolSetting profileSyncEnabled = {"/sync/enabled", false};
+    /// When the shared setup this computer last wrote or took was written -
+    /// one written at any other time is new from another computer
+    QStringSetting profileSyncBase = {"/sync/base", ""};
+    /// What this computer's setup looked like when it last wrote it
+    QStringSetting profileSyncWritten = {"/sync/written", ""};
+
     BoolSetting modHighlightsIgnoreBotNames = {
         "/moderation/modHighlights/ignoreBotNames", true};
     /// What the emote alert offers at each step: "delete" or a timeout length

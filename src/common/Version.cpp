@@ -17,6 +17,7 @@ Version::Version()
     , isModified_(CHATTERINO_GIT_MODIFIED == 1)
     , dateOfBuild_(QStringLiteral(CHATTERINO_CMAKE_GEN_DATE))
     , isNightly_(CHATTERINO_NIGHTLY_BUILD == 1)
+    , isGitHubBuild_(CHATTIFLEXII_GITHUB_BUILD == 1)
 {
     this->fullVersion_ = "ChattiFlexii ";
     if (this->isNightly())
@@ -130,6 +131,11 @@ const QString &Version::extraString() const
 bool Version::isNightly() const
 {
     return this->isNightly_;
+}
+
+bool Version::isGitHubBuild() const
+{
+    return this->isGitHubBuild_;
 }
 
 void Version::generateBuildString()

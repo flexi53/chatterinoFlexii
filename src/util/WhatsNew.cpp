@@ -35,7 +35,20 @@ struct Release {
 
 /// Newest first. Add to the top when something lands that is worth telling
 /// the user about; everything above what they last saw is shown at once.
-const std::array<Release, 8> RELEASES{{
+const std::array<Release, 9> RELEASES{{
+    {"19 September 2026 (2)",
+     "19. September 2026 - Nachtrag",
+     {
+         "ChattiFlexii sagt dir jetzt selbst, wenn es eine neue Version gibt, "
+         "und lädt sie auf Wunsch herunter - ab dieser Version, in den "
+         "Downloads von GitHub. Einstellungen -> About hat einen Knopf zum "
+         "Suchen.",
+         "Abgleich zwischen deinen Computern: Unter Export & Import -> "
+         "Abgleich einschalten, auf beiden. Jeder legt seine Einstellungen "
+         "über iCloud Drive ab, und der andere fragt beim Start, ob er die "
+         "neueren übernehmen soll. Der Twitch-Login bleibt auf jedem "
+         "Computer.",
+     }},
     {"19 September 2026",
      "19. September 2026",
      {

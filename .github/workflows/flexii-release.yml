@@ -47,6 +47,7 @@ jobs:
             -DCMAKE_PREFIX_PATH="/opt/homebrew/opt/qt@6;/opt/homebrew/opt/openssl@3" \
             -DCHATTERINO_PLUGINS=On \
             -DCHATTERINO_UPDATER=Off \
+            -DCHATTIFLEXII_GITHUB_BUILD=On \
             -DCHATTERINO_NO_AVIF_PLUGIN=On \
             -DUSE_PRECOMPILED_HEADERS=Off
           cmake --build build --parallel "$(sysctl -n hw.logicalcpu)"
@@ -170,6 +171,7 @@ jobs:
               -DBUILD_WITH_CRASHPAD=Off `
               -DCHATTERINO_PLUGINS=On `
               -DCHATTERINO_UPDATER=Off `
+              -DCHATTIFLEXII_GITHUB_BUILD=On `
               -DFORCE_JSON_GENERATION=Off `
               ..
           set cl=/MP

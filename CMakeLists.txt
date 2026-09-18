@@ -40,6 +40,9 @@ option(CHATTERINO_USE_GDI_FONTENGINE "Use the legacy GDI fontengine instead of t
 option(CHATTERINO_ALLOW_PRIVATE_QT_API "Allow uses of Qt's private API - when enabling this, Chatterino must use the EXACT Qt version it was compiled against" OFF)
 option(CHATTERINO_SPELLCHECK "Enable spellchecking in Chatterino (requires Hunspell)" OFF)
 option(CHATTERINO_NIGHTLY_BUILD "Specifies whether this is a nightly build." OFF)
+# The ChattiFlexii downloads are built by GitHub from a known commit - only
+# those look for a newer download, a build made at home has none to compare
+option(CHATTIFLEXII_GITHUB_BUILD "Built by GitHub for the ChattiFlexii release" OFF)
 
 option(CHATTERINO_SANITIZER_SUPPORT "Attempt to enable Sanitizer support on the test and app targets. Actual sanitizers can then be enabled with the SANITIZE_* options." OFF)
 mark_as_advanced(CHATTERINO_SANITIZER_SUPPORT)

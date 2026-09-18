@@ -7,16 +7,20 @@
 #include "common/Common.hpp"
 #include "common/QLogging.hpp"
 #include "common/Version.hpp"
+#include "singletons/Settings.hpp"
 #include "util/Expected.hpp"  // IWYU pragma: keep - this is being used to see if we're using the expected_lite library
 #include "util/LayoutCreator.hpp"
 #include "util/RemoveScrollAreaBackground.hpp"
+#include "util/UpdateCheck.hpp"
 #include "widgets/BasePopup.hpp"
 #include "widgets/layout/FlowLayout.hpp"
 
 #include <QFile>
 #include <QFormLayout>
 #include <QGroupBox>
+#include <QHBoxLayout>
 #include <QLabel>
+#include <QPushButton>
 #include <QStringBuilder>
 #include <QTextEdit>
 #include <QTextStream>
@@ -70,6 +74,31 @@ AboutPage::AboutPage()
             label->setWordWrap(true);
             label->setOpenExternalLinks(true);
             label->setTextInteractionFlags(Qt::TextBrowserInteraction);
+
+            // ChattiFlexii: newer downloads, which only the downloads look for
+            if (updatecheck::canCheck())
+            {
+                vbox.getElement()->addWidget(this->createCheckBox(
+                    "Beim Start nach neuen Versionen suchen",
+                    getSettings()->updateCheckEnabled));
+                auto *check = new QPushButton("Jetzt nach Updates suchen");
+                QObject::connect(check, &QPushButton::clicked, [] {
+                    updatecheck::checkNow(true);
+                });
+                auto *row = new QHBoxLayout;
+                row->addWidget(check);
+                row->addStretch(1);
+                vbox.getElement()->addLayout(row);
+            }
+            else
+            {
+                auto *note = new QLabel(
+                    "Selbst gebaut - nur die Downloads von GitHub suchen nach "
+                    "neuen ChattiFlexii-Versionen.");
+                note->setWordWrap(true);
+                note->setStyleSheet("color: #9a9a9a;");
+                vbox.getElement()->addWidget(note);
+            }
         }
 
         // About Chatterino

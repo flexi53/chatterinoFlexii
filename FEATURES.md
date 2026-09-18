@@ -255,8 +255,20 @@ computer the welcome window offers the same import on first start.
 export by themselves every day, every three days, every week or every two
 weeks - weekly to begin with - into "ChattiFlexii-Sicherungen" in iCloud
 Drive where there is one, otherwise in Documents. There is only ever one
-backup: the next replaces it, once it is complete. A backup is imported like any export and
-never holds the Twitch login.
+backup: the next replaces it, once it is complete. A backup is imported like
+any export and never holds the Twitch login.
+
+**Abgleich**, the fourth tab, keeps two computers alike - the Mac and the
+MacBook, say. Switched on on both, each leaves its setup as
+"ChattiFlexii-Abgleich" in the backup folder whenever it changed - every half
+hour and on quitting - and iCloud Drive carries it to the other. When
+ChattiFlexii finds a newer setup from the other computer there, it asks:
+**Übernehmen** restarts it set up like the other one, with its own setup
+backed up first; **Meine behalten** puts this one in its place; **Später**
+asks again at the next start. It never takes anything without asking, and
+never writes over a setup from the other computer that has not been
+answered. The Twitch login stays on each computer, and where windows sit
+does not count as a change, since each computer has its own screens.
 
 ## Pinning messages
 
@@ -304,5 +316,10 @@ carries a build of the current code for both platforms, rebuilt on every push.
   the first time
 - **Windows**: unzip anywhere and run `ChattiFlexii.exe`
 
-Update checks are switched off, so nothing will offer to replace the fork with
-upstream Chatterino. New versions have to be fetched from that page by hand.
+Chatterino's own update check is switched off, so nothing will offer to
+replace the fork with upstream Chatterino. Instead, the downloads look on
+that page a little after starting and every six hours whether there is a
+newer build, and offer it: **Herunterladen** fetches it in the browser,
+**Später** asks again a day later. Settings -> About has a switch for it and
+**Jetzt nach Updates suchen**. A build made at home does not look - it has
+no release to compare with.

@@ -4,6 +4,8 @@
 
 #include "RunGui.hpp"
 #include "util/AutoBackup.hpp"
+#include "util/ProfileSync.hpp"
+#include "util/UpdateCheck.hpp"
 #include "util/WhatsNew.hpp"
 
 #include "Application.hpp"
@@ -294,6 +296,8 @@ void runGui(QApplication &a, const Paths &paths, Settings &settings,
 
     // Checked for once the app is up, and every few hours after
     autobackup::start();
+    updatecheck::start();
+    profilesync::start();
 
     // Queued so it lands once the event loop is running and the main window
     // has something to show underneath it.

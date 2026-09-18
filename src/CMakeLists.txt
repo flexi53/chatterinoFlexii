@@ -662,6 +662,8 @@ set(SOURCE_FILES
         util/SelfCheck.hpp
         util/SharedPtrElementLess.hpp
         util/SignalListener.hpp
+        util/ProfileSync.cpp
+        util/ProfileSync.hpp
         util/SpellingVariants.cpp
         util/SpellingVariants.hpp
         util/StreamLink.cpp
@@ -670,6 +672,8 @@ set(SOURCE_FILES
         util/Twitch.cpp
         util/Twitch.hpp
         util/TypeName.hpp
+        util/UpdateCheck.cpp
+        util/UpdateCheck.hpp
         util/UnixSignalHandler.cpp
         util/UnixSignalHandler.hpp
         util/Variant.hpp
@@ -1246,6 +1250,7 @@ target_compile_definitions(${VERSION_PROJECT} PRIVATE
     CHATTERINO_GIT_COMMIT=\"${GIT_COMMIT}\"
     CHATTERINO_GIT_MODIFIED=${GIT_MODIFIED}
     CHATTERINO_NIGHTLY_BUILD=$<BOOL:${CHATTERINO_NIGHTLY_BUILD}>
+    CHATTIFLEXII_GITHUB_BUILD=$<BOOL:${CHATTIFLEXII_GITHUB_BUILD}>
 
     CHATTERINO_CMAKE_GEN_DATE=\"${cmake_gen_date}\"
 )

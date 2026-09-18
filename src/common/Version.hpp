@@ -68,6 +68,10 @@ public:
     /// This is controlled by the CMake parameter CHATTERINO_NIGHTLY_BUILD, which defaults to off.
     bool isNightly() const;
 
+    /// Whether GitHub built this for the ChattiFlexii release, from the
+    /// commit commitHash() names - see CHATTIFLEXII_GITHUB_BUILD
+    bool isGitHubBuild() const;
+
 #ifdef Q_OS_WIN
     /// Chatterino's App ID on Windows
     ///
@@ -98,6 +102,7 @@ private:
     void generateExtraString();
 
     bool isNightly_;
+    bool isGitHubBuild_;
 
 #ifdef Q_OS_WIN
     std::wstring appUserModelID_;

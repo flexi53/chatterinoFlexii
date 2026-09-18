@@ -10,6 +10,7 @@
 #include "singletons/WindowManager.hpp"
 #include "util/AutoBackup.hpp"
 #include "util/ProfileSetup.hpp"
+#include "util/ProfileSync.hpp"
 #include "widgets/settingspages/PageSections.hpp"
 
 #include <QApplication>
@@ -60,6 +61,7 @@ TransferPage::TransferPage()
     this->buildExportTab(addPageTab(tabs, "Exportieren"));
     this->buildImportTab(addPageTab(tabs, "Importieren"));
     this->buildBackupTab(addPageTab(tabs, "Automatische Sicherung"));
+    this->buildSyncTab(addPageTab(tabs, "Abgleich"));
     this->showBackupState();
 }
 
@@ -267,6 +269,91 @@ void TransferPage::buildBackupTab(QVBoxLayout *layout)
         this->managedConnections_, false);
 }
 
+void TransferPage::buildSyncTab(QVBoxLayout *layout)
+{
+    addText(layout,
+            "Hält ChattiFlexii auf deinen Computern gleich - etwa auf deinem "
+            "Mac und deinem MacBook. Jeder Computer legt seine Einstellungen im "
+            "Sicherungsordner ab, sobald sich etwas geändert hat. Startest du "
+            "ChattiFlexii auf dem anderen Computer, fragt es, ob es die neueren "
+            "übernehmen soll - von selbst übernimmt es nie etwas.");
+    layout->addWidget(this->createCheckBox(
+        "Einstellungen zwischen meinen Computern abgleichen",
+        getSettings()->profileSyncEnabled));
+    addText(layout,
+            "Auf beiden Computern einschalten. Beide brauchen denselben Ordner - "
+            "am einfachsten den Standard in iCloud Drive (siehe „Automatische "
+            "Sicherung“). Der Twitch-Login bleibt auf jedem Computer, wie er "
+            "ist, und was du ersetzt, wird vorher gesichert.",
+            true);
+
+    addHeading(layout, "Stand");
+    this->syncState_ = addText(layout, QString());
+    this->syncState_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    auto *now = new QPushButton("Jetzt abgleichen");
+    addButtonRow(layout, now);
+    this->syncStatus_ = addText(layout, QString());
+
+    layout->addStretch(1);
+
+    QObject::connect(now, &QPushButton::clicked, this, [this] {
+        this->syncStatus_->setText(profilesync::syncNow(true).toHtmlEscaped());
+        this->showSyncState();
+    });
+    getSettings()->profileSyncEnabled.connect(
+        [this](const auto &, auto) {
+            this->syncStatus_->clear();
+            this->showSyncState();
+        },
+        this->managedConnections_, false);
+    getSettings()->profileSyncBase.connect(
+        [this](const auto &, auto) {
+            this->showSyncState();
+        },
+        this->managedConnections_, false);
+    getSettings()->autoBackupFolder.connect(
+        [this](const auto &, auto) {
+            this->showSyncState();
+        },
+        this->managedConnections_, false);
+    this->showSyncState();
+}
+
+void TransferPage::showSyncState()
+{
+    if (this->syncState_ == nullptr)
+    {
+        return;
+    }
+
+    QStringList lines;
+    lines.append(QStringLiteral("Dieser Computer: %1")
+                     .arg(profilesync::thisComputerName().toHtmlEscaped()));
+    const auto shared = profilesync::readShared(profilesync::sharedFolder());
+    if (!shared)
+    {
+        lines.append(QStringLiteral("Im Ordner liegt noch kein Abgleich."));
+    }
+    else
+    {
+        const auto when =
+            QDateTime::fromString(shared->written, Qt::ISODateWithMs)
+                .toLocalTime();
+        lines.append(
+            QStringLiteral("Im Ordner: Stand von %1, %2")
+                .arg((shared->computer == profilesync::thisComputer()
+                          ? QStringLiteral("diesem Computer")
+                          : shared->computerName)
+                         .toHtmlEscaped(),
+                     QLocale(QLocale::German)
+                         .toString(when, QStringLiteral("dd.MM.yyyy HH:mm"))));
+    }
+    lines.append(QStringLiteral("Ordner: %1")
+                     .arg(QDir::toNativeSeparators(profilesync::sharedFolder())
+                              .toHtmlEscaped()));
+    this->syncState_->setText(lines.join(QStringLiteral("<br>")));
+}
+
 void TransferPage::showBackupState()
 {
     if (this->backupFolder_ == nullptr || this->backupStatus_ == nullptr)
@@ -370,7 +457,7 @@ bool TransferPage::filterElements(const QString &query)
 {
     static const QStringList keywords{
         "export", "import",  "übertragen", "backup", "sicherung", "icloud",
-        "airdrop", "macbook", "computer",  "gerät",
+        "airdrop", "macbook", "computer",  "gerät", "abgleich", "sync",
     };
 
     return matchesKeywords(query, keywords);
