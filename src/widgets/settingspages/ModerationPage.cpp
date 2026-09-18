@@ -2,12 +2,6 @@
 //
 // SPDX-License-Identifier: MIT
 
-#include "widgets/Window.hpp"
-#include "singletons/WindowManager.hpp"
-#include "controllers/moderation/EmoteSpamDetector.hpp"
-#include "widgets/dialogs/ModAlertPopup.hpp"
-#include "util/FormatTime.hpp"
-#include "controllers/moderation/RepeatSpamDetector.hpp"
 #include "widgets/settingspages/ModerationPage.hpp"
 
 #include "Application.hpp"
@@ -25,11 +19,7 @@
 #include "widgets/helper/IconDelegate.hpp"
 #include "widgets/settingspages/SettingWidget.hpp"
 
-#include <functional>
-#include <QTimer>
 #include <QCheckBox>
-#include <QFrame>
-#include <QScrollArea>
 #include <QLineEdit>
 #include <QFormLayout>
 #include <QFileDialog>
