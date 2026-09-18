@@ -119,12 +119,11 @@ bool sameMessage(const QString &a, const QString &b)
     return editDistance(left, right) <= allowed;
 }
 
-/// The step for someone who has served @a timeoutsServed timeouts. Past the
-/// last step it stays at the last.
-int stepFor(int timeoutsServed)
+/// The timeout at step @a level. Past the last step it stays at the last.
+int stepFor(int level)
 {
     const auto steps = RepeatSpamDetector::steps();
-    return steps[std::min<size_t>(static_cast<size_t>(timeoutsServed),
+    return steps[std::min<size_t>(static_cast<size_t>(std::max(0, level)),
                                   steps.size() - 1)];
 }
 
@@ -263,23 +262,20 @@ void RepeatSpamDetector::onMessage(const QString &channelName,
     const bool sameAsFlagged = !state.flaggedText.isEmpty() &&
                                sameMessage(normalised, state.flaggedText);
 
-    if (sameAsFlagged && state.timeouts > 0)
+    if (!sameAsFlagged)
     {
-        // Already sat out a timeout for this one and sent it again
-        this->showAlert(channel, login, displayName, stepFor(state.timeouts),
-                        state.timeouts);
-        return;
+        if (streak < STREAK)
+        {
+            return;
+        }
+        // A message of its own, flagged afresh
+        state.flaggedText = normalised;
+        state.escalation = RepeatEscalation{};
     }
 
-    if (streak >= STREAK)
+    if (state.escalation.repeat())
     {
-        if (!sameAsFlagged)
-        {
-            state.flaggedText = normalised;
-            state.timeouts = 0;
-        }
-        this->showAlert(channel, login, displayName, stepFor(state.timeouts),
-                        state.timeouts);
+        this->showAlert(channel, login, displayName, state.escalation);
     }
 }
 
@@ -307,7 +303,7 @@ void RepeatSpamDetector::onTimeout(const QString &channelName,
 
         if (!it->flaggedText.isEmpty())
         {
-            it->timeouts++;
+            it->escalation.timedOut();
         }
 
         // The quiet time before a clean slate starts once the timeout is
@@ -321,14 +317,42 @@ void RepeatSpamDetector::onTimeout(const QString &channelName,
 }
 
 void RepeatSpamDetector::showAlert(const QString &channel, const QString &login,
-                                   const QString &displayName, int seconds,
-                                   int timeoutsServed)
+                                   const QString &displayName,
+                                   const RepeatEscalation &escalation)
 {
     auto *popup = ModAlertPopup::obtain(
         channel, login, &getApp()->getWindows()->getMainWindow());
-    popup->setCase(displayName.isEmpty() ? login : displayName, seconds,
-                   timeoutsServed);
+    popup->setCase(displayName.isEmpty() ? login : displayName,
+                   stepFor(escalation.level), escalation.level,
+                   escalation.timeouts);
     popup->present();
+}
+
+std::optional<int> RepeatEscalation::repeat()
+{
+    if (!this->offered)
+    {
+        this->offered = true;
+        this->sinceOffer = 0;
+        return this->level;
+    }
+
+    // Offered already and nobody has acted: back a step higher once they
+    // have kept at it as long as it took to be flagged in the first place
+    if (++this->sinceOffer < STREAK)
+    {
+        return std::nullopt;
+    }
+    this->sinceOffer = 0;
+    return ++this->level;
+}
+
+void RepeatEscalation::timedOut()
+{
+    this->timeouts++;
+    this->level++;
+    this->offered = false;
+    this->sinceOffer = 0;
 }
 
 std::vector<int> RepeatSpamDetector::steps()

@@ -133,7 +133,9 @@ card opens - without taking the keyboard from you - with their picture and how
 old their account is, their recent messages as they looked in chat with
 Twitch's timeout notices in between, and a timeout button. Each time they send that message again after
 having been timed out, by you or another moderator, the window comes back
-offering the next step up.
+offering the next step up - and so it does when nobody acts: every three more
+repeats without a timeout bring it back a step higher, so ignoring it does
+not keep it at the first step.
 
 - The steps start out as **30s, 1m, 5m, 10m, 30m**; past the last one it
   stays there

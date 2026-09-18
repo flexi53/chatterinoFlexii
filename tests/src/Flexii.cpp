@@ -23,6 +23,7 @@
 #include <QTemporaryDir>
 #include <QUrl>
 
+#include <optional>
 #include <vector>
 
 using namespace chatterino;
@@ -122,6 +123,48 @@ TEST(FlexiiSteps, EmoteSpamStepsDeleteFirst)
     EXPECT_EQ(EmoteSpamDetector::parseSteps("delete, del, loeschen, 1m"),
               (std::vector<int>{del, del, del, 60}));
     EXPECT_TRUE(EmoteSpamDetector::parseSteps("löschen, weg").empty());
+}
+
+// ----- repeated message escalation -----
+
+TEST(FlexiiEscalation, FirstOfferIsTheFirstStep)
+{
+    RepeatEscalation escalation;
+    EXPECT_EQ(escalation.repeat(), 0);
+}
+
+TEST(FlexiiEscalation, IgnoredAlertsStepUpEveryThreeRepeats)
+{
+    RepeatEscalation escalation;
+    EXPECT_EQ(escalation.repeat(), 0);
+    // Nobody acts - they carry on
+    EXPECT_EQ(escalation.repeat(), std::nullopt);
+    EXPECT_EQ(escalation.repeat(), std::nullopt);
+    EXPECT_EQ(escalation.repeat(), 1);
+    EXPECT_EQ(escalation.repeat(), std::nullopt);
+    EXPECT_EQ(escalation.repeat(), std::nullopt);
+    EXPECT_EQ(escalation.repeat(), 2);
+    EXPECT_EQ(escalation.timeouts, 0);
+}
+
+TEST(FlexiiEscalation, ATimeoutBringsTheNextStepAtOnce)
+{
+    RepeatEscalation escalation;
+    EXPECT_EQ(escalation.repeat(), 0);
+    escalation.timedOut();
+    EXPECT_EQ(escalation.repeat(), 1);
+    EXPECT_EQ(escalation.timeouts, 1);
+}
+
+TEST(FlexiiEscalation, TimeoutsAndIgnoredAlertsAddUp)
+{
+    RepeatEscalation escalation;
+    EXPECT_EQ(escalation.repeat(), 0);
+    escalation.repeat();
+    escalation.repeat();
+    EXPECT_EQ(escalation.repeat(), 1);  // ignored, stepped up
+    escalation.timedOut();              // the 1 minute was given
+    EXPECT_EQ(escalation.repeat(), 2);  // next one straight away
 }
 
 // ----- Twitch names -----

@@ -10,9 +10,32 @@
 #include <QPointer>
 #include <QString>
 
+#include <optional>
 #include <vector>
 
 namespace chatterino {
+
+/// Which step to offer one chatter for the message they were flagged for.
+/// The first offer comes with the flag. After that the step goes up each time
+/// they carry on after a timeout - and also when nobody acts: every few more
+/// repeats without a timeout bring the offer back a step higher, so ignoring
+/// an alert does not keep it at the first step.
+struct RepeatEscalation {
+    /// Timeouts they have served for this message
+    int timeouts = 0;
+    /// The step offered - timeouts served plus rounds nobody acted on
+    int level = 0;
+    /// Whether the current step has been offered yet
+    bool offered = false;
+    /// Repeats since the last offer
+    int sinceOffer = 0;
+
+    /// Another one of the flagged message. Returns the step to offer now, or
+    /// nothing while it is too soon to come back.
+    std::optional<int> repeat();
+    /// They were timed out: the next repeat is offered the next step at once
+    void timedOut();
+};
 
 /// Spots a chatter sending the same message - or nearly the same - over and
 /// over, and puts the case in front of the moderator with the timeout that
@@ -60,14 +83,13 @@ private:
         QList<Entry> history;
         /// The message they were flagged for, normalised
         QString flaggedText;
-        /// Timeouts they have served since being flagged
-        int timeouts = 0;
+        RepeatEscalation escalation;
         QDateTime lastActivity;
     };
 
     void showAlert(const QString &channel, const QString &login,
-                   const QString &displayName, int seconds,
-                   int timeoutsServed);
+                   const QString &displayName,
+                   const RepeatEscalation &escalation);
 
     QHash<QString, UserState> users_;
 };

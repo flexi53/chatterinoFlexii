@@ -657,24 +657,27 @@ int ModAlertPopup::openCount()
     return static_cast<int>(alerts.size());
 }
 
-void ModAlertPopup::setCase(const QString &displayName, int seconds,
+void ModAlertPopup::setCase(const QString &displayName, int seconds, int step,
                             int timeoutsServed)
 {
     this->setWindowTitle(
         QStringLiteral("Wiederholte Nachricht – #%1").arg(this->channel_));
     this->kind_ = Kind::RepeatedMessage;
 
-    if (timeoutsServed == 0)
+    if (step == 0)
     {
-        this->headline_->setText(
-            QStringLiteral("Hat dieselbe Nachricht mehrmals hintereinander "
-                           "geschickt."));
+        this->headline_->setText(QStringLiteral(
+            "Hat dieselbe Nachricht mehrmals hintereinander geschickt."));
+    }
+    else if (step > timeoutsServed)
+    {
+        this->headline_->setText(QStringLiteral(
+            "Schickt die Nachricht weiter, ohne dass jemand eingegriffen hat."));
     }
     else if (timeoutsServed == 1)
     {
-        this->headline_->setText(
-            QStringLiteral("Hat die Nachricht nach einem Timeout wieder "
-                           "geschickt."));
+        this->headline_->setText(QStringLiteral(
+            "Hat die Nachricht nach einem Timeout wieder geschickt."));
     }
     else
     {
@@ -688,7 +691,7 @@ void ModAlertPopup::setCase(const QString &displayName, int seconds,
     this->setReason(
         QStringLiteral("Dieselbe Nachricht wiederholt"),
         QStringLiteral("Stufe %1 von %2")
-            .arg(std::min<size_t>(static_cast<size_t>(timeoutsServed),
+            .arg(std::min<size_t>(static_cast<size_t>(std::max(0, step)),
                                   steps.size() - 1) +
                  1)
             .arg(steps.size()));

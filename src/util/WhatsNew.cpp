@@ -35,7 +35,15 @@ struct Release {
 
 /// Newest first. Add to the top when something lands that is worth telling
 /// the user about; everything above what they last saw is shown at once.
-const std::array<Release, 4> RELEASES{{
+const std::array<Release, 5> RELEASES{{
+    {"18 September 2026 (3)",
+     "18. September 2026 - Nachtrag 2",
+     {
+         "Der Alarm für wiederholte Nachrichten geht auch dann eine Stufe "
+         "höher, wenn niemand eingreift: Schickt jemand die Nachricht nach dem "
+         "ersten Alarm dreimal weiter, kommt er mit der nächsten Stufe wieder - "
+         "statt immer wieder mit 30 Sekunden.",
+     }},
     {"18 September 2026 (2)",
      "18. September 2026 - Nachtrag",
      {

@@ -90,10 +90,12 @@ public:
     /// app's space when macOS switches back to the app.
     void present();
 
-    /// A repeated message alert offering a timeout of @a seconds.
-    /// @a timeoutsServed counts the timeouts the chatter has already sat out
-    /// for this message. Starts the countdown over.
-    void setCase(const QString &displayName, int seconds, int timeoutsServed);
+    /// A repeated message alert offering a timeout of @a seconds, step
+    /// @a step counted from 0. @a timeoutsServed counts the timeouts the
+    /// chatter has already sat out for this message; a step higher than that
+    /// means nobody acted on an earlier alert. Starts the countdown over.
+    void setCase(const QString &displayName, int seconds, int step,
+                 int timeoutsServed);
 
     /// A suggestion from the moderation assistant, with what it rests on.
     /// A suggested length of 0 offers a ban.
