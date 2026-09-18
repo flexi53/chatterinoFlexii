@@ -15,7 +15,7 @@
 #include "messages/layouts/MessageLayoutContext.hpp"
 #include "messages/layouts/MessageLayoutElement.hpp"
 #include "providers/emoji/Emojis.hpp"
-#include "providers/twitch/CaptionAvatars.hpp"
+#include "providers/twitch/ProfilePictures.hpp"
 #include "providers/twitch/TwitchEmotes.hpp"
 #include "singletons/Fonts.hpp"
 #include "singletons/Settings.hpp"
@@ -242,7 +242,7 @@ void CaptionAvatarElement::addToContainer(MessageLayoutContainer &container,
         return;
     }
 
-    auto image = captionavatars::image(this->login_);
+    auto image = profilepictures::image(this->login_);
     if (!image)
     {
         this->fallback_.setTrailingSpace(this->hasTrailingSpace());
@@ -250,7 +250,7 @@ void CaptionAvatarElement::addToContainer(MessageLayoutContainer &container,
         return;
     }
 
-    this->setTooltip(captionavatars::displayName(this->login_));
+    this->setTooltip(profilepictures::displayName(this->login_));
     // As tall as a line of chat text, so a caption of pictures leaves the
     // height of the line alone
     const qreal side = getApp()

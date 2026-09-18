@@ -13,29 +13,18 @@
 
 #include <functional>
 #include <mutex>
-#include <optional>
-#include <vector>
 
 class QObject;
 
 namespace chatterino {
 
-/// A channel as whosthemod.xyz lists it
-struct ModHighlightChannel {
-    QString login;
-    QString displayName;
-    QString profileImageUrl;
-    /// -1 when not known
-    int modCount = -1;
-    bool live = false;
-};
-
 /// Marks messages from moderators of the channels the user picked with those
 /// channels' profile pictures - someone who moderates two of them gets both.
 ///
 /// The mod lists come from whosthemod.xyz, the site behind the WhoseTheMod
-/// plugin, and the feature only runs while that plugin is switched on. They
-/// are kept on disk and fetched again every few hours.
+/// plugin - the same public list its /modcheck shows - and the feature only
+/// runs while that plugin is switched on. They are kept on disk and fetched
+/// again every few hours.
 class ModHighlights
 {
 public:
@@ -61,15 +50,6 @@ public:
     /// How many different people moderate the chosen channels
     int markedCount() const;
 
-    using SearchCallback =
-        std::function<void(std::optional<std::vector<ModHighlightChannel>>,
-                            const QString &nextCursor)>;
-    /// The channels whosthemod.xyz knows, matching @a query where it is not
-    /// empty, a page at a time. Calls back with nothing while the site offers
-    /// no public channel list.
-    void searchChannels(const QString &query, const QString &cursor,
-                        QObject *caller, SearchCallback done);
-
     /// Asks the public mod list of @a channel, and keeps it. Calls back with
     /// the number of mods, or -1 when it could not be asked.
     void checkChannel(const QString &channel, QObject *caller,
@@ -89,7 +69,6 @@ private:
     /// is fetched
     void exclusionsChanged();
     void fetch(const QStringList &channels);
-    void fetchEach(const QStringList &channels);
     void store(const QString &channel, const QStringList &mods);
     /// Takes in what was fetched, a moment later so answers arriving one
     /// channel at a time are taken in together
@@ -105,9 +84,6 @@ private:
 
     /// Owns the timers and network callbacks; made on the GUI thread by start
     QObject *context_ = nullptr;
-    /// Set once the site turned out to have no bulk mod list, so this run
-    /// asks channel by channel
-    bool bulkMissing_ = false;
     bool changePending_ = false;
     pajlada::Signals::SignalHolder connections_;
 };

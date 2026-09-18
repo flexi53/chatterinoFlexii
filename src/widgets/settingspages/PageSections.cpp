@@ -9,9 +9,12 @@
 #include <QLabel>
 #include <QScrollArea>
 #include <QString>
+#include <QStringList>
 #include <QTabWidget>
 #include <QVBoxLayout>
 #include <QWidget>
+
+#include <algorithm>
 
 namespace chatterino::pagesections {
 
@@ -59,6 +62,19 @@ QLabel *addText(QVBoxLayout *layout, const QString &text, bool dimmed)
     }
     layout->addWidget(label);
     return label;
+}
+
+bool matchesKeywords(const QString &query, const QStringList &keywords)
+{
+    if (query.isEmpty())
+    {
+        return true;
+    }
+    return std::any_of(keywords.begin(), keywords.end(),
+                       [&query](const QString &keyword) {
+                           return keyword.contains(query, Qt::CaseInsensitive) ||
+                                  query.contains(keyword, Qt::CaseInsensitive);
+                       });
 }
 
 void addButtonRow(QVBoxLayout *layout, QWidget *widget)

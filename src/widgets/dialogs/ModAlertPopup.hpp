@@ -170,8 +170,6 @@ private:
     QPoint pointerAtStart_;
     bool pointerMoved_ = false;
 
-    /// Lets network replies tell whether the window is still around
-    std::shared_ptr<bool> alive_ = std::make_shared<bool>(true);
 };
 
 }  // namespace chatterino

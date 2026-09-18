@@ -24,8 +24,6 @@
 #include <QSaveFile>
 #include <QSet>
 #include <QTimer>
-#include <QUrl>
-#include <QUrlQuery>
 
 #include <chrono>
 
@@ -36,8 +34,6 @@ using namespace chatterino;
 const QString API_BASE = QStringLiteral("https://whosthemod.xyz/api/public");
 /// How old the mod lists may get before they are fetched again
 constexpr qint64 REFRESH_AFTER_SECONDS = 6 * 60 * 60;
-/// How many channels one bulk request asks about
-constexpr qsizetype BULK_SIZE = 50;
 constexpr int TIMEOUT_MS = 15000;
 
 QString storePath()
@@ -212,66 +208,6 @@ int ModHighlights::markedCount() const
     return static_cast<int>(this->captions_.size());
 }
 
-void ModHighlights::searchChannels(const QString &query, const QString &cursor,
-                                   QObject *caller, SearchCallback done)
-{
-    QUrlQuery params;
-    if (!query.trimmed().isEmpty())
-    {
-        params.addQueryItem(QStringLiteral("q"), query.trimmed());
-    }
-    params.addQueryItem(QStringLiteral("limit"), QStringLiteral("100"));
-    if (!cursor.isEmpty())
-    {
-        params.addQueryItem(QStringLiteral("cursor"), cursor);
-    }
-    QUrl url(API_BASE + QStringLiteral("/channels"));
-    url.setQuery(params);
-
-    NetworkRequest(url.toString(QUrl::FullyEncoded), NetworkRequestType::Get)
-        .timeout(TIMEOUT_MS)
-        .caller(caller)
-        .onSuccess([done](const NetworkResult &result) {
-            const auto root = result.parseJson();
-            const auto list = root.value(QStringLiteral("channels"));
-            // The site answers paths it does not know with its web page
-            if (!list.isArray())
-            {
-                done(std::nullopt, {});
-                return;
-            }
-
-            std::vector<ModHighlightChannel> channels;
-            for (const auto &value : list.toArray())
-            {
-                const auto object = value.toObject();
-                ModHighlightChannel channel;
-                channel.login =
-                    object.value(QStringLiteral("login")).toString().toLower();
-                if (channel.login.isEmpty())
-                {
-                    continue;
-                }
-                channel.displayName =
-                    object.value(QStringLiteral("display_name"))
-                        .toString(channel.login);
-                channel.profileImageUrl =
-                    object.value(QStringLiteral("profile_image_url"))
-                        .toString();
-                channel.modCount =
-                    object.value(QStringLiteral("mod_count")).toInt(-1);
-                channel.live = object.value(QStringLiteral("live")).toBool();
-                channels.push_back(channel);
-            }
-            done(channels,
-                 root.value(QStringLiteral("next_cursor")).toString());
-        })
-        .onError([done](const NetworkResult &) {
-            done(std::nullopt, {});
-        })
-        .execute();
-}
-
 void ModHighlights::checkChannel(const QString &channel, QObject *caller,
                                  std::function<void(int)> done)
 {
@@ -409,57 +345,6 @@ void ModHighlights::fetch(const QStringList &channels)
     }
     this->start();
 
-    if (this->bulkMissing_)
-    {
-        this->fetchEach(channels);
-        return;
-    }
-
-    for (qsizetype first = 0; first < channels.size(); first += BULK_SIZE)
-    {
-        const auto batch = channels.mid(first, BULK_SIZE);
-        NetworkRequest(API_BASE + QStringLiteral("/channel-mods-bulk?channels=") +
-                           batch.join(u','),
-                       NetworkRequestType::Get)
-            .timeout(TIMEOUT_MS)
-            .caller(this->context_)
-            .onSuccess([this, batch](const NetworkResult &result) {
-                const auto answer =
-                    result.parseJson().value(QStringLiteral("channels"));
-                // The site answers paths it does not know with its web page.
-                // Anything but the expected object means there is no bulk
-                // list yet, and the channels are asked one by one.
-                if (!answer.isObject())
-                {
-                    this->bulkMissing_ = true;
-                    this->fetchEach(batch);
-                    return;
-                }
-
-                const auto found = answer.toObject();
-                for (const auto &channel : batch)
-                {
-                    this->store(channel,
-                                loginList(found.value(channel)
-                                              .toObject()
-                                              .value(QStringLiteral("mods"))
-                                              .toArray()));
-                }
-                this->listsChanged();
-            })
-            .onError([this, batch](const NetworkResult &result) {
-                if (result.status() == 404)
-                {
-                    this->bulkMissing_ = true;
-                    this->fetchEach(batch);
-                }
-            })
-            .execute();
-    }
-}
-
-void ModHighlights::fetchEach(const QStringList &channels)
-{
     for (const auto &channel : channels)
     {
         NetworkRequest(

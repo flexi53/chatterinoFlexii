@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <QStringList>
+
 class QLabel;
 class QString;
 class QTabWidget;
@@ -26,5 +28,9 @@ QLabel *addText(QVBoxLayout *layout, const QString &text, bool dimmed = false);
 
 /// @a widget on a row of its own, kept to its natural width
 void addButtonRow(QVBoxLayout *layout, QWidget *widget);
+
+/// Whether a search in the settings for @a query should show a page these
+/// @a keywords describe - always for an empty search
+bool matchesKeywords(const QString &query, const QStringList &keywords);
 
 }  // namespace chatterino::pagesections

@@ -491,8 +491,8 @@ set(SOURCE_FILES
 
         providers/twitch/ChannelPointReward.cpp
         providers/twitch/ChannelPointReward.hpp
-        providers/twitch/CaptionAvatars.cpp
-        providers/twitch/CaptionAvatars.hpp
+        providers/twitch/ProfilePictures.cpp
+        providers/twitch/ProfilePictures.hpp
         providers/twitch/IrcMessageHandler.cpp
         providers/twitch/IrcMessageHandler.hpp
         providers/twitch/PubSubClient.cpp
@@ -640,6 +640,8 @@ set(SOURCE_FILES
         controllers/moderation/EmoteSpamDetector.hpp
         util/ProfileSetup.cpp
         util/ProfileSetup.hpp
+        util/RoundPixmap.cpp
+        util/RoundPixmap.hpp
         util/WhatsNew.cpp
         util/WhatsNew.hpp
         util/RapidjsonHelpers.cpp

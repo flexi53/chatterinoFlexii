@@ -23,6 +23,10 @@ void stripChannelName(QString &channelName);
 /// Strips a leading `#` and lowercases the name
 QString cleanChannelName(const QString &dirtyChannelName);
 
+/// Whether @a login is spelled like a Twitch login: 1 to 25 of a-z, 0-9
+/// and _
+bool isValidTwitchLogin(const QString &login);
+
 using ParsedUserName = QString;
 using ParsedUserID = QString;
 

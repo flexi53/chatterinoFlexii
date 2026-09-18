@@ -21,8 +21,9 @@
 #include "messages/Message.hpp"
 #include "messages/MessageBuilder.hpp"
 #include "messages/MessageElement.hpp"
-#include "providers/twitch/api/Helix.hpp"
+#include "providers/twitch/ProfilePictures.hpp"
 #include "providers/twitch/TwitchIrcServer.hpp"
+#include "util/RoundPixmap.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
 #include "util/FormatTime.hpp"
@@ -40,9 +41,6 @@
 #include <QHash>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
-#include <QNetworkRequest>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPointer>
@@ -749,15 +747,17 @@ void ModAlertPopup::setReason(const QString &reason, const QString &details,
 
 QColor ModAlertPopup::defaultReasonColor(Kind kind)
 {
+    // The settings' own defaults, so the colours are written down only once
+    const auto *settings = getSettings();
     switch (kind)
     {
         case Kind::RepeatedMessage:
-            return {QStringLiteral("#ffa31a")};
+            return {settings->modAlertColorRepeat.getDefaultValue()};
         case Kind::EmoteSpam:
-            return {QStringLiteral("#ff33f5")};
+            return {settings->modAlertColorEmote.getDefaultValue()};
         case Kind::Suggestion:
         default:
-            return {QStringLiteral("#1ae8ff")};
+            return {settings->modAlertColorSuggestion.getDefaultValue()};
     }
 }
 
@@ -1072,65 +1072,37 @@ void ModAlertPopup::loadProfile()
 {
     this->profileLoaded_ = true;
 
-    std::weak_ptr<bool> alive = this->alive_;
-    getHelix()->getUserByName(
-        this->login_,
-        [this, alive](const HelixUser &user) {
-            if (!alive.lock())
+    profilepictures::whenKnown(
+        this->login_, this, [this](const TwitchProfile &profile) {
+            if (!profile.createdAt.isValid())
             {
                 return;
             }
 
-            const auto created =
-                QDateTime::fromString(user.createdAt, Qt::ISODate);
-            if (created.isValid())
-            {
-                const auto days =
-                    created.daysTo(QDateTime::currentDateTimeUtc());
-                const auto age =
-                    days <= 0   ? QStringLiteral("today")
-                    : days == 1 ? QStringLiteral("1 day ago")
-                                : QStringLiteral("%1 days ago").arg(days);
-                const auto createdText =
-                    QStringLiteral("account created %1").arg(age);
+            const auto days =
+                profile.createdAt.daysTo(QDateTime::currentDateTimeUtc());
+            const auto age = days <= 0   ? QStringLiteral("today")
+                             : days == 1 ? QStringLiteral("1 day ago")
+                                         : QStringLiteral("%1 days ago").arg(days);
+            const auto createdText =
+                QStringLiteral("account created %1").arg(age);
 
-                this->details_->setText(
-                    QStringLiteral("%1 &middot; %2")
-                        .arg(this->login_.toHtmlEscaped(),
-                             days < NEW_ACCOUNT_DAYS
-                                 ? QStringLiteral(
-                                       "<span style=\"color:#ffaa00\">%1</span>")
-                                       .arg(createdText)
-                                 : createdText));
-                this->details_->setToolTip(created.toString(Qt::ISODate));
-            }
-
-            if (user.profileImageUrl.isEmpty())
-            {
-                return;
-            }
-
-            static auto *manager = new QNetworkAccessManager();
-            QNetworkRequest request{QUrl(user.profileImageUrl)};
-            request.setHeader(QNetworkRequest::UserAgentHeader, "Chatterino");
-            auto *reply = manager->get(request);
-            QObject::connect(reply, &QNetworkReply::finished, this,
-                             [this, reply] {
-                                 reply->deleteLater();
-                                 if (reply->error() != QNetworkReply::NoError)
-                                 {
-                                     return;
-                                 }
-                                 QPixmap picture;
-                                 if (picture.loadFromData(reply->readAll()))
-                                 {
-                                     this->avatar_->setPixmap(picture);
-                                 }
-                             });
-        },
-        [] {
-            // Without the profile the card still shows the name and messages
+            this->details_->setText(
+                QStringLiteral("%1 &middot; %2")
+                    .arg(this->login_.toHtmlEscaped(),
+                         days < NEW_ACCOUNT_DAYS
+                             ? QStringLiteral(
+                                   "<span style=\"color:#ffaa00\">%1</span>")
+                                   .arg(createdText)
+                             : createdText));
+            this->details_->setToolTip(profile.createdAt.toString(Qt::ISODate));
         });
+
+    profilepictures::pixmap(this->login_, AVATAR_SIZE * 2, this,
+                            [this](const QPixmap &picture) {
+                                this->avatar_->setPixmap(
+                                    roundPixmap(picture, AVATAR_SIZE * 2));
+                            });
 }
 
 void ModAlertPopup::restartCountdown()

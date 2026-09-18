@@ -34,8 +34,8 @@
 #include "providers/seventv/SeventvEmotes.hpp"
 #include "providers/seventv/SeventvPersonalEmotes.hpp"
 #include "providers/twitch/api/Helix.hpp"
-#include "providers/twitch/CaptionAvatars.hpp"
 #include "providers/twitch/ChannelPointReward.hpp"
+#include "providers/twitch/ProfilePictures.hpp"
 #include "providers/twitch/TwitchAccount.hpp"
 #include "providers/twitch/TwitchBadge.hpp"
 #include "providers/twitch/TwitchBadges.hpp"
@@ -553,7 +553,7 @@ void appendCaption(chatterino::MessageBuilder &builder, const QString &caption,
 
     for (const auto &word : caption.split(u' ', Qt::SkipEmptyParts))
     {
-        const auto login = captionavatars::loginOf(word);
+        const auto login = profilepictures::loginOf(word);
         if (login.isEmpty())
         {
             words.append(word);

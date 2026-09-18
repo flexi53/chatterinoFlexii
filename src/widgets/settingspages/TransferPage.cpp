@@ -237,19 +237,7 @@ bool TransferPage::filterElements(const QString &query)
         "airdrop", "macbook", "computer",  "gerät",
     };
 
-    if (query.isEmpty())
-    {
-        return true;
-    }
-    for (const auto &keyword : keywords)
-    {
-        if (keyword.contains(query, Qt::CaseInsensitive) ||
-            query.contains(keyword, Qt::CaseInsensitive))
-        {
-            return true;
-        }
-    }
-    return false;
+    return matchesKeywords(query, keywords);
 }
 
 }  // namespace chatterino

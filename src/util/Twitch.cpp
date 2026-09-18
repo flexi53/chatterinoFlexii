@@ -11,6 +11,8 @@
 
 #include <unordered_map>
 
+#include <algorithm>
+
 namespace chatterino {
 
 namespace {
@@ -74,6 +76,18 @@ QString cleanChannelName(const QString &dirtyChannelName)
     }
 
     return dirtyChannelName.toLower();
+}
+
+bool isValidTwitchLogin(const QString &login)
+{
+    if (login.isEmpty() || login.size() > 25)
+    {
+        return false;
+    }
+    return std::all_of(login.begin(), login.end(), [](QChar c) {
+        return (c >= u'a' && c <= u'z') || (c >= u'0' && c <= u'9') ||
+               c == u'_';
+    });
 }
 
 std::pair<ParsedUserName, ParsedUserID> parseUserNameOrID(const QString &input)

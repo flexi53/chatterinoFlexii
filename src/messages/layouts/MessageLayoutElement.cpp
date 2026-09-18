@@ -4,6 +4,8 @@
 
 #include "messages/layouts/MessageLayoutElement.hpp"
 
+#include "util/RoundPixmap.hpp"
+
 #include "Application.hpp"
 #include "messages/Emote.hpp"
 #include "messages/Image.hpp"
@@ -436,25 +438,7 @@ void RoundImageLayoutElement::paint(QPainter &painter,
         return;
     }
 
-    // Painted as a textured circle rather than through a clip, which Qt does
-    // not smooth - the edge would come out jagged
-    const QRectF rect(this->getRect());
-    const auto ratio =
-        painter.device() != nullptr ? painter.device()->devicePixelRatioF() : 1.0;
-    auto scaled = pixmap->scaled((rect.size() * ratio).toSize(),
-                                 Qt::IgnoreAspectRatio,
-                                 Qt::SmoothTransformation);
-    scaled.setDevicePixelRatio(ratio);
-
-    QBrush brush(scaled);
-    brush.setTransform(QTransform::fromTranslate(rect.x(), rect.y()));
-
-    painter.save();
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(brush);
-    painter.drawEllipse(rect);
-    painter.restore();
+    paintRound(painter, QRectF(this->getRect()), *pixmap);
 }
 
 //

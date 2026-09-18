@@ -17,7 +17,7 @@
 #include "providers/kick/KickAccount.hpp"
 #include "providers/twitch/TwitchAccount.hpp"  // IWYU pragma: keep
 #include "controllers/moderation/ModHighlights.hpp"
-#include "providers/twitch/CaptionAvatars.hpp"
+#include "providers/twitch/ProfilePictures.hpp"
 #include "providers/twitch/TwitchBadge.hpp"
 #include "singletons/Settings.hpp"
 #include "util/PostToThread.hpp"
@@ -605,7 +605,7 @@ void HighlightController::rebuildChecks(Settings &settings)
     {
         captions.append(u'@' + channel);
     }
-    captionavatars::prefetch(captions);
+    profilepictures::prefetchCaptions(captions);
 
     // Queued, so the mod lists start loading once the app is up
     postToThread([] {

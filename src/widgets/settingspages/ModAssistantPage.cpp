@@ -33,6 +33,57 @@ namespace chatterino {
 
 using namespace pagesections;
 
+namespace {
+
+/// A line to type the steps into, with how they read underneath. Only a list
+/// that reads is saved, so a half typed one never ends up deciding a timeout.
+void addStepsEditor(QVBoxLayout *layout, QStringSetting &setting,
+                    const QString &example,
+                    std::function<std::vector<int>(const QString &)> parse,
+                    std::function<QString(int)> label)
+{
+    auto *steps = new QLineEdit(setting.getValue());
+    steps->setPlaceholderText(example);
+    auto *preview = new QLabel;
+    preview->setTextFormat(Qt::RichText);
+    preview->setWordWrap(true);
+
+    const auto show = [preview, parse, label, example](const QString &text) {
+        const auto parsed = parse(text);
+        if (parsed.empty())
+        {
+            preview->setText(
+                QStringLiteral("<span style=\"color:#e05050\">Keine gültige "
+                               "Liste - schreib zum Beispiel %1. Bis dahin gilt "
+                               "die letzte gültige Liste.</span>")
+                    .arg(example.toHtmlEscaped()));
+            return;
+        }
+
+        QStringList shown;
+        for (const auto step : parsed)
+        {
+            shown.append(label(step));
+        }
+        preview->setText(shown.join(QStringLiteral(" → ")));
+    };
+    show(steps->text());
+
+    QObject::connect(steps, &QLineEdit::textChanged, preview, show);
+    QObject::connect(steps, &QLineEdit::editingFinished, steps,
+                     [steps, parse, &setting] {
+                         if (!parse(steps->text()).empty())
+                         {
+                             setting.setValue(steps->text().trimmed());
+                         }
+                     });
+
+    layout->addWidget(steps);
+    layout->addWidget(preview);
+}
+
+}  // namespace
+
 ModAssistantPage::ModAssistantPage()
 {
     auto *outer = new QVBoxLayout(this);
@@ -305,45 +356,11 @@ ModAssistantPage::ModAssistantPage()
                 "bleibt es bei der letzten.",
                 true);
 
-        auto *steps = new QLineEdit(getSettings()->repeatAlertSteps.getValue());
-        steps->setPlaceholderText("30s, 1m, 5m, 10m, 30m");
-        auto *preview = new QLabel;
-        preview->setTextFormat(Qt::RichText);
-        preview->setWordWrap(true);
-
-        const auto showSteps = [preview](const QString &text) {
-            const auto parsed = RepeatSpamDetector::parseSteps(text);
-            if (parsed.empty())
-            {
-                preview->setText(QStringLiteral(
-                    "<span style=\"color:#e05050\">Keine gültige Liste - "
-                    "schreib zum Beispiel 30s, 1m, 5m. Bis dahin gilt die "
-                    "letzte gültige Liste.</span>"));
-                return;
-            }
-
-            QStringList shown;
-            for (const auto seconds : parsed)
-            {
-                shown.append(formatTime(seconds));
-            }
-            preview->setText(shown.join(QStringLiteral(" → ")));
-        };
-        showSteps(steps->text());
-
-        QObject::connect(steps, &QLineEdit::textChanged, preview, showSteps);
-        // Only a list that reads is kept, so a half typed one never ends up
-        // deciding a timeout
-        QObject::connect(steps, &QLineEdit::editingFinished, steps, [steps] {
-            if (!RepeatSpamDetector::parseSteps(steps->text()).empty())
-            {
-                getSettings()->repeatAlertSteps.setValue(
-                    steps->text().trimmed());
-            }
-        });
-
-        repeats->addWidget(steps);
-        repeats->addWidget(preview);
+        addStepsEditor(repeats, getSettings()->repeatAlertSteps,
+                       QStringLiteral("30s, 1m, 5m, 10m, 30m"),
+                       &RepeatSpamDetector::parseSteps, [](int seconds) {
+                           return formatTime(seconds);
+                       });
     }
 
     addColor(repeats, getSettings()->modAlertColorRepeat,
@@ -407,43 +424,13 @@ ModAssistantPage::ModAssistantPage()
                 "getimeoutet wurde.",
                 true);
 
-        auto *steps = new QLineEdit(getSettings()->emoteAlertSteps.getValue());
-        steps->setPlaceholderText("löschen, löschen, 30s");
-        auto *preview = new QLabel;
-        preview->setTextFormat(Qt::RichText);
-        preview->setWordWrap(true);
-
-        const auto showSteps = [preview](const QString &text) {
-            const auto parsed = EmoteSpamDetector::parseSteps(text);
-            if (parsed.empty())
-            {
-                preview->setText(QStringLiteral(
-                    "<span style=\"color:#e05050\">Keine gültige Liste - "
-                    "schreib zum Beispiel löschen, löschen, 30s. Bis dahin gilt "
-                    "die letzte gültige Liste.</span>"));
-                return;
-            }
-
-            QStringList shown;
-            for (const auto step : parsed)
-            {
-                shown.append(step == EmoteSpamDetector::DELETE
-                                 ? QStringLiteral("Löschen")
-                                 : formatTime(step));
-            }
-            preview->setText(shown.join(QStringLiteral(" → ")));
-        };
-        showSteps(steps->text());
-
-        QObject::connect(steps, &QLineEdit::textChanged, preview, showSteps);
-        QObject::connect(steps, &QLineEdit::editingFinished, steps, [steps] {
-            if (!EmoteSpamDetector::parseSteps(steps->text()).empty())
-            {
-                getSettings()->emoteAlertSteps.setValue(steps->text().trimmed());
-            }
-        });
-        emotes->addWidget(steps);
-        emotes->addWidget(preview);
+        addStepsEditor(emotes, getSettings()->emoteAlertSteps,
+                       QStringLiteral("löschen, löschen, 30s"),
+                       &EmoteSpamDetector::parseSteps, [](int step) {
+                           return step == EmoteSpamDetector::DELETE
+                                      ? QStringLiteral("Löschen")
+                                      : formatTime(step);
+                       });
     }
 
     addColor(emotes, getSettings()->modAlertColorEmote,
@@ -477,19 +464,7 @@ bool ModAssistantPage::filterElements(const QString &query)
         "wiederholt", "fenster",   "reason",    "farbe",      "position",
     };
 
-    if (query.isEmpty())
-    {
-        return true;
-    }
-    for (const auto &keyword : keywords)
-    {
-        if (keyword.contains(query, Qt::CaseInsensitive) ||
-            query.contains(keyword, Qt::CaseInsensitive))
-        {
-            return true;
-        }
-    }
-    return false;
+    return matchesKeywords(query, keywords);
 }
 
 }  // namespace chatterino
