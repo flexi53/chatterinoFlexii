@@ -111,8 +111,8 @@ void LookPage::buildStyleTab(GeneralPageView &layout)
         "Blendet die Tabs, die Knöpfe daneben und die Split-Köpfe aus - übrig "
         "bleiben die Chats und die Tab-Gruppen mit „Always Show Group“, etwa "
         "deine wichtigsten Kanäle. Ein- und ausschalten geht mit dem Knopf mit "
-        "den vier Ecken links in der Tab-Leiste. Jeder Computer merkt sich das "
-        "für sich.");
+        "den vier Ecken unten in der Eingabezeile, neben dem Emote-Knopf. "
+        "Jeder Computer merkt sich das für sich.");
     SettingWidget::checkbox("Fokus-Ansicht", s.focusMode)
         ->addKeywords({"focus", "fokus", "ausblenden"})
         ->addTo(layout);

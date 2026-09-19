@@ -39,10 +39,10 @@ const std::array<Release, 12> RELEASES{{
     {"19 September 2026 (5)",
      "19. September 2026 - Nachtrag 4",
      {
-         "Die Fokus-Ansicht hat jetzt einen eigenen Knopf links in der "
-         "Tab-Leiste (vier Ecken): ein Klick blendet Tabs, Knöpfe und "
-         "Split-Köpfe aus, noch einer holt sie zurück. Tab-Gruppen mit "
-         "„Always Show Group“ bleiben dabei stehen.",
+         "Die Fokus-Ansicht hat jetzt einen eigenen Knopf unten in der "
+         "Eingabezeile, zwischen Mod-Assistent und Emotes (vier Ecken): ein "
+         "Klick blendet Tabs, Knöpfe und Split-Köpfe aus, noch einer holt sie "
+         "zurück. Tab-Gruppen mit „Always Show Group“ bleiben dabei stehen.",
          "Mit „Nur Live-Tabs“ erreichen die Tastenkürzel zum Tab-Wechsel jetzt "
          "auch die Tabs von Gruppen mit „Always Show Group“, wenn der Kanal "
          "offline ist.",

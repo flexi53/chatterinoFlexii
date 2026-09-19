@@ -59,80 +59,6 @@
 
 namespace chatterino {
 
-namespace {
-
-/// Look -> Stil: steps in and out of the focus view. Drawn as the corners of
-/// a frame - pointing out to step in, pointing in to step back out.
-class FocusButton : public Button
-{
-public:
-    explicit FocusButton(BaseWidget *parent)
-        : Button(parent)
-    {
-        this->updateTooltip();
-    }
-
-    void setActive(bool active)
-    {
-        this->active_ = active;
-        this->updateTooltip();
-        this->update();
-    }
-
-protected:
-    void paintContent(QPainter &painter) override
-    {
-        const bool light = getTheme()->isLightTheme();
-        QColor color = light ? QColor(0, 0, 0) : QColor(255, 255, 255);
-        color.setAlpha(this->mouseOver() ? 230 : 150);
-
-        QPen pen(color);
-        pen.setWidthF(1.5 * this->scale());
-        pen.setCapStyle(Qt::FlatCap);
-        painter.setPen(pen);
-        painter.setRenderHint(QPainter::Antialiasing);
-
-        const qreal side = std::min(this->width(), this->height()) * 0.44;
-        QRectF box(0, 0, side, side);
-        box.moveCenter(QRectF(this->rect()).center());
-        const qreal arm = side * 0.36;
-
-        const auto corner = [&](QPointF at, qreal dx, qreal dy) {
-            painter.drawLine(at, at + QPointF(dx, 0));
-            painter.drawLine(at, at + QPointF(0, dy));
-        };
-        if (!this->active_)
-        {
-            corner(box.topLeft(), arm, arm);
-            corner(box.topRight(), -arm, arm);
-            corner(box.bottomLeft(), arm, -arm);
-            corner(box.bottomRight(), -arm, -arm);
-        }
-        else
-        {
-            corner(box.topLeft() + QPointF(arm, arm), -arm, -arm);
-            corner(box.topRight() + QPointF(-arm, arm), arm, -arm);
-            corner(box.bottomLeft() + QPointF(arm, -arm), -arm, arm);
-            corner(box.bottomRight() + QPointF(-arm, -arm), arm, arm);
-        }
-    }
-
-private:
-    void updateTooltip()
-    {
-        this->setToolTip(this->active_
-                             ? QStringLiteral("Fokus beenden - alle Tabs, "
-                                              "Knöpfe und Split-Köpfe zeigen")
-                             : QStringLiteral(
-                                   "Fokus-Ansicht - nur die Chats und die "
-                                   "Tab-Gruppen, die immer angezeigt werden"));
-    }
-
-    bool active_ = false;
-};
-
-}  // namespace
-
 Notebook::Notebook(QWidget *parent)
     : BaseWidget(parent)
     , addButton_(new DrawnButton(DrawnButton::Symbol::Plus,
@@ -2550,13 +2476,6 @@ SplitNotebook::SplitNotebook(Window *parent)
             }
         });
 
-    // In and out of the focus view with one click - the button stays when
-    // everything else next to the tabs goes
-    auto *focus = this->addCustomButton<FocusButton>();
-    this->focusButton_ = focus;
-    QObject::connect(focus, &Button::leftClicked, this, [] {
-        getSettings()->focusMode.setValue(!getSettings()->focusMode);
-    });
     getSettings()->focusMode.connect(
         [this](const bool &on, auto) {
             this->setFocusMode(on);
@@ -2599,9 +2518,8 @@ void SplitNotebook::setFocusMode(bool on)
     }
     this->focusMode_ = on;
 
-    this->setCustomButtonsHidden(on, this->focusButton_);
+    this->setCustomButtonsHidden(on);
     this->setHideUnpinnedTabs(on);
-    static_cast<FocusButton *>(this->focusButton_)->setActive(on);
 }
 
 void SplitNotebook::showEvent(QShowEvent * /*event*/)

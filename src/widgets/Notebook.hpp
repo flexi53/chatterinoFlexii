@@ -397,10 +397,10 @@ private:
     QAction *sortTabsAlphabeticallyAction_;
 
     /// Look -> Stil: only the chats - and the tab groups always shown. No
-    /// other tabs, no buttons but the one to step back out, no split headers.
+    /// other tabs, no buttons, no split headers. The way in and out is the
+    /// FocusButton in every split's input bar.
     void setFocusMode(bool on);
     bool focusMode_ = false;
-    Button *focusButton_{};
 
     void addCustomButtons();
 

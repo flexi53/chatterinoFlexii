@@ -106,8 +106,10 @@ with several.
 **Fokus-Ansicht** hides the tabs, the buttons next to them and the split
 headers, leaving the chats - and the tab groups set to **Always Show
 Group**, so the channels that matter most stay one click away. A button
-drawn as four corners, at the left of the tab bar, switches it on and off;
-the setting sits under Stil and in the tab bar's right-click menu. Each
+drawn as four corners, in every split's input bar between the moderation
+assistant and the emotes, switches it on and off - it stays in reach when
+everything else goes; the setting also sits under Stil and in the tab bar's
+right-click menu. Each
 computer keeps this to itself when the setup is synced.
 
 ### Chat

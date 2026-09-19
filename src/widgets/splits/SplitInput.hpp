@@ -31,6 +31,7 @@ class InputCompletionPopup;
 class InputHighlighter;
 class MessageView;
 class LabelButton;
+class FocusButton;
 class ResizingTextEdit;
 class ChannelView;
 class SvgButton;
@@ -179,6 +180,7 @@ protected:
         QLabel *sendWaitStatus;
         SvgButton *emoteButton;
         SvgButton *modAssistButton;
+        FocusButton *focusButton;
     } ui_;
 
     MessagePtr replyTarget_ = nullptr;

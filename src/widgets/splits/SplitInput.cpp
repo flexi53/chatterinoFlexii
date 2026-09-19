@@ -22,6 +22,7 @@
 #include "singletons/Theme.hpp"
 #include "util/Helpers.hpp"
 #include "util/LayoutCreator.hpp"
+#include "widgets/buttons/FocusButton.hpp"
 #include "widgets/buttons/LabelButton.hpp"
 #include "widgets/buttons/SvgButton.hpp"
 #include "widgets/dialogs/EmotePopup.hpp"
@@ -241,11 +242,16 @@ void SplitInput::initLayout()
         this->ui_.modAssistButton->setToolTip("Moderation assistant");
         this->ui_.modAssistButton->hide();
 
+        // In and out of the focus view, here as the input bar stays when
+        // the tabs and split headers go
+        this->ui_.focusButton = new FocusButton;
+
         auto *buttonRow = new QHBoxLayout;
         buttonRow->setContentsMargins(0, 0, 0, 0);
         buttonRow->setSpacing(0);
         buttonRow->addStretch(1);
         buttonRow->addWidget(this->ui_.modAssistButton);
+        buttonRow->addWidget(this->ui_.focusButton);
         buttonRow->addWidget(this->ui_.emoteButton);
         box->addLayout(buttonRow);
     }
@@ -404,6 +410,9 @@ void SplitInput::updateEmoteButton()
 
     this->ui_.modAssistButton->setFixedHeight(int(18 * scale));
     this->ui_.modAssistButton->setFixedWidth(int(24 * scale));
+
+    this->ui_.focusButton->setFixedHeight(int(18 * scale));
+    this->ui_.focusButton->setFixedWidth(int(24 * scale));
 }
 
 void SplitInput::updateCancelReplyButton()
