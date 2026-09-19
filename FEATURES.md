@@ -22,8 +22,9 @@ front of the group.
 - **Move** a group by dragging its header; the tabs come along
 - **Always Show Group** keeps a group on screen even with *Only show live
   tabs* switched on, for the channels you want in view whether or not anyone
-  is streaming. Groups without it disappear along with their header when none
-  of their channels are live.
+  is streaming - and switching tabs by keyboard reaches them too, live or
+  not. Groups without it disappear along with their header when none of
+  their channels are live. They also stay in the focus view.
 - **One group per row** is a setting, if you would rather not have groups
   share a row
 - The **Tab Groups** window (right click the tab bar) lists every group and
@@ -102,11 +103,12 @@ goes back to the theme. **Profilbilder in den Tabs** puts the channel's round
 profile picture in front of each tab's name - the first split's, for a tab
 with several.
 
-**Fokus-Ansicht** (Stil) hides the tab bar, the buttons next to it and the
-split headers, leaving only the chats - handy on a small screen. A small
-**Fokus beenden** in the window's corner brings it all back; it can also be
-switched on from the tab bar's right-click menu. Each computer keeps this to
-itself when the setup is synced.
+**Fokus-Ansicht** hides the tabs, the buttons next to them and the split
+headers, leaving the chats - and the tab groups set to **Always Show
+Group**, so the channels that matter most stay one click away. A button
+drawn as four corners, at the left of the tab bar, switches it on and off;
+the setting sits under Stil and in the tab bar's right-click menu. Each
+computer keeps this to itself when the setup is synced.
 
 ### Chat
 

@@ -42,6 +42,7 @@
 #include <QLayout>
 #include <QList>
 #include <QListWidget>
+#include <QPainter>
 #include <QPixmap>
 #include <QPushButton>
 #include <QSet>
@@ -51,11 +52,86 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
+#include <algorithm>
 #include <map>
 #include <ranges>
 #include <utility>
 
 namespace chatterino {
+
+namespace {
+
+/// Look -> Stil: steps in and out of the focus view. Drawn as the corners of
+/// a frame - pointing out to step in, pointing in to step back out.
+class FocusButton : public Button
+{
+public:
+    explicit FocusButton(BaseWidget *parent)
+        : Button(parent)
+    {
+        this->updateTooltip();
+    }
+
+    void setActive(bool active)
+    {
+        this->active_ = active;
+        this->updateTooltip();
+        this->update();
+    }
+
+protected:
+    void paintContent(QPainter &painter) override
+    {
+        const bool light = getTheme()->isLightTheme();
+        QColor color = light ? QColor(0, 0, 0) : QColor(255, 255, 255);
+        color.setAlpha(this->mouseOver() ? 230 : 150);
+
+        QPen pen(color);
+        pen.setWidthF(1.5 * this->scale());
+        pen.setCapStyle(Qt::FlatCap);
+        painter.setPen(pen);
+        painter.setRenderHint(QPainter::Antialiasing);
+
+        const qreal side = std::min(this->width(), this->height()) * 0.44;
+        QRectF box(0, 0, side, side);
+        box.moveCenter(QRectF(this->rect()).center());
+        const qreal arm = side * 0.36;
+
+        const auto corner = [&](QPointF at, qreal dx, qreal dy) {
+            painter.drawLine(at, at + QPointF(dx, 0));
+            painter.drawLine(at, at + QPointF(0, dy));
+        };
+        if (!this->active_)
+        {
+            corner(box.topLeft(), arm, arm);
+            corner(box.topRight(), -arm, arm);
+            corner(box.bottomLeft(), arm, -arm);
+            corner(box.bottomRight(), -arm, -arm);
+        }
+        else
+        {
+            corner(box.topLeft() + QPointF(arm, arm), -arm, -arm);
+            corner(box.topRight() + QPointF(-arm, arm), arm, -arm);
+            corner(box.bottomLeft() + QPointF(arm, -arm), -arm, arm);
+            corner(box.bottomRight() + QPointF(-arm, -arm), arm, arm);
+        }
+    }
+
+private:
+    void updateTooltip()
+    {
+        this->setToolTip(this->active_
+                             ? QStringLiteral("Fokus beenden - alle Tabs, "
+                                              "Knöpfe und Split-Köpfe zeigen")
+                             : QStringLiteral(
+                                   "Fokus-Ansicht - nur die Chats und die "
+                                   "Tab-Gruppen, die immer angezeigt werden"));
+    }
+
+    bool active_ = false;
+};
+
+}  // namespace
 
 Notebook::Notebook(QWidget *parent)
     : BaseWidget(parent)
@@ -332,10 +408,9 @@ int Notebook::visibleIndexOf(QWidget *page) const
     {
         if (item.page == page)
         {
-            assert(this->tabVisibilityFilter_(item.tab));
             return i;
         }
-        if (this->tabVisibilityFilter_(item.tab))
+        if (this->isNavigable(item.tab))
         {
             ++i;
         }
@@ -354,7 +429,7 @@ int Notebook::getVisibleTabCount() const
     int i = 0;
     for (const auto &item : this->items_)
     {
-        if (this->tabVisibilityFilter_(item.tab))
+        if (this->isNavigable(item.tab))
         {
             ++i;
         }
@@ -480,7 +555,7 @@ void Notebook::selectVisibleIndex(int index, bool focusPage)
     int i = 0;
     for (auto &item : this->items_)
     {
-        if (this->tabVisibilityFilter_(item.tab))
+        if (this->isNavigable(item.tab))
         {
             if (i == index)
             {
@@ -515,7 +590,7 @@ void Notebook::selectNextTab(bool focusPage)
     auto index = (startIndex + 1) % size;
     while (index != startIndex)
     {
-        if (this->tabVisibilityFilter_(this->items_[index].tab))
+        if (this->isNavigable(this->items_[index].tab))
         {
             this->select(this->items_[index].page, focusPage);
             return;
@@ -551,7 +626,7 @@ void Notebook::selectPreviousTab(bool focusPage)
     auto index = startIndex == 0 ? size - 1 : startIndex - 1;
     while (index != startIndex)
     {
-        if (this->tabVisibilityFilter_(this->items_[index].tab))
+        if (this->isNavigable(this->items_[index].tab))
         {
             this->select(this->items_[index].page, focusPage);
             return;
@@ -578,7 +653,7 @@ void Notebook::selectLastTab(bool focusPage)
     // find first tab permitted by filter starting from the end
     for (auto it = this->items_.rbegin(); it != this->items_.rend(); ++it)
     {
-        if (this->tabVisibilityFilter_(it->tab))
+        if (this->isNavigable(it->tab))
         {
             this->select(it->page, focusPage);
             return;
@@ -691,13 +766,13 @@ void Notebook::setShowTabsQuietly(bool value)
     this->updateTabVisibility();
 }
 
-void Notebook::setCustomButtonsHidden(bool hidden)
+void Notebook::setCustomButtonsHidden(bool hidden, const Button *except)
 {
     if (hidden)
     {
         for (auto *button : this->customButtons_)
         {
-            if (!button->isHidden())
+            if (button != except && !button->isHidden())
             {
                 button->hide();
                 this->hiddenCustomButtons_.push_back(button);
@@ -713,6 +788,14 @@ void Notebook::setCustomButtonsHidden(bool hidden)
         this->hiddenCustomButtons_.clear();
     }
     this->performLayout();
+}
+
+void Notebook::setHideUnpinnedTabs(bool hide)
+{
+    this->hideUnpinnedTabs_ = hide;
+    this->setShowAddButton(this->showTabs_ && !hide);
+    this->performLayout();
+    this->updateTabVisibility();
 }
 
 void Notebook::showTabVisibilityInfoPopup()
@@ -875,6 +958,11 @@ void Notebook::performLayout(bool animated)
         if (this->tabVisibilityFilter_ &&
             !this->isTabPinnedByGroup(item.tab) &&
             !this->tabVisibilityFilter_(item.tab))
+        {
+            continue;
+        }
+
+        if (this->hideUnpinnedTabs_ && !this->isTabPinnedByGroup(item.tab))
         {
             continue;
         }
@@ -1448,6 +1536,11 @@ bool Notebook::shouldShowTab(const NotebookTab *tab) const
         return false;
     }
 
+    if (this->hideUnpinnedTabs_ && !this->isTabPinnedByGroup(tab))
+    {
+        return false;
+    }
+
     if (this->tabVisibilityFilter_ && !this->isTabPinnedByGroup(tab))
     {
         return this->tabVisibilityFilter_(tab);
@@ -1456,9 +1549,20 @@ bool Notebook::shouldShowTab(const NotebookTab *tab) const
     return true;
 }
 
+bool Notebook::isNavigable(const NotebookTab *tab) const
+{
+    return !this->tabVisibilityFilter_ || this->tabVisibilityFilter_(tab) ||
+           this->isTabPinnedByGroup(tab);
+}
+
 bool Notebook::shouldShowTabGroupHeader(const TabGroup &group) const
 {
     if (!this->showTabs_)
+    {
+        return false;
+    }
+
+    if (this->hideUnpinnedTabs_ && !group.alwaysVisible)
     {
         return false;
     }
@@ -2446,19 +2550,12 @@ SplitNotebook::SplitNotebook(Window *parent)
             }
         });
 
-    // The way out of the focus view, as the tab bar with its menu is gone
-    this->focusExit_ = new QPushButton("Fokus beenden", this);
-    this->focusExit_->setToolTip(
-        "Tab-Leiste, Knöpfe und Split-Köpfe wieder einblenden");
-    this->focusExit_->setCursor(Qt::PointingHandCursor);
-    this->focusExit_->setStyleSheet(
-        "QPushButton { background: rgba(0, 0, 0, 120); color: "
-        "rgba(255, 255, 255, 170); border: 1px solid rgba(255, 255, 255, 40); "
-        "border-radius: 4px; padding: 2px 8px; font-size: 11px; }"
-        "QPushButton:hover { background: rgba(0, 0, 0, 200); color: white; }");
-    this->focusExit_->hide();
-    QObject::connect(this->focusExit_, &QPushButton::clicked, this, [] {
-        getSettings()->focusMode.setValue(false);
+    // In and out of the focus view with one click - the button stays when
+    // everything else next to the tabs goes
+    auto *focus = this->addCustomButton<FocusButton>();
+    this->focusButton_ = focus;
+    QObject::connect(focus, &Button::leftClicked, this, [] {
+        getSettings()->focusMode.setValue(!getSettings()->focusMode);
     });
     getSettings()->focusMode.connect(
         [this](const bool &on, auto) {
@@ -2472,8 +2569,8 @@ void SplitNotebook::addNotebookActionsToMenu(QMenu *menu)
     Notebook::addNotebookActionsToMenu(menu);
 
     menu->addAction(this->sortTabsAlphabeticallyAction_);
-    menu->addAction("Fokus-Ansicht", [] {
-        getSettings()->focusMode.setValue(true);
+    menu->addAction("Fokus-Ansicht ein/aus", [] {
+        getSettings()->focusMode.setValue(!getSettings()->focusMode);
     });
 
     auto *submenu = menu->addMenu("Tab visibility");
@@ -2502,34 +2599,9 @@ void SplitNotebook::setFocusMode(bool on)
     }
     this->focusMode_ = on;
 
-    if (on)
-    {
-        this->tabsBeforeFocus_ = this->getShowTabs();
-    }
-    this->setShowTabsQuietly(on ? false : this->tabsBeforeFocus_);
-    this->setCustomButtonsHidden(on);
-
-    this->focusExit_->setVisible(on);
-    this->placeFocusExit();
-}
-
-void SplitNotebook::placeFocusExit()
-{
-    if (this->focusExit_ == nullptr || !this->focusMode_)
-    {
-        return;
-    }
-    this->focusExit_->adjustSize();
-    const auto margin = int(6 * this->scale());
-    this->focusExit_->move(this->width() - this->focusExit_->width() - margin,
-                           margin);
-    this->focusExit_->raise();
-}
-
-void SplitNotebook::resizeEvent(QResizeEvent *event)
-{
-    Notebook::resizeEvent(event);
-    this->placeFocusExit();
+    this->setCustomButtonsHidden(on, this->focusButton_);
+    this->setHideUnpinnedTabs(on);
+    static_cast<FocusButton *>(this->focusButton_)->setActive(on);
 }
 
 void SplitNotebook::showEvent(QShowEvent * /*event*/)

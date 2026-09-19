@@ -35,7 +35,18 @@ struct Release {
 
 /// Newest first. Add to the top when something lands that is worth telling
 /// the user about; everything above what they last saw is shown at once.
-const std::array<Release, 11> RELEASES{{
+const std::array<Release, 12> RELEASES{{
+    {"19 September 2026 (5)",
+     "19. September 2026 - Nachtrag 4",
+     {
+         "Die Fokus-Ansicht hat jetzt einen eigenen Knopf links in der "
+         "Tab-Leiste (vier Ecken): ein Klick blendet Tabs, Knöpfe und "
+         "Split-Köpfe aus, noch einer holt sie zurück. Tab-Gruppen mit "
+         "„Always Show Group“ bleiben dabei stehen.",
+         "Mit „Nur Live-Tabs“ erreichen die Tastenkürzel zum Tab-Wechsel jetzt "
+         "auch die Tabs von Gruppen mit „Always Show Group“, wenn der Kanal "
+         "offline ist.",
+     }},
     {"19 September 2026 (4)",
      "19. September 2026 - Nachtrag 3",
      {

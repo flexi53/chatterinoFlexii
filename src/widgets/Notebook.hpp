@@ -21,8 +21,6 @@
 #include <span>
 #include <vector>
 
-class QPushButton;
-
 namespace chatterino {
 
 class Button;
@@ -189,9 +187,12 @@ protected:
     void setShowTabs(bool value);
     /// setShowTabs without the note on how to get the tabs back
     void setShowTabsQuietly(bool value);
-    /// Hides the buttons next to the tabs (settings, user, ...) and brings
-    /// back the ones that were there - for the focus view
-    void setCustomButtonsHidden(bool hidden);
+    /// Hides the buttons next to the tabs (settings, user, ...) but
+    /// @a except, and brings back the ones that were there - for the focus
+    /// view
+    void setCustomButtonsHidden(bool hidden, const Button *except = nullptr);
+    /// Hides every tab but those of groups always shown - for the focus view
+    void setHideUnpinnedTabs(bool hide);
 
     void scaleChangedEvent(float scale_) override;
     void resizeEvent(QResizeEvent *) override;
@@ -337,6 +338,12 @@ private:
     std::vector<Button *> customButtons_;
     /// The ones setCustomButtonsHidden hid
     std::vector<Button *> hiddenCustomButtons_;
+    bool hideUnpinnedTabs_ = false;
+
+    /// Whether switching tabs by keyboard stops at @a tab: the tabs the
+    /// visibility filter lets through - and those of groups always shown,
+    /// live or not
+    bool isNavigable(const NotebookTab *tab) const;
 
     bool allowUserTabManagement_ = false;
     bool showTabs_ = true;
@@ -385,18 +392,15 @@ public:
 
 protected:
     void showEvent(QShowEvent *event) override;
-    void resizeEvent(QResizeEvent *event) override;
 
 private:
     QAction *sortTabsAlphabeticallyAction_;
 
-    /// Look -> Stil: only the chats - no tabs, no buttons, no split headers.
-    /// A small button in the corner leads back out.
+    /// Look -> Stil: only the chats - and the tab groups always shown. No
+    /// other tabs, no buttons but the one to step back out, no split headers.
     void setFocusMode(bool on);
-    void placeFocusExit();
     bool focusMode_ = false;
-    bool tabsBeforeFocus_ = true;
-    QPushButton *focusExit_{};
+    Button *focusButton_{};
 
     void addCustomButtons();
 

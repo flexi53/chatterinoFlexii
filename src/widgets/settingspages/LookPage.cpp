@@ -108,11 +108,11 @@ void LookPage::buildStyleTab(GeneralPageView &layout)
 
     layout.addTitle("Fokus-Ansicht");
     layout.addDescription(
-        "Blendet Tab-Leiste, Knöpfe und Split-Köpfe aus - übrig bleiben nur "
-        "die Chats, praktisch auf einem kleinen Bildschirm. „Fokus beenden“ "
-        "oben rechts im Fenster holt alles zurück. Einschalten geht auch per "
-        "Rechtsklick auf die Tab-Leiste. Jeder Computer merkt sich das für "
-        "sich.");
+        "Blendet die Tabs, die Knöpfe daneben und die Split-Köpfe aus - übrig "
+        "bleiben die Chats und die Tab-Gruppen mit „Always Show Group“, etwa "
+        "deine wichtigsten Kanäle. Ein- und ausschalten geht mit dem Knopf mit "
+        "den vier Ecken links in der Tab-Leiste. Jeder Computer merkt sich das "
+        "für sich.");
     SettingWidget::checkbox("Fokus-Ansicht", s.focusMode)
         ->addKeywords({"focus", "fokus", "ausblenden"})
         ->addTo(layout);
