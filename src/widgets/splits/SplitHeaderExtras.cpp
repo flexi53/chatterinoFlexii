@@ -124,7 +124,8 @@ void ActivityGraph::updateTooltip()
 
 void ActivityGraph::scaleChangedEvent(float scale)
 {
-    this->setFixedSize(int(40 * scale), int(16 * scale));
+    // The curve and a little room on either side of it
+    this->setFixedSize(int((40 + (2 * 6)) * scale), int(16 * scale));
 }
 
 void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
@@ -134,7 +135,8 @@ void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
 
     const auto highest = std::max(
         1, *std::max_element(this->counts_.begin(), this->counts_.end()));
-    const QRectF area = QRectF(this->rect()).adjusted(1, 2, -1, -2);
+    const auto side = 6 * this->scale();
+    const QRectF area = QRectF(this->rect()).adjusted(side, 2, -side, -2);
     const auto step = area.width() / qreal(this->counts_.size() - 1);
 
     QPainterPath line;
@@ -153,17 +155,18 @@ void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
         }
     }
 
-    QColor color = getTheme()->splits.header.text;
+    // Red, as live is shown
+    QColor color = getTheme()->tabs.liveIndicator;
     // A soft fill under the curve, and the curve itself
     QPainterPath fill = line;
     fill.lineTo(area.bottomRight());
     fill.lineTo(area.bottomLeft());
     fill.closeSubpath();
     QColor soft = color;
-    soft.setAlpha(40);
+    soft.setAlpha(55);
     painter.fillPath(fill, soft);
 
-    color.setAlpha(170);
+    color.setAlpha(230);
     QPen pen(color);
     pen.setWidthF(1.2 * this->scale());
     painter.setPen(pen);
