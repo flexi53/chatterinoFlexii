@@ -83,7 +83,9 @@ namespace {
 
 constexpr size_t TOOLTIP_EMOTE_ENTRIES_LIMIT = 7;
 /// How long a new message takes to fade in - see Look -> Chat
-constexpr qint64 FADE_IN_MS = 250;
+constexpr qint64 FADE_IN_MS = 400;
+/// How far below its place a new message starts, sliding up as it fades in
+constexpr qreal FADE_IN_SLIDE = 6;
 
 using namespace chatterino;
 
@@ -419,6 +421,11 @@ ChannelView::ChannelView(InternalCtor /*tag*/, QWidget *parent, Split *split,
             this->refreshAlternateBackgrounds();
         },
         this->signalHolder_, false);
+    // Role stripes take the colours of the badge highlights
+    this->signalHolder_.managedConnect(
+        getSettings()->highlightedBadges.delayedItemsChanged, [this] {
+            this->invalidateBuffers();
+        });
 }
 
 void ChannelView::refreshAlternateBackgrounds()
@@ -1686,7 +1693,7 @@ void ChannelView::drawMessages(QPainter &painter, const QRect &area)
 
     // Look -> Chat
     const bool fadeIn = getSettings()->fadeInMessages;
-    bool fading = false;
+    QRect fadeArea;
     const bool hoverHighlight = getSettings()->hoverHighlight;
     QColor hoverColor(getSettings()->hoverHighlightColor.getValue());
     if (!hoverColor.isValid())
@@ -1718,8 +1725,10 @@ void ChannelView::drawMessages(QPainter &painter, const QRect &area)
             areaContainsY(ctx.y + layout->getHeight()) ||
             (ctx.y < area.y() && layout->getHeight() > area.height()))
         {
-            // A message that just came in fades in
+            // A message that just came in fades in and slides into place,
+            // quickly at first and settling gently - eased out, not linear
             qreal opacity = 1;
+            int slide = 0;
             if (fadeIn)
             {
                 if (auto it = this->fadeStarts_.find(layout);
@@ -1732,13 +1741,21 @@ void ChannelView::drawMessages(QPainter &painter, const QRect &area)
                     }
                     else
                     {
-                        opacity = qreal(std::max<qint64>(age, 0)) / FADE_IN_MS;
-                        fading = true;
+                        const auto t =
+                            qreal(std::max<qint64>(age, 0)) / FADE_IN_MS;
+                        const auto eased = 1 - std::pow(1 - t, 3);
+                        opacity = eased;
+                        slide = int(std::round((1 - eased) * FADE_IN_SLIDE *
+                                               this->scale()));
+                        fadeArea |= QRect{0, ctx.y, layout->getWidth(),
+                                          layout->getHeight() + slide + 1};
                     }
                 }
             }
             painter.setOpacity(opacity);
+            ctx.y += slide;
             auto paintResult = layout->paint(ctx);
+            ctx.y -= slide;
             painter.setOpacity(1);
             if (hoverHighlight && this->hoveredMessage_ == layout)
             {
@@ -1792,13 +1809,14 @@ void ChannelView::drawMessages(QPainter &painter, const QRect &area)
         }
     }
 
-    // Keep going until every new message has faded in
-    if (fading && !this->fadeRepaintQueued_)
+    // Keep going until every new message has faded in - repainting just
+    // them, so each frame is quick and they move evenly
+    if (!fadeArea.isNull() && !this->fadeRepaintQueued_)
     {
         this->fadeRepaintQueued_ = true;
-        QTimer::singleShot(16, this, [this] {
+        QTimer::singleShot(16, Qt::PreciseTimer, this, [this, fadeArea] {
             this->fadeRepaintQueued_ = false;
-            this->update();
+            this->update(fadeArea);
         });
     }
 

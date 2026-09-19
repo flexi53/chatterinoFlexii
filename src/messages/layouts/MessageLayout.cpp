@@ -5,6 +5,7 @@
 #include "messages/layouts/MessageLayout.hpp"
 
 #include "Application.hpp"
+#include "controllers/highlights/HighlightBadge.hpp"
 #include "messages/layouts/MessageLayoutContainer.hpp"
 #include "messages/layouts/MessageLayoutContext.hpp"
 #include "messages/layouts/MessageRole.hpp"
@@ -463,22 +464,12 @@ void MessageLayout::updateBuffer(QPixmap *buffer,
     // Who wrote it, as a stripe at the left edge - see Look -> Chat
     if (ctx.preferences.roleStripes)
     {
-        const auto stripe = [&]() -> QColor {
-            switch (roleOf(*this->message_))
-            {
-                case ChatRole::Broadcaster:
-                    return ctx.preferences.broadcasterStripe;
-                case ChatRole::Moderator:
-                    return ctx.preferences.moderatorStripe;
-                case ChatRole::Vip:
-                    return ctx.preferences.vipStripe;
-                case ChatRole::Subscriber:
-                    return ctx.preferences.subscriberStripe;
-                case ChatRole::None:
-                default:
-                    return {};
-            }
-        }();
+        static const std::vector<HighlightBadge> none;
+        const auto stripe = stripeColor(
+            *this->message_,
+            ctx.preferences.badgeHighlights ? *ctx.preferences.badgeHighlights
+                                            : none,
+            ctx.preferences.roleColors);
         if (stripe.isValid() && stripe.alpha() > 0)
         {
             painter.fillRect(QRectF(0, 0, 3 * this->scale_, this->height_),

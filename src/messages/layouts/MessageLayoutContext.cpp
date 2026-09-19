@@ -142,10 +142,17 @@ void MessagePreferences::connectSettings(Settings *settings,
             },
             holder);
     };
-    stripe(settings->roleStripeBroadcaster, this->broadcasterStripe);
-    stripe(settings->roleStripeModerator, this->moderatorStripe);
-    stripe(settings->roleStripeVip, this->vipStripe);
-    stripe(settings->roleStripeSubscriber, this->subscriberStripe);
+    stripe(settings->roleStripeBroadcaster, this->roleColors.broadcaster);
+    stripe(settings->roleStripeModerator, this->roleColors.moderator);
+    stripe(settings->roleStripeVip, this->roleColors.vip);
+    stripe(settings->roleStripeSubscriber, this->roleColors.subscriber);
+
+    this->badgeHighlights = settings->highlightedBadges.readOnly();
+    holder.managedConnect(settings->highlightedBadges.delayedItemsChanged,
+                          [this, settings] {
+                              this->badgeHighlights =
+                                  settings->highlightedBadges.readOnly();
+                          });
 }
 
 }  // namespace chatterino

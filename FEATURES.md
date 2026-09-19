@@ -118,11 +118,18 @@ computer keeps this to itself when the setup is synced.
   message - 2, 4 or 8 pixels
 - **Nachricht unter der Maus hervorheben**: lights up the message under the
   pointer, in a faint shade that suits the theme or a colour of your own
-- **Neue Nachrichten sanft einblenden**: new messages fade in over a quarter
-  of a second rather than appear at once
+- **Neue Nachrichten sanft einblenden**: new messages fade in and glide the
+  last few pixels into place, quickly at first and settling gently, rather
+  than appear at once. **Chat weich nachrutschen lassen** - Chatterino's
+  smooth scrolling on new messages - goes well with it, so the chat does not
+  jump a line either.
 - **Rollen-Streifen**: a narrow stripe at the left edge of every message shows
-  who wrote it - the streamer in red, moderators in green, VIPs in pink, and
-  subscribers too if given a colour. A role without a colour gets no stripe.
+  who wrote it. A role with a badge highlight (Highlights -> Badges) takes
+  that highlight's colour, made solid - for a lead moderator their own
+  highlight or else the moderators' - and its field on the page is greyed
+  out, showing where the colour comes from. The others have their own:
+  the streamer in red, moderators in green, VIPs in pink, and subscribers if
+  given a colour. A role without a colour gets no stripe.
 
 ### Readability
 

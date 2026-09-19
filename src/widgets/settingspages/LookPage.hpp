@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "messages/layouts/MessageRole.hpp"
+#include "singletons/Settings.hpp"
 #include "widgets/settingspages/GeneralPageView.hpp"
 #include "widgets/settingspages/SettingsPage.hpp"
 
@@ -27,6 +29,10 @@ private:
     void buildTabsTab(GeneralPageView &layout);
     void buildChatTab(GeneralPageView &layout);
     void buildColorsTab(GeneralPageView &layout);
+    /// A role's stripe colour - greyed out, showing the badge highlight's
+    /// colour, when a badge highlight sets it
+    void addRoleColor(GeneralPageView &layout, const QString &name,
+                      ChatRole role, QStringSetting &setting);
 
     std::vector<GeneralPageView *> views_;
 };

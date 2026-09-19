@@ -5,6 +5,7 @@
 // Tests for what ChattiFlexii adds on top of Chatterino. They run on every
 // push before a download is published.
 
+#include "controllers/highlights/HighlightBadge.hpp"
 #include "controllers/moderation/EmoteSpamDetector.hpp"
 #include "controllers/moderation/ModHighlights.hpp"
 #include "controllers/moderation/RepeatSpamDetector.hpp"
@@ -812,4 +813,67 @@ TEST(FlexiiLook, TheStripeShowsTheHighestRole)
     EXPECT_EQ(roleWith({"subscriber", "moderator"}), ChatRole::Moderator);
     EXPECT_EQ(roleWith({"lead_moderator"}), ChatRole::Moderator);
     EXPECT_EQ(roleWith({"broadcaster", "subscriber"}), ChatRole::Broadcaster);
+}
+
+namespace {
+
+HighlightBadge badgeHighlight(const QString &badge, const QString &color)
+{
+    return {badge, badge, false, false, false, "", QColor(color)};
+}
+
+QColor stripeFor(std::initializer_list<const char *> badges,
+                 const std::vector<HighlightBadge> &highlights)
+{
+    Message message;
+    for (const auto *badge : badges)
+    {
+        message.twitchBadges.emplace_back(badge, "1");
+    }
+    RoleColors colors;
+    colors.moderator = QColor("#00ad03");
+    colors.vip = QColor("#e005b9");
+    return stripeColor(message, highlights, colors);
+}
+
+}  // namespace
+
+TEST(FlexiiLook, StripesTakeTheBadgeHighlightsColourMadeSolid)
+{
+    const std::vector<HighlightBadge> highlights{
+        badgeHighlight("lead_moderator", "#6a32e01b"),
+        badgeHighlight("moderator", "#6a1060ff"),
+    };
+    EXPECT_EQ(stripeFor({"lead_moderator"}, highlights), QColor("#32e01b"));
+    EXPECT_EQ(stripeFor({"moderator", "subscriber"}, highlights),
+              QColor("#1060ff"));
+
+    // A lead moderator without a highlight of their own takes the
+    // moderators' one
+    EXPECT_EQ(stripeFor({"lead_moderator"},
+                        {badgeHighlight("moderator", "#6a1060ff")}),
+              QColor("#1060ff"));
+}
+
+TEST(FlexiiLook, WithoutABadgeHighlightTheRolesOwnColour)
+{
+    EXPECT_EQ(stripeFor({"vip"}, {}), QColor("#e005b9"));
+    EXPECT_EQ(stripeFor({"moderator"}, {badgeHighlight("vip", "#ff0000")}),
+              QColor("#00ad03"));
+    // Subscribers have no colour to begin with: no stripe
+    EXPECT_FALSE(stripeFor({"subscriber"}, {}).isValid());
+    EXPECT_FALSE(stripeFor({"premium"}, {}).isValid());
+}
+
+TEST(FlexiiLook, TheSettingsPageKnowsWhichRolesAHighlightColours)
+{
+    const std::vector<HighlightBadge> highlights{
+        badgeHighlight("moderator", "#6a1060ff"),
+        badgeHighlight("broadcaster", "#93ffa600"),
+    };
+    EXPECT_EQ(badgeStripeColor(ChatRole::Moderator, highlights),
+              QColor("#1060ff"));
+    EXPECT_EQ(badgeStripeColor(ChatRole::Broadcaster, highlights),
+              QColor("#ffa600"));
+    EXPECT_FALSE(badgeStripeColor(ChatRole::Vip, highlights).has_value());
 }

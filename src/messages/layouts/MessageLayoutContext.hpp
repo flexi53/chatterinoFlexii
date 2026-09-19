@@ -4,10 +4,14 @@
 
 #pragma once
 
+#include "messages/layouts/MessageRole.hpp"
 #include "messages/MessageElement.hpp"
 
 #include <QColor>
 #include <QPainter>
+
+#include <memory>
+#include <vector>
 
 namespace pajlada::Signals {
 class SignalHolder;
@@ -62,12 +66,11 @@ struct MessagePreferences {
 
     bool fadeMessageHistory{};
 
-    /// Look -> Chat: a stripe per role, invalid for none
+    /// Look -> Chat: a stripe per role - in the colour of the role's badge
+    /// highlight where there is one, see stripeColor
     bool roleStripes{};
-    QColor broadcasterStripe;
-    QColor moderatorStripe;
-    QColor vipStripe;
-    QColor subscriberStripe;
+    RoleColors roleColors;
+    std::shared_ptr<const std::vector<HighlightBadge>> badgeHighlights;
 
     void connectSettings(Settings *settings,
                          pajlada::Signals::SignalHolder &holder);

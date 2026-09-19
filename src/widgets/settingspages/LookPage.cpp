@@ -5,11 +5,16 @@
 #include "widgets/settingspages/LookPage.hpp"
 
 #include "messages/layouts/AlternateBackground.hpp"
+#include "messages/layouts/MessageRole.hpp"
 #include "singletons/Settings.hpp"
+#include "widgets/dialogs/ColorPickerDialog.hpp"
 #include "widgets/helper/color/ColorButton.hpp"
 #include "widgets/settingspages/SettingWidget.hpp"
 
 #include <QComboBox>
+#include <QGraphicsOpacityEffect>
+#include <QHBoxLayout>
+#include <QLabel>
 #include <QPushButton>
 #include <QTabWidget>
 #include <QVBoxLayout>
@@ -287,38 +292,44 @@ void LookPage::buildChatTab(GeneralPageView &layout)
     SettingWidget::checkbox("Neue Nachrichten sanft einblenden",
                             s.fadeInMessages)
         ->setTooltip("Neue Nachrichten erscheinen nicht schlagartig, sondern "
-                     "blenden in einer Viertelsekunde ein.")
+                     "blenden weich ein und gleiten an ihren Platz.")
+        ->addTo(layout);
+    SettingWidget::checkbox("Chat weich nachrutschen lassen",
+                            s.enableSmoothScrollingNewMessages)
+        ->setTooltip("Kommt eine Nachricht dazu, rutscht der Chat weich nach "
+                     "oben, statt um eine Zeile zu springen - zusammen mit "
+                     "dem Einblenden am ruhigsten. Derselbe Schalter wie "
+                     "General -> Smooth scrolling on new messages.")
+        ->addKeywords({"smooth", "scroll"})
         ->addTo(layout);
     addStandardButton(layout,
                       "Kein zusätzlicher Abstand, keine Hervorhebung, "
-                      "kein Einblenden",
+                      "kein Einblenden oder Nachrutschen",
                       [&s] {
                           s.messageSpacing.setValue(0);
                           s.hoverHighlight.setValue(false);
                           s.hoverHighlightColor.setValue("");
                           s.fadeInMessages.setValue(false);
+                          s.enableSmoothScrollingNewMessages.setValue(false);
                       });
 
     layout.addTitle("Rollen-Streifen");
     layout.addDescription(
         "Ein schmaler farbiger Streifen links an jeder Nachricht zeigt, wer "
-        "schreibt - ohne auf die Badges zu schauen. Eine Rolle ohne Farbe "
-        "(oder ganz durchsichtig) bekommt keinen Streifen.");
+        "schreibt - ohne auf die Badges zu schauen. Hast du unter Highlights "
+        "-> Badges eine Farbe für die Rolle, nimmt der Streifen die von selbst "
+        "und das Feld hier ist ausgegraut. Eine Rolle ohne Farbe (oder ganz "
+        "durchsichtig) bekommt keinen Streifen.");
     SettingWidget::checkbox("Rollen-Streifen anzeigen", s.roleStripes)
-        ->addKeywords({"mod", "vip", "sub", "streamer", "rolle"})
+        ->addKeywords({"mod", "vip", "sub", "streamer", "rolle", "badge"})
         ->addTo(layout);
-    SettingWidget::colorButton("Streamer", s.roleStripeBroadcaster)
-        ->conditionallyEnabledBy(s.roleStripes)
-        ->addTo(layout);
-    SettingWidget::colorButton("Mods", s.roleStripeModerator)
-        ->conditionallyEnabledBy(s.roleStripes)
-        ->addTo(layout);
-    SettingWidget::colorButton("VIPs", s.roleStripeVip)
-        ->conditionallyEnabledBy(s.roleStripes)
-        ->addTo(layout);
-    SettingWidget::colorButton("Subs", s.roleStripeSubscriber)
-        ->conditionallyEnabledBy(s.roleStripes)
-        ->addTo(layout);
+    this->addRoleColor(layout, "Streamer", ChatRole::Broadcaster,
+                       s.roleStripeBroadcaster);
+    this->addRoleColor(layout, "Mods", ChatRole::Moderator,
+                       s.roleStripeModerator);
+    this->addRoleColor(layout, "VIPs", ChatRole::Vip, s.roleStripeVip);
+    this->addRoleColor(layout, "Subs", ChatRole::Subscriber,
+                       s.roleStripeSubscriber);
     addStandardButton(layout, "Streifen aus, Farben wie zu Beginn", [&s] {
         s.roleStripes.setValue(false);
         for (auto *setting : {&s.roleStripeBroadcaster, &s.roleStripeModerator,
@@ -329,6 +340,86 @@ void LookPage::buildChatTab(GeneralPageView &layout)
     });
 
     layout.addStretch();
+}
+
+void LookPage::addRoleColor(GeneralPageView &layout, const QString &name,
+                            ChatRole role, QStringSetting &setting)
+{
+    auto *label = new QLabel(name + ":");
+    auto *note = new QLabel;
+    note->setStyleSheet("color: #8a8a8a;");
+    auto *button = new ColorButton(QColor(setting.getValue()));
+    button->setFixedSize(50, 24);
+    button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+    auto *row = new QHBoxLayout;
+    row->addWidget(label);
+    row->addSpacing(6);
+    row->addWidget(note);
+    row->addStretch(1);
+    row->addWidget(button);
+    layout.addLayout(row);
+
+    // A badge highlight for the role wins - its colour shows, greyed out
+    const auto refresh = [label, note, button, role, &setting] {
+        const auto on = getSettings()->roleStripes.getValue();
+        const auto fromBadge = badgeStripeColor(
+            role, *getSettings()->highlightedBadges.readOnly());
+        label->setEnabled(on);
+        note->setEnabled(on);
+        // Greyed out rather than just disabled, which it does not show
+        if (fromBadge || !on)
+        {
+            auto *faded = new QGraphicsOpacityEffect;
+            faded->setOpacity(0.4);
+            button->setGraphicsEffect(faded);
+        }
+        else
+        {
+            button->setGraphicsEffect(nullptr);
+        }
+        if (fromBadge)
+        {
+            button->setColor(*fromBadge);
+            button->setEnabled(false);
+            button->setToolTip("Die Farbe kommt aus Highlights -> Badges. "
+                               "Ändern oder löschen kannst du sie dort.");
+            note->setText("aus Highlights -> Badges");
+        }
+        else
+        {
+            button->setColor(QColor(setting.getValue()));
+            button->setEnabled(on);
+            button->setToolTip({});
+            note->clear();
+        }
+    };
+
+    QObject::connect(button, &ColorButton::clicked, [button, &setting] {
+        auto *dialog = new ColorPickerDialog(QColor(setting), button);
+        QObject::connect(
+            dialog, &ColorPickerDialog::colorConfirmed, button,
+            [&setting](const QColor &selected) {
+                if (selected.isValid())
+                {
+                    setting.setValue(selected.name(QColor::HexArgb));
+                }
+            });
+        dialog->show();
+    });
+    setting.connect(
+        [refresh](const auto &, const auto &) {
+            refresh();
+        },
+        this->managedConnections_, false);
+    getSettings()->roleStripes.connect(
+        [refresh](const auto &, const auto &) {
+            refresh();
+        },
+        this->managedConnections_, false);
+    this->managedConnections_.managedConnect(
+        getSettings()->highlightedBadges.delayedItemsChanged, refresh);
+    refresh();
 }
 
 void LookPage::buildColorsTab(GeneralPageView &layout)

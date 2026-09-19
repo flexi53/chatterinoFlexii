@@ -35,7 +35,18 @@ struct Release {
 
 /// Newest first. Add to the top when something lands that is worth telling
 /// the user about; everything above what they last saw is shown at once.
-const std::array<Release, 12> RELEASES{{
+const std::array<Release, 13> RELEASES{{
+    {"19 September 2026 (6)",
+     "19. September 2026 - Nachtrag 5",
+     {
+         "Die Rollen-Streifen nehmen jetzt von selbst die Farben deiner "
+         "Badge-Highlights (Highlights -> Badges). Wo eine Rolle so eine "
+         "Farbe hat, ist das Feld unter Look -> Chat ausgegraut; für die "
+         "übrigen stellst du die Farbe dort ein.",
+         "Neue Nachrichten blenden weicher ein und gleiten an ihren Platz. "
+         "Dazu passt „Chat weich nachrutschen lassen“ unter Look -> Chat, "
+         "damit der Chat nicht um eine Zeile springt.",
+     }},
     {"19 September 2026 (5)",
      "19. September 2026 - Nachtrag 4",
      {
