@@ -216,13 +216,31 @@ void ActivityGraph::followStream(const QString &id, const QDateTime &start)
         return;
     }
 
-    // Another stream: what came before belongs to the last one
     this->streamId_ = id;
     this->streamStart_ = start;
-    this->spans_.assign(1, 0);
-    this->spansStart_ = this->now();
-    this->changes_.clear();
     this->category_.clear();
+
+    // What was counted since the stream went live belongs to it - a tab
+    // that was already open has been counting all along, so only what came
+    // before the stream is let go of
+    const auto before = this->spansStart_.secsTo(start) / SPAN_SECONDS;
+    if (before >= qint64(this->spans_.size()))
+    {
+        // Nothing of this stream was seen yet
+        this->spans_.assign(1, 0);
+        this->spansStart_ = this->now();
+    }
+    else if (before > 0)
+    {
+        this->spans_.erase(this->spans_.begin(),
+                           this->spans_.begin() + qsizetype(before));
+        this->spansStart_ = this->spansStart_.addSecs(before * SPAN_SECONDS);
+    }
+
+    std::erase_if(this->changes_, [&start](const auto &change) {
+        return change.first < start;
+    });
+
     this->updateTooltip();
     this->update();
 }

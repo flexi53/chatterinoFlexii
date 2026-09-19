@@ -116,16 +116,40 @@ TEST_F(FlexiiActivityGraphFixture, WhatHappenedBeforeTheChannelWasOpenIsSaid)
         << this->graph.description().toStdString();
 }
 
-TEST_F(FlexiiActivityGraphFixture, ANewStreamStartsTheCountingOver)
+TEST_F(FlexiiActivityGraphFixture, ANewStreamLetsGoOfWhatCameBefore)
 {
     this->graph.followStream("42", this->clock.addSecs(-3600));
     this->chat();
     this->chat();
+    this->pass(300);
     ASSERT_TRUE(this->graph.description().contains("2 Nachrichten"));
 
+    // A stream of its own: what belonged to the last one is let go of
     this->graph.followStream("43", this->clock);
     EXPECT_TRUE(this->graph.description().contains("0 Nachrichten"))
         << this->graph.description().toStdString();
+}
+
+TEST_F(FlexiiActivityGraphFixture, ATabThatWasOpenBeforeKeepsWhatItCounted)
+{
+    // The tab was already open, so the chat before the stream is counted
+    // too - but it belongs to no stream
+    this->chat();
+    this->pass(600);
+    const auto wentLive = this->clock;
+
+    // Five minutes into the stream it is noticed
+    this->pass(300);
+    this->chat();
+    this->chat();
+    this->graph.followStream("42", wentLive);
+
+    const auto text = this->graph.description();
+    // The two since it went live, not the one from before
+    EXPECT_TRUE(text.contains("2 Nachrichten")) << text.toStdString();
+    // Nothing is missing, so nothing is said about it
+    EXPECT_FALSE(text.contains("Vor dem Öffnen des Kanals"))
+        << text.toStdString();
 }
 
 TEST_F(FlexiiActivityGraphFixture, AStreamEndingBringsBackTheQuarterHour)
