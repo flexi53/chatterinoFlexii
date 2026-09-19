@@ -214,6 +214,9 @@ private:
     /// The picture in front of the name, and whose it is
     QString avatarFor_;
     QPixmap avatar_;
+    /// Whether the width was worked out with room for the picture - a tab
+    /// with a name of its own gets it before its split has a channel
+    bool sizedWithAvatar_ = false;
 
     bool selected_{};
     bool mouseOver_{};

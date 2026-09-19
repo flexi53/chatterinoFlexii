@@ -45,6 +45,9 @@ const std::array<Release, 15> RELEASES{{
          "Neuer Knopf unten in der Eingabezeile (Mülleimer): leert den Chat "
          "dieses Splits, nur bei dir - wie „Clear messages“, etwa für "
          "erledigte Mentions.",
+         "Tabs mit Profilbild sind jetzt genau so breit wie Bild, Name und "
+         "das X - kein leerer Platz mehr, und der Name wird beim X nicht mehr "
+         "abgeschnitten.",
      }},
     {"19 September 2026 (7)",
      "19. September 2026 - Nachtrag 6",

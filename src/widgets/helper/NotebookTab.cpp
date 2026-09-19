@@ -36,11 +36,13 @@
 #include <QLinearGradient>
 #include <QLineEdit>
 #include <QMimeData>
+#include <QTimer>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPixmap>
 
 #include <algorithm>
+#include <cmath>
 
 namespace chatterino {
 namespace {
@@ -466,19 +468,14 @@ int NotebookTab::normalTabWidthForHeight(int height) const
     // the title will be drawn with - otherwise it gets clipped.
     QFontMetricsF metrics(this->titleFont());
 
+    // The picture (see Look -> Tabs) and the name, then room around them and
+    // for the close button - the parts paintEvent draws, in its order
+    const qreal content =
+        this->avatarSpace() + metrics.horizontalAdvance(this->getTitle());
     float compactDivider = getCompactDivider(getSettings()->tabStyle);
-    if (this->hasXButton())
-    {
-        width = static_cast<int>(metrics.horizontalAdvance(this->getTitle()) +
-                                 (32 / compactDivider * scale));
-    }
-    else
-    {
-        width = static_cast<int>(metrics.horizontalAdvance(this->getTitle()) +
-                                 (16 / compactDivider * scale));
-    }
-
-    width += this->avatarSpace();
+    const qreal around =
+        (this->hasXButton() ? 32 : 16) / compactDivider * scale;
+    width = static_cast<int>(std::ceil(content + around));
 
     if (static_cast<float>(height) > 150 * scale)
     {
@@ -486,7 +483,9 @@ int NotebookTab::normalTabWidthForHeight(int height) const
     }
     else
     {
-        width = std::clamp(width, height, static_cast<int>(150 * scale));
+        // The picture does not count against the widest a tab may get
+        width = std::clamp(width, height,
+                           static_cast<int>(150 * scale) + this->avatarSpace());
     }
 
     return width;
@@ -494,6 +493,7 @@ int NotebookTab::normalTabWidthForHeight(int height) const
 
 void NotebookTab::updateSize()
 {
+    this->sizedWithAvatar_ = this->avatarSpace() > 0;
     float scale = this->scale();
     auto height = static_cast<int>(NOTEBOOK_TAB_HEIGHT * scale);
     int width = this->normalTabWidthForHeight(height);
@@ -969,6 +969,16 @@ void NotebookTab::moveAnimated(QPoint targetPos, bool animated)
 
 void NotebookTab::paintEvent(QPaintEvent *)
 {
+    // A tab with a name of its own is sized before its split has a channel,
+    // so without room for the picture - it gets that once the channel is
+    // there
+    if ((this->avatarSpace() > 0) != this->sizedWithAvatar_)
+    {
+        QTimer::singleShot(0, this, [this] {
+            this->updateSize();
+        });
+    }
+
     auto *app = getApp();
     QPainter painter(this);
     float scale = this->scale();
@@ -1211,23 +1221,29 @@ void NotebookTab::paintEvent(QPaintEvent *)
     translateRectForLocation(textRect, this->tabLocation_,
                              this->selected_ ? -1 : -2);
 
-    if (this->shouldDrawXButton())
-    {
-        textRect.setRight(textRect.right() - this->height() / 2);
-    }
-
     int width = metrics.horizontalAdvance(this->getTitle());
 
-    // The channel's picture in front of the name - see Look -> Tabs. Picture
-    // and name are centred together, like the name on its own.
+    // The channel's picture, then the name - see Look -> Tabs - centred
+    // together in the room the tab leaves them: the whole tab, or all of it
+    // but the close button while that shows. The width is worked out from
+    // the same parts, so it all fits; a name longer than a tab may get is cut
+    // short with an ellipsis rather than off.
     if (const auto space = this->avatarSpace(); space > 0)
     {
         this->ensureAvatar();
+        if (this->shouldDrawXButton())
+        {
+            textRect.setRight(std::min(
+                textRect.right(), this->getXRect().left() - int(2 * scale)));
+        }
+        const auto room = textRect.width();
+        const auto name = metrics.elidedText(this->getTitle(), Qt::ElideRight,
+                                             std::max(0, room - space));
+        const auto nameWidth = int(std::ceil(metrics.horizontalAdvance(name)));
+        const auto left =
+            textRect.left() + std::max(0, (room - space - nameWidth) / 2);
+
         const auto side = this->avatarSide();
-        const auto total = space + width;
-        const auto left = total > textRect.width()
-                              ? textRect.left()
-                              : textRect.left() + (textRect.width() - total) / 2;
         const QRectF circle(left, textRect.center().y() - (side / 2.0) + 1,
                             side, side);
         painter.save();
@@ -1246,17 +1262,28 @@ void NotebookTab::paintEvent(QPaintEvent *)
             paintRound(painter, circle, this->avatar_);
         }
         painter.restore();
-        textRect.setLeft(left + space);
+
+        QTextOption option(Qt::AlignLeft | Qt::AlignVCenter);
+        option.setWrapMode(QTextOption::NoWrap);
+        painter.drawText(QRect(left + space, textRect.top(), nameWidth + 1,
+                               textRect.height()),
+                         name, option);
     }
+    else
+    {
+        if (this->shouldDrawXButton())
+        {
+            textRect.setRight(textRect.right() - this->height() / 2);
+        }
 
-    Qt::Alignment alignment =
-        (width > textRect.width() || this->avatarSpace() > 0)
-            ? Qt::AlignLeft | Qt::AlignVCenter
-            : Qt::AlignHCenter | Qt::AlignVCenter;
+        Qt::Alignment alignment = width > textRect.width()
+                                      ? Qt::AlignLeft | Qt::AlignVCenter
+                                      : Qt::AlignHCenter | Qt::AlignVCenter;
 
-    QTextOption option(alignment);
-    option.setWrapMode(QTextOption::NoWrap);
-    painter.drawText(textRect, this->getTitle(), option);
+        QTextOption option(alignment);
+        option.setWrapMode(QTextOption::NoWrap);
+        painter.drawText(textRect, this->getTitle(), option);
+    }
 
     // draw close x
     if (this->shouldDrawXButton())
