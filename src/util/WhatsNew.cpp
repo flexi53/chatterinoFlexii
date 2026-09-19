@@ -35,7 +35,15 @@ struct Release {
 
 /// Newest first. Add to the top when something lands that is worth telling
 /// the user about; everything above what they last saw is shown at once.
-const std::array<Release, 16> RELEASES{{
+const std::array<Release, 17> RELEASES{{
+    {"19 September 2026 (10)",
+     "19. September 2026 - Nachtrag 9",
+     {
+         "Updates mit einem Klick: „Jetzt aktualisieren“ lädt die neue "
+         "Version, prüft sie, tauscht ChattiFlexii aus und startet es neu - "
+         "ohne DMG, ohne Programme-Ordner und ohne Rechtsklick -> Öffnen. "
+         "Deine Einstellungen bleiben. Ab dem nächsten Update, auf dem Mac.",
+     }},
     {"19 September 2026 (9)",
      "19. September 2026 - Nachtrag 8",
      {

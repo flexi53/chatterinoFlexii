@@ -23,6 +23,8 @@ struct Release {
     /// The file for this computer - the DMG on macOS, the ZIP on Windows
     QString downloadUrl;
     QDateTime published;
+    /// Its SHA-256 as GitHub gives it, in hex - empty if it gives none
+    QString sha256;
 };
 
 /// Reads the release GitHub describes in @a json - the commit named in its

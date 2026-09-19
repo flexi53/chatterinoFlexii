@@ -11,6 +11,7 @@
 #include "common/Version.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/WindowManager.hpp"
+#include "util/SelfUpdate.hpp"
 #include "widgets/Window.hpp"
 
 #include <QCoreApplication>
@@ -97,18 +98,42 @@ void offer(const Release &release)
             .arg(QLocale(QLocale::German)
                      .toString(release.published.toLocalTime(),
                                QStringLiteral("d. MMMM, HH:mm"))));
-    box->setInformativeText(
-        QStringLiteral("„Herunterladen“ lädt sie in deinem Browser herunter. "
-                       "%1 Deine Einstellungen bleiben, wie sie sind.")
-            .arg(howToInstall()));
-    auto *download = box->addButton(QStringLiteral("Herunterladen"),
+    // With one click where the app can replace itself, by hand elsewhere
+    QPushButton *installNow = nullptr;
+    if (selfupdate::canInstall())
+    {
+        box->setInformativeText(QStringLiteral(
+            "„Jetzt aktualisieren“ lädt sie, tauscht ChattiFlexii aus und "
+            "startet es neu - deine Einstellungen bleiben, wie sie sind."));
+        installNow = box->addButton(QStringLiteral("Jetzt aktualisieren"),
                                     QMessageBox::AcceptRole);
+    }
+    else
+    {
+        box->setInformativeText(
+            QStringLiteral("„Herunterladen“ lädt sie in deinem Browser "
+                           "herunter. %1 Deine Einstellungen bleiben, wie sie "
+                           "sind.")
+                .arg(howToInstall()));
+    }
+    auto *download =
+        box->addButton(QStringLiteral("Herunterladen"),
+                       installNow != nullptr ? QMessageBox::ActionRole
+                                             : QMessageBox::AcceptRole);
     box->addButton(QStringLiteral("Später"), QMessageBox::RejectRole);
-    box->setDefaultButton(download);
+    box->setDefaultButton(installNow != nullptr ? installNow : download);
 
     QObject::connect(
         box, &QMessageBox::buttonClicked, box,
-        [download, release](QAbstractButton *clicked) {
+        [installNow, download, release](QAbstractButton *clicked) {
+            if (installNow != nullptr && clicked == installNow)
+            {
+                // After the box is gone
+                QTimer::singleShot(0, [release] {
+                    selfupdate::install(release, mainWindow());
+                });
+                return;
+            }
             if (clicked == download)
             {
                 QDesktopServices::openUrl(QUrl(release.downloadUrl));
@@ -159,11 +184,15 @@ std::optional<Release> parseRelease(const QJsonObject &json,
                 json.value(QStringLiteral("published_at")).toString(),
                 Qt::ISODate);
         }
+        auto digest = asset.value(QStringLiteral("digest")).toString();
         return Release{
             .commit = commit.captured(1),
             .downloadUrl =
                 asset.value(QStringLiteral("browser_download_url")).toString(),
             .published = published,
+            .sha256 = digest.startsWith(QStringLiteral("sha256:"))
+                          ? digest.mid(7).toLower()
+                          : QString(),
         };
     }
     return std::nullopt;
@@ -171,8 +200,7 @@ std::optional<Release> parseRelease(const QJsonObject &json,
 
 bool isNewer(const Release &release, const QString &runningCommit)
 {
-    static const QRegularExpression commit(
-        QStringLiteral("^[0-9a-f]{7,40}$"));
+    static const QRegularExpression commit(QStringLiteral("^[0-9a-f]{7,40}$"));
     const auto running = runningCommit.trimmed().toLower();
     if (!commit.match(running).hasMatch() ||
         !commit.match(release.commit).hasMatch())

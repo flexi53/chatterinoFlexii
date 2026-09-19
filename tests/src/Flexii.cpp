@@ -20,6 +20,7 @@
 #include "Test.hpp"
 #include "util/ProfileSetup.hpp"
 #include "util/ProfileSync.hpp"
+#include "util/SelfUpdate.hpp"
 #include "util/SpellingVariants.hpp"
 #include "util/Twitch.hpp"
 #include "util/UpdateCheck.hpp"
@@ -32,6 +33,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QProcess>
 #include <QTemporaryDir>
 #include <QUrl>
 
@@ -563,6 +565,7 @@ QJsonObject releaseJson(const QString &body)
                  {"name", "ChattiFlexii-macOS-arm64.dmg"},
                  {"browser_download_url", "https://example.com/mac.dmg"},
                  {"updated_at", "2026-09-19T10:06:00Z"},
+                 {"digest", "sha256:0963AD91E03A2ECE"},
              },
          }},
     };
@@ -583,6 +586,8 @@ TEST(FlexiiUpdate, ReadsTheReleaseForThisComputer)
     EXPECT_EQ(release->downloadUrl, "https://example.com/mac.dmg");
     EXPECT_EQ(release->published,
               QDateTime::fromString("2026-09-19T10:06:00Z", Qt::ISODate));
+    // What the download is checked against, before it replaces the app
+    EXPECT_EQ(release->sha256, "0963ad91e03a2ece");
 }
 
 TEST(FlexiiUpdate, NothingWithoutACommitOrADownload)
@@ -935,3 +940,83 @@ TEST(FlexiiLook, EveryEventHasASymbolAndAColour)
     }
     EXPECT_TRUE(eventSymbol(ChatEvent::None).isEmpty());
 }
+
+#ifdef Q_OS_MACOS
+
+namespace {
+
+bool runQuietly(const QString &program, const QStringList &arguments)
+{
+    QProcess process;
+    process.start(program, arguments);
+    return process.waitForFinished(60000) && process.exitCode() == 0;
+}
+
+void writeFile(const QString &path, const QByteArray &content)
+{
+    QDir().mkpath(QFileInfo(path).absolutePath());
+    QFile file(path);
+    ASSERT_TRUE(file.open(QIODevice::WriteOnly));
+    file.write(content);
+}
+
+}  // namespace
+
+TEST(FlexiiSelfUpdate, TheAppIsCopiedOutOfTheDiskImage)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    writeFile(dir.path() + "/image/ChattiFlexii.app/Contents/Info.plist",
+              "new version");
+    ASSERT_TRUE(runQuietly("/usr/bin/hdiutil",
+                           {"create", "-quiet", "-srcfolder",
+                            dir.path() + "/image", "-format", "UDZO",
+                            dir.path() + "/update.dmg"}));
+
+    const auto staging = dir.path() + "/.ChattiFlexii-update.app";
+    QString error;
+    ASSERT_TRUE(selfupdate::stageFromDiskImage(dir.path() + "/update.dmg",
+                                               staging, error))
+        << error.toStdString();
+    QFile info(staging + "/Contents/Info.plist");
+    ASSERT_TRUE(info.open(QIODevice::ReadOnly));
+    EXPECT_EQ(info.readAll(), "new version");
+}
+
+TEST(FlexiiSelfUpdate, AnImageWithoutTheAppIsTurnedDown)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    writeFile(dir.path() + "/image/Something.txt", "not an app");
+    ASSERT_TRUE(runQuietly("/usr/bin/hdiutil",
+                           {"create", "-quiet", "-srcfolder",
+                            dir.path() + "/image", "-format", "UDZO",
+                            dir.path() + "/other.dmg"}));
+
+    QString error;
+    EXPECT_FALSE(selfupdate::stageFromDiskImage(
+        dir.path() + "/other.dmg", dir.path() + "/staged.app", error));
+    EXPECT_FALSE(error.isEmpty());
+    EXPECT_FALSE(QFileInfo::exists(dir.path() + "/staged.app"));
+}
+
+TEST(FlexiiSelfUpdate, TheSwapPutsTheNewAppInPlaceOfTheOld)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    const auto app = dir.path() + "/ChattiFlexii.app";
+    const auto staging = dir.path() + "/.ChattiFlexii-update.app";
+    writeFile(app + "/Contents/old.txt", "old");
+    writeFile(staging + "/Contents/new.txt", "new");
+
+    // A process id that is long gone, so it does not wait
+    ASSERT_TRUE(runQuietly("/bin/sh", {"-c", selfupdate::swapScript(), "swap",
+                                       "999999", staging, app, "noopen"}));
+
+    EXPECT_TRUE(QFileInfo::exists(app + "/Contents/new.txt"));
+    EXPECT_FALSE(QFileInfo::exists(app + "/Contents/old.txt"));
+    EXPECT_FALSE(QFileInfo::exists(staging));
+    EXPECT_FALSE(QFileInfo::exists(dir.path() + "/.ChattiFlexii-old.app"));
+}
+
+#endif

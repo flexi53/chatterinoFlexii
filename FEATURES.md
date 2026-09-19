@@ -378,7 +378,13 @@ carries a build of the current code for both platforms, rebuilt on every push.
 Chatterino's own update check is switched off, so nothing will offer to
 replace the fork with upstream Chatterino. Instead, the downloads look on
 that page a little after starting and every six hours whether there is a
-newer build, and offer it: **Herunterladen** fetches it in the browser,
-**Später** asks again a day later. Settings -> About has a switch for it and
-**Jetzt nach Updates suchen**. A build made at home does not look - it has
-no release to compare with.
+newer build, and offer it. On macOS, **Jetzt aktualisieren** does it in one
+click: the new version is downloaded, checked against the checksum GitHub
+gives for it, copied out next to the running app - all while that still
+runs, so nothing is lost if any of it fails - and then ChattiFlexii quits,
+the two are swapped and the new one opens. Settings stay, and as the
+download never passes through a browser, macOS does not ask whether to open
+it. **Herunterladen** fetches it in the browser instead - the only way on
+Windows - and **Später** asks again a day later. Settings -> About has a
+switch for it and **Jetzt nach Updates suchen**. A build made at home does
+not look - it has no release to compare with.
