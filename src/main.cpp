@@ -16,6 +16,7 @@
 #include "singletons/Paths.hpp"
 #include "singletons/Settings.hpp"
 #include "util/ProfileSetup.hpp"
+#include "util/SettingsSnapshots.hpp"
 #include "singletons/Updates.hpp"
 #include "util/AttachToConsole.hpp"
 #include "util/IpcQueue.hpp"
@@ -143,6 +144,7 @@ int main(int argc, char **argv)
         // be filled from an existing Chatterino or an export, and the plugins
         // we ship have to be on disk before the controller scans for them.
         applyPendingImport(*paths);
+        snapshots::applyPending(paths->settingsDirectory);
         importExistingProfile(*paths);
         installBundledPlugins(*paths);
 

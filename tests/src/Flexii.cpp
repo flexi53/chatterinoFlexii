@@ -21,6 +21,7 @@
 #include "util/ProfileSetup.hpp"
 #include "util/ProfileSync.hpp"
 #include "util/SelfUpdate.hpp"
+#include "util/SettingsSnapshots.hpp"
 #include "util/SpellingVariants.hpp"
 #include "util/Twitch.hpp"
 #include "util/UpdateCheck.hpp"
@@ -939,6 +940,80 @@ TEST(FlexiiLook, EveryEventHasASymbolAndAColour)
         EXPECT_TRUE(eventColor(event).isValid());
     }
     EXPECT_TRUE(eventSymbol(ChatEvent::None).isEmpty());
+}
+
+TEST(FlexiiViews, SavedRenamedAndRemoved)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    writeJson(dir.path() + "/settings.json",
+              {{"appearance", QJsonObject{{"uiStyle", "modern"}}}});
+
+    QString error;
+    ASSERT_TRUE(snapshots::save(dir.path(), "Moderieren", error));
+    ASSERT_TRUE(snapshots::save(dir.path(), "Entspannt", error));
+    // Saving under a name that is there replaces it
+    ASSERT_TRUE(snapshots::save(dir.path(), "Moderieren", error));
+
+    auto views = snapshots::list(dir.path());
+    ASSERT_EQ(views.size(), 2);
+    EXPECT_EQ(views[0].name, "Entspannt");
+    EXPECT_EQ(views[1].name, "Moderieren");
+
+    ASSERT_TRUE(snapshots::rename(dir.path(), "Entspannt", "Chill", error));
+    ASSERT_TRUE(snapshots::remove(dir.path(), "Moderieren"));
+    views = snapshots::list(dir.path());
+    ASSERT_EQ(views.size(), 1);
+    EXPECT_EQ(views[0].name, "Chill");
+    EXPECT_FALSE(snapshots::save(dir.path(), "   ", error));
+}
+
+TEST(FlexiiViews, SwitchingKeepsLoginSyncAndAWayBack)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    const auto settingsFile = dir.path() + "/settings.json";
+
+    // A view saved on another day, with another login in it
+    writeJson(settingsFile,
+              {{"appearance", QJsonObject{{"uiStyle", "classic"}}},
+               {"accounts", QJsonObject{{"current", "someone"}}}});
+    QString error;
+    ASSERT_TRUE(snapshots::save(dir.path(), "Schlicht", error));
+
+    // What is set up now
+    writeJson(settingsFile,
+              {{"appearance", QJsonObject{{"uiStyle", "modern"}}},
+               {"accounts", QJsonObject{{"current", "fx_flexii"}}},
+               {"sync", QJsonObject{{"base", "t1"}}}});
+    ASSERT_TRUE(snapshots::stage(dir.path(), "Schlicht", error))
+        << error.toStdString();
+    snapshots::applyPending(dir.path());
+
+    const auto settings = readJson(settingsFile);
+    EXPECT_EQ(settings["appearance"].toObject()["uiStyle"].toString(),
+              "classic");
+    EXPECT_EQ(settings["accounts"].toObject()["current"].toString(),
+              "fx_flexii");
+    EXPECT_EQ(settings["sync"].toObject()["base"].toString(), "t1");
+    EXPECT_EQ(settings["snapshots"].toObject()["current"].toString(),
+              "Schlicht");
+
+    // What was set up before is kept to go back to
+    bool kept = false;
+    for (const auto &view : snapshots::list(dir.path()))
+    {
+        kept = kept || view.name == snapshots::BEFORE_SWITCH;
+    }
+    EXPECT_TRUE(kept);
+
+    // Applied once only
+    writeJson(settingsFile, {{"appearance", QJsonObject{{"uiStyle", "x"}}}});
+    snapshots::applyPending(dir.path());
+    EXPECT_EQ(readJson(settingsFile)["appearance"]
+                  .toObject()["uiStyle"]
+                  .toString(),
+              "x");
 }
 
 #ifdef Q_OS_MACOS

@@ -283,6 +283,59 @@ std::unique_ptr<MessageElement> CaptionAvatarElement::clone() const
     return el;
 }
 
+ChatterAvatarElement::ChatterAvatarElement(const QString &login)
+    : MessageElement(MessageElementFlag::ChatterAvatar)
+    , login_(login)
+{
+    this->setLink({Link::UserInfo, login});
+    this->setTrailingSpace(true);
+}
+
+void ChatterAvatarElement::addToContainer(MessageLayoutContainer &container,
+                                          const MessageLayoutContext &ctx)
+{
+    if (!ctx.flags.hasAny(this->getFlags()))
+    {
+        return;
+    }
+
+    auto image = profilepictures::image(this->login_);
+    if (!image)
+    {
+        return;
+    }
+
+    this->setTooltip(profilepictures::displayName(this->login_));
+    // As tall as a line of chat text, so the line keeps its height
+    const qreal side = getApp()
+                           ->getFonts()
+                           ->getFontMetrics(FontStyle::ChatMedium,
+                                            container.getScale())
+                           .height();
+    container.addElement(
+        new RoundImageLayoutElement(*this, image, QSizeF(side, side)));
+}
+
+QJsonObject ChatterAvatarElement::toJson() const
+{
+    auto base = MessageElement::toJson();
+    base["type"_L1] = u"ChatterAvatarElement"_s;
+    base["login"_L1] = this->login_;
+    return base;
+}
+
+std::string_view ChatterAvatarElement::type() const
+{
+    return std::remove_pointer_t<decltype(this)>::TYPE;
+}
+
+std::unique_ptr<MessageElement> ChatterAvatarElement::clone() const
+{
+    auto el = std::make_unique<ChatterAvatarElement>(this->login_);
+    el->cloneFrom(*this);
+    return el;
+}
+
 // EMOTE
 EmoteElement::EmoteElement(const EmotePtr &emote, MessageElementFlags flags,
                            const MessageColor &textElementColor)

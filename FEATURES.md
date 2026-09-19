@@ -104,6 +104,9 @@ profile picture in front of each tab's name - the first split's, for a tab
 with several. With **Live-Ring**, a live
 channel's picture gets a red ring instead of the dot in the corner.
 
+**Aktiver Split**: with several chats side by side in a tab, the one being
+typed in gets a border - red to begin with, in a colour of your choice.
+
 The **split header** can show the channel's picture and, while it is live,
 the cover of what it streams, next to the name - and a small curve of how
 lively the chat was over the last ten minutes, counted from when it is
@@ -133,6 +136,9 @@ mentions that have been dealt with.
   than appear at once. **Chat weich nachrutschen lassen** - Chatterino's
   smooth scrolling on new messages - goes well with it, so the chat does not
   jump a line either.
+- **Profilbild vor jedem Namen**: the chatter's round picture in front of
+  their name; a click on it opens the user card. New messages get it from
+  when it is switched on; switching it off hides it everywhere at once.
 - **Ereignisse markieren**: subs ⭐, gifts 🎁, raids 🚀, announcements 📣,
   timeouts ⏱️, bans 🔨, bits 💎, redeemed points 🎟️ and watch streaks 🔥
   get their symbol in front and a stripe in their colour
@@ -314,6 +320,13 @@ weeks - weekly to begin with - into "ChattiFlexii-Sicherungen" in iCloud
 Drive where there is one, otherwise in Documents. There is only ever one
 backup: the next replaces it, once it is complete. A backup is imported like
 any export and never holds the Twitch login.
+
+**Ansichten**, the fifth tab, saves every setting under a name - say
+"Moderieren" with stripes, symbols and the activity curve, "Entspannt" all
+plain - to switch between with a click, there or from the tab bar's
+right-click menu. A view leaves the tabs, the Twitch login and what belongs
+to this computer alone. Switching restarts the app, and what was set up
+before is kept as "Vor dem Wechsel", so there is always a way back.
 
 **Abgleich**, the fourth tab, keeps two computers alike - the Mac and the
 MacBook, say. Switched on on both, each leaves its setup as

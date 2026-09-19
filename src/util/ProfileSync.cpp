@@ -52,7 +52,7 @@ const QString FRESH_PREFIX = QStringLiteral("ChattiFlexii-Abgleich (neu)");
 const QString SHARED_MARKER = QStringLiteral("chattiflexii-abgleich.json");
 /// How fingerprint() works - a setup from a version that worked it out
 /// otherwise cannot be checked against it
-constexpr int FORMAT = 4;
+constexpr int FORMAT = 5;
 
 /// Setup offers already answered with "Später" since the app started
 QSet<QString> &putOff()
@@ -97,7 +97,16 @@ void removePath(QJsonObject &object, QStringList path)
     }
     auto inner = object.value(key).toObject();
     removePath(inner, path);
-    object.insert(key, inner);
+    // An object left empty counts as none, so it is the same whether a
+    // computer ever had the value or not
+    if (inner.isEmpty())
+    {
+        object.remove(key);
+    }
+    else
+    {
+        object.insert(key, inner);
+    }
 }
 
 /// The value at @a path, or an undefined one
@@ -136,9 +145,20 @@ void setAt(QJsonObject &object, QStringList path, const QJsonValue &value)
         }
         return;
     }
+    if (value.isUndefined() && !object.contains(key))
+    {
+        return;
+    }
     auto inner = object.value(key).toObject();
     setAt(inner, path, value);
-    object.insert(key, inner);
+    if (inner.isEmpty())
+    {
+        object.remove(key);
+    }
+    else
+    {
+        object.insert(key, inner);
+    }
 }
 
 /// What says where a window sits, how big it is and whether it shows only
@@ -160,6 +180,8 @@ const std::vector<QStringList> SETTINGS_PLACES{
     {"appearance", "lastPopup"},
     // Left from when the focus view was one switch for every window
     {"appearance", "focusMode"},
+    // Which view is loaded - each computer switches on its own
+    {"snapshots", "current"},
 };
 
 QString rootDirectory()

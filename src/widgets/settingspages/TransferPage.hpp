@@ -8,6 +8,7 @@
 
 class QCheckBox;
 class QLabel;
+class QListWidget;
 class QPushButton;
 class QVBoxLayout;
 
@@ -28,6 +29,8 @@ private:
     void buildImportTab(QVBoxLayout *layout);
     void buildBackupTab(QVBoxLayout *layout);
     void buildSyncTab(QVBoxLayout *layout);
+    void buildViewsTab(QVBoxLayout *layout);
+    void showViews();
     void showBackupState();
     void showSyncState();
     void exportNow();
@@ -40,6 +43,7 @@ private:
     QLabel *backupFolder_{};
     QLabel *backupStatus_{};
     QLabel *syncState_{};
+    QListWidget *views_{};
     QLabel *syncStatus_{};
 };
 

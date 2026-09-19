@@ -9,11 +9,13 @@
 #include "common/QLogging.hpp"
 #include "controllers/hotkeys/HotkeyCategory.hpp"
 #include "controllers/hotkeys/HotkeyController.hpp"
+#include "singletons/Paths.hpp"
 #include "singletons/Resources.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/StreamerMode.hpp"
 #include "singletons/Theme.hpp"
 #include "singletons/WindowManager.hpp"
+#include "util/SettingsSnapshots.hpp"
 #include "widgets/buttons/DrawnButton.hpp"
 #include "widgets/buttons/InitUpdateButton.hpp"
 #include "widgets/buttons/PixmapButton.hpp"
@@ -2485,6 +2487,29 @@ void SplitNotebook::addNotebookActionsToMenu(QMenu *menu)
     menu->addAction(this->sortTabsAlphabeticallyAction_);
     menu->addAction("Fokus-Ansicht ein/aus", [this] {
         this->toggleFocusMode();
+    });
+
+    // Views of the settings - see Export & Import -> Ansichten
+    auto *views = menu->addMenu("Ansicht wechseln");
+    QObject::connect(views, &QMenu::aboutToShow, views, [this, views] {
+        views->clear();
+        const auto current = getSettings()->currentSnapshot.getValue();
+        const auto saved =
+            snapshots::list(getApp()->getPaths().settingsDirectory);
+        if (saved.empty())
+        {
+            views->addAction("Noch keine - unter Export & Import speichern")
+                ->setEnabled(false);
+            return;
+        }
+        for (const auto &view : saved)
+        {
+            auto *action = views->addAction(view.name, [this, name = view.name] {
+                snapshots::switchTo(name, this);
+            });
+            action->setCheckable(true);
+            action->setChecked(view.name == current);
+        }
     });
 
     auto *submenu = menu->addMenu("Tab visibility");

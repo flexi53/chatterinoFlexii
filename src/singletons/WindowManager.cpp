@@ -144,6 +144,7 @@ WindowManager::WindowManager(const Args &appArgs_, const Paths &paths,
     this->updateWordTypeMaskListener.add(settings.showBadgesBttv);
     this->updateWordTypeMaskListener.add(settings.showBadgesSevenTV);
     this->updateWordTypeMaskListener.add(settings.showBadgesHomies);
+    this->updateWordTypeMaskListener.add(settings.chatAvatars);
     this->updateWordTypeMaskListener.add(settings.enableEmoteImages);
     this->updateWordTypeMaskListener.add(settings.lowercaseDomains);
     this->updateWordTypeMaskListener.add(settings.showReplyButton);
@@ -259,6 +260,7 @@ void WindowManager::updateWordTypeMask()
 
     // username
     flags.set(MEF::Username);
+    flags.set(settings->chatAvatars ? MEF::ChatterAvatar : MEF::None);
 
     // replies
     flags.set(MEF::RepliedMessage);

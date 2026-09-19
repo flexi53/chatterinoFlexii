@@ -154,7 +154,9 @@ enum class MessageElementFlag : int64_t {
     // A mention of a username that isn't the author of the message
     Mention = (1LL << 27),
 
-    // Unused = (1LL << 28),
+    // ChattiFlexii: the chatter's profile picture in front of their name -
+    // see Look -> Chat
+    ChatterAvatar = (1LL << 28),
 
     // used to check if links should be lowercased
     LowercaseLinks = (1LL << 29),
@@ -341,6 +343,28 @@ private:
     QString login_;
     MessageColor color_;
     TextElement fallback_;
+};
+
+/// ChattiFlexii: the chatter's round profile picture in front of their name -
+/// see Look -> Chat. Nothing until the picture is known; clicking it opens
+/// the user card.
+class ChatterAvatarElement : public MessageElement
+{
+public:
+    static constexpr std::string_view TYPE = "chatter-avatar";
+
+    explicit ChatterAvatarElement(const QString &login);
+
+    void addToContainer(MessageLayoutContainer &container,
+                        const MessageLayoutContext &ctx) override;
+
+    QJsonObject toJson() const override;
+    std::string_view type() const override;
+
+    std::unique_ptr<MessageElement> clone() const override;
+
+private:
+    QString login_;
 };
 
 // contains a text that will be truncated to one line

@@ -666,6 +666,8 @@ set(SOURCE_FILES
         util/SelfCheck.hpp
         util/SharedPtrElementLess.hpp
         util/SelfUpdate.cpp
+        util/SettingsSnapshots.cpp
+        util/SettingsSnapshots.hpp
         util/SelfUpdate.hpp
         util/SignalListener.hpp
         util/ProfileSync.cpp

@@ -11,6 +11,7 @@
 #include "util/AutoBackup.hpp"
 #include "util/ProfileSetup.hpp"
 #include "util/ProfileSync.hpp"
+#include "util/SettingsSnapshots.hpp"
 #include "widgets/settingspages/PageSections.hpp"
 
 #include <QApplication>
@@ -22,8 +23,11 @@
 #include <QFileInfo>
 #include <QFormLayout>
 #include <QHBoxLayout>
-#include <QLocale>
+#include <QInputDialog>
 #include <QLabel>
+#include <QLineEdit>
+#include <QListWidget>
+#include <QLocale>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSignalBlocker>
@@ -62,6 +66,7 @@ TransferPage::TransferPage()
     this->buildImportTab(addPageTab(tabs, "Importieren"));
     this->buildBackupTab(addPageTab(tabs, "Automatische Sicherung"));
     this->buildSyncTab(addPageTab(tabs, "Abgleich"));
+    this->buildViewsTab(addPageTab(tabs, "Ansichten"));
     this->showBackupState();
 }
 
@@ -93,7 +98,8 @@ void TransferPage::buildExportTab(QVBoxLayout *layout)
         {
             loginNote->setEnabled(true);
             loginNote->setText(QStringLiteral(
-                "<span style=\"color:#ffaa00\">Mit Login darf der Ordner nie an "
+                "<span style=\"color:#ffaa00\">Mit Login darf der Ordner nie "
+                "an "
                 "andere gehen: Wer ihn hat, kann mit deinem Account schreiben "
                 "und moderieren. Lösch ihn nach dem Import.</span>"));
         }
@@ -120,8 +126,8 @@ void TransferPage::buildExportTab(QVBoxLayout *layout)
     this->exportStatus_->setTextInteractionFlags(Qt::TextSelectableByMouse);
     this->exportStatus_->hide();
 
-    this->reveal_ = new QPushButton(
-        QStringLiteral("Im %1 zeigen").arg(FILE_MANAGER));
+    this->reveal_ =
+        new QPushButton(QStringLiteral("Im %1 zeigen").arg(FILE_MANAGER));
     QObject::connect(this->reveal_, &QPushButton::clicked, this, [this] {
         QDesktopServices::openUrl(QUrl::fromLocalFile(this->lastExport_));
     });
@@ -166,11 +172,12 @@ void TransferPage::buildImportTab(QVBoxLayout *layout)
 
 void TransferPage::buildBackupTab(QVBoxLayout *layout)
 {
-    addText(layout,
-            "Legt regelmäßig von selbst einen Export an - falls mal etwas "
-            "kaputtgeht oder du ein Gerät neu einrichtest. Eine Sicherung holst "
-            "du wie jeden Export unter „Importieren“ zurück. Der Twitch-Login "
-            "ist nie dabei.");
+    addText(
+        layout,
+        "Legt regelmäßig von selbst einen Export an - falls mal etwas "
+        "kaputtgeht oder du ein Gerät neu einrichtest. Eine Sicherung holst "
+        "du wie jeden Export unter „Importieren“ zurück. Der Twitch-Login "
+        "ist nie dabei.");
     layout->addWidget(this->createCheckBox("Automatisch sichern",
                                            getSettings()->autoBackupEnabled));
 
@@ -209,18 +216,20 @@ void TransferPage::buildBackupTab(QVBoxLayout *layout)
     this->backupFolder_->setTextInteractionFlags(Qt::TextSelectableByMouse);
     auto *change = new QPushButton("Ändern …");
     auto *reset = new QPushButton("Standardordner");
-    auto *open = new QPushButton(QStringLiteral("Im %1 zeigen").arg(FILE_MANAGER));
+    auto *open =
+        new QPushButton(QStringLiteral("Im %1 zeigen").arg(FILE_MANAGER));
     auto *folderRow = new QHBoxLayout;
     folderRow->addWidget(change);
     folderRow->addWidget(reset);
     folderRow->addWidget(open);
     folderRow->addStretch(1);
     layout->addLayout(folderRow);
-    addText(layout,
-            "Standard ist „ChattiFlexii-Sicherungen“ in iCloud Drive, sonst in "
-            "Dokumente. In iCloud Drive hast du die Sicherungen auch auf deinen "
-            "anderen Geräten.",
-            true);
+    addText(
+        layout,
+        "Standard ist „ChattiFlexii-Sicherungen“ in iCloud Drive, sonst in "
+        "Dokumente. In iCloud Drive hast du die Sicherungen auch auf deinen "
+        "anderen Geräten.",
+        true);
 
     addHeading(layout, "Jetzt");
     auto *now = new QPushButton("Jetzt sichern");
@@ -271,21 +280,23 @@ void TransferPage::buildBackupTab(QVBoxLayout *layout)
 
 void TransferPage::buildSyncTab(QVBoxLayout *layout)
 {
-    addText(layout,
-            "Hält ChattiFlexii auf deinen Computern gleich - etwa auf deinem "
-            "Mac und deinem MacBook. Jeder Computer legt seine Einstellungen im "
-            "Sicherungsordner ab, sobald sich etwas geändert hat. Startest du "
-            "ChattiFlexii auf dem anderen Computer, fragt es, ob es die neueren "
-            "übernehmen soll - von selbst übernimmt es nie etwas.");
+    addText(
+        layout,
+        "Hält ChattiFlexii auf deinen Computern gleich - etwa auf deinem "
+        "Mac und deinem MacBook. Jeder Computer legt seine Einstellungen im "
+        "Sicherungsordner ab, sobald sich etwas geändert hat. Startest du "
+        "ChattiFlexii auf dem anderen Computer, fragt es, ob es die neueren "
+        "übernehmen soll - von selbst übernimmt es nie etwas.");
     layout->addWidget(this->createCheckBox(
         "Einstellungen zwischen meinen Computern abgleichen",
         getSettings()->profileSyncEnabled));
-    addText(layout,
-            "Auf beiden Computern einschalten. Beide brauchen denselben Ordner - "
-            "am einfachsten den Standard in iCloud Drive (siehe „Automatische "
-            "Sicherung“). Der Twitch-Login bleibt auf jedem Computer, wie er "
-            "ist, und was du ersetzt, wird vorher gesichert.",
-            true);
+    addText(
+        layout,
+        "Auf beiden Computern einschalten. Beide brauchen denselben Ordner - "
+        "am einfachsten den Standard in iCloud Drive (siehe „Automatische "
+        "Sicherung“). Der Twitch-Login bleibt auf jedem Computer, wie er "
+        "ist, und was du ersetzt, wird vorher gesichert.",
+        true);
 
     addHeading(layout, "Stand");
     this->syncState_ = addText(layout, QString());
@@ -317,6 +328,183 @@ void TransferPage::buildSyncTab(QVBoxLayout *layout)
         },
         this->managedConnections_, false);
     this->showSyncState();
+}
+
+void TransferPage::buildViewsTab(QVBoxLayout *layout)
+{
+    addText(layout,
+            "Speichere deine Einstellungen als Ansicht - etwa „Moderieren“ mit "
+            "Streifen, Symbolen und Kurve und „Entspannt“ ganz schlicht - und "
+            "wechsle mit einem Klick zwischen ihnen. Eine Ansicht enthält alle "
+            "Einstellungen: Aussehen, Highlights, Mod-Assistent, Sounds und "
+            "mehr - aber nicht deine Tabs und nicht den Login.");
+    addText(layout,
+            "Beim Wechsel startet ChattiFlexii kurz neu. Was du vorher "
+            "eingestellt hattest, bleibt als „Vor dem Wechsel“ erhalten - so "
+            "kommst du immer zurück. Schnell wechseln geht auch per "
+            "Rechtsklick auf die Tab-Leiste -> Ansicht wechseln.",
+            true);
+
+    addHeading(layout, "Deine Ansichten");
+    this->views_ = new QListWidget;
+    this->views_->setMinimumHeight(140);
+    layout->addWidget(this->views_);
+
+    auto *saveNew = new QPushButton("Aktuelle speichern als …");
+    auto *load = new QPushButton("Wechseln");
+    auto *overwrite = new QPushButton("Mit aktuellen überschreiben");
+    auto *renameButton = new QPushButton("Umbenennen");
+    auto *removeButton = new QPushButton("Löschen");
+    auto *row = new QHBoxLayout;
+    row->addWidget(saveNew);
+    row->addWidget(load);
+    row->addStretch(1);
+    layout->addLayout(row);
+    auto *row2 = new QHBoxLayout;
+    row2->addWidget(overwrite);
+    row2->addWidget(renameButton);
+    row2->addWidget(removeButton);
+    row2->addStretch(1);
+    layout->addLayout(row2);
+    layout->addStretch(1);
+
+    const auto directory = [] {
+        return getApp()->getPaths().settingsDirectory;
+    };
+    const auto selected = [this]() -> QString {
+        auto *item = this->views_->currentItem();
+        return item == nullptr ? QString()
+                               : item->data(Qt::UserRole).toString();
+    };
+    const auto warn = [this](const QString &error) {
+        QMessageBox::warning(this, "Ansichten", error);
+    };
+
+    QObject::connect(
+        saveNew, &QPushButton::clicked, this, [this, directory, warn] {
+            bool ok = false;
+            const auto name = QInputDialog::getText(
+                this, "Ansicht speichern",
+                "Name der Ansicht, z. B. Moderieren:", QLineEdit::Normal,
+                QString(), &ok);
+            if (!ok || name.trimmed().isEmpty())
+            {
+                return;
+            }
+            getSettings()->requestSave();
+            QString error;
+            if (!snapshots::save(directory(), name, error))
+            {
+                warn(error);
+                return;
+            }
+            // It is what is set up now
+            getSettings()->currentSnapshot.setValue(name.trimmed());
+            this->showViews();
+        });
+    QObject::connect(load, &QPushButton::clicked, this, [this, selected] {
+        if (const auto name = selected(); !name.isEmpty())
+        {
+            snapshots::switchTo(name, this);
+        }
+    });
+    QObject::connect(this->views_, &QListWidget::itemDoubleClicked, this,
+                     [this](QListWidgetItem *item) {
+                         snapshots::switchTo(
+                             item->data(Qt::UserRole).toString(), this);
+                     });
+    QObject::connect(
+        overwrite, &QPushButton::clicked, this,
+        [this, selected, directory, warn] {
+            const auto name = selected();
+            if (name.isEmpty() ||
+                QMessageBox::question(
+                    this, "Ansichten",
+                    QStringLiteral("„%1“ mit den Einstellungen überschreiben, "
+                                   "die du gerade hast?")
+                        .arg(name)) != QMessageBox::Yes)
+            {
+                return;
+            }
+            getSettings()->requestSave();
+            QString error;
+            if (!snapshots::save(directory(), name, error))
+            {
+                warn(error);
+            }
+            this->showViews();
+        });
+    QObject::connect(
+        renameButton, &QPushButton::clicked, this,
+        [this, selected, directory, warn] {
+            const auto name = selected();
+            if (name.isEmpty())
+            {
+                return;
+            }
+            bool ok = false;
+            const auto to = QInputDialog::getText(
+                this, "Umbenennen", "Neuer Name:", QLineEdit::Normal, name,
+                &ok);
+            if (!ok || to.trimmed().isEmpty() || to == name)
+            {
+                return;
+            }
+            QString error;
+            if (!snapshots::rename(directory(), name, to, error))
+            {
+                warn(error);
+                return;
+            }
+            if (getSettings()->currentSnapshot.getValue() == name)
+            {
+                getSettings()->currentSnapshot.setValue(to.trimmed());
+            }
+            this->showViews();
+        });
+    QObject::connect(removeButton, &QPushButton::clicked, this,
+                     [this, selected, directory] {
+                         const auto name = selected();
+                         if (name.isEmpty() ||
+                             QMessageBox::question(
+                                 this, "Ansichten",
+                                 QStringLiteral("„%1“ löschen?").arg(name)) !=
+                                 QMessageBox::Yes)
+                         {
+                             return;
+                         }
+                         snapshots::remove(directory(), name);
+                         this->showViews();
+                     });
+
+    this->showViews();
+}
+
+void TransferPage::showViews()
+{
+    if (this->views_ == nullptr)
+    {
+        return;
+    }
+    this->views_->clear();
+    const auto current = getSettings()->currentSnapshot.getValue();
+    for (const auto &view :
+         snapshots::list(getApp()->getPaths().settingsDirectory))
+    {
+        auto *item = new QListWidgetItem(
+            view.name == current ? QStringLiteral("%1  -  aktiv").arg(view.name)
+                                 : view.name);
+        item->setData(Qt::UserRole, view.name);
+        if (view.saved.isValid())
+        {
+            item->setToolTip(
+                QStringLiteral("Gespeichert am %1")
+                    .arg(QLocale(QLocale::German)
+                             .toString(view.saved.toLocalTime(),
+                                       QStringLiteral("dd.MM.yyyy HH:mm"))));
+        }
+        this->views_->addItem(item);
+    }
 }
 
 void TransferPage::showSyncState()
@@ -396,9 +584,10 @@ void TransferPage::exportNow()
 
     this->lastExport_ = folder;
     this->exportStatus_->setText(
-        QStringLiteral("Erstellt auf dem Schreibtisch: <b>%1</b><br>Schick den "
-                       "ganzen Ordner aufs andere Gerät und wähl ihn dort unter "
-                       "Export &amp; Import → Importieren aus.")
+        QStringLiteral(
+            "Erstellt auf dem Schreibtisch: <b>%1</b><br>Schick den "
+            "ganzen Ordner aufs andere Gerät und wähl ihn dort unter "
+            "Export &amp; Import → Importieren aus.")
             .arg(QFileInfo(folder).fileName().toHtmlEscaped()));
     this->reveal_->show();
     QDesktopServices::openUrl(QUrl::fromLocalFile(folder));
@@ -456,8 +645,9 @@ void TransferPage::importNow()
 bool TransferPage::filterElements(const QString &query)
 {
     static const QStringList keywords{
-        "export", "import",  "übertragen", "backup", "sicherung", "icloud",
-        "airdrop", "macbook", "computer",  "gerät", "abgleich", "sync",
+        "export",   "import",  "übertragen", "backup",   "sicherung",
+        "icloud",   "airdrop", "macbook",    "computer", "gerät",
+        "abgleich", "sync",    "ansicht",    "snapshot", "profil",
     };
 
     return matchesKeywords(query, keywords);

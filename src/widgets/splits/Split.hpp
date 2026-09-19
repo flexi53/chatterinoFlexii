@@ -168,6 +168,10 @@ private:
     ChannelView *const view_;
     SplitInput *const input_;
     SplitOverlay *const overlay_;
+    /// Look -> Tabs: the border around the split being typed in
+    QWidget *activeFrame_{};
+    bool inputFocused_{};
+    void refreshActiveFrame();
 
     QPointer<OverlayWindow> overlayWindow_;
 

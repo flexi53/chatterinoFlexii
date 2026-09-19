@@ -35,7 +35,17 @@ struct Release {
 
 /// Newest first. Add to the top when something lands that is worth telling
 /// the user about; everything above what they last saw is shown at once.
-const std::array<Release, 17> RELEASES{{
+const std::array<Release, 18> RELEASES{{
+    {"19 September 2026 (11)",
+     "19. September 2026 - Nachtrag 10",
+     {
+         "Look -> Chat: auf Wunsch ein kleines Profilbild vor jedem Namen im "
+         "Chat. Look -> Tabs: ein roter Rand um den Split, in den du tippst.",
+         "Ansichten: Unter Export & Import speicherst du alle Einstellungen "
+         "unter einem Namen - etwa „Moderieren“ und „Entspannt“ - und wechselst "
+         "mit einem Klick, auch per Rechtsklick auf die Tab-Leiste. Was du "
+         "vorher hattest, bleibt als „Vor dem Wechsel“ erhalten.",
+     }},
     {"19 September 2026 (10)",
      "19. September 2026 - Nachtrag 9",
      {

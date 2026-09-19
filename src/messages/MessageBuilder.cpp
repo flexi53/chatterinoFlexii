@@ -2451,6 +2451,13 @@ void MessageBuilder::appendUsername(const QVariantMap &tags,
             usernameText += ":";
         }
 
+        // ChattiFlexii: the chatter's picture in front of the name - only
+        // while switched on, as it becomes part of the message
+        if (getSettings()->chatAvatars && !this->message().loginName.isEmpty())
+        {
+            this->emplace<ChatterAvatarElement>(this->message().loginName);
+        }
+
         this->emplace<TextElement>(usernameText, MessageElementFlag::Username,
                                    this->usernameColor_,
                                    FontStyle::ChatMediumBold)

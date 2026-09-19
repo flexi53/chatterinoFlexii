@@ -215,6 +215,24 @@ void LookPage::buildTabsTab(GeneralPageView &layout)
         s.splitHeaderActivity.setValue(false);
     });
 
+    layout.addTitle("Aktiver Split");
+    layout.addDescription(
+        "Hat ein Tab mehrere Chats nebeneinander, bekommt der, in den du "
+        "gerade tippst, einen farbigen Rand - so schreibst du nie in den "
+        "falschen.");
+    SettingWidget::checkbox("Rand um den Split, in den du tippst",
+                            s.activeSplitBorder)
+        ->addKeywords({"rand", "border", "fokus", "aktiv"})
+        ->addTo(layout);
+    SettingWidget::colorButton("Farbe des Rands", s.activeSplitBorderColor)
+        ->conditionallyEnabledBy(s.activeSplitBorder)
+        ->addTo(layout);
+    addStandardButton(layout, "Kein Rand, Farbe wie zu Beginn", [&s] {
+        s.activeSplitBorder.setValue(false);
+        s.activeSplitBorderColor.setValue(
+            s.activeSplitBorderColor.getDefaultValue());
+    });
+
     layout.addStretch();
 }
 
@@ -342,6 +360,18 @@ void LookPage::buildChatTab(GeneralPageView &layout)
                           s.fadeInMessages.setValue(false);
                           s.enableSmoothScrollingNewMessages.setValue(false);
                       });
+
+    layout.addTitle("Profilbilder im Chat");
+    SettingWidget::checkbox("Profilbild vor jedem Namen", s.chatAvatars)
+        ->setTooltip("Ein kleines rundes Bild des Chatters vor seinem Namen. "
+                     "Neue Nachrichten bekommen es ab dem Einschalten; "
+                     "ausschalten blendet es überall sofort aus. Ein Klick "
+                     "aufs Bild öffnet die User-Card.")
+        ->addKeywords({"avatar", "profilbild", "bild"})
+        ->addTo(layout);
+    addStandardButton(layout, "Keine Profilbilder im Chat", [&s] {
+        s.chatAvatars.setValue(false);
+    });
 
     layout.addTitle("Ereignisse und Erwähnungen");
     SettingWidget::checkbox("Ereignisse mit Symbol und Farbe markieren",

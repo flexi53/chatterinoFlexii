@@ -55,9 +55,46 @@
 #include <QSet>
 #include <QVBoxLayout>
 
+#include <algorithm>
+#include <cmath>
 #include <functional>
 
 namespace chatterino {
+
+namespace {
+
+/// A border drawn over a split, in the colour chosen under Look -> Tabs -
+/// see Split::refreshActiveFrame
+class ActiveFrame : public QWidget
+{
+public:
+    explicit ActiveFrame(QWidget *parent)
+        : QWidget(parent)
+    {
+        this->setAttribute(Qt::WA_TransparentForMouseEvents);
+        this->hide();
+    }
+
+protected:
+    void paintEvent(QPaintEvent * /*event*/) override
+    {
+        QColor color(getSettings()->activeSplitBorderColor.getValue());
+        if (!color.isValid())
+        {
+            color = QColor(0xe9, 0x19, 0x16);
+        }
+        QPainter painter(this);
+        const auto width = std::max(2, int(std::round(this->devicePixelRatioF())));
+        painter.fillRect(QRect(0, 0, this->width(), width), color);
+        painter.fillRect(QRect(0, this->height() - width, this->width(), width),
+                         color);
+        painter.fillRect(QRect(0, 0, width, this->height()), color);
+        painter.fillRect(QRect(this->width() - width, 0, width, this->height()),
+                         color);
+    }
+};
+
+}  // namespace
 namespace {
 void showTutorialVideo(QWidget *parent, const QString &source,
                        const QString &title, const QString &description)
@@ -249,12 +286,28 @@ Split::Split(QWidget *parent)
                                        [this] {
                                            // Forward textEdit's focused event
                                            this->focused.invoke();
+                                           this->inputFocused_ = true;
+                                           this->refreshActiveFrame();
                                        });
     this->signalHolder_.managedConnect(this->input_->ui_.textEdit->focusLost,
                                        [this] {
                                            // Forward textEdit's focusLost event
                                            this->focusLost.invoke();
+                                           this->inputFocused_ = false;
+                                           this->refreshActiveFrame();
                                        });
+
+    this->activeFrame_ = new ActiveFrame(this);
+    getSettings()->activeSplitBorder.connect(
+        [this](const auto &, const auto &) {
+            this->refreshActiveFrame();
+        },
+        this->signalHolder_, false);
+    getSettings()->activeSplitBorderColor.connect(
+        [this](const auto &, const auto &) {
+            this->activeFrame_->update();
+        },
+        this->signalHolder_, false);
 
     // this connection can be ignored since the SplitInput is owned by this Split
     std::ignore = this->input_->ui_.textEdit->imagePasted.connect(
@@ -1042,6 +1095,39 @@ void Split::resizeEvent(QResizeEvent *event)
     BaseWidget::resizeEvent(event);
 
     this->overlay_->setGeometry(this->rect());
+    if (this->activeFrame_ != nullptr)
+    {
+        this->activeFrame_->setGeometry(this->rect());
+    }
+}
+
+void Split::refreshActiveFrame()
+{
+    // Only where it tells something: with several chats side by side
+    const auto *container = [this]() -> SplitContainer * {
+        for (auto *widget = this->parentWidget(); widget != nullptr;
+             widget = widget->parentWidget())
+        {
+            if (auto *found = dynamic_cast<SplitContainer *>(widget))
+            {
+                return found;
+            }
+        }
+        return nullptr;
+    }();
+    const bool show = getSettings()->activeSplitBorder && this->inputFocused_ &&
+                      container != nullptr && container->getSplits().size() > 1;
+    if (show)
+    {
+        this->activeFrame_->setGeometry(this->rect());
+        this->activeFrame_->raise();
+        this->activeFrame_->show();
+        this->activeFrame_->update();
+    }
+    else
+    {
+        this->activeFrame_->hide();
+    }
 }
 
 void Split::enterEvent(QEnterEvent * /*event*/)

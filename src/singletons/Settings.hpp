@@ -278,6 +278,15 @@ public:
     BoolSetting eventSymbols = {"/appearance/messages/eventSymbols", false};
     /// A message mentioning you lights up briefly as it comes in
     BoolSetting pulseMentions = {"/appearance/messages/pulseMentions", false};
+    /// The chatter's round profile picture in front of their name
+    BoolSetting chatAvatars = {"/appearance/messages/avatars", false};
+    /// A border around the split being typed in, when a tab has several
+    BoolSetting activeSplitBorder = {"/appearance/splitheader/activeBorder",
+                                     false};
+    QStringSetting activeSplitBorderColor = {
+        "/appearance/splitheader/activeBorderColor", "#e91916"};
+    /// Which saved view of the settings was last loaded - see Ansichten
+    QStringSetting currentSnapshot = {"/snapshots/current", ""};
     /// Own colours over the theme's; each empty one keeps the theme's
     BoolSetting customColors = {"/appearance/customColors/enabled", false};
     QStringSetting customColorBackground = {
