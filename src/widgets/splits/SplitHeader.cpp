@@ -126,16 +126,8 @@ void cleanRoomModeText(QString &text, bool hasModRights)
         text = text.mid(0, text.size() - 2);
     }
 
-    if (!text.isEmpty())
-    {
-        static QRegularExpression commaReplacement("^(.+?, .+?,) (.+)$");
-
-        auto match = commaReplacement.match(text);
-        if (match.hasMatch())
-        {
-            text = match.captured(1) + '\n' + match.captured(2);
-        }
-    }
+    // ChattiFlexii: on one line rather than broken after the second mode,
+    // so the header stays one tidy row
 
     if (text.isEmpty() && hasModRights)
     {
@@ -391,8 +383,9 @@ void SplitHeader::initializeLayout()
                      });
 
     this->channelPicture_ =
-        new HeaderPicture(HeaderPicture::Shape::Round, this);
-    this->coverPicture_ = new HeaderPicture(HeaderPicture::Shape::Cover, this);
+        new HeaderPicture(HeaderPicture::Shape::Round, 6, this);
+    this->coverPicture_ =
+        new HeaderPicture(HeaderPicture::Shape::Cover, 10, this);
     this->activity_ = new ActivityGraph(this);
 
     auto *layout = makeLayout<QHBoxLayout>({
@@ -403,9 +396,6 @@ void SplitHeader::initializeLayout()
         // Look -> Tabs: the channel's picture and the cover of what it
         // streams
         this->channelPicture_,
-        makeWidget<BaseWidget>([](auto w) {
-            w->setScaleIndependentSize(4, 4);
-        }),
         this->coverPicture_,
         // title
         this->titleLabel_ = makeWidget<Label>([](auto w) {
@@ -413,6 +403,9 @@ void SplitHeader::initializeLayout()
                              QSizePolicy::Preferred);
             w->setCentered(true);
             w->setPadding(QMargins{});
+            // ChattiFlexii: a title too long for the header ends in "...",
+            // rather than running under what is next to it
+            w->setShouldElide(true);
         }),
         // space
         makeWidget<BaseWidget>([](auto w) {

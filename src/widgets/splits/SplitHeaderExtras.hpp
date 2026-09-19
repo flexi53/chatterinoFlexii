@@ -28,7 +28,9 @@ public:
         Cover,
     };
 
-    HeaderPicture(Shape shape, QWidget *parent);
+    /// @a gap is the room after it, in unscaled pixels - only there while
+    /// it shows
+    HeaderPicture(Shape shape, int gap, QWidget *parent);
 
     /// Shows @a picture; a null one hides it
     void setPicture(const QPixmap &picture);
@@ -38,7 +40,11 @@ protected:
     void scaleChangedEvent(float scale) override;
 
 private:
+    /// Where the picture goes, without the gap after it
+    QRectF pictureRect() const;
+
     Shape shape_;
+    int gap_;
     QPixmap picture_;
 };
 

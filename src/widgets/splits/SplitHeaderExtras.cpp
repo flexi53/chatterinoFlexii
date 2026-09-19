@@ -17,9 +17,10 @@
 
 namespace chatterino {
 
-HeaderPicture::HeaderPicture(Shape shape, QWidget *parent)
+HeaderPicture::HeaderPicture(Shape shape, int gap, QWidget *parent)
     : BaseWidget(parent)
     , shape_(shape)
+    , gap_(gap)
 {
     this->hide();
     this->scaleChangedEvent(this->scale());
@@ -36,9 +37,15 @@ void HeaderPicture::scaleChangedEvent(float scale)
 {
     // Twitch's covers are 52 by 72
     const auto height = int(16 * scale);
-    this->setFixedSize(
-        this->shape_ == Shape::Cover ? int(height * 52 / 72.0) : height,
-        height);
+    const auto width =
+        this->shape_ == Shape::Cover ? int(height * 52 / 72.0) : height;
+    this->setFixedSize(width + int(this->gap_ * scale), height);
+}
+
+QRectF HeaderPicture::pictureRect() const
+{
+    return {0, 0, qreal(this->width() - int(this->gap_ * this->scale())),
+            qreal(this->height())};
 }
 
 void HeaderPicture::paintEvent(QPaintEvent * /*event*/)
@@ -50,7 +57,7 @@ void HeaderPicture::paintEvent(QPaintEvent * /*event*/)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setRenderHint(QPainter::SmoothPixmapTransform);
-    const QRectF area = this->rect();
+    const QRectF area = this->pictureRect();
     if (this->shape_ == Shape::Round)
     {
         paintRound(painter, area, this->picture_);
