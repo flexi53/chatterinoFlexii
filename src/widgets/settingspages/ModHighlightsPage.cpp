@@ -456,7 +456,7 @@ void ModHighlightsPage::addTypedChannel()
 
 bool ModHighlightsPage::filterElements(const QString &query)
 {
-    return matchesKeywords(query, {
+    return matchesPageText(this, query) || matchesKeywords(query, {
                                       "mod",
                                       "highlight",
                                       "whosthemod",

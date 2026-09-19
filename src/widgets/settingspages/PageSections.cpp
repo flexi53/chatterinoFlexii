@@ -4,9 +4,12 @@
 
 #include "widgets/settingspages/PageSections.hpp"
 
+#include <QAbstractButton>
 #include <QFrame>
+#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QListWidget>
 #include <QScrollArea>
 #include <QString>
 #include <QStringList>
@@ -70,11 +73,76 @@ bool matchesKeywords(const QString &query, const QStringList &keywords)
     {
         return true;
     }
-    return std::any_of(keywords.begin(), keywords.end(),
-                       [&query](const QString &keyword) {
-                           return keyword.contains(query, Qt::CaseInsensitive) ||
-                                  query.contains(keyword, Qt::CaseInsensitive);
-                       });
+    return std::any_of(
+        keywords.begin(), keywords.end(), [&query](const QString &keyword) {
+            return keyword.contains(query, Qt::CaseInsensitive) ||
+                   query.contains(keyword, Qt::CaseInsensitive);
+        });
+}
+
+bool matchesPageText(const QWidget *page, const QString &query)
+{
+    if (query.isEmpty())
+    {
+        return true;
+    }
+
+    auto says = [&query](const QString &text) {
+        return !text.isEmpty() && text.contains(query, Qt::CaseInsensitive);
+    };
+
+    for (const auto *widget : page->findChildren<QWidget *>())
+    {
+        if (says(widget->toolTip()))
+        {
+            return true;
+        }
+
+        if (const auto *label = qobject_cast<const QLabel *>(widget))
+        {
+            if (says(label->text()))
+            {
+                return true;
+            }
+        }
+        else if (const auto *button =
+                     qobject_cast<const QAbstractButton *>(widget))
+        {
+            if (says(button->text()))
+            {
+                return true;
+            }
+        }
+        else if (const auto *group = qobject_cast<const QGroupBox *>(widget))
+        {
+            if (says(group->title()))
+            {
+                return true;
+            }
+        }
+        else if (const auto *tabs = qobject_cast<const QTabWidget *>(widget))
+        {
+            for (int i = 0; i < tabs->count(); i++)
+            {
+                if (says(tabs->tabText(i)))
+                {
+                    return true;
+                }
+            }
+        }
+        else if (const auto *list = qobject_cast<const QListWidget *>(widget))
+        {
+            for (int i = 0; i < list->count(); i++)
+            {
+                if (says(list->item(i)->text()))
+                {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
 }
 
 void addButtonRow(QVBoxLayout *layout, QWidget *widget)

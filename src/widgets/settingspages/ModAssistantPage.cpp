@@ -548,7 +548,8 @@ bool ModAssistantPage::filterElements(const QString &query)
         "wiederholt", "fenster",   "reason",    "farbe",      "position",
     };
 
-    return matchesKeywords(query, keywords);
+    return matchesPageText(this, query) ||
+           matchesKeywords(query, keywords);
 }
 
 }  // namespace chatterino

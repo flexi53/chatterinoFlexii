@@ -7,6 +7,7 @@
 #include "Application.hpp"
 #include "common/ChatterinoSetting.hpp"
 #include "singletons/WindowManager.hpp"
+#include "util/German.hpp"
 #include "widgets/buttons/SignalLabel.hpp"
 
 #include <boost/variant.hpp>
@@ -143,8 +144,9 @@ public:
     template <typename OnClick>
     QPushButton *makeButton(const QString &text, OnClick onClick)
     {
-        auto *button = new QPushButton(text);
-        this->groups_.back().widgets.push_back({button, {text}});
+        auto *button = new QPushButton(german::say(text));
+        this->groups_.back().widgets.push_back(
+            {button, german::bothWords(text)});
         QObject::connect(button, &QPushButton::clicked, onClick);
         return button;
     }

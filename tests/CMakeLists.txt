@@ -63,6 +63,7 @@ set(test_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/InputHighlighter.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/BalancedResolverResults.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/Flexii.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/FlexiiGerman.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/FlexiiNotebook.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/FlexiiProfilePictures.cpp
 

@@ -4,11 +4,16 @@
 
 #include "widgets/settingspages/LookPage.hpp"
 
+#include "Application.hpp"
 #include "messages/layouts/AlternateBackground.hpp"
 #include "messages/layouts/MessageRole.hpp"
 #include "singletons/Settings.hpp"
+#include "singletons/Theme.hpp"
+#include "util/FuzzyConvert.hpp"
 #include "widgets/dialogs/ColorPickerDialog.hpp"
 #include "widgets/helper/color/ColorButton.hpp"
+#include "widgets/helper/FontSettingWidget.hpp"
+#include "widgets/NotebookEnums.hpp"
 #include "widgets/settingspages/SettingWidget.hpp"
 
 #include <QComboBox>
@@ -23,11 +28,18 @@
 #include <array>
 #include <cstdlib>
 #include <functional>
+#include <type_traits>
 #include <utility>
 
 namespace chatterino {
 
 namespace {
+
+/// The zoom levels Chatterino offers, in its own order
+const QStringList ZOOM_LEVELS = {
+    "0.5x", "0.6x", "0.7x", "0.8x",  "0.9x",  "Default", "1.2x", "1.4x",
+    "1.6x", "1.8x", "2x",   "2.33x", "2.66x", "3x",      "3.5x", "4x",
+};
 
 /// Which of the strengths on offer @a strength is, or is closest to
 int strengthIndex(int strength)
@@ -105,6 +117,51 @@ void LookPage::buildStyleTab(GeneralPageView &layout)
 {
     auto &s = *getSettings();
 
+    layout.addTitle("Grundeinstellungen");
+    layout.addDescription(
+        "Farbschema, Schrift und Vergrößerung - Chatterinos eigene Schalter, "
+        "hier gleich zur Hand. Sie stehen auch unter Allgemein -> Oberfläche "
+        "und meinen dort dasselbe.");
+    {
+        auto *themes = getApp()->getThemes();
+        auto available = themes->availableThemes();
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+        available.emplace_back("System", "System");
+#endif
+        SettingWidget::dropdown("Theme", themes->themeName, available)
+            ->addTo(layout);
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+        SettingWidget::dropdown("Dark system theme",
+                                themes->darkSystemThemeName,
+                                themes->availableThemes())
+            ->conditionallyEnabledBy(themes->themeName, "System")
+            ->addTo(layout);
+        SettingWidget::dropdown("Light system theme",
+                                themes->lightSystemThemeName,
+                                themes->availableThemes())
+            ->conditionallyEnabledBy(themes->themeName, "System")
+            ->addTo(layout);
+#endif
+    }
+
+    layout.addWidget(new FontSettingWidget(s.chatFontFamily, s.chatFontSize,
+                                           s.chatFontWeight),
+                     {"font", "weight", "size", "Schrift", "Schriftgröße"});
+
+    layout.addDropdown<float>(
+        "Zoom", ZOOM_LEVELS, s.uiScale,
+        [](auto val) {
+            if (val == 1)
+            {
+                return QString("Default");
+            }
+            return QString::number(val) + "x";
+        },
+        [](auto args) {
+            return fuzzyToFloat(args.value, 1.F);
+        });
+
     layout.addTitle("Aussehen");
     layout.addDescription(
         "Classic ist Chatterino, wie es immer aussah. Modern rundet die Tabs "
@@ -127,6 +184,68 @@ void LookPage::buildStyleTab(GeneralPageView &layout)
 void LookPage::buildTabsTab(GeneralPageView &layout)
 {
     auto &s = *getSettings();
+
+    layout.addTitle("Anordnung");
+    layout.addDescription(
+        "Wo die Tab-Leiste sitzt und welche Tabs sie zeigt - Chatterinos "
+        "eigene Schalter, dieselben wie unter Allgemein -> Oberfläche.");
+    layout.addDropdown<std::underlying_type_t<NotebookTabLocation>>(
+        "Anordnung der Tabs", {"Oben", "Links", "Rechts", "Unten"},
+        s.tabDirection,
+        [](auto val) {
+            switch (val)
+            {
+                case NotebookTabLocation::Left:
+                    return "Links";
+                case NotebookTabLocation::Right:
+                    return "Rechts";
+                case NotebookTabLocation::Bottom:
+                    return "Unten";
+                case NotebookTabLocation::Top:
+                default:
+                    return "Oben";
+            }
+        },
+        [](auto args) {
+            if (args.value == "Links")
+            {
+                return NotebookTabLocation::Left;
+            }
+            if (args.value == "Rechts")
+            {
+                return NotebookTabLocation::Right;
+            }
+            if (args.value == "Unten")
+            {
+                return NotebookTabLocation::Bottom;
+            }
+            return NotebookTabLocation::Top;
+        },
+        false);
+
+    layout.addDropdown<std::underlying_type_t<NotebookTabVisibility>>(
+        "Sichtbarkeit der Tabs", {"Alle Tabs", "Nur Live-Kanäle"},
+        s.tabVisibility,
+        [](auto val) {
+            switch (val)
+            {
+                case NotebookTabVisibility::LiveOnly:
+                    return "Nur Live-Kanäle";
+                case NotebookTabVisibility::AllTabs:
+                default:
+                    return "Alle Tabs";
+            }
+        },
+        [](auto args) {
+            if (args.value == "Nur Live-Kanäle")
+            {
+                return NotebookTabVisibility::LiveOnly;
+            }
+            return NotebookTabVisibility::AllTabs;
+        },
+        false, "Welche Tabs in der Leiste zu sehen sind");
+
+    SettingWidget::dropdown("Tab style", s.tabStyle)->addTo(layout);
 
     layout.addTitle("Tab-Leiste");
     layout.addDescription(

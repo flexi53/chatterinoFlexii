@@ -618,6 +618,9 @@ set(SOURCE_FILES
         util/FunctionEventFilter.hpp
         util/FuzzyConvert.cpp
         util/FuzzyConvert.hpp
+        util/German.cpp
+        util/German.hpp
+        util/GermanWords.inc
         util/Helpers.cpp
         util/Helpers.hpp
         util/HttpServer.cpp

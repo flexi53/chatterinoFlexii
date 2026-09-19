@@ -650,7 +650,7 @@ bool TransferPage::filterElements(const QString &query)
         "abgleich", "sync",    "ansicht",    "snapshot", "profil",
     };
 
-    return matchesKeywords(query, keywords);
+    return matchesPageText(this, query) || matchesKeywords(query, keywords);
 }
 
 }  // namespace chatterino

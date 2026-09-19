@@ -6,10 +6,12 @@
 
 #include "common/QLogging.hpp"
 #include "singletons/Settings.hpp"  // IWYU pragma: keep
+#include "util/German.hpp"
 #include "util/QMagicEnumTagged.hpp"
 #include "util/RapidJsonSerializeQString.hpp"  // IWYU pragma: keep
 #include "widgets/dialogs/ColorPickerDialog.hpp"
 #include "widgets/helper/color/ColorButton.hpp"
+#include "widgets/NotebookEnums.hpp"
 #include "widgets/settingspages/CustomWidgets.hpp"
 #include "widgets/settingspages/GeneralPageView.hpp"
 
@@ -41,7 +43,7 @@ SettingWidget::SettingWidget(const QString &mainKeyword)
     this->hLayout->setContentsMargins(0, 0, 0, 0);
     this->vLayout->addLayout(this->hLayout);
 
-    this->keywords.append(mainKeyword);
+    this->keywords.append(german::bothWords(mainKeyword));
 }
 
 SettingWidget *SettingWidget::checkbox(const QString &label,
@@ -49,7 +51,7 @@ SettingWidget *SettingWidget::checkbox(const QString &label,
 {
     auto *widget = new SettingWidget(label);
 
-    auto *check = new SCheckBox(label);
+    auto *check = new SCheckBox(german::say(label));
 
     widget->hLayout->addWidget(check);
 
@@ -77,7 +79,7 @@ SettingWidget *SettingWidget::inverseCheckbox(const QString &label,
 {
     auto *widget = new SettingWidget(label);
 
-    auto *check = new SCheckBox(label);
+    auto *check = new SCheckBox(german::say(label));
 
     widget->hLayout->addWidget(check);
 
@@ -106,7 +108,7 @@ SettingWidget *SettingWidget::customCheckbox(
 {
     auto *widget = new SettingWidget(label);
 
-    auto *check = new SCheckBox(label);
+    auto *check = new SCheckBox(german::say(label));
 
     widget->hLayout->addWidget(check);
 
@@ -126,7 +128,7 @@ SettingWidget *SettingWidget::intInput(const QString &label,
 {
     auto *widget = new SettingWidget(label);
 
-    auto *lbl = new QLabel(label + ":");
+    auto *lbl = new QLabel(german::say(label) + ":");
 
     auto *input = new SpinBox;
     if (params.min.has_value())
@@ -175,7 +177,7 @@ SettingWidget *SettingWidget::dropdown(const QString &label,
 {
     auto *widget = new SettingWidget(label);
 
-    auto *lbl = new QLabel(label % ":");
+    auto *lbl = new QLabel(german::say(label) % ":");
     auto *combo = new ComboBox;
     combo->setFocusPolicy(Qt::StrongFocus);
 
@@ -250,7 +252,7 @@ SettingWidget *SettingWidget::dropdown(const QString &label,
 {
     auto *widget = new SettingWidget(label);
 
-    auto *lbl = new QLabel(label % ":");
+    auto *lbl = new QLabel(german::say(label) % ":");
     auto *combo = new ComboBox;
     combo->setFocusPolicy(Qt::StrongFocus);
 
@@ -322,6 +324,11 @@ template SettingWidget *SettingWidget::dropdown<ThumbnailPreviewMode>(
     const QString &label, EnumSetting<ThumbnailPreviewMode> &setting);
 template SettingWidget *SettingWidget::dropdown<StreamerModeSetting>(
     const QString &label, EnumSetting<StreamerModeSetting> &setting);
+// used by the Look page, which gathers the appearance settings in one place
+template SettingWidget *SettingWidget::dropdown<NotebookTabLocation>(
+    const QString &label, EnumSetting<NotebookTabLocation> &setting);
+template SettingWidget *SettingWidget::dropdown<NotebookTabVisibility>(
+    const QString &label, EnumSetting<NotebookTabVisibility> &setting);
 
 SettingWidget *SettingWidget::dropdown(
     const QString &label, QStringSetting &setting,
@@ -329,7 +336,7 @@ SettingWidget *SettingWidget::dropdown(
 {
     auto *widget = new SettingWidget(label);
 
-    auto *lbl = new QLabel(label % ":");
+    auto *lbl = new QLabel(german::say(label) % ":");
     auto *combo = new ComboBox;
     combo->setFocusPolicy(Qt::StrongFocus);
 
@@ -392,7 +399,7 @@ SettingWidget *SettingWidget::colorButton(const QString &label,
     QColor color(setting.getValue());
     auto *widget = new SettingWidget(label);
 
-    auto *lbl = new QLabel(label + ":");
+    auto *lbl = new QLabel(german::say(label) + ":");
 
     auto *colorButton = new ColorButton(color);
 
@@ -434,13 +441,13 @@ SettingWidget *SettingWidget::lineEdit(const QString &label,
 {
     auto *widget = new SettingWidget(label);
 
-    auto *lbl = new QLabel(label + ":");
+    auto *lbl = new QLabel(german::say(label) + ":");
 
     auto *edit = new QLineEdit;
     edit->setText(setting);
     if (!placeholderText.isEmpty())
     {
-        edit->setPlaceholderText(placeholderText);
+        edit->setPlaceholderText(german::say(placeholderText));
     }
 
     widget->hLayout->addWidget(lbl);
@@ -477,7 +484,7 @@ SettingWidget *SettingWidget::fontButton(const QString &label,
 {
     auto *widget = new SettingWidget(label);
 
-    auto *lbl = new QLabel(label + ":");
+    auto *lbl = new QLabel(german::say(label) + ":");
 
     auto *button = new SPushButton(currentFont().family());
 
@@ -513,6 +520,9 @@ SettingWidget *SettingWidget::setTooltip(QString tooltip)
 {
     assert(!tooltip.isEmpty());
 
+    const auto english = tooltip;
+    tooltip = german::say(tooltip);
+
     if (tooltip.length() > MAX_TOOLTIP_LINE_LENGTH)
     {
         // match MAX_TOOLTIP_LINE_LENGTH characters, any remaining
@@ -531,14 +541,14 @@ SettingWidget *SettingWidget::setTooltip(QString tooltip)
         this->actionWidget->setToolTip(tooltip);
     }
 
-    this->keywords.append(tooltip);
+    this->keywords.append(german::bothWords(english));
 
     return this;
 }
 
 SettingWidget *SettingWidget::setDescription(const QString &text)
 {
-    auto *lbl = new QLabel(text);
+    auto *lbl = new QLabel(german::say(text));
     lbl->setTextInteractionFlags(Qt::TextBrowserInteraction |
                                  Qt::LinksAccessibleByKeyboard);
     lbl->setOpenExternalLinks(true);
@@ -547,7 +557,7 @@ SettingWidget *SettingWidget::setDescription(const QString &text)
 
     this->vLayout->insertWidget(0, lbl);
 
-    this->keywords.append(text);
+    this->keywords.append(german::bothWords(text));
 
     return this;
 }

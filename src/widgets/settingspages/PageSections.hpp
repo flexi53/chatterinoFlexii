@@ -33,4 +33,9 @@ void addButtonRow(QVBoxLayout *layout, QWidget *widget);
 /// @a keywords describe - always for an empty search
 bool matchesKeywords(const QString &query, const QStringList &keywords);
 
+/// Whether anything written on @a page - a label, a checkbox, a button, a
+/// tab, a list entry or a tooltip - contains @a query. So a page is found by
+/// what it actually says, without keeping a list of words next to it.
+bool matchesPageText(const QWidget *page, const QString &query);
+
 }  // namespace chatterino::pagesections

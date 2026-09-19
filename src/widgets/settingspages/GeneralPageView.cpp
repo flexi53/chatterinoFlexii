@@ -6,6 +6,7 @@
 
 #include "Application.hpp"
 #include "common/QLogging.hpp"
+#include "util/German.hpp"
 #include "util/LayoutHelper.hpp"
 #include "util/RapidJsonSerializeQString.hpp"
 #include "widgets/helper/Line.hpp"
@@ -123,7 +124,8 @@ TitleLabel *GeneralPageView::addTitle(const QString &title)
     }
 
     // title
-    auto *label = new TitleLabel(title + ":");
+    const auto shown = german::say(title);
+    auto *label = new TitleLabel(shown + ":");
     this->addWidget(label);
 
     NavigationLabel *navLabel = nullptr;
@@ -131,7 +133,7 @@ TitleLabel *GeneralPageView::addTitle(const QString &title)
     // navigation item
     if (this->navigationLayout_ != nullptr)
     {
-        navLabel = new NavigationLabel(title);
+        navLabel = new NavigationLabel(shown);
         navLabel->setCursor(Qt::PointingHandCursor);
         this->navigationLayout_->addWidget(navLabel);
 
@@ -143,7 +145,9 @@ TitleLabel *GeneralPageView::addTitle(const QString &title)
     }
 
     // groups
-    this->groups_.push_back(Group{title, label, navLabel, nullptr, {}});
+    // both texts, so the search finds the group either way
+    this->groups_.push_back(Group{
+        german::bothWords(title).join(' '), label, navLabel, nullptr, {}});
 
     if (this->groups_.size() == 1)
     {
@@ -155,10 +159,10 @@ TitleLabel *GeneralPageView::addTitle(const QString &title)
 
 SubtitleLabel *GeneralPageView::addSubtitle(const QString &title)
 {
-    auto *label = new SubtitleLabel(title + ":");
+    auto *label = new SubtitleLabel(german::say(title) + ":");
     this->addWidget(label);
 
-    this->groups_.back().widgets.push_back({label, {title}});
+    this->groups_.back().widgets.push_back({label, german::bothWords(title)});
 
     return label;
 }
@@ -172,7 +176,7 @@ ComboBox *GeneralPageView::addDropdown(const QString &text,
     combo->setFocusPolicy(Qt::StrongFocus);
     combo->addItems(list);
 
-    auto *label = new QLabel(text + ":");
+    auto *label = new QLabel(german::say(text) + ":");
     layout->addWidget(label);
     layout->addStretch(1);
     layout->addWidget(combo);
@@ -181,8 +185,8 @@ ComboBox *GeneralPageView::addDropdown(const QString &text,
     this->addLayout(layout);
 
     // groups
-    this->groups_.back().widgets.push_back({combo, {text}});
-    this->groups_.back().widgets.push_back({label, {text}});
+    this->groups_.back().widgets.push_back({combo, german::bothWords(text)});
+    this->groups_.back().widgets.push_back({label, german::bothWords(text)});
 
     return combo;
 }
@@ -197,7 +201,7 @@ void GeneralPageView::addNavigationSpacing()
 
 DescriptionLabel *GeneralPageView::addDescription(const QString &text)
 {
-    auto *label = new DescriptionLabel(text);
+    auto *label = new DescriptionLabel(german::say(text));
 
     label->setTextInteractionFlags(Qt::TextBrowserInteraction |
                                    Qt::LinksAccessibleByKeyboard);
@@ -207,7 +211,7 @@ DescriptionLabel *GeneralPageView::addDescription(const QString &text)
     this->addWidget(label);
 
     // groups
-    this->groups_.back().widgets.push_back({label, {text}});
+    this->groups_.back().widgets.push_back({label, german::bothWords(text)});
 
     return label;
 }
@@ -368,6 +372,8 @@ void GeneralPageView::addToolTip(QWidget &widget, QString text) const
     {
         return;
     }
+
+    text = german::say(text);
 
     if (text.length() > MAX_TOOLTIP_LINE_LENGTH)
     {

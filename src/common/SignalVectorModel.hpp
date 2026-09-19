@@ -5,6 +5,7 @@
 #pragma once
 
 #include "common/SignalVector.hpp"
+#include "util/German.hpp"
 
 #include <pajlada/signals/signalholder.hpp>
 #include <QAbstractTableModel>
@@ -206,10 +207,14 @@ public:
         {
             return QVariant();
         }
-        else
+
+        // Column titles are written in English in the code
+        if (role == Qt::DisplayRole &&
+            it.value().typeId() == QMetaType::QString)
         {
-            return it.value();
+            return german::say(it.value().toString());
         }
+        return it.value();
     }
 
     bool setHeaderData(int section, Qt::Orientation orientation,

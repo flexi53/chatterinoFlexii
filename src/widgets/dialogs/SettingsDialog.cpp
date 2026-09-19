@@ -10,6 +10,7 @@
 #include "controllers/commands/CommandController.hpp"
 #include "controllers/hotkeys/HotkeyController.hpp"
 #include "singletons/Settings.hpp"
+#include "util/German.hpp"
 #include "util/LayoutCreator.hpp"
 #include "widgets/BaseWindow.hpp"
 #include "widgets/helper/SettingsDialogTab.hpp"
@@ -35,6 +36,14 @@
 #include <QFile>
 #include <QLineEdit>
 
+namespace {
+
+/// How wide the column of page names is - German names need more room than
+/// the English ones this was once set for
+constexpr int TAB_COLUMN_WIDTH = 185;
+
+}  // namespace
+
 namespace chatterino {
 
 SettingsDialog::SettingsDialog(QWidget *parent)
@@ -48,7 +57,7 @@ SettingsDialog::SettingsDialog(QWidget *parent)
           parent)
 {
     this->setObjectName("SettingsDialog");
-    this->setWindowTitle("ChattiFlexii Settings");
+    this->setWindowTitle("ChattiFlexii - Einstellungen");
     // Disable the ? button in the titlebar until we decide to use it
     this->setWindowFlags(this->windowFlags() &
                          ~Qt::WindowContextHelpButtonHint);
@@ -107,7 +116,8 @@ void SettingsDialog::setSearchPlaceholderText()
             "(" + searchSeq.toString(QKeySequence::SequenceFormat::NativeText) +
             ")";
     }
-    this->ui_.search->setPlaceholderText("Find in settings... " + searchHotkey);
+    this->ui_.search->setPlaceholderText("In den Einstellungen suchen ... " +
+                                         searchHotkey);
 }
 
 void SettingsDialog::initUi()
@@ -143,7 +153,7 @@ void SettingsDialog::initUi()
         .withoutMargin()
         .assign(&this->ui_.tabContainer);
     this->ui_.tabContainerContainer->setFixedWidth(
-        static_cast<int>(150 * this->dpi_));
+        static_cast<int>(TAB_COLUMN_WIDTH * this->dpi_));
 
     // right side (pages)
     centerBox.emplace<QStackedLayout>()
@@ -158,9 +168,9 @@ void SettingsDialog::initUi()
     auto buttons = outerBox.emplace<QDialogButtonBox>(Qt::Horizontal);
     {
         this->ui_.okButton =
-            buttons->addButton("Ok", QDialogButtonBox::YesRole);
+            buttons->addButton("Übernehmen", QDialogButtonBox::YesRole);
         this->ui_.cancelButton =
-            buttons->addButton("Cancel", QDialogButtonBox::NoRole);
+            buttons->addButton("Abbrechen", QDialogButtonBox::NoRole);
     }
 
     // ---- misc
@@ -246,12 +256,13 @@ void SettingsDialog::addTabs()
     // Constructors are wrapped in std::function to remove some strain from first time loading.
 
     // clang-format off
-    this->addTab([]{return new GeneralPage;},          "General",        ":/settings/about.svg", SettingsTabId::General);
+    // What ChattiFlexii adds comes first - that is what gets changed most
+    this->addTab([]{return new LookPage;},             "Aussehen",       ":/settings/look.svg");
+    this->addTab([]{return new ModAssistantPage;},     "Mod-Assistent",  ":/settings/modassistant.svg");
+    this->addTab([]{return new ModHighlightsPage;},    "Mod-Highlights", ":/settings/modhighlights.svg");
+    this->addTab([]{return new TransferPage;},         "Sichern & Übertragen", ":/settings/transfer.svg");
     this->ui_.tabContainer->addSpacing(16);
-    this->addTab([]{return new LookPage;},             "Look",           ":/settings/about.svg");
-    this->addTab([]{return new ModAssistantPage;},     "Mod-Assistent",  ":/settings/moderation.svg");
-    this->addTab([]{return new ModHighlightsPage;},    "Mod-Highlights", ":/settings/notifications.svg");
-    this->addTab([]{return new TransferPage;},         "Export & Import", ":/settings/externaltools.svg");
+    this->addTab([]{return new GeneralPage;},          "General",        ":/settings/about.svg", SettingsTabId::General);
     this->ui_.tabContainer->addSpacing(16);
     this->addTab([]{return new AccountsPage;},         "Accounts",       ":/settings/accounts.svg", SettingsTabId::Accounts);
     this->addTab([]{return new NicknamesPage;},        "Nicknames",      ":/settings/accounts.svg");
@@ -277,8 +288,8 @@ void SettingsDialog::addTab(std::function<SettingsPage *()> page,
                             const QString &name, const QString &iconPath,
                             SettingsTabId id, Qt::Alignment alignment)
 {
-    auto *tab =
-        new SettingsDialogTab(this, std::move(page), name, iconPath, id);
+    auto *tab = new SettingsDialogTab(this, std::move(page), german::say(name),
+                                      iconPath, id);
     tab->setFixedHeight(static_cast<int>(30 * this->dpi_));
 
     this->ui_.tabContainer->addWidget(tab, 0, alignment);
@@ -303,6 +314,8 @@ void SettingsDialog::selectTab(SettingsDialogTab *tab, bool byUser)
         }
 
         this->ui_.pageStack->addWidget(tab->page());
+        // The pages that build their labels themselves say them in English
+        german::translateWidgets(tab->page());
     }();
 
     this->ui_.pageStack->setCurrentWidget(tab->page());
@@ -427,7 +440,7 @@ void SettingsDialog::scaleChangedEvent(float newScale)
 
     if (this->ui_.tabContainerContainer)
     {
-        this->ui_.tabContainerContainer->setFixedWidth(150);
+        this->ui_.tabContainerContainer->setFixedWidth(TAB_COLUMN_WIDTH);
     }
 }
 
