@@ -733,6 +733,8 @@ set(SOURCE_FILES
 
         widgets/buttons/Button.cpp
         widgets/buttons/Button.hpp
+        widgets/buttons/ClearChatButton.cpp
+        widgets/buttons/ClearChatButton.hpp
         widgets/buttons/DimButton.cpp
         widgets/buttons/DimButton.hpp
         widgets/buttons/DrawnButton.cpp

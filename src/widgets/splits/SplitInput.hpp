@@ -32,6 +32,7 @@ class InputHighlighter;
 class MessageView;
 class LabelButton;
 class FocusButton;
+class ClearChatButton;
 class ResizingTextEdit;
 class ChannelView;
 class SvgButton;
@@ -56,6 +57,9 @@ public:
 
     void setReply(MessagePtr target);
     void setPlaceholderText(const QString &text);
+
+    /// The focus button shows whether its window shows only the chats
+    void refreshFocusButton();
 
     /**
      * @brief Hide the widget
@@ -181,6 +185,7 @@ protected:
         SvgButton *emoteButton;
         SvgButton *modAssistButton;
         FocusButton *focusButton;
+        ClearChatButton *clearButton;
     } ui_;
 
     MessagePtr replyTarget_ = nullptr;

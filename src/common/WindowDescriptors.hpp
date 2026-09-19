@@ -109,6 +109,9 @@ struct WindowDescriptor {
 
     QRect geometry_;
 
+    /// ChattiFlexii: showing only the chats - see SplitNotebook::setFocusMode
+    bool focus_ = false;
+
     std::vector<TabDescriptor> tabs_;
 };
 

@@ -708,6 +708,7 @@ TEST(FlexiiSync, TakingASetupKeepsTheWindowsWhereTheyAreHere)
                                 {"y", 25},
                                 {"width", 1400},
                                 {"height", 860},
+                                {"focus", true},
                                 {"tabs", QJsonArray{"here"}}},
                     QJsonObject{{"type", "popup"},
                                 {"x", 100},
@@ -769,6 +770,8 @@ TEST(FlexiiSync, TakingASetupKeepsTheWindowsWhereTheyAreHere)
     EXPECT_EQ(main["x"].toInt(), 0);
     EXPECT_EQ(main["width"].toInt(), 1400);
     EXPECT_FALSE(main.contains("state"));
+    // Only the chats in this window here, whatever it is there
+    EXPECT_TRUE(main["focus"].toBool());
     // Its tabs came along
     EXPECT_EQ(main["tabs"].toArray()[0].toString(), "there");
     EXPECT_EQ(windows[1].toObject()["x"].toInt(), 100);

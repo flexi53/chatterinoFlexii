@@ -216,6 +216,8 @@ WindowLayout WindowLayout::loadFromFile(const QString &path)
             window.state_ = WindowDescriptor::State::Maximized;
         }
 
+        window.focus_ = windowObj.value("focus").toBool();
+
         // Load window geometry
         {
             int x = windowObj.value("x").toInt(-1);

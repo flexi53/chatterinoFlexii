@@ -113,6 +113,7 @@ public:
 
 protected:
     void paintEvent(QPaintEvent *event) override;
+    void showEvent(QShowEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
     void keyReleaseEvent(QKeyEvent *event) override;
@@ -193,6 +194,11 @@ public Q_SLOTS:
     void popup();
     void showOverlayWindow();
     void clear();
+
+    /// Hides the header while the window shows only the chats, and brings
+    /// the focus button in the input bar up to date - see
+    /// SplitNotebook::setFocusMode
+    void refreshFocusView();
     void openInBrowser();
     void openModViewInBrowser();
     void openWhispersInBrowser();

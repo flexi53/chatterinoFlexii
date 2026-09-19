@@ -531,6 +531,12 @@ void WindowManager::save()
         windowObj.insert("width", rect.width());
         windowObj.insert("height", rect.height());
 
+        // Each window keeps to itself whether it shows only the chats
+        if (window->getNotebook().isFocusMode())
+        {
+            windowObj.insert("focus", true);
+        }
+
         windowObj["emotePopup"] = QJsonObject{
             {"x", this->emotePopupBounds_.x()},
             {"y", this->emotePopupBounds_.y()},
@@ -1032,6 +1038,8 @@ void WindowManager::applyWindowLayout(const WindowLayout &layout)
                 }
             }
         }
+
+        window.getNotebook().setFocusMode(windowData.focus_);
 
         window.show();
 

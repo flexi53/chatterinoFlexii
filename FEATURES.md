@@ -103,14 +103,18 @@ goes back to the theme. **Profilbilder in den Tabs** puts the channel's round
 profile picture in front of each tab's name - the first split's, for a tab
 with several.
 
-**Fokus-Ansicht** hides the tabs, the buttons next to them and the split
-headers, leaving the chats - and the tab groups set to **Always Show
+**Fokus-Ansicht** hides a window's tabs, the buttons next to them and the
+split headers, leaving the chats - and the tab groups set to **Always Show
 Group**, so the channels that matter most stay one click away. A button
 drawn as four corners, in every split's input bar between the moderation
-assistant and the emotes, switches it on and off - it stays in reach when
-everything else goes; the setting also sits under Stil and in the tab bar's
-right-click menu. Each
-computer keeps this to itself when the setup is synced.
+assistant and the emotes, switches it on and off for the window it is in -
+a second window stays as it is - and it stays in reach when everything else
+goes; the tab bar's right-click menu has it too. Each window remembers it,
+and each computer keeps it to itself when the setup is synced.
+
+Next to it, a button drawn as a bin **empties the chat** of its split, here
+only - what the split menu's *Clear messages* does, one click away, say for
+mentions that have been dealt with.
 
 ### Chat
 

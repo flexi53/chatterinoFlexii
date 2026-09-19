@@ -386,6 +386,13 @@ public:
      */
     void toggleTabVisibility();
 
+    /// Look -> Stil: only the chats - and the tab groups always shown. No
+    /// other tabs, no buttons, no split headers. Each window has its own,
+    /// switched with the FocusButton in its splits' input bars.
+    void setFocusMode(bool on);
+    void toggleFocusMode();
+    bool isFocusMode() const;
+
     QAction *showAllTabsAction;
     QAction *onlyShowLiveTabsAction;
     QAction *hideAllTabsAction;
@@ -396,10 +403,6 @@ protected:
 private:
     QAction *sortTabsAlphabeticallyAction_;
 
-    /// Look -> Stil: only the chats - and the tab groups always shown. No
-    /// other tabs, no buttons, no split headers. The way in and out is the
-    /// FocusButton in every split's input bar.
-    void setFocusMode(bool on);
     bool focusMode_ = false;
 
     void addCustomButtons();

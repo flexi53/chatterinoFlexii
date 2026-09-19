@@ -4,8 +4,9 @@
 
 #include "widgets/buttons/FocusButton.hpp"
 
-#include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
+#include "widgets/Notebook.hpp"
+#include "widgets/Window.hpp"
 
 #include <QPainter>
 
@@ -13,19 +14,45 @@
 
 namespace chatterino {
 
+namespace {
+
+SplitNotebook *notebookOf(const QWidget *widget)
+{
+    auto *window = dynamic_cast<Window *>(widget->window());
+    return window == nullptr ? nullptr : &window->getNotebook();
+}
+
+}  // namespace
+
 FocusButton::FocusButton(BaseWidget *parent)
     : Button(parent)
 {
-    getSettings()->focusMode.connect(
-        [this](const bool &, auto) {
-            this->updateTooltip();
-            this->update();
-        },
-        this->connections_);
+    this->refresh();
 
-    QObject::connect(this, &Button::leftClicked, this, [] {
-        getSettings()->focusMode.setValue(!getSettings()->focusMode);
+    QObject::connect(this, &Button::leftClicked, this, [this] {
+        if (auto *notebook = notebookOf(this))
+        {
+            notebook->toggleFocusMode();
+        }
     });
+}
+
+bool FocusButton::active() const
+{
+    const auto *notebook = notebookOf(this);
+    return notebook != nullptr && notebook->isFocusMode();
+}
+
+void FocusButton::refresh()
+{
+    this->setToolTip(this->active()
+                         ? QStringLiteral("Fokus beenden - alle Tabs, Knöpfe "
+                                          "und Split-Köpfe in diesem Fenster "
+                                          "zeigen")
+                         : QStringLiteral("Fokus-Ansicht für dieses Fenster - "
+                                          "nur die Chats und die Tab-Gruppen, "
+                                          "die immer angezeigt werden"));
+    this->update();
 }
 
 void FocusButton::paintContent(QPainter &painter)
@@ -55,7 +82,7 @@ void FocusButton::paintContent(QPainter &painter)
         painter.drawLine(at, at + QPointF(dx, 0));
         painter.drawLine(at, at + QPointF(0, dy));
     };
-    if (!getSettings()->focusMode)
+    if (!this->active())
     {
         corner(box.topLeft(), arm, arm);
         corner(box.topRight(), -arm, arm);
@@ -69,16 +96,6 @@ void FocusButton::paintContent(QPainter &painter)
         corner(box.bottomLeft() + QPointF(arm, -arm), -arm, arm);
         corner(box.bottomRight() + QPointF(-arm, -arm), arm, arm);
     }
-}
-
-void FocusButton::updateTooltip()
-{
-    this->setToolTip(getSettings()->focusMode
-                         ? QStringLiteral("Fokus beenden - alle Tabs, Knöpfe "
-                                          "und Split-Köpfe zeigen")
-                         : QStringLiteral("Fokus-Ansicht - nur die Chats und "
-                                          "die Tab-Gruppen, die immer "
-                                          "angezeigt werden"));
 }
 
 }  // namespace chatterino

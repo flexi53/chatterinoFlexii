@@ -263,8 +263,6 @@ public:
     /// The channel's profile picture in front of a tab's name
     BoolSetting tabProfilePictures = {"/appearance/tabs/profilePictures",
                                       false};
-    /// Only the chats: no tab bar, no split headers
-    BoolSetting focusMode = {"/appearance/focusMode", false};
     /// Own colours over the theme's; each empty one keeps the theme's
     BoolSetting customColors = {"/appearance/customColors/enabled", false};
     QStringSetting customColorBackground = {

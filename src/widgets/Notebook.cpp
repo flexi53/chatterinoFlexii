@@ -2476,11 +2476,6 @@ SplitNotebook::SplitNotebook(Window *parent)
             }
         });
 
-    getSettings()->focusMode.connect(
-        [this](const bool &on, auto) {
-            this->setFocusMode(on);
-        },
-        this->signalHolder_);
 }
 
 void SplitNotebook::addNotebookActionsToMenu(QMenu *menu)
@@ -2488,8 +2483,8 @@ void SplitNotebook::addNotebookActionsToMenu(QMenu *menu)
     Notebook::addNotebookActionsToMenu(menu);
 
     menu->addAction(this->sortTabsAlphabeticallyAction_);
-    menu->addAction("Fokus-Ansicht ein/aus", [] {
-        getSettings()->focusMode.setValue(!getSettings()->focusMode);
+    menu->addAction("Fokus-Ansicht ein/aus", [this] {
+        this->toggleFocusMode();
     });
 
     auto *submenu = menu->addMenu("Tab visibility");
@@ -2520,6 +2515,21 @@ void SplitNotebook::setFocusMode(bool on)
 
     this->setCustomButtonsHidden(on);
     this->setHideUnpinnedTabs(on);
+    // Their headers, and the focus buttons in their input bars
+    this->forEachSplit([](Split *split) {
+        split->refreshFocusView();
+    });
+    getApp()->getWindows()->queueSave();
+}
+
+void SplitNotebook::toggleFocusMode()
+{
+    this->setFocusMode(!this->focusMode_);
+}
+
+bool SplitNotebook::isFocusMode() const
+{
+    return this->focusMode_;
 }
 
 void SplitNotebook::showEvent(QShowEvent * /*event*/)

@@ -22,6 +22,7 @@
 #include "singletons/Theme.hpp"
 #include "util/Helpers.hpp"
 #include "util/LayoutCreator.hpp"
+#include "widgets/buttons/ClearChatButton.hpp"
 #include "widgets/buttons/FocusButton.hpp"
 #include "widgets/buttons/LabelButton.hpp"
 #include "widgets/buttons/SvgButton.hpp"
@@ -245,12 +246,20 @@ void SplitInput::initLayout()
         // In and out of the focus view, here as the input bar stays when
         // the tabs and split headers go
         this->ui_.focusButton = new FocusButton;
+        // Empties this chat here, as Clear messages does - for mentions
+        // already dealt with, say
+        this->ui_.clearButton = new ClearChatButton;
+        QObject::connect(this->ui_.clearButton, &Button::leftClicked, this,
+                         [this] {
+                             this->split_->clear();
+                         });
 
         auto *buttonRow = new QHBoxLayout;
         buttonRow->setContentsMargins(0, 0, 0, 0);
         buttonRow->setSpacing(0);
         buttonRow->addStretch(1);
         buttonRow->addWidget(this->ui_.modAssistButton);
+        buttonRow->addWidget(this->ui_.clearButton);
         buttonRow->addWidget(this->ui_.focusButton);
         buttonRow->addWidget(this->ui_.emoteButton);
         box->addLayout(buttonRow);
@@ -413,6 +422,14 @@ void SplitInput::updateEmoteButton()
 
     this->ui_.focusButton->setFixedHeight(int(18 * scale));
     this->ui_.focusButton->setFixedWidth(int(24 * scale));
+
+    this->ui_.clearButton->setFixedHeight(int(18 * scale));
+    this->ui_.clearButton->setFixedWidth(int(24 * scale));
+}
+
+void SplitInput::refreshFocusButton()
+{
+    this->ui_.focusButton->refresh();
 }
 
 void SplitInput::updateCancelReplyButton()

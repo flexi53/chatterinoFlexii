@@ -35,7 +35,17 @@ struct Release {
 
 /// Newest first. Add to the top when something lands that is worth telling
 /// the user about; everything above what they last saw is shown at once.
-const std::array<Release, 14> RELEASES{{
+const std::array<Release, 15> RELEASES{{
+    {"19 September 2026 (8)",
+     "19. September 2026 - Nachtrag 7",
+     {
+         "Der Fokus-Knopf wirkt nur noch auf das Fenster, in dem du ihn "
+         "drückst - dein zweites Fenster bleibt, wie es ist. Jedes Fenster "
+         "merkt sich das für sich.",
+         "Neuer Knopf unten in der Eingabezeile (Mülleimer): leert den Chat "
+         "dieses Splits, nur bei dir - wie „Clear messages“, etwa für "
+         "erledigte Mentions.",
+     }},
     {"19 September 2026 (7)",
      "19. September 2026 - Nachtrag 6",
      {

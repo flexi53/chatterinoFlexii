@@ -210,12 +210,6 @@ Split::Split(QWidget *parent)
     this->header_->updateIcons();
     this->overlay_->hide();
 
-    // Look -> Stil: the focus view leaves only the chat
-    getSettings()->focusMode.connect(
-        [this](const bool &on, auto) {
-            this->header_->setVisible(!on);
-        },
-        this->signalHolder_);
 
     this->setSizePolicy(QSizePolicy::MinimumExpanding,
                         QSizePolicy::MinimumExpanding);
@@ -1160,6 +1154,22 @@ void Split::showOverlayWindow()
             new OverlayWindow(this->getIndirectChannel(), this->getFilters());
     }
     this->overlayWindow_->show();
+}
+
+void Split::refreshFocusView()
+{
+    auto *window = dynamic_cast<Window *>(this->window());
+    const bool focus =
+        window != nullptr && window->getNotebook().isFocusMode();
+    this->header_->setVisible(!focus);
+    this->input_->refreshFocusButton();
+}
+
+void Split::showEvent(QShowEvent *event)
+{
+    BaseWidget::showEvent(event);
+    // Added, or moved in from another window, while it shows only the chats
+    this->refreshFocusView();
 }
 
 void Split::clear()
