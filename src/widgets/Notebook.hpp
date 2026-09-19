@@ -21,6 +21,8 @@
 #include <span>
 #include <vector>
 
+class QPushButton;
+
 namespace chatterino {
 
 class Button;
@@ -185,6 +187,11 @@ public:
 protected:
     bool getShowTabs() const;
     void setShowTabs(bool value);
+    /// setShowTabs without the note on how to get the tabs back
+    void setShowTabsQuietly(bool value);
+    /// Hides the buttons next to the tabs (settings, user, ...) and brings
+    /// back the ones that were there - for the focus view
+    void setCustomButtonsHidden(bool hidden);
 
     void scaleChangedEvent(float scale_) override;
     void resizeEvent(QResizeEvent *) override;
@@ -328,6 +335,8 @@ private:
     QWidget *selectedPage_ = nullptr;
 
     std::vector<Button *> customButtons_;
+    /// The ones setCustomButtonsHidden hid
+    std::vector<Button *> hiddenCustomButtons_;
 
     bool allowUserTabManagement_ = false;
     bool showTabs_ = true;
@@ -376,9 +385,18 @@ public:
 
 protected:
     void showEvent(QShowEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
 
 private:
     QAction *sortTabsAlphabeticallyAction_;
+
+    /// Look -> Stil: only the chats - no tabs, no buttons, no split headers.
+    /// A small button in the corner leads back out.
+    void setFocusMode(bool on);
+    void placeFocusExit();
+    bool focusMode_ = false;
+    bool tabsBeforeFocus_ = true;
+    QPushButton *focusExit_{};
 
     void addCustomButtons();
 

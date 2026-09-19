@@ -238,6 +238,44 @@ public:
     /// chatter writes in a row reads as one block
     BoolSetting alternateMessagesBySender = {
         "/appearance/messages/alternateBySender", false};
+
+    // ChattiFlexii, Look: everything below starts out off or at Chatterino's
+    // own look, and each part of the page can go back to that
+    /// A stripe at the left edge of messages from the broadcaster,
+    /// moderators, VIPs and subscribers - a role without a colour has none
+    BoolSetting roleStripes = {"/appearance/roleStripes/enabled", false};
+    QStringSetting roleStripeBroadcaster = {
+        "/appearance/roleStripes/broadcaster", "#e91916"};
+    QStringSetting roleStripeModerator = {"/appearance/roleStripes/moderator",
+                                          "#00ad03"};
+    QStringSetting roleStripeVip = {"/appearance/roleStripes/vip", "#e005b9"};
+    QStringSetting roleStripeSubscriber = {"/appearance/roleStripes/subscriber",
+                                           ""};
+    /// Extra room around each message, in pixels at 100 %
+    IntSetting messageSpacing = {"/appearance/messages/spacing", 0};
+    /// Light up the message under the mouse; empty colour for a faint one
+    /// that suits the theme
+    BoolSetting hoverHighlight = {"/appearance/messages/hoverHighlight", false};
+    QStringSetting hoverHighlightColor = {
+        "/appearance/messages/hoverHighlightColor", ""};
+    /// New messages fade in rather than appear at once
+    BoolSetting fadeInMessages = {"/appearance/messages/fadeIn", false};
+    /// The channel's profile picture in front of a tab's name
+    BoolSetting tabProfilePictures = {"/appearance/tabs/profilePictures",
+                                      false};
+    /// Only the chats: no tab bar, no split headers
+    BoolSetting focusMode = {"/appearance/focusMode", false};
+    /// Own colours over the theme's; each empty one keeps the theme's
+    BoolSetting customColors = {"/appearance/customColors/enabled", false};
+    QStringSetting customColorBackground = {
+        "/appearance/customColors/background", ""};
+    QStringSetting customColorText = {"/appearance/customColors/text", ""};
+    QStringSetting customColorSystemText = {
+        "/appearance/customColors/systemText", ""};
+    QStringSetting customColorLink = {"/appearance/customColors/link", ""};
+    QStringSetting customColorAccent = {"/appearance/customColors/accent", ""};
+    QStringSetting customColorHeader = {"/appearance/customColors/header", ""};
+    QStringSetting customColorInput = {"/appearance/customColors/input", ""};
     FloatSetting boldScale = {"/appearance/boldScale", 63};
     BoolSetting showTabCloseButton = {"/appearance/showTabCloseButton", true};
     /// Start every tab group on a row of its own, even when the group

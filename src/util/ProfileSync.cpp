@@ -52,7 +52,7 @@ const QString FRESH_PREFIX = QStringLiteral("ChattiFlexii-Abgleich (neu)");
 const QString SHARED_MARKER = QStringLiteral("chattiflexii-abgleich.json");
 /// How fingerprint() works - a setup from a version that worked it out
 /// otherwise cannot be checked against it
-constexpr int FORMAT = 2;
+constexpr int FORMAT = 3;
 
 /// Setup offers already answered with "Später" since the app started
 QSet<QString> &putOff()
@@ -156,6 +156,8 @@ const std::vector<QStringList> SETTINGS_PLACES{
     {"moderation", "alerts", "height"},
     {"moderation", "alerts", "positionSaved"},
     {"appearance", "lastPopup"},
+    // Only the chats on one screen, everything on the other
+    {"appearance", "focusMode"},
 };
 
 QString rootDirectory()

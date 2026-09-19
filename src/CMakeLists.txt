@@ -356,6 +356,8 @@ set(SOURCE_FILES
         messages/layouts/MessageLayoutContext.hpp
         messages/layouts/MessageLayoutElement.cpp
         messages/layouts/MessageLayoutElement.hpp
+        messages/layouts/MessageRole.cpp
+        messages/layouts/MessageRole.hpp
         messages/search/AuthorPredicate.cpp
         messages/search/AuthorPredicate.hpp
         messages/search/BadgePredicate.cpp

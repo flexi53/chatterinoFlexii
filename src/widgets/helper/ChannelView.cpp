@@ -82,6 +82,8 @@
 namespace {
 
 constexpr size_t TOOLTIP_EMOTE_ENTRIES_LIMIT = 7;
+/// How long a new message takes to fade in - see Look -> Chat
+constexpr qint64 FADE_IN_MS = 250;
 
 using namespace chatterino;
 
@@ -1226,6 +1228,22 @@ void ChannelView::messageAppended(MessagePtr &message,
 
     setBackgroundNextTo(*messageRef, raw(this->messages_.last()),
                         this->context_);
+    if (getSettings()->fadeInMessages)
+    {
+        if (!this->fadeClock_.isValid())
+        {
+            this->fadeClock_.start();
+        }
+        const auto now = this->fadeClock_.elapsed();
+        // Ones that came in while nothing was painted, done fading anyway
+        if (this->fadeStarts_.size() > 200)
+        {
+            this->fadeStarts_.removeIf([now](const auto &entry) {
+                return now - entry.value() >= FADE_IN_MS;
+            });
+        }
+        this->fadeStarts_.insert(messageRef.get(), now);
+    }
     if (this->channel_->shouldIgnoreHighlights())
     {
         messageRef->flags.set(MessageLayoutFlag::IgnoreHighlights);
@@ -1666,6 +1684,17 @@ void ChannelView::drawMessages(QPainter &painter, const QRect &area)
     };
     bool showLastMessageIndicator = getSettings()->showLastMessageIndicator;
 
+    // Look -> Chat
+    const bool fadeIn = getSettings()->fadeInMessages;
+    bool fading = false;
+    const bool hoverHighlight = getSettings()->hoverHighlight;
+    QColor hoverColor(getSettings()->hoverHighlightColor.getValue());
+    if (!hoverColor.isValid())
+    {
+        hoverColor = getTheme()->isLightTheme() ? QColor(0, 0, 0, 14)
+                                                : QColor(255, 255, 255, 16);
+    }
+
     // using QRect here, because we can only request updates with a rect
     QRect animationArea;
     auto areaContainsY = [&area](auto y) {
@@ -1689,7 +1718,34 @@ void ChannelView::drawMessages(QPainter &painter, const QRect &area)
             areaContainsY(ctx.y + layout->getHeight()) ||
             (ctx.y < area.y() && layout->getHeight() > area.height()))
         {
+            // A message that just came in fades in
+            qreal opacity = 1;
+            if (fadeIn)
+            {
+                if (auto it = this->fadeStarts_.find(layout);
+                    it != this->fadeStarts_.end())
+                {
+                    const auto age = this->fadeClock_.elapsed() - it.value();
+                    if (age >= FADE_IN_MS)
+                    {
+                        this->fadeStarts_.erase(it);
+                    }
+                    else
+                    {
+                        opacity = qreal(std::max<qint64>(age, 0)) / FADE_IN_MS;
+                        fading = true;
+                    }
+                }
+            }
+            painter.setOpacity(opacity);
             auto paintResult = layout->paint(ctx);
+            painter.setOpacity(1);
+            if (hoverHighlight && this->hoveredMessage_ == layout)
+            {
+                painter.fillRect(
+                    QRect{0, ctx.y, layout->getWidth(), layout->getHeight()},
+                    hoverColor);
+            }
             if (paintResult.hasAnimatedElements)
             {
                 if (animationArea.isNull())
@@ -1734,6 +1790,16 @@ void ChannelView::drawMessages(QPainter &painter, const QRect &area)
         {
             break;
         }
+    }
+
+    // Keep going until every new message has faded in
+    if (fading && !this->fadeRepaintQueued_)
+    {
+        this->fadeRepaintQueued_ = true;
+        QTimer::singleShot(16, this, [this] {
+            this->fadeRepaintQueued_ = false;
+            this->update();
+        });
     }
 
     // Only update on a full repaint as some messages with animated elements
@@ -1917,9 +1983,23 @@ void ChannelView::enterEvent(QEvent * /*event*/)
 {
 }
 
+void ChannelView::setHoveredMessage(const MessageLayout *layout)
+{
+    if (this->hoveredMessage_ == layout)
+    {
+        return;
+    }
+    this->hoveredMessage_ = layout;
+    if (getSettings()->hoverHighlight)
+    {
+        this->update();
+    }
+}
+
 void ChannelView::leaveEvent(QEvent * /*event*/)
 {
     this->tooltipWidget_->hide();
+    this->setHoveredMessage(nullptr);
 
     this->unpause(PauseReason::Mouse);
 }
@@ -2010,8 +2090,10 @@ void ChannelView::mouseMoveEvent(QMouseEvent *event)
     {
         this->setCursor(Qt::ArrowCursor);
         this->tooltipWidget_->hide();
+        this->setHoveredMessage(nullptr);
         return;
     }
+    this->setHoveredMessage(layout.get());
 
     if (this->isScrolling_)
     {

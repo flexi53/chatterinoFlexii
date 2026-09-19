@@ -365,6 +365,9 @@ private:
     int currentWordId_ = 0;
     bool canAddMessages_ = true;
     bool isCollapsed_ = false;
+    /// Extra room above and below the message - see Look -> Chat
+    int spacingTop_ = 0;
+    int spacingBottom_ = 0;
 
     /// @brief True if the current line contains any RTL text.
     ///

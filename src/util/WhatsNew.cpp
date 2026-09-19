@@ -35,7 +35,23 @@ struct Release {
 
 /// Newest first. Add to the top when something lands that is worth telling
 /// the user about; everything above what they last saw is shown at once.
-const std::array<Release, 10> RELEASES{{
+const std::array<Release, 11> RELEASES{{
+    {"19 September 2026 (4)",
+     "19. September 2026 - Nachtrag 3",
+     {
+         "Einstellungen -> Look hat jetzt Reiter - Stil, Tabs, Chat und "
+         "Farben - und neue Möglichkeiten. Alles ist am Anfang aus, und jeder "
+         "Bereich hat einen „Standard“-Knopf, der ihn zurücksetzt.",
+         "Chat: mehr Abstand zwischen Nachrichten, die Nachricht unter der "
+         "Maus hervorheben, neue Nachrichten sanft einblenden und "
+         "Rollen-Streifen - ein farbiger Streifen links zeigt Streamer, Mods, "
+         "VIPs und auf Wunsch Subs.",
+         "Tabs: das Profilbild des Kanals vor dem Tab-Namen.",
+         "Fokus-Ansicht: blendet Tab-Leiste und Split-Köpfe aus, nur die Chats "
+         "bleiben. „Fokus beenden“ oben rechts holt alles zurück.",
+         "Farben: ein eigenes Farbschema über dem Theme - Hintergrund, Text, "
+         "Links, Akzent, Split-Kopf und Eingabefeld.",
+     }},
     {"19 September 2026 (3)",
      "19. September 2026 - Nachtrag 2",
      {

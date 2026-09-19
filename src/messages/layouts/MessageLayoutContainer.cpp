@@ -20,6 +20,7 @@
 #include <QPainter>
 #include <QVarLengthArray>
 
+#include <algorithm>
 #include <optional>
 #include <vector>
 
@@ -65,6 +66,11 @@ void MessageLayoutContainer::beginLayout(qreal width, float scale,
     this->currentWordId_ = 0;
     this->canAddMessages_ = true;
     this->isCollapsed_ = false;
+    // Look -> Chat: extra room, half above the message and half below
+    const auto spacing =
+        std::max(0, getSettings()->messageSpacing.getValue()) * scale;
+    this->spacingTop_ = int(spacing / 2);
+    this->spacingBottom_ = int(spacing) - this->spacingTop_;
     this->lineContainsRTL_ = false;
     this->anyReorderingDone_ = false;
 }
@@ -343,7 +349,8 @@ void MessageLayoutContainer::breakLine()
 
     this->currentX_ = 0;
     this->currentY_ += this->lineHeight_;
-    this->height_ = this->currentY_ + int(MARGIN.bottom() * this->scale_);
+    this->height_ = this->currentY_ + int(MARGIN.bottom() * this->scale_) +
+                    this->spacingBottom_;
     this->lineHeight_ = 0;
     this->line_++;
 }
@@ -782,7 +789,7 @@ void MessageLayoutContainer::addElement(MessageLayoutElement *element,
     // top margin
     if (this->elements_.empty())
     {
-        this->currentY_ = int(MARGIN.top() * this->scale_);
+        this->currentY_ = int(MARGIN.top() * this->scale_) + this->spacingTop_;
     }
 
     qreal elementLineHeight = element->getRect().height();

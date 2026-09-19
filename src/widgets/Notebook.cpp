@@ -672,18 +672,47 @@ bool Notebook::getShowTabs() const
 
 void Notebook::setShowTabs(bool value)
 {
-    this->showTabs_ = value;
-
-    this->setShowAddButton(value);
-    this->performLayout();
-
-    this->updateTabVisibility();
+    this->setShowTabsQuietly(value);
 
     // show a popup upon hiding tabs
     if (!value && getSettings()->informOnTabVisibilityToggle.getValue())
     {
         this->showTabVisibilityInfoPopup();
     }
+}
+
+void Notebook::setShowTabsQuietly(bool value)
+{
+    this->showTabs_ = value;
+
+    this->setShowAddButton(value);
+    this->performLayout();
+
+    this->updateTabVisibility();
+}
+
+void Notebook::setCustomButtonsHidden(bool hidden)
+{
+    if (hidden)
+    {
+        for (auto *button : this->customButtons_)
+        {
+            if (!button->isHidden())
+            {
+                button->hide();
+                this->hiddenCustomButtons_.push_back(button);
+            }
+        }
+    }
+    else
+    {
+        for (auto *button : this->hiddenCustomButtons_)
+        {
+            button->show();
+        }
+        this->hiddenCustomButtons_.clear();
+    }
+    this->performLayout();
 }
 
 void Notebook::showTabVisibilityInfoPopup()
@@ -2416,6 +2445,26 @@ SplitNotebook::SplitNotebook(Window *parent)
                 }
             }
         });
+
+    // The way out of the focus view, as the tab bar with its menu is gone
+    this->focusExit_ = new QPushButton("Fokus beenden", this);
+    this->focusExit_->setToolTip(
+        "Tab-Leiste, Knöpfe und Split-Köpfe wieder einblenden");
+    this->focusExit_->setCursor(Qt::PointingHandCursor);
+    this->focusExit_->setStyleSheet(
+        "QPushButton { background: rgba(0, 0, 0, 120); color: "
+        "rgba(255, 255, 255, 170); border: 1px solid rgba(255, 255, 255, 40); "
+        "border-radius: 4px; padding: 2px 8px; font-size: 11px; }"
+        "QPushButton:hover { background: rgba(0, 0, 0, 200); color: white; }");
+    this->focusExit_->hide();
+    QObject::connect(this->focusExit_, &QPushButton::clicked, this, [] {
+        getSettings()->focusMode.setValue(false);
+    });
+    getSettings()->focusMode.connect(
+        [this](const bool &on, auto) {
+            this->setFocusMode(on);
+        },
+        this->signalHolder_);
 }
 
 void SplitNotebook::addNotebookActionsToMenu(QMenu *menu)
@@ -2423,6 +2472,9 @@ void SplitNotebook::addNotebookActionsToMenu(QMenu *menu)
     Notebook::addNotebookActionsToMenu(menu);
 
     menu->addAction(this->sortTabsAlphabeticallyAction_);
+    menu->addAction("Fokus-Ansicht", [] {
+        getSettings()->focusMode.setValue(true);
+    });
 
     auto *submenu = menu->addMenu("Tab visibility");
     submenu->addAction(this->showAllTabsAction);
@@ -2440,6 +2492,44 @@ void SplitNotebook::toggleTabVisibility()
     {
         this->showAllTabsAction->trigger();
     }
+}
+
+void SplitNotebook::setFocusMode(bool on)
+{
+    if (on == this->focusMode_)
+    {
+        return;
+    }
+    this->focusMode_ = on;
+
+    if (on)
+    {
+        this->tabsBeforeFocus_ = this->getShowTabs();
+    }
+    this->setShowTabsQuietly(on ? false : this->tabsBeforeFocus_);
+    this->setCustomButtonsHidden(on);
+
+    this->focusExit_->setVisible(on);
+    this->placeFocusExit();
+}
+
+void SplitNotebook::placeFocusExit()
+{
+    if (this->focusExit_ == nullptr || !this->focusMode_)
+    {
+        return;
+    }
+    this->focusExit_->adjustSize();
+    const auto margin = int(6 * this->scale());
+    this->focusExit_->move(this->width() - this->focusExit_->width() - margin,
+                           margin);
+    this->focusExit_->raise();
+}
+
+void SplitNotebook::resizeEvent(QResizeEvent *event)
+{
+    Notebook::resizeEvent(event);
+    this->placeFocusExit();
 }
 
 void SplitNotebook::showEvent(QShowEvent * /*event*/)

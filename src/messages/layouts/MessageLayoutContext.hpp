@@ -62,6 +62,13 @@ struct MessagePreferences {
 
     bool fadeMessageHistory{};
 
+    /// Look -> Chat: a stripe per role, invalid for none
+    bool roleStripes{};
+    QColor broadcasterStripe;
+    QColor moderatorStripe;
+    QColor vipStripe;
+    QColor subscriberStripe;
+
     void connectSettings(Settings *settings,
                          pajlada::Signals::SignalHolder &holder);
 };

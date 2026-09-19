@@ -210,6 +210,13 @@ Split::Split(QWidget *parent)
     this->header_->updateIcons();
     this->overlay_->hide();
 
+    // Look -> Stil: the focus view leaves only the chat
+    getSettings()->focusMode.connect(
+        [this](const bool &on, auto) {
+            this->header_->setVisible(!on);
+        },
+        this->signalHolder_);
+
     this->setSizePolicy(QSizePolicy::MinimumExpanding,
                         QSizePolicy::MinimumExpanding);
 

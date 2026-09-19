@@ -14,7 +14,9 @@
 #include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
 #include "singletons/WindowManager.hpp"
+#include "providers/twitch/ProfilePictures.hpp"
 #include "util/Helpers.hpp"
+#include "util/RoundPixmap.hpp"
 #include "widgets/dialogs/SettingsDialog.hpp"
 #include "widgets/Notebook.hpp"
 #include "widgets/splits/DraggedSplit.hpp"
@@ -130,6 +132,12 @@ NotebookTab::NotebookTab(Notebook *notebook)
     }
     getSettings()->tabGradient.connect(
         [this](const auto &, const auto &) {
+            this->update();
+        },
+        this->managedConnections_, false);
+    getSettings()->tabProfilePictures.connect(
+        [this](const auto &, const auto &) {
+            this->tabSizeChanged();
             this->update();
         },
         this->managedConnections_, false);
@@ -470,6 +478,8 @@ int NotebookTab::normalTabWidthForHeight(int height) const
                                  (16 / compactDivider * scale));
     }
 
+    width += this->avatarSpace();
+
     if (static_cast<float>(height) > 150 * scale)
     {
         width = height;
@@ -540,6 +550,68 @@ void NotebookTab::setDefaultTitle(const QString &title)
 const QString &NotebookTab::getDefaultTitle() const
 {
     return this->defaultTitle_;
+}
+
+QString NotebookTab::avatarLogin() const
+{
+    if (!getSettings()->tabProfilePictures)
+    {
+        return {};
+    }
+    const auto *container = dynamic_cast<const SplitContainer *>(this->page);
+    if (container == nullptr)
+    {
+        return {};
+    }
+    const auto splits = container->getSplits();
+    if (splits.empty())
+    {
+        return {};
+    }
+    const auto channel = splits.front()->getChannel();
+    if (channel == nullptr || channel->getType() != Channel::Type::Twitch)
+    {
+        return {};
+    }
+    return channel->getName().toLower();
+}
+
+int NotebookTab::avatarSide() const
+{
+    return int(14 * this->scale());
+}
+
+int NotebookTab::avatarSpace() const
+{
+    return this->avatarLogin().isEmpty()
+               ? 0
+               : this->avatarSide() + int(4 * this->scale());
+}
+
+void NotebookTab::ensureAvatar()
+{
+    const auto login = this->avatarLogin();
+    if (login == this->avatarFor_)
+    {
+        return;
+    }
+    this->avatarFor_ = login;
+    this->avatar_ = {};
+    if (login.isEmpty())
+    {
+        return;
+    }
+    // Twice as large, so it stays sharp on a Retina screen
+    const auto side = this->avatarSide() * 2;
+    profilepictures::pixmap(login, side, this,
+                            [this, login, side](const QPixmap &picture) {
+                                if (login != this->avatarFor_)
+                                {
+                                    return;
+                                }
+                                this->avatar_ = roundPixmap(picture, side);
+                                this->update();
+                            });
 }
 
 const QString &NotebookTab::getTitle() const
@@ -1145,9 +1217,42 @@ void NotebookTab::paintEvent(QPaintEvent *)
     }
 
     int width = metrics.horizontalAdvance(this->getTitle());
-    Qt::Alignment alignment = width > textRect.width()
-                                  ? Qt::AlignLeft | Qt::AlignVCenter
-                                  : Qt::AlignHCenter | Qt::AlignVCenter;
+
+    // The channel's picture in front of the name - see Look -> Tabs. Picture
+    // and name are centred together, like the name on its own.
+    if (const auto space = this->avatarSpace(); space > 0)
+    {
+        this->ensureAvatar();
+        const auto side = this->avatarSide();
+        const auto total = space + width;
+        const auto left = total > textRect.width()
+                              ? textRect.left()
+                              : textRect.left() + (textRect.width() - total) / 2;
+        const QRectF circle(left, textRect.center().y() - (side / 2.0) + 1,
+                            side, side);
+        painter.save();
+        painter.setRenderHint(QPainter::Antialiasing);
+        if (this->avatar_.isNull())
+        {
+            // Until the picture is there
+            QColor placeholder = colors.text;
+            placeholder.setAlpha(50);
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(placeholder);
+            painter.drawEllipse(circle);
+        }
+        else
+        {
+            paintRound(painter, circle, this->avatar_);
+        }
+        painter.restore();
+        textRect.setLeft(left + space);
+    }
+
+    Qt::Alignment alignment =
+        (width > textRect.width() || this->avatarSpace() > 0)
+            ? Qt::AlignLeft | Qt::AlignVCenter
+            : Qt::AlignHCenter | Qt::AlignVCenter;
 
     QTextOption option(alignment);
     option.setWrapMode(QTextOption::NoWrap);

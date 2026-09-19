@@ -7,9 +7,13 @@
 #include "Application.hpp"
 #include "common/Literals.hpp"
 #include "common/QLogging.hpp"
+#include "messages/layouts/AlternateBackground.hpp"
 #include "singletons/Paths.hpp"
 #include "singletons/Resources.hpp"
+#include "singletons/Settings.hpp"
 #include "singletons/WindowManager.hpp"
+
+#include <pajlada/signals/signalholder.hpp>
 
 #include <QColor>
 #include <QDir>
@@ -315,8 +319,81 @@ bool Theme::isSystemTheme() const
     return this->themeName == u"System"_s;
 }
 
+namespace {
+
+/// Look -> Farben: the user's own colours over the theme's. Each one left
+/// empty keeps the theme's, and switched off it is the theme as it comes.
+void applyCustomColors(Theme &theme)
+{
+    auto &s = *getSettings();
+    if (!s.customColors)
+    {
+        return;
+    }
+    const auto use = [](const QStringSetting &setting, auto &&apply) {
+        const QColor color(setting.getValue());
+        if (color.isValid())
+        {
+            apply(color);
+        }
+    };
+    use(s.customColorBackground, [&](const QColor &color) {
+        theme.splits.background = color;
+        theme.messages.backgrounds.regular = color;
+        // The theme's shade for every other message suits its own
+        // background, not this one
+        theme.messages.backgrounds.alternate =
+            alternatebg::background(color, QColor(), 4, QColor());
+    });
+    use(s.customColorText, [&](const QColor &color) {
+        theme.messages.textColors.regular = color;
+    });
+    use(s.customColorSystemText, [&](const QColor &color) {
+        theme.messages.textColors.system = color;
+    });
+    use(s.customColorLink, [&](const QColor &color) {
+        theme.messages.textColors.link = color;
+    });
+    use(s.customColorAccent, [&](const QColor &color) {
+        theme.accent = color;
+    });
+    use(s.customColorHeader, [&](const QColor &color) {
+        theme.splits.header.background = color;
+        theme.splits.header.focusedBackground =
+            alternatebg::background(color, QColor(), 8, QColor());
+    });
+    use(s.customColorInput, [&](const QColor &color) {
+        theme.splits.input.background = color;
+    });
+}
+
+}  // namespace
+
 Theme::Theme(const Paths &paths)
 {
+    // Look -> Farben. Never destroyed, so nothing is torn down after the
+    // settings at exit.
+    auto *customColors = new pajlada::Signals::SignalHolder;
+    for (auto *setting : {&getSettings()->customColorBackground,
+                          &getSettings()->customColorText,
+                          &getSettings()->customColorSystemText,
+                          &getSettings()->customColorLink,
+                          &getSettings()->customColorAccent,
+                          &getSettings()->customColorHeader,
+                          &getSettings()->customColorInput})
+    {
+        setting->connect(
+            [this](const auto &, const auto &) {
+                this->update();
+            },
+            *customColors, false);
+    }
+    getSettings()->customColors.connect(
+        [this](const auto &, const auto &) {
+            this->update();
+        },
+        *customColors, false);
+
     this->themeName.connect(
         [this](auto themeName) {
             qCInfo(chatterinoTheme) << "Theme updated to" << themeName;
@@ -536,6 +613,7 @@ void Theme::parseFrom(const QJsonObject &root, bool isCustomTheme)
     }
 
     parseColors(root, fallbackTheme.value_or(QJsonObject()), *this);
+    applyCustomColors(*this);
 
     this->splits.input.styleSheet = uR"(
         background: %1;

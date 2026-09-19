@@ -129,6 +129,23 @@ void MessagePreferences::connectSettings(Settings *settings,
             this->fadeMessageHistory = newValue;
         },
         holder);
+
+    settings->roleStripes.connect(
+        [this](const auto &newValue) {
+            this->roleStripes = newValue;
+        },
+        holder);
+    const auto stripe = [&holder](QStringSetting &setting, QColor &color) {
+        setting.connect(
+            [&color](const auto &newValue) {
+                color = QColor(newValue);
+            },
+            holder);
+    };
+    stripe(settings->roleStripeBroadcaster, this->broadcasterStripe);
+    stripe(settings->roleStripeModerator, this->moderatorStripe);
+    stripe(settings->roleStripeVip, this->vipStripe);
+    stripe(settings->roleStripeSubscriber, this->subscriberStripe);
 }
 
 }  // namespace chatterino

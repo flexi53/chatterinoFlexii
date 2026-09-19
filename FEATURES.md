@@ -82,7 +82,11 @@ highlights that already use it.
 
 ## Look
 
-Settings has a **Look** page with two choices:
+Settings has a **Look** page in four tabs - Stil, Tabs, Chat and Farben.
+Everything on it starts out as Chatterino looks, and each part has a
+**Standard** button that puts it back.
+
+Under Stil there are two looks:
 
 - **Classic** - Chatterino as it has always looked
 - **Modern** - rounder tabs with a little depth to them
@@ -90,22 +94,49 @@ Settings has a **Look** page with two choices:
 Group headers keep their classic shape in both, so they stay
 distinguishable from the tabs beneath them.
 
-The same page has colors for the **tab bar** - the space around the tabs -
+The Tabs tab has colors for the **tab bar** - the space around the tabs -
 and for the **tabs** themselves: a background, a color for the selected tab,
 and a gradient, all of which work under either look. Tabs with new messages
-or a highlight keep their own color so they still stand out, and **Use theme
-colors** goes back to the theme.
+or a highlight keep their own color so they still stand out, and **Standard**
+goes back to the theme. **Profilbilder in den Tabs** puts the channel's round
+profile picture in front of each tab's name - the first split's, for a tab
+with several.
+
+**Fokus-Ansicht** (Stil) hides the tab bar, the buttons next to it and the
+split headers, leaving only the chats - handy on a small screen. A small
+**Fokus beenden** in the window's corner brings it all back; it can also be
+switched on from the tab bar's right-click menu. Each computer keeps this to
+itself when the setup is synced.
+
+### Chat
+
+- **Abstand zwischen Nachrichten**: a little more room above and below each
+  message - 2, 4 or 8 pixels
+- **Nachricht unter der Maus hervorheben**: lights up the message under the
+  pointer, in a faint shade that suits the theme or a colour of your own
+- **Neue Nachrichten sanft einblenden**: new messages fade in over a quarter
+  of a second rather than appear at once
+- **Rollen-Streifen**: a narrow stripe at the left edge of every message shows
+  who wrote it - the streamer in red, moderators in green, VIPs in pink, and
+  subscribers too if given a colour. A role without a colour gets no stripe.
 
 ### Readability
 
-Under **Lesbarkeit** on the same page, every other message can be set apart
+Under **Lesbarkeit** on the Chat tab, every other message can be set apart
 from the one before it, and made to stand out as much as you like - from the
 theme's faint grey through **Dezent**, **Mittel** and **Deutlich** to
 **Stark** - in a neutral shade or a colour of your own, such as a light
 violet. With **Nur wechseln, wenn jemand anderes schreibt** the background
 changes only when someone else writes, so several messages from one chatter
-in a row read as one block. It all shows in the chat at once, and **Wie im
-Theme** goes back to the theme's shade.
+in a row read as one block. It all shows in the chat at once, and
+**Standard** goes back to the theme's shade.
+
+### Farben
+
+**Eigenes Farbschema** lays colours of your own over the theme: the chat
+background, text, system text, links, the accent colour, split headers and
+the input box. A colour left empty stays as the theme has it; switching it
+off brings the theme back and keeps your colours for later.
 
 ## User card
 

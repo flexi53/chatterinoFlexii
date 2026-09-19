@@ -11,8 +11,10 @@
 #include "controllers/moderation/StepEscalation.hpp"
 #include "messages/layouts/AlternateBackground.hpp"
 #include "messages/layouts/MessageLayout.hpp"
+#include "messages/layouts/MessageRole.hpp"
 #include "messages/Message.hpp"
 #include "providers/twitch/ProfilePictures.hpp"
+#include "providers/twitch/TwitchBadge.hpp"
 #include "Test.hpp"
 #include "util/ProfileSetup.hpp"
 #include "util/ProfileSync.hpp"
@@ -719,7 +721,8 @@ TEST(FlexiiSync, TakingASetupKeepsTheWindowsWhereTheyAreHere)
                                                    {"y", 50},
                                                    {"positionSaved", true},
                                                    {"sound", false}}}}},
-               {"appearance", QJsonObject{{"uiStyle", "classic"}}}});
+               {"appearance",
+                QJsonObject{{"uiStyle", "classic"}, {"focusMode", true}}}});
 
     // From the other computer: on its second screen, maximized, two popups,
     // other tabs and settings
@@ -782,4 +785,31 @@ TEST(FlexiiSync, TakingASetupKeepsTheWindowsWhereTheyAreHere)
     EXPECT_TRUE(alerts["sound"].toBool());
     EXPECT_EQ(settings["appearance"].toObject()["uiStyle"].toString(),
               "modern");
+    // Only the chats here, everything there
+    EXPECT_TRUE(settings["appearance"].toObject()["focusMode"].toBool());
+}
+
+namespace {
+
+ChatRole roleWith(std::initializer_list<const char *> badges)
+{
+    Message message;
+    for (const auto *badge : badges)
+    {
+        message.twitchBadges.emplace_back(badge, "1");
+    }
+    return roleOf(message);
+}
+
+}  // namespace
+
+TEST(FlexiiLook, TheStripeShowsTheHighestRole)
+{
+    EXPECT_EQ(roleWith({}), ChatRole::None);
+    EXPECT_EQ(roleWith({"premium"}), ChatRole::None);
+    EXPECT_EQ(roleWith({"founder"}), ChatRole::Subscriber);
+    EXPECT_EQ(roleWith({"subscriber", "vip"}), ChatRole::Vip);
+    EXPECT_EQ(roleWith({"subscriber", "moderator"}), ChatRole::Moderator);
+    EXPECT_EQ(roleWith({"lead_moderator"}), ChatRole::Moderator);
+    EXPECT_EQ(roleWith({"broadcaster", "subscriber"}), ChatRole::Broadcaster);
 }

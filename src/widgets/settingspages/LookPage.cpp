@@ -6,16 +6,19 @@
 
 #include "messages/layouts/AlternateBackground.hpp"
 #include "singletons/Settings.hpp"
+#include "widgets/helper/color/ColorButton.hpp"
 #include "widgets/settingspages/SettingWidget.hpp"
 
 #include <QComboBox>
-#include <QFrame>
-#include <QHBoxLayout>
 #include <QPushButton>
+#include <QTabWidget>
 #include <QVBoxLayout>
 
 #include <algorithm>
+#include <array>
 #include <cstdlib>
+#include <functional>
+#include <utility>
 
 namespace chatterino {
 
@@ -33,94 +36,156 @@ int strengthIndex(int strength)
                all.begin());
 }
 
+/// The room between messages on offer, in pixels
+constexpr std::array<std::pair<const char *, int>, 4> SPACINGS{{
+    {"Standard", 0},
+    {"Etwas (2 px)", 2},
+    {"Mehr (4 px)", 4},
+    {"Viel (8 px)", 8},
+}};
+
+/// A button that puts a part of the page back to how it starts out
+void addStandardButton(GeneralPageView &layout, const QString &tooltip,
+                       std::function<void()> reset)
+{
+    auto *button = new QPushButton("Standard");
+    button->setToolTip(tooltip);
+    QObject::connect(button, &QPushButton::clicked, std::move(reset));
+    layout.addWidget(button);
+}
+
 }  // namespace
 
 LookPage::LookPage()
-    : view(GeneralPageView::withoutNavigation(this))
 {
-    auto *y = new QVBoxLayout;
-    auto *x = new QHBoxLayout;
-    x->addWidget(this->view);
-    auto *z = new QFrame;
-    z->setLayout(x);
-    y->addWidget(z);
-    this->setLayout(y);
+    auto *outer = new QVBoxLayout(this);
+    outer->setContentsMargins(0, 0, 0, 0);
+    auto *tabs = new QTabWidget;
+    outer->addWidget(tabs);
 
-    this->initLayout(*this->view);
+    const auto addTab = [this,
+                         tabs](const QString &title) -> GeneralPageView & {
+        auto *view = GeneralPageView::withoutNavigation(this);
+        tabs->addTab(view, title);
+        this->views_.push_back(view);
+        return *view;
+    };
+    this->buildStyleTab(addTab("Stil"));
+    this->buildTabsTab(addTab("Tabs"));
+    this->buildChatTab(addTab("Chat"));
+    this->buildColorsTab(addTab("Farben"));
+
+    // Colour buttons grow into whatever room a short tab leaves them
+    for (auto *view : this->views_)
+    {
+        for (auto *button : view->findChildren<ColorButton *>())
+        {
+            button->setFixedSize(50, 24);
+            button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        }
+    }
 }
 
 bool LookPage::filterElements(const QString &query)
 {
-    if (this->view)
+    bool any = query.isEmpty();
+    for (auto *view : this->views_)
     {
-        return this->view->filterElements(query) || query.isEmpty();
+        any = view->filterElements(query) || any;
     }
-
-    return false;
+    return any;
 }
 
-void LookPage::initLayout(GeneralPageView &layout)
+void LookPage::buildStyleTab(GeneralPageView &layout)
 {
     auto &s = *getSettings();
 
-    layout.addTitle("Look");
+    layout.addTitle("Aussehen");
     layout.addDescription(
-        "Classic is Chatterino as it has always looked. Modern rounds tabs "
-        "off and gives them a little depth. Switching takes effect right "
-        "away.");
+        "Classic ist Chatterino, wie es immer aussah. Modern rundet die Tabs "
+        "ab und gibt ihnen etwas Tiefe. Wirkt sofort.");
+    SettingWidget::dropdown("Stil", s.uiStyle)->addTo(layout);
 
-    SettingWidget::dropdown("Look", s.uiStyle)->addTo(layout);
-
-    layout.addTitle("Tab bar");
+    layout.addTitle("Fokus-Ansicht");
     layout.addDescription(
-        "The space around the tabs, behind them. These work with either "
-        "look.");
+        "Blendet Tab-Leiste, Knöpfe und Split-Köpfe aus - übrig bleiben nur "
+        "die Chats, praktisch auf einem kleinen Bildschirm. „Fokus beenden“ "
+        "oben rechts im Fenster holt alles zurück. Einschalten geht auch per "
+        "Rechtsklick auf die Tab-Leiste. Jeder Computer merkt sich das für "
+        "sich.");
+    SettingWidget::checkbox("Fokus-Ansicht", s.focusMode)
+        ->addKeywords({"focus", "fokus", "ausblenden"})
+        ->addTo(layout);
 
-    SettingWidget::colorButton("Background", s.tabBarBackgroundColor)
+    layout.addStretch();
+}
+
+void LookPage::buildTabsTab(GeneralPageView &layout)
+{
+    auto &s = *getSettings();
+
+    layout.addTitle("Tab-Leiste");
+    layout.addDescription(
+        "Der Bereich um die Tabs, hinter ihnen. Wirkt mit beiden Stilen.");
+    SettingWidget::colorButton("Hintergrund", s.tabBarBackgroundColor)
         ->addTo(layout);
-    SettingWidget::checkbox("Gradient", s.tabBarGradient)
-        ->setTooltip("Fill the tab bar with a gradient from top to bottom "
-                     "instead of a single color.")
+    SettingWidget::checkbox("Verlauf", s.tabBarGradient)
+        ->setTooltip("Die Tab-Leiste mit einem Verlauf von oben nach unten "
+                     "füllen statt mit einer Farbe.")
         ->addTo(layout);
-    SettingWidget::colorButton("Gradient top", s.tabBarGradientTopColor)
+    SettingWidget::colorButton("Verlauf oben", s.tabBarGradientTopColor)
         ->conditionallyEnabledBy(s.tabBarGradient)
         ->addTo(layout);
-    SettingWidget::colorButton("Gradient bottom", s.tabBarGradientBottomColor)
+    SettingWidget::colorButton("Verlauf unten", s.tabBarGradientBottomColor)
         ->conditionallyEnabledBy(s.tabBarGradient)
         ->addTo(layout);
 
     layout.addTitle("Tabs");
     layout.addDescription(
-        "The tabs themselves. The selected tab and tabs with new messages or "
-        "highlights keep their own colors, so they still stand out.");
-
-    SettingWidget::colorButton("Background", s.tabBackgroundColor)
+        "Die Tabs selbst. Der ausgewählte Tab und Tabs mit neuen Nachrichten "
+        "oder Highlights behalten ihre eigenen Farben, damit sie auffallen.");
+    SettingWidget::colorButton("Hintergrund", s.tabBackgroundColor)
         ->addTo(layout);
-    SettingWidget::colorButton("Selected tab", s.tabSelectedBackgroundColor)
+    SettingWidget::colorButton("Ausgewählter Tab", s.tabSelectedBackgroundColor)
         ->addTo(layout);
-    SettingWidget::checkbox("Gradient", s.tabGradient)
-        ->setTooltip("Fill tabs with a gradient from top to bottom instead of "
-                     "a single color. The selected tab and group headers are "
-                     "left flat.")
+    SettingWidget::checkbox("Verlauf", s.tabGradient)
+        ->setTooltip("Die Tabs mit einem Verlauf von oben nach unten füllen. "
+                     "Der ausgewählte Tab und Gruppenköpfe bleiben flach.")
         ->addTo(layout);
-    SettingWidget::colorButton("Gradient top", s.tabGradientTopColor)
+    SettingWidget::colorButton("Verlauf oben", s.tabGradientTopColor)
         ->conditionallyEnabledBy(s.tabGradient)
         ->addTo(layout);
-    SettingWidget::colorButton("Gradient bottom", s.tabGradientBottomColor)
+    SettingWidget::colorButton("Verlauf unten", s.tabGradientBottomColor)
         ->conditionallyEnabledBy(s.tabGradient)
         ->addTo(layout);
 
     // Back to the theme for the tab bar and the tabs. The gradient colors are
     // kept, so switching a gradient on again brings back what was set up.
-    auto *reset = new QPushButton("Use theme colors");
-    QObject::connect(reset, &QPushButton::clicked, [&s] {
-        s.tabBarBackgroundColor.setValue("");
-        s.tabBarGradient.setValue(false);
-        s.tabBackgroundColor.setValue("");
-        s.tabSelectedBackgroundColor.setValue("");
-        s.tabGradient.setValue(false);
-    });
-    layout.addWidget(reset);
+    addStandardButton(layout,
+                      "Tab-Leiste und Tabs wieder in den Farben des "
+                      "Themes",
+                      [&s] {
+                          s.tabBarBackgroundColor.setValue("");
+                          s.tabBarGradient.setValue(false);
+                          s.tabBackgroundColor.setValue("");
+                          s.tabSelectedBackgroundColor.setValue("");
+                          s.tabGradient.setValue(false);
+                      });
+
+    layout.addTitle("Profilbilder");
+    layout.addDescription(
+        "Das Profilbild des Kanals vor dem Namen jedes Tabs - bei mehreren "
+        "Splits das des ersten. Tabs ohne Twitch-Kanal bleiben, wie sie sind.");
+    SettingWidget::checkbox("Profilbilder in den Tabs", s.tabProfilePictures)
+        ->addKeywords({"avatar", "bild"})
+        ->addTo(layout);
+
+    layout.addStretch();
+}
+
+void LookPage::buildChatTab(GeneralPageView &layout)
+{
+    auto &s = *getSettings();
 
     layout.addTitle("Lesbarkeit");
     layout.addDescription(
@@ -172,13 +237,139 @@ void LookPage::initLayout(GeneralPageView &layout)
         },
         this->managedConnections_);
 
-    // Back to the theme's own shade, without a colour
-    auto *neutral = new QPushButton("Wie im Theme");
-    QObject::connect(neutral, &QPushButton::clicked, [&s] {
-        s.alternateMessageStrength.setValue(0);
-        s.alternateMessageTint.setValue("");
+    addStandardButton(layout,
+                      "Der Grauton des Themes, ohne Farbe, bei jeder "
+                      "Nachricht wechselnd",
+                      [&s] {
+                          s.alternateMessageStrength.setValue(0);
+                          s.alternateMessageTint.setValue("");
+                          s.alternateMessagesBySender.setValue(false);
+                      });
+
+    layout.addTitle("Nachrichten");
+    layout.addDropdown<int>(
+        "Abstand zwischen Nachrichten",
+        [] {
+            QStringList names;
+            for (const auto &[name, pixels] : SPACINGS)
+            {
+                names.append(name);
+            }
+            return names;
+        }(),
+        s.messageSpacing,
+        [](int value) {
+            for (size_t i = 0; i < SPACINGS.size(); i++)
+            {
+                if (SPACINGS.at(i).second == value)
+                {
+                    return int(i);
+                }
+            }
+            return 0;
+        },
+        [](const DropdownArgs &args) {
+            return SPACINGS
+                .at(std::clamp(args.index, 0, int(SPACINGS.size()) - 1))
+                .second;
+        },
+        false, "Etwas mehr Luft über und unter jeder Nachricht.");
+    SettingWidget::checkbox("Nachricht unter der Maus hervorheben",
+                            s.hoverHighlight)
+        ->setTooltip("Hellt die Nachricht unter dem Mauszeiger leicht auf - "
+                     "so verrutschst du in langen Zeilen nicht und siehst, "
+                     "welche Nachricht du gleich anklickst.")
+        ->addTo(layout);
+    SettingWidget::colorButton("Farbe der Hervorhebung", s.hoverHighlightColor)
+        ->setTooltip("Leer ist ein leichter Schimmer, der zum Theme passt.")
+        ->conditionallyEnabledBy(s.hoverHighlight)
+        ->addTo(layout);
+    SettingWidget::checkbox("Neue Nachrichten sanft einblenden",
+                            s.fadeInMessages)
+        ->setTooltip("Neue Nachrichten erscheinen nicht schlagartig, sondern "
+                     "blenden in einer Viertelsekunde ein.")
+        ->addTo(layout);
+    addStandardButton(layout,
+                      "Kein zusätzlicher Abstand, keine Hervorhebung, "
+                      "kein Einblenden",
+                      [&s] {
+                          s.messageSpacing.setValue(0);
+                          s.hoverHighlight.setValue(false);
+                          s.hoverHighlightColor.setValue("");
+                          s.fadeInMessages.setValue(false);
+                      });
+
+    layout.addTitle("Rollen-Streifen");
+    layout.addDescription(
+        "Ein schmaler farbiger Streifen links an jeder Nachricht zeigt, wer "
+        "schreibt - ohne auf die Badges zu schauen. Eine Rolle ohne Farbe "
+        "(oder ganz durchsichtig) bekommt keinen Streifen.");
+    SettingWidget::checkbox("Rollen-Streifen anzeigen", s.roleStripes)
+        ->addKeywords({"mod", "vip", "sub", "streamer", "rolle"})
+        ->addTo(layout);
+    SettingWidget::colorButton("Streamer", s.roleStripeBroadcaster)
+        ->conditionallyEnabledBy(s.roleStripes)
+        ->addTo(layout);
+    SettingWidget::colorButton("Mods", s.roleStripeModerator)
+        ->conditionallyEnabledBy(s.roleStripes)
+        ->addTo(layout);
+    SettingWidget::colorButton("VIPs", s.roleStripeVip)
+        ->conditionallyEnabledBy(s.roleStripes)
+        ->addTo(layout);
+    SettingWidget::colorButton("Subs", s.roleStripeSubscriber)
+        ->conditionallyEnabledBy(s.roleStripes)
+        ->addTo(layout);
+    addStandardButton(layout, "Streifen aus, Farben wie zu Beginn", [&s] {
+        s.roleStripes.setValue(false);
+        for (auto *setting : {&s.roleStripeBroadcaster, &s.roleStripeModerator,
+                              &s.roleStripeVip, &s.roleStripeSubscriber})
+        {
+            setting->setValue(setting->getDefaultValue());
+        }
     });
-    layout.addWidget(neutral);
+
+    layout.addStretch();
+}
+
+void LookPage::buildColorsTab(GeneralPageView &layout)
+{
+    auto &s = *getSettings();
+
+    layout.addTitle("Eigenes Farbschema");
+    layout.addDescription(
+        "Deine eigenen Farben über dem Theme (Dark, Light ...). Eine Farbe, "
+        "die du nicht setzt, bleibt wie im Theme. Ausschalten bringt das Theme "
+        "zurück - deine Farben bleiben für später gespeichert.");
+    SettingWidget::checkbox("Eigene Farben verwenden", s.customColors)
+        ->addKeywords({"theme", "farbe", "color"})
+        ->addTo(layout);
+
+    const std::array<std::pair<const char *, QStringSetting *>, 7> colors{{
+        {"Chat-Hintergrund", &s.customColorBackground},
+        {"Text", &s.customColorText},
+        {"Systemtext", &s.customColorSystemText},
+        {"Links", &s.customColorLink},
+        {"Akzentfarbe", &s.customColorAccent},
+        {"Split-Kopf", &s.customColorHeader},
+        {"Eingabefeld", &s.customColorInput},
+    }};
+    for (const auto &[name, setting] : colors)
+    {
+        SettingWidget::colorButton(name, *setting)
+            ->conditionallyEnabledBy(s.customColors)
+            ->addTo(layout);
+    }
+
+    addStandardButton(layout,
+                      "Das Theme, wie es kommt - eigene Farben aus und "
+                      "gelöscht",
+                      [&s, colors] {
+                          s.customColors.setValue(false);
+                          for (const auto &[name, setting] : colors)
+                          {
+                              setting->setValue("");
+                          }
+                      });
 
     layout.addStretch();
 }

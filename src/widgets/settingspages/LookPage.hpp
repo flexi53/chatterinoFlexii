@@ -7,11 +7,14 @@
 #include "widgets/settingspages/GeneralPageView.hpp"
 #include "widgets/settingspages/SettingsPage.hpp"
 
+#include <vector>
+
 namespace chatterino {
 
-/// Everything about how the app looks that is a choice rather than a detail -
-/// the classic/modern switch, the tab colours and how every other message
-/// stands out.
+/// Everything about how the app looks that is a choice rather than a detail,
+/// in tabs: the classic/modern switch and the focus view, the tabs, the chat
+/// and the colours. All of it starts out as Chatterino looks, and each part
+/// has a "Standard" button that puts it back.
 class LookPage : public SettingsPage
 {
 public:
@@ -20,9 +23,12 @@ public:
     bool filterElements(const QString &query) override;
 
 private:
-    void initLayout(GeneralPageView &layout);
+    void buildStyleTab(GeneralPageView &layout);
+    void buildTabsTab(GeneralPageView &layout);
+    void buildChatTab(GeneralPageView &layout);
+    void buildColorsTab(GeneralPageView &layout);
 
-    GeneralPageView *view{};
+    std::vector<GeneralPageView *> views_;
 };
 
 }  // namespace chatterino

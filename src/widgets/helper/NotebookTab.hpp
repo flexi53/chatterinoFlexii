@@ -181,6 +181,15 @@ private:
 
     int normalTabWidthForHeight(int height) const;
 
+    /// Look -> Tabs: the channel whose picture goes in front of the name -
+    /// the first split's, when it is a Twitch channel - or an empty string
+    QString avatarLogin() const;
+    /// How wide the picture is, and the gap after it; 0 without one
+    int avatarSpace() const;
+    int avatarSide() const;
+    /// Asks for the picture of avatarLogin() once it changed
+    void ensureAvatar();
+
     bool shouldMessageHighlight(const ChannelView &channelViewSource) const;
 
     using HighlightSources =
@@ -202,6 +211,9 @@ private:
     QString defaultTitle_;
     QString groupName_;
     QColor customColor_;
+    /// The picture in front of the name, and whose it is
+    QString avatarFor_;
+    QPixmap avatar_;
 
     bool selected_{};
     bool mouseOver_{};

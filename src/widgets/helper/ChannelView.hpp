@@ -14,7 +14,9 @@
 #include "widgets/TooltipWidget.hpp"
 
 #include <pajlada/signals/signal.hpp>
+#include <QElapsedTimer>
 #include <QGestureEvent>
+#include <QHash>
 #include <QMenu>
 #include <QPaintEvent>
 #include <QPointer>
@@ -289,6 +291,8 @@ private:
     /// Gives every message its background again, after how it alternates
     /// was changed
     void refreshAlternateBackgrounds();
+    /// Look -> Chat: which message the mouse is over, to light it up
+    void setHoveredMessage(const MessageLayout *layout);
 
     void performLayout(bool causedByScrollbar = false,
                        bool causedByShow = false);
@@ -337,6 +341,13 @@ private:
 
     bool layoutQueued_ = false;
     bool bufferInvalidationQueued_ = false;
+
+    /// The message under the mouse - only compared, never used
+    const MessageLayout *hoveredMessage_{};
+    /// When messages came in, for fading them in - see Look -> Chat
+    QHash<const MessageLayout *, qint64> fadeStarts_;
+    QElapsedTimer fadeClock_;
+    bool fadeRepaintQueued_ = false;
 
     /// Tracks the area of animated elements in the last full repaint.
     /// If this is empty (QRect::isEmpty()), no animated element is shown.

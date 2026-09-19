@@ -7,6 +7,7 @@
 #include "Application.hpp"
 #include "messages/layouts/MessageLayoutContainer.hpp"
 #include "messages/layouts/MessageLayoutContext.hpp"
+#include "messages/layouts/MessageRole.hpp"
 #include "messages/layouts/MessageLayoutElement.hpp"
 #include "messages/Message.hpp"
 #include "messages/MessageElement.hpp"
@@ -458,6 +459,32 @@ void MessageLayout::updateBuffer(QPixmap *buffer,
     }
 
     painter.fillRect(buffer->rect(), backgroundColor);
+
+    // Who wrote it, as a stripe at the left edge - see Look -> Chat
+    if (ctx.preferences.roleStripes)
+    {
+        const auto stripe = [&]() -> QColor {
+            switch (roleOf(*this->message_))
+            {
+                case ChatRole::Broadcaster:
+                    return ctx.preferences.broadcasterStripe;
+                case ChatRole::Moderator:
+                    return ctx.preferences.moderatorStripe;
+                case ChatRole::Vip:
+                    return ctx.preferences.vipStripe;
+                case ChatRole::Subscriber:
+                    return ctx.preferences.subscriberStripe;
+                case ChatRole::None:
+                default:
+                    return {};
+            }
+        }();
+        if (stripe.isValid() && stripe.alpha() > 0)
+        {
+            painter.fillRect(QRectF(0, 0, 3 * this->scale_, this->height_),
+                             stripe);
+        }
+    }
 
     // draw message
     this->container_.paintElements(painter, ctx);
