@@ -183,6 +183,37 @@ void LookPage::buildTabsTab(GeneralPageView &layout)
     SettingWidget::checkbox("Profilbilder in den Tabs", s.tabProfilePictures)
         ->addKeywords({"avatar", "bild"})
         ->addTo(layout);
+    SettingWidget::checkbox("Live-Ring ums Profilbild statt Punkt",
+                            s.tabLiveRing)
+        ->setTooltip("Ist ein Kanal live, bekommt sein Bild im Tab einen "
+                     "roten Ring - statt des kleinen Punkts in der Ecke.")
+        ->conditionallyEnabledBy(s.tabProfilePictures)
+        ->addKeywords({"live", "ring"})
+        ->addTo(layout);
+    addStandardButton(layout, "Tabs ohne Profilbild, Live mit Punkt", [&s] {
+        s.tabProfilePictures.setValue(false);
+        s.tabLiveRing.setValue(false);
+    });
+
+    layout.addTitle("Split-Kopf");
+    layout.addDescription(
+        "Die Leiste über jedem Chat, mit dem Namen des Kanals.");
+    SettingWidget::checkbox("Profilbild und Kategorie zeigen",
+                            s.splitHeaderPictures)
+        ->setTooltip("Links im Split-Kopf das Bild des Kanals und, solange "
+                     "er live ist, das Cover dessen, was er streamt.")
+        ->addKeywords({"avatar", "spiel", "game", "kategorie", "cover"})
+        ->addTo(layout);
+    SettingWidget::checkbox("Aktivitäts-Kurve zeigen", s.splitHeaderActivity)
+        ->setTooltip("Eine kleine Kurve rechts im Split-Kopf: wie viel in den "
+                     "letzten zehn Minuten im Chat los war. Zählt ab dem "
+                     "Einschalten.")
+        ->addKeywords({"aktivität", "activity", "kurve", "graph"})
+        ->addTo(layout);
+    addStandardButton(layout, "Nur der Name, wie bisher", [&s] {
+        s.splitHeaderPictures.setValue(false);
+        s.splitHeaderActivity.setValue(false);
+    });
 
     layout.addStretch();
 }
@@ -311,6 +342,26 @@ void LookPage::buildChatTab(GeneralPageView &layout)
                           s.fadeInMessages.setValue(false);
                           s.enableSmoothScrollingNewMessages.setValue(false);
                       });
+
+    layout.addTitle("Ereignisse und Erwähnungen");
+    SettingWidget::checkbox("Ereignisse mit Symbol und Farbe markieren",
+                            s.eventSymbols)
+        ->setTooltip("Subs ⭐, Gifts 🎁, Raids 🚀, Ankündigungen 📣, "
+                     "Timeouts ⏱️, Banns 🔨, Bits 💎, eingelöste Punkte 🎟️ "
+                     "und Watch-Streaks 🔥 bekommen vorne ein Symbol und links "
+                     "einen Streifen in ihrer Farbe.")
+        ->addKeywords({"sub", "raid", "bann", "ban", "timeout", "symbol"})
+        ->addTo(layout);
+    SettingWidget::checkbox("Erwähnungen kurz aufleuchten lassen",
+                            s.pulseMentions)
+        ->setTooltip("Erwähnt dich jemand, leuchtet die Nachricht einmal "
+                     "sanft auf, wenn sie reinkommt.")
+        ->addKeywords({"mention", "erwähnung", "leuchten"})
+        ->addTo(layout);
+    addStandardButton(layout, "Keine Symbole, kein Aufleuchten", [&s] {
+        s.eventSymbols.setValue(false);
+        s.pulseMentions.setValue(false);
+    });
 
     layout.addTitle("Rollen-Streifen");
     layout.addDescription(

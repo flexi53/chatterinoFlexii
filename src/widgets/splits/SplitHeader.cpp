@@ -15,6 +15,7 @@
 #include "controllers/hotkeys/HotkeyController.hpp"
 #include "controllers/notifications/NotificationController.hpp"
 #include "providers/kick/KickChannel.hpp"
+#include "providers/twitch/ProfilePictures.hpp"
 #include "providers/twitch/TwitchAccount.hpp"
 #include "providers/twitch/TwitchChannel.hpp"
 #include "providers/twitch/TwitchIrcServer.hpp"
@@ -33,6 +34,7 @@
 #include "widgets/Label.hpp"
 #include "widgets/splits/Split.hpp"
 #include "widgets/splits/SplitContainer.hpp"
+#include "widgets/splits/SplitHeaderExtras.hpp"
 #include "widgets/TooltipWidget.hpp"
 
 #include <QDrag>
@@ -334,6 +336,8 @@ SplitHeader::SplitHeader(Split *split)
     getSettings()->headerStreamTitle.connect(_, this->managedConnections_);
     getSettings()->headerGame.connect(_, this->managedConnections_);
     getSettings()->headerUptime.connect(_, this->managedConnections_);
+    getSettings()->splitHeaderPictures.connect(_, this->managedConnections_);
+    getSettings()->splitHeaderActivity.connect(_, this->managedConnections_);
 
     auto *window = dynamic_cast<BaseWindow *>(this->window());
     if (window)
@@ -386,11 +390,23 @@ void SplitHeader::initializeLayout()
                          this->dropdownButton_->setMenu(this->createMainMenu());
                      });
 
+    this->channelPicture_ =
+        new HeaderPicture(HeaderPicture::Shape::Round, this);
+    this->coverPicture_ = new HeaderPicture(HeaderPicture::Shape::Cover, this);
+    this->activity_ = new ActivityGraph(this);
+
     auto *layout = makeLayout<QHBoxLayout>({
         // space
         makeWidget<BaseWidget>([](auto w) {
             w->setScaleIndependentSize(8, 4);
         }),
+        // Look -> Tabs: the channel's picture and the cover of what it
+        // streams
+        this->channelPicture_,
+        makeWidget<BaseWidget>([](auto w) {
+            w->setScaleIndependentSize(4, 4);
+        }),
+        this->coverPicture_,
         // title
         this->titleLabel_ = makeWidget<Label>([](auto w) {
             w->setSizePolicy(QSizePolicy::MinimumExpanding,
@@ -402,6 +418,8 @@ void SplitHeader::initializeLayout()
         makeWidget<BaseWidget>([](auto w) {
             w->setScaleIndependentSize(8, 4);
         }),
+        // Look -> Tabs: how lively the chat was
+        this->activity_,
         // mode
         this->modeButton_ = makeWidget<LabelButton>([&](auto w) {
             w->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
@@ -956,8 +974,85 @@ void SplitHeader::setAddButtonVisible(bool value)
     this->addButton_->setVisible(value);
 }
 
+void SplitHeader::updatePictures()
+{
+    if (this->channelPicture_ == nullptr)
+    {
+        return;
+    }
+    const auto channel = this->split_->getChannel();
+    auto *twitchChannel = dynamic_cast<TwitchChannel *>(channel.get());
+    const bool pictures =
+        getSettings()->splitHeaderPictures && twitchChannel != nullptr;
+
+    // The channel's own picture
+    const auto login = pictures ? channel->getName().toLower() : QString();
+    if (login != this->pictureLogin_)
+    {
+        this->pictureLogin_ = login;
+        this->channelPicture_->setPicture({});
+        if (!login.isEmpty())
+        {
+            profilepictures::pixmap(login, int(32 * this->scale()), this,
+                                    [this, login](const QPixmap &picture) {
+                                        if (login == this->pictureLogin_)
+                                        {
+                                            this->channelPicture_->setPicture(
+                                                picture);
+                                        }
+                                    });
+        }
+    }
+    this->channelPicture_->setToolTip(channel->getLocalizedName());
+
+    // The cover of what it streams, while it is live
+    QString gameId;
+    QString game;
+    if (pictures)
+    {
+        const auto status = twitchChannel->accessStreamStatus();
+        if (status->live)
+        {
+            gameId = status->gameId;
+            game = status->game;
+        }
+    }
+    if (gameId != this->coverGameId_)
+    {
+        this->coverGameId_ = gameId;
+        this->coverPicture_->setPicture({});
+        if (!gameId.isEmpty())
+        {
+            NetworkRequest(
+                QStringLiteral(
+                    "https://static-cdn.jtvnw.net/ttv-boxart/%1-52x72.jpg")
+                    .arg(gameId),
+                NetworkRequestType::Get)
+                .cache()
+                .caller(this)
+                .onSuccess([this, gameId](const NetworkResult &result) {
+                    QPixmap cover;
+                    if (gameId == this->coverGameId_ &&
+                        cover.loadFromData(result.getData()))
+                    {
+                        this->coverPicture_->setPicture(cover);
+                    }
+                })
+                .execute();
+        }
+    }
+    this->coverPicture_->setToolTip(game);
+
+    // How lively the chat was
+    const bool activity = getSettings()->splitHeaderActivity;
+    this->activity_->setVisible(activity);
+    this->activity_->setChannel(activity ? channel : nullptr);
+}
+
 void SplitHeader::updateChannelText()
 {
+    this->updatePictures();
+
     auto indirectChannel = this->split_->getIndirectChannel();
     auto channel = this->split_->getChannel();
     this->isLive_ = false;

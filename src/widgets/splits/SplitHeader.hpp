@@ -22,6 +22,8 @@ namespace chatterino {
 
 class SvgButton;
 class DrawnButton;
+class HeaderPicture;
+class ActivityGraph;
 class LabelButton;
 class Label;
 class Split;
@@ -69,6 +71,9 @@ private:
     void resetThumbnail();
 
     void handleChannelChanged();
+    /// Look -> Tabs: the channel's picture, the cover of what it streams and
+    /// the activity curve, as far as they are switched on
+    void updatePictures();
 
     Split *const split_{};
     QString tooltipText_{};
@@ -93,6 +98,13 @@ private:
     SvgButton *moderationButton_{};
     SvgButton *chattersButton_{};
     DrawnButton *addButton_{};
+
+    HeaderPicture *channelPicture_{};
+    HeaderPicture *coverPicture_{};
+    ActivityGraph *activity_{};
+    /// Whose picture and which cover are shown, or being loaded
+    QString pictureLogin_;
+    QString coverGameId_;
 
     // states
     QPoint dragStart_{};

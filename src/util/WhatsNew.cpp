@@ -35,7 +35,20 @@ struct Release {
 
 /// Newest first. Add to the top when something lands that is worth telling
 /// the user about; everything above what they last saw is shown at once.
-const std::array<Release, 15> RELEASES{{
+const std::array<Release, 16> RELEASES{{
+    {"19 September 2026 (9)",
+     "19. September 2026 - Nachtrag 8",
+     {
+         "Look -> Tabs: ein roter Live-Ring ums Profilbild statt des "
+         "Punkts, und im Split-Kopf auf Wunsch das Bild des Kanals, das "
+         "Cover dessen, was er streamt, und eine kleine Kurve, wie viel im "
+         "Chat los ist.",
+         "Look -> Chat: Subs ⭐, Gifts 🎁, Raids 🚀, Ankündigungen 📣, "
+         "Timeouts ⏱️, Banns 🔨 und mehr bekommen ein Symbol und eine Farbe, "
+         "und Nachrichten, die dich erwähnen, leuchten kurz auf.",
+         "Alles ist am Anfang aus - jeder Bereich hat seinen "
+         "„Standard“-Knopf.",
+     }},
     {"19 September 2026 (8)",
      "19. September 2026 - Nachtrag 7",
      {

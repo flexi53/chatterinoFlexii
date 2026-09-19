@@ -41,8 +41,10 @@ int maxUncollapsedLines()
 namespace chatterino {
 
 void MessageLayoutContainer::beginLayout(qreal width, float scale,
-                                         float imageScale, MessageFlags flags)
+                                         float imageScale, MessageFlags flags,
+                                         int leadingIndent)
 {
+    this->leadingIndent_ = leadingIndent;
     this->elements_.clear();
     this->lines_.clear();
 
@@ -290,6 +292,7 @@ void MessageLayoutContainer::breakLine()
     if (this->flags_.has(MessageFlag::Centered) && this->elements_.size() > 0)
     {
         const int marginOffset = int(MARGIN.left() * this->scale_) +
+                                 this->leadingIndent_ +
                                  int(MARGIN.right() * this->scale_);
         xOffset = (this->width_ - marginOffset -
                    this->elements_.at(this->elements_.size() - 1)
@@ -314,7 +317,8 @@ void MessageLayoutContainer::breakLine()
         }
 
         element->setPosition(QPointF{
-            element->getRect().x() + xOffset + (MARGIN.left() * this->scale_),
+            element->getRect().x() + xOffset + (MARGIN.left() * this->scale_) +
+                this->leadingIndent_,
             element->getRect().y() + this->lineHeight_ + yExtra,
         });
     }
@@ -701,7 +705,7 @@ bool MessageLayoutContainer::fitsInLine(qreal width) const
 qreal MessageLayoutContainer::remainingWidth() const
 {
     return (this->width_ - int(MARGIN.left() * this->scale_) -
-            int(MARGIN.right() * this->scale_) -
+            this->leadingIndent_ - int(MARGIN.right() * this->scale_) -
             (static_cast<int>(this->line_ + 1) == maxUncollapsedLines()
                  ? this->dotdotdotWidth_
                  : 0)) -

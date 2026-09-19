@@ -263,6 +263,21 @@ public:
     /// The channel's profile picture in front of a tab's name
     BoolSetting tabProfilePictures = {"/appearance/tabs/profilePictures",
                                       false};
+    /// A ring around a tab's picture while the channel is live, in place of
+    /// the dot
+    BoolSetting tabLiveRing = {"/appearance/tabs/liveRing", false};
+    /// The channel's picture and the cover of what it streams in the split
+    /// header
+    BoolSetting splitHeaderPictures = {"/appearance/splitheader/pictures",
+                                       false};
+    /// How lively the chat was over the last minutes, as a small curve in the
+    /// split header
+    BoolSetting splitHeaderActivity = {"/appearance/splitheader/activity",
+                                       false};
+    /// Subs, raids, bans and the like marked with a symbol and a colour
+    BoolSetting eventSymbols = {"/appearance/messages/eventSymbols", false};
+    /// A message mentioning you lights up briefly as it comes in
+    BoolSetting pulseMentions = {"/appearance/messages/pulseMentions", false};
     /// Own colours over the theme's; each empty one keeps the theme's
     BoolSetting customColors = {"/appearance/customColors/enabled", false};
     QStringSetting customColorBackground = {

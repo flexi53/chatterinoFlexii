@@ -8,12 +8,14 @@
 #include "controllers/highlights/HighlightBadge.hpp"
 #include "messages/layouts/MessageLayoutContainer.hpp"
 #include "messages/layouts/MessageLayoutContext.hpp"
+#include "messages/layouts/ChatEvent.hpp"
 #include "messages/layouts/MessageRole.hpp"
 #include "messages/layouts/MessageLayoutElement.hpp"
 #include "messages/Message.hpp"
 #include "messages/MessageElement.hpp"
 #include "messages/Selection.hpp"
 #include "providers/colors/ColorProvider.hpp"
+#include "singletons/Fonts.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/StreamerMode.hpp"
 #include "singletons/WindowManager.hpp"
@@ -153,8 +155,12 @@ void MessageLayout::actuallyLayout(const MessageLayoutContext &ctx)
     bool hideSimilar = getSettings()->hideSimilar;
     bool hideReplies = !ctx.flags.has(MessageElementFlag::RepliedMessage);
 
-    this->container_.beginLayout(ctx.width, this->scale_, this->imageScale_,
-                                 messageFlags);
+    // Room for the symbol of an event in front of it - see Look -> Chat
+    this->event_ = getSettings()->eventSymbols ? eventOf(*this->message_)
+                                               : ChatEvent::None;
+    this->container_.beginLayout(
+        ctx.width, this->scale_, this->imageScale_, messageFlags,
+        this->event_ == ChatEvent::None ? 0 : int(18 * this->scale_));
 
     for (const auto &element : this->message_->elements)
     {
@@ -475,6 +481,31 @@ void MessageLayout::updateBuffer(QPixmap *buffer,
             painter.fillRect(QRectF(0, 0, 3 * this->scale_, this->height_),
                              stripe);
         }
+    }
+
+    // An event's symbol in front of it, and a stripe in its colour
+    if (this->event_ != ChatEvent::None)
+    {
+        painter.fillRect(QRectF(0, 0, 3 * this->scale_, this->height_),
+                         eventColor(this->event_));
+
+        auto font = painter.font();
+        font.setPixelSize(std::max(1, int(12 * this->scale_)));
+        painter.save();
+        painter.setFont(font);
+        const auto lineHeight =
+            getApp()
+                ->getFonts()
+                ->getFontMetrics(FontStyle::ChatMedium, this->scale_)
+                .height();
+        // On the first line, below the room the spacing leaves above it
+        const auto top =
+            (4 + (std::max(0, getSettings()->messageSpacing.getValue()) / 2.0)) *
+            this->scale_;
+        painter.drawText(QRectF(6 * this->scale_, top, 18 * this->scale_,
+                                lineHeight),
+                         Qt::AlignCenter, eventSymbol(this->event_));
+        painter.restore();
     }
 
     // draw message

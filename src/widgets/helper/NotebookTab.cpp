@@ -143,6 +143,11 @@ NotebookTab::NotebookTab(Notebook *notebook)
             this->update();
         },
         this->managedConnections_, false);
+    getSettings()->tabLiveRing.connect(
+        [this](const auto &, const auto &) {
+            this->update();
+        },
+        this->managedConnections_, false);
 
     this->setMouseTracking(true);
 
@@ -1177,7 +1182,12 @@ void NotebookTab::paintEvent(QPaintEvent *)
     }
 
     // draw live indicator
-    if ((this->isLive_ || this->isRerun_) && getSettings()->showTabLive)
+    // Look -> Tabs: a ring around the picture takes the dot's place
+    const bool liveRing = (this->isLive_ || this->isRerun_) &&
+                          getSettings()->tabLiveRing &&
+                          this->avatarSpace() > 0;
+    if ((this->isLive_ || this->isRerun_) && getSettings()->showTabLive &&
+        !liveRing)
     {
         // Live overrides rerun
         QBrush b;
@@ -1260,6 +1270,17 @@ void NotebookTab::paintEvent(QPaintEvent *)
         else
         {
             paintRound(painter, circle, this->avatar_);
+        }
+        if (liveRing)
+        {
+            QPen ring(this->isLive_ ? this->theme->tabs.liveIndicator
+                                    : this->theme->tabs.rerunIndicator);
+            ring.setWidthF(1.8 * scale);
+            painter.setPen(ring);
+            painter.setBrush(Qt::NoBrush);
+            painter.drawEllipse(
+                circle.adjusted(-1.2 * scale, -1.2 * scale, 1.2 * scale,
+                                1.2 * scale));
         }
         painter.restore();
 

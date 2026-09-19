@@ -6,6 +6,7 @@
 
 #include "common/Common.hpp"
 #include "common/FlagsEnum.hpp"
+#include "messages/layouts/ChatEvent.hpp"
 #include "messages/layouts/MessageLayoutContainer.hpp"
 
 #include <QPixmap>
@@ -135,6 +136,8 @@ private:
     float scale_ = -1;
     float imageScale_ = -1.F;
     MessageElementFlags currentWordFlags_;
+    /// The event it tells of, when those are marked - see Look -> Chat
+    ChatEvent event_ = ChatEvent::None;
 
 #ifdef FOURTF
     // Debug counters

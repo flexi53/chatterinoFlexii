@@ -11,6 +11,7 @@
 #include "controllers/moderation/RepeatSpamDetector.hpp"
 #include "controllers/moderation/StepEscalation.hpp"
 #include "messages/layouts/AlternateBackground.hpp"
+#include "messages/layouts/ChatEvent.hpp"
 #include "messages/layouts/MessageLayout.hpp"
 #include "messages/layouts/MessageRole.hpp"
 #include "messages/Message.hpp"
@@ -879,4 +880,58 @@ TEST(FlexiiLook, TheSettingsPageKnowsWhichRolesAHighlightColours)
     EXPECT_EQ(badgeStripeColor(ChatRole::Broadcaster, highlights),
               QColor("#ffa600"));
     EXPECT_FALSE(badgeStripeColor(ChatRole::Vip, highlights).has_value());
+}
+
+namespace {
+
+ChatEvent eventFor(MessageFlag flag, const QString &text)
+{
+    Message message;
+    message.flags.set(flag);
+    message.messageText = text;
+    return eventOf(message);
+}
+
+}  // namespace
+
+TEST(FlexiiLook, EventsAreToldApart)
+{
+    EXPECT_EQ(eventFor(MessageFlag::Timeout, "x has been timed out for 10m."),
+              ChatEvent::Timeout);
+    EXPECT_EQ(eventFor(MessageFlag::Timeout, "x has been permanently banned."),
+              ChatEvent::Ban);
+    EXPECT_EQ(eventFor(MessageFlag::Subscription,
+                       "15 raiders from zarbex have joined!"),
+              ChatEvent::Raid);
+    EXPECT_EQ(eventFor(MessageFlag::Subscription, "Announcement"),
+              ChatEvent::Announcement);
+    EXPECT_EQ(eventFor(MessageFlag::Subscription,
+                       "anna gifted a Tier 1 sub to ben!"),
+              ChatEvent::Gift);
+    EXPECT_EQ(eventFor(MessageFlag::Subscription,
+                       "anna subscribed at Tier 1. They've subscribed for 3 "
+                       "months!"),
+              ChatEvent::Sub);
+    EXPECT_EQ(eventFor(MessageFlag::CheerMessage, "cheer100 gg"),
+              ChatEvent::Bits);
+    EXPECT_EQ(eventFor(MessageFlag::RedeemedChannelPointReward, "Hydrate"),
+              ChatEvent::Redeem);
+    EXPECT_EQ(eventFor(MessageFlag::WatchStreak, "watched 5 streams"),
+              ChatEvent::Streak);
+    EXPECT_EQ(eventFor(MessageFlag::Untimeout, "x has been untimedout."),
+              ChatEvent::None);
+    EXPECT_EQ(eventOf(Message{}), ChatEvent::None);
+}
+
+TEST(FlexiiLook, EveryEventHasASymbolAndAColour)
+{
+    for (auto event :
+         {ChatEvent::Sub, ChatEvent::Gift, ChatEvent::Raid,
+          ChatEvent::Announcement, ChatEvent::Timeout, ChatEvent::Ban,
+          ChatEvent::Bits, ChatEvent::Redeem, ChatEvent::Streak})
+    {
+        EXPECT_FALSE(eventSymbol(event).isEmpty());
+        EXPECT_TRUE(eventColor(event).isValid());
+    }
+    EXPECT_TRUE(eventSymbol(ChatEvent::None).isEmpty());
 }

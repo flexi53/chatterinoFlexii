@@ -348,6 +348,8 @@ set(SOURCE_FILES
 
         messages/layouts/AlternateBackground.cpp
         messages/layouts/AlternateBackground.hpp
+        messages/layouts/ChatEvent.cpp
+        messages/layouts/ChatEvent.hpp
         messages/layouts/MessageLayout.cpp
         messages/layouts/MessageLayout.hpp
         messages/layouts/MessageLayoutContainer.cpp
@@ -962,6 +964,8 @@ set(SOURCE_FILES
         widgets/splits/SplitContainer.hpp
         widgets/splits/SplitHeader.cpp
         widgets/splits/SplitHeader.hpp
+        widgets/splits/SplitHeaderExtras.cpp
+        widgets/splits/SplitHeaderExtras.hpp
         widgets/splits/SplitInput.cpp
         widgets/splits/SplitInput.hpp
         widgets/splits/SplitOverlay.cpp

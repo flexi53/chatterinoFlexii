@@ -42,8 +42,10 @@ struct MessageLayoutContainer {
      * This will reset all line calculations, and will be considered incomplete
      * until the accompanying end function has been called
      */
+    /// @a leadingIndent keeps room in front of every line - for the symbol of
+    /// an event, see Look -> Chat
     void beginLayout(qreal width, float scale, float imageScale,
-                     MessageFlags flags);
+                     MessageFlags flags, int leadingIndent = 0);
 
     /**
      * Finish the layout process of this message
@@ -368,6 +370,8 @@ private:
     /// Extra room above and below the message - see Look -> Chat
     int spacingTop_ = 0;
     int spacingBottom_ = 0;
+    /// Room in front of every line
+    int leadingIndent_ = 0;
 
     /// @brief True if the current line contains any RTL text.
     ///

@@ -173,6 +173,7 @@ WindowManager::WindowManager(const Args &appArgs_, const Paths &paths,
         settings.streamerModeHideRestrictedUsers);
     this->forceLayoutChannelViewsListener.add(fonts.fontChanged);
     this->forceLayoutChannelViewsListener.add(settings.messageSpacing);
+    this->forceLayoutChannelViewsListener.add(settings.eventSymbols);
 
     this->layoutChannelViewsListener.add(settings.timestampFormat);
 

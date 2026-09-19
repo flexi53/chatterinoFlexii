@@ -1235,6 +1235,19 @@ void ChannelView::messageAppended(MessagePtr &message,
 
     setBackgroundNextTo(*messageRef, raw(this->messages_.last()),
                         this->context_);
+    // Look -> Chat: a message mentioning you lights up as it comes in - not
+    // history loaded in, and not what you wrote yourself
+    if (getSettings()->pulseMentions &&
+        message->flags.has(MessageFlag::ShowInMentions) &&
+        !message->flags.has(MessageFlag::RecentMessage) &&
+        message->loginName.compare(
+            getApp()->getAccounts()->twitch.getCurrent()->getUserName(),
+            Qt::CaseInsensitive) != 0)
+    {
+        this->highlightedMessage_ = messageRef.get();
+        this->highlightAnimation_.setCurrentTime(0);
+        this->highlightAnimation_.start(QAbstractAnimation::KeepWhenStopped);
+    }
     if (getSettings()->fadeInMessages)
     {
         if (!this->fadeClock_.isValid())

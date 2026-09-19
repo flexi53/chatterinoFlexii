@@ -101,7 +101,13 @@ and a gradient, all of which work under either look. Tabs with new messages
 or a highlight keep their own color so they still stand out, and **Standard**
 goes back to the theme. **Profilbilder in den Tabs** puts the channel's round
 profile picture in front of each tab's name - the first split's, for a tab
-with several.
+with several. With **Live-Ring**, a live
+channel's picture gets a red ring instead of the dot in the corner.
+
+The **split header** can show the channel's picture and, while it is live,
+the cover of what it streams, next to the name - and a small curve of how
+lively the chat was over the last ten minutes, counted from when it is
+switched on; its tooltip tells the numbers.
 
 **Fokus-Ansicht** hides a window's tabs, the buttons next to them and the
 split headers, leaving the chats - and the tab groups set to **Always Show
@@ -127,6 +133,11 @@ mentions that have been dealt with.
   than appear at once. **Chat weich nachrutschen lassen** - Chatterino's
   smooth scrolling on new messages - goes well with it, so the chat does not
   jump a line either.
+- **Ereignisse markieren**: subs ⭐, gifts 🎁, raids 🚀, announcements 📣,
+  timeouts ⏱️, bans 🔨, bits 💎, redeemed points 🎟️ and watch streaks 🔥
+  get their symbol in front and a stripe in their colour
+- **Erwähnungen aufleuchten lassen**: a message mentioning you lights up
+  once as it comes in - not history, not your own
 - **Rollen-Streifen**: a narrow stripe at the left edge of every message shows
   who wrote it. A role with a badge highlight (Highlights -> Badges) takes
   that highlight's colour, made solid - for a lead moderator their own
