@@ -964,6 +964,8 @@ set(SOURCE_FILES
         widgets/splits/InputCompletionPopup.hpp
         widgets/splits/InputHighlighter.cpp
         widgets/splits/InputHighlighter.hpp
+        widgets/splits/SendWaitBar.cpp
+        widgets/splits/SendWaitBar.hpp
         widgets/splits/Split.cpp
         widgets/splits/Split.hpp
         widgets/splits/SplitCommon.hpp

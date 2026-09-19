@@ -21,6 +21,10 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
+#include <chrono>
+#include <optional>
+#include <utility>
+
 #include <memory>
 
 namespace chatterino {
@@ -38,6 +42,8 @@ class ChannelView;
 class SvgButton;
 class SpellCheckHighlighter;
 enum class CompletionKind;
+
+class SendWaitBar;
 
 class SplitInput : public BaseWidget
 {
@@ -97,6 +103,12 @@ public:
      * This method is used to update the text of the timeout and slow mode timer
      */
     void setSendWaitStatus(const QString &text) const;
+
+    /// ChattiFlexii: lets the bar under the input run out over @a remaining
+    /// of a wait that was @a total long; nothing hides it
+    void setSendWait(
+        std::optional<std::pair<std::chrono::milliseconds,
+                                std::chrono::milliseconds>> wait) const;
 
     void triggerSelfMessageReceived();
 
@@ -182,6 +194,8 @@ protected:
         QLabel *textEditLength;
         LabelButton *sendButton;
         QLabel *sendWaitStatus;
+        /// ChattiFlexii: the bar running out under the input
+        SendWaitBar *sendWaitBar;
         SvgButton *emoteButton;
         SvgButton *modAssistButton;
         FocusButton *focusButton;

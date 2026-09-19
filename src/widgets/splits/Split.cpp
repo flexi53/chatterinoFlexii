@@ -926,8 +926,10 @@ void Split::setChannel(IndirectChannel newChannel)
         });
 
         this->channelSignalHolder_.managedConnect(
-            tc->sendWaitUpdate, [this](const QString &text) {
+            tc->sendWaitUpdate, [this, tc](const QString &text) {
                 this->getInput().setSendWaitStatus(text);
+                // ChattiFlexii: the bar under the input runs on the same wait
+                this->getInput().setSendWait(tc->sendWait());
             });
     }
     else if (kc != nullptr)

@@ -2649,11 +2649,29 @@ void TwitchChannel::setSendWait(int seconds)
     }
     this->sendWaitEnd_ =
         std::chrono::steady_clock::now() + std::chrono::seconds(seconds);
+    this->sendWaitTotal_ = std::chrono::seconds(seconds);
     if (!this->sendWaitTimer_.isActive())
     {
         this->sendWaitTimer_.start(1s);
         this->syncSendWaitTimer();
     }
+}
+
+std::optional<std::pair<std::chrono::milliseconds, std::chrono::milliseconds>>
+    TwitchChannel::sendWait() const
+{
+    if (!this->sendWaitEnd_.has_value())
+    {
+        return std::nullopt;
+    }
+
+    const auto left = std::chrono::duration_cast<std::chrono::milliseconds>(
+        this->sendWaitEnd_.value() - std::chrono::steady_clock::now());
+    if (left <= std::chrono::milliseconds(0))
+    {
+        return std::nullopt;
+    }
+    return std::make_pair(left, this->sendWaitTotal_);
 }
 
 bool TwitchChannel::isLoadingRecentMessages() const

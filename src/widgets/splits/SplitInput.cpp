@@ -35,6 +35,7 @@
 #include "widgets/Scrollbar.hpp"
 #include "widgets/splits/InputCompletionPopup.hpp"
 #include "widgets/splits/InputHighlighter.hpp"
+#include "widgets/splits/SendWaitBar.hpp"
 #include "widgets/splits/Split.hpp"
 #include "widgets/splits/SplitContainer.hpp"
 
@@ -175,6 +176,11 @@ void SplitInput::initLayout()
     auto inputWrapper =
         layout.emplace<QWidget>().assign(&this->ui_.inputWrapper);
     inputWrapper->setContentsMargins(1, 1, 1, 1);
+
+    // ChattiFlexii: under the input, a bar running out while the channel
+    // makes you wait - see Look -> Chat
+    this->ui_.sendWaitBar = new SendWaitBar(this);
+    this->ui_.vbox->addWidget(this->ui_.sendWaitBar);
 
     // hbox for input, right box
     auto hboxLayout =
@@ -1559,6 +1565,20 @@ void SplitInput::updateFonts()
     this->ui_.sendWaitStatus->setFont(tsMedium);
     this->ui_.replyLabel->setFont(
         app->getFonts()->getFont(FontStyle::ChatMediumBold, this->scale()));
+}
+
+void SplitInput::setSendWait(
+    std::optional<std::pair<std::chrono::milliseconds, std::chrono::milliseconds>>
+        wait) const
+{
+    if (wait.has_value())
+    {
+        this->ui_.sendWaitBar->run(wait->first, wait->second);
+    }
+    else
+    {
+        this->ui_.sendWaitBar->stop();
+    }
 }
 
 void SplitInput::setSendWaitStatus(const QString &text) const

@@ -406,6 +406,12 @@ public:
      */
     void setSendWait(int seconds);
 
+    /// ChattiFlexii: how long until a message may be sent again and how
+    /// long that wait was to begin with - nothing while there is no wait.
+    /// What the bar under the input runs on.
+    std::optional<std::pair<std::chrono::milliseconds, std::chrono::milliseconds>>
+        sendWait() const;
+
     bool isLoadingRecentMessages() const;
 
     /**
@@ -629,6 +635,8 @@ private:
     QTimer sendWaitTimer_;
     // Timepoint at which the user can send messages again
     std::optional<std::chrono::steady_clock::time_point> sendWaitEnd_;
+    /// How long the running wait was when it started
+    std::chrono::milliseconds sendWaitTotal_{0};
 };
 
 }  // namespace chatterino

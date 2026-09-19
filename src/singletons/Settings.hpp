@@ -179,6 +179,9 @@ public:
     BoolSetting showEmptyInput = {"/appearance/showEmptyInputBox", true};
     BoolSetting showMessageLength = {"/appearance/messages/showMessageLength",
                                      false};
+    /// ChattiFlexii: a bar under the input running out while slow mode or a
+    /// timeout keeps you from sending, as Twitch shows it
+    BoolSetting slowModeBar = {"/appearance/slowModeBar", false};
     BoolSetting showSendWaitTimer = {"/appearance/messages/showSendWaitTimer",
                                      false};
     EnumSetting<MessageOverflow> messageOverflow = {

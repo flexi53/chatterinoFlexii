@@ -324,9 +324,12 @@ void LookPage::buildTabsTab(GeneralPageView &layout)
         ->addKeywords({"avatar", "spiel", "game", "kategorie", "cover"})
         ->addTo(layout);
     SettingWidget::checkbox("Aktivitäts-Kurve zeigen", s.splitHeaderActivity)
-        ->setTooltip("Eine kleine Kurve rechts im Split-Kopf: wie viel in den "
-                     "letzten zehn Minuten im Chat los war. Zählt ab dem "
-                     "Einschalten.")
+        ->setTooltip("Eine kleine Kurve rechts im Split-Kopf: wie viel in der "
+                     "letzten Viertelstunde im Chat los war. Darunter eine "
+                     "Linie mit einem Strich je Minute, und wo der Kanal die "
+                     "Kategorie gewechselt hat, ein senkrechter Strich. "
+                     "Zählt ab dem Einschalten; im schmalen Split wird sie "
+                     "kürzer, damit der Titel bleibt.")
         ->addKeywords({"aktivität", "activity", "kurve", "graph"})
         ->addTo(layout);
     addStandardButton(layout, "Nur der Name, wie bisher", [&s] {
@@ -478,6 +481,27 @@ void LookPage::buildChatTab(GeneralPageView &layout)
                           s.hoverHighlightColor.setValue("");
                           s.fadeInMessages.setValue(false);
                           s.enableSmoothScrollingNewMessages.setValue(false);
+                      });
+
+    layout.addTitle("Eingabefeld");
+    SettingWidget::checkbox("Wartebalken unter dem Eingabefeld", s.slowModeBar)
+        ->setTooltip("Hat ein Kanal Slow-Modus oder hast du einen Timeout, "
+                     "läuft unter dem Eingabefeld ein Balken ab, bis du "
+                     "wieder schreiben darfst - so wie im Twitch-Chat. Für "
+                     "Mods und VIPs gilt der Slow-Modus nicht, dann bleibt "
+                     "der Balken weg.")
+        ->addKeywords({"slowmode", "slow mode", "timeout", "balken", "warten"})
+        ->addTo(layout);
+    SettingWidget::checkbox("Restzeit als Zahl rechts im Eingabefeld",
+                            s.showSendWaitTimer)
+        ->setTooltip("Derselbe Schalter wie General -> Chat -> Show countdown "
+                     "on slow mode or when timed out.")
+        ->addTo(layout);
+    addStandardButton(layout, "Kein Balken, Restzeit wie bei Chatterino",
+                      [&s] {
+                          s.slowModeBar.setValue(false);
+                          s.showSendWaitTimer.setValue(
+                              s.showSendWaitTimer.getDefaultValue());
                       });
 
     layout.addTitle("Profilbilder im Chat");

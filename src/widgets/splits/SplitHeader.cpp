@@ -387,6 +387,9 @@ void SplitHeader::initializeLayout()
     this->coverPicture_ =
         new HeaderPicture(HeaderPicture::Shape::Cover, 5, this);
     this->activity_ = new ActivityGraph(this);
+    // As wide as there is room for, down to a third of that, so a narrow
+    // split keeps its title
+    this->activity_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
 
     auto *layout = makeLayout<QHBoxLayout>({
         // space
