@@ -385,7 +385,7 @@ void SplitHeader::initializeLayout()
     this->channelPicture_ =
         new HeaderPicture(HeaderPicture::Shape::Round, 6, this);
     this->coverPicture_ =
-        new HeaderPicture(HeaderPicture::Shape::Cover, 10, this);
+        new HeaderPicture(HeaderPicture::Shape::Cover, 5, this);
     this->activity_ = new ActivityGraph(this);
 
     auto *layout = makeLayout<QHBoxLayout>({
@@ -407,9 +407,10 @@ void SplitHeader::initializeLayout()
             // rather than running under what is next to it
             w->setShouldElide(true);
         }),
-        // space
+        // space - ChattiFlexii: half of what it was, so the title keeps
+        // closer to what follows it
         makeWidget<BaseWidget>([](auto w) {
-            w->setScaleIndependentSize(8, 4);
+            w->setScaleIndependentSize(4, 4);
         }),
         // Look -> Tabs: how lively the chat was
         this->activity_,

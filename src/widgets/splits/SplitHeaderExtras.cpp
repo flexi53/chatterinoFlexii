@@ -131,8 +131,8 @@ void ActivityGraph::updateTooltip()
 
 void ActivityGraph::scaleChangedEvent(float scale)
 {
-    // The curve and a little room on either side of it
-    this->setFixedSize(int((40 + (2 * 6)) * scale), int(16 * scale));
+    // The curve, a little room before it and some more after it
+    this->setFixedSize(int((3 + 40 + 6) * scale), int(16 * scale));
 }
 
 void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
@@ -142,8 +142,9 @@ void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
 
     const auto highest = std::max(
         1, *std::max_element(this->counts_.begin(), this->counts_.end()));
-    const auto side = 6 * this->scale();
-    const QRectF area = QRectF(this->rect()).adjusted(side, 2, -side, -2);
+    const QRectF area =
+        QRectF(this->rect())
+            .adjusted(3 * this->scale(), 2, -6 * this->scale(), -2);
     const auto step = area.width() / qreal(this->counts_.size() - 1);
 
     QPainterPath line;
