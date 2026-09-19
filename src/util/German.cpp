@@ -18,6 +18,8 @@
 #include <QTextStream>
 #include <QWidget>
 
+#include <algorithm>
+
 namespace chatterino::german {
 
 namespace {
@@ -38,6 +40,42 @@ const QHash<QString, QString> &words()
 
 /// Writes texts with no entry to the file in CHATTIFLEXII_GERMAN_MISSING,
 /// each once
+/// @a german broken into lines no longer than the longest line of
+/// @a english, on spaces - so a text that was kept narrow stays narrow
+QString brokenLike(const QString &german, const QString &english)
+{
+    qsizetype longest = 0;
+    for (const auto &line : english.split('\n'))
+    {
+        longest = std::max(longest, line.length());
+    }
+    if (longest <= 0 || german.length() <= longest)
+    {
+        return german;
+    }
+
+    QString broken;
+    qsizetype room = longest;
+    for (const auto &word : german.split(' '))
+    {
+        if (broken.isEmpty())
+        {
+            broken = word;
+            room = longest - word.length();
+            continue;
+        }
+        if (word.length() + 1 > room)
+        {
+            broken += '\n' + word;
+            room = longest - word.length();
+            continue;
+        }
+        broken += ' ' + word;
+        room -= word.length() + 1;
+    }
+    return broken;
+}
+
 void noteMissing(const QString &english)
 {
     static const QString path =
@@ -104,7 +142,9 @@ QString say(const QString &english)
     }
 
     // Some texts come with their lines already broken; the dictionary holds
-    // them as one line
+    // them as one line. The German text is broken again the same way - a
+    // label or a column title that Chatterino kept narrow on purpose would
+    // otherwise stretch the whole window.
     if (english.contains('\n'))
     {
         auto oneLine = core;
@@ -112,7 +152,8 @@ QString say(const QString &english)
         const auto flat = words().find(oneLine);
         if (flat != words().end())
         {
-            return english.left(start) + flat.value() + english.mid(end);
+            return english.left(start) + brokenLike(flat.value(), core) +
+                   english.mid(end);
         }
         noteMissing(oneLine);
         return english;

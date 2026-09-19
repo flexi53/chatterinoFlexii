@@ -7,6 +7,8 @@
 #include <gtest/gtest.h>
 #include <QString>
 
+#include <algorithm>
+
 using namespace chatterino;
 
 namespace {
@@ -51,6 +53,40 @@ TEST(FlexiiGerman, ATooltipBrokenIntoLinesIsStillFound)
     const auto german = german::say(english);
     EXPECT_NE(german, english);
     EXPECT_FALSE(german.contains("moderator actions"));
+}
+
+TEST(FlexiiGerman, ATextKeptNarrowStaysNarrow)
+{
+    // Chatterino breaks a column title over two lines so the column stays
+    // narrow; the German one has to be broken too, or the table stretches
+    // the whole settings window
+    const auto english = QStringLiteral("Show in\nMentions");
+    const auto german = german::say(english);
+    ASSERT_NE(german, english);
+
+    // A German word may be longer than the English one, but the title is
+    // still broken rather than laid out in one long line
+    EXPECT_GE(german.split('\n').size(), 2) << german.toStdString();
+    for (const auto &line : german.split('\n'))
+    {
+        EXPECT_LE(line.length(), 14) << german.toStdString();
+    }
+}
+
+TEST(FlexiiGerman, ALongTextWithLinesIsBrokenAgain)
+{
+    // This one has no entry of its own, so it comes through the one-line
+    // lookup and is broken to the width it had
+    const auto english =
+        QStringLiteral("Show messages for timeouts, bans, and other\n"
+                       "moderator actions.");
+    const auto german = german::say(english);
+    ASSERT_NE(german, english);
+    EXPECT_TRUE(german.contains('\n')) << german.toStdString();
+    for (const auto &line : german.split('\n'))
+    {
+        EXPECT_LE(line.length(), 45) << german.toStdString();
+    }
 }
 
 TEST(FlexiiGerman, TheSearchKnowsBothTexts)
