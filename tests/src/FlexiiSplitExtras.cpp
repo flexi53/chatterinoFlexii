@@ -47,6 +47,11 @@ protected:
     FlexiiActivityGraphFixture()
         : channel(std::make_shared<Channel>("test", Channel::Type::Twitch))
     {
+        // A clock the test moves on itself, so a stream of hours passes in
+        // a moment
+        this->graph.setClock([this] {
+            return this->clock;
+        });
         this->graph.setChannel(this->channel);
     }
 
@@ -61,19 +66,25 @@ protected:
         this->channel->addMessage(builder.release(), MessageContext::Original);
     }
 
+    /// Lets @a seconds pass
+    void pass(int seconds)
+    {
+        this->clock = this->clock.addSecs(seconds);
+        this->graph.catchUp();
+    }
+
     MockApplication app;
+    QDateTime clock{QDateTime::currentDateTimeUtc()};
     ChannelPtr channel;
     ActivityGraph graph{nullptr};
 };
 
 }  // namespace
 
-TEST_F(FlexiiActivityGraphFixture, TheCurveReachesBackAQuarterOfAnHour)
+TEST_F(FlexiiActivityGraphFixture, WithoutAStreamItCoversTheLastQuarterHour)
 {
-    EXPECT_EQ(int(ActivityGraph::SPANS) * ActivityGraph::SPAN_SECONDS, 900);
-    EXPECT_TRUE(this->graph.description().contains("15 Minuten"));
-    // The line of time under the curve is explained where the numbers are
-    EXPECT_TRUE(this->graph.description().contains("je Minute"));
+    EXPECT_TRUE(this->graph.description().contains("letzten 15 Minuten"))
+        << this->graph.description().toStdString();
 }
 
 TEST_F(FlexiiActivityGraphFixture, WhatPeopleWriteIsCounted)
@@ -87,6 +98,45 @@ TEST_F(FlexiiActivityGraphFixture, WhatPeopleWriteIsCounted)
     EXPECT_TRUE(this->graph.description().contains("2 Nachrichten"));
 }
 
+TEST_F(FlexiiActivityGraphFixture, ItFollowsTheStreamFromWhenItWentLive)
+{
+    this->graph.followStream("42", this->clock.addSecs(-3 * 3600));
+
+    const auto text = this->graph.description();
+    EXPECT_TRUE(text.contains("seit Streamstart")) << text.toStdString();
+    EXPECT_TRUE(text.contains("3 Std.")) << text.toStdString();
+    // Three hours get a tick every half hour
+    EXPECT_TRUE(text.contains("je 30 Min.")) << text.toStdString();
+}
+
+TEST_F(FlexiiActivityGraphFixture, WhatHappenedBeforeTheChannelWasOpenIsSaid)
+{
+    this->graph.followStream("42", this->clock.addSecs(-2 * 3600));
+    EXPECT_TRUE(this->graph.description().contains("Vor dem Öffnen des Kanals"))
+        << this->graph.description().toStdString();
+}
+
+TEST_F(FlexiiActivityGraphFixture, ANewStreamStartsTheCountingOver)
+{
+    this->graph.followStream("42", this->clock.addSecs(-3600));
+    this->chat();
+    this->chat();
+    ASSERT_TRUE(this->graph.description().contains("2 Nachrichten"));
+
+    this->graph.followStream("43", this->clock);
+    EXPECT_TRUE(this->graph.description().contains("0 Nachrichten"))
+        << this->graph.description().toStdString();
+}
+
+TEST_F(FlexiiActivityGraphFixture, AStreamEndingBringsBackTheQuarterHour)
+{
+    this->graph.followStream("42", this->clock.addSecs(-3600));
+    ASSERT_TRUE(this->graph.description().contains("seit Streamstart"));
+
+    this->graph.unfollowStream();
+    EXPECT_TRUE(this->graph.description().contains("letzten 15 Minuten"));
+}
+
 TEST_F(FlexiiActivityGraphFixture, TheFirstCategoryIsNotAChange)
 {
     // A stream starting is not a change from something else
@@ -94,53 +144,66 @@ TEST_F(FlexiiActivityGraphFixture, TheFirstCategoryIsNotAChange)
     EXPECT_FALSE(this->graph.description().contains("Just Chatting"));
 }
 
-TEST_F(FlexiiActivityGraphFixture, AChangeOfCategoryIsMarked)
+TEST_F(FlexiiActivityGraphFixture, EveryChangeOfCategoryIsKeptWithItsTime)
 {
+    this->graph.followStream("42", this->clock.addSecs(-4 * 3600));
+
     this->graph.noteCategory("Just Chatting");
+    this->pass(3600);
     this->graph.noteCategory("Valorant");
+    const auto valorantAt = this->clock.toLocalTime().toString("HH:mm");
+    this->pass(3600);
+    this->graph.noteCategory("Fortnite");
+    const auto fortniteAt = this->clock.toLocalTime().toString("HH:mm");
 
-    const auto tooltip = this->graph.description();
-    EXPECT_TRUE(tooltip.contains("Valorant")) << tooltip.toStdString();
-    // Just now, so half a minute at most
-    EXPECT_TRUE(tooltip.contains("vor 0 Min.")) << tooltip.toStdString();
+    const auto text = this->graph.description();
+    EXPECT_TRUE(text.contains(valorantAt + " Uhr: Valorant"))
+        << text.toStdString();
+    EXPECT_TRUE(text.contains(fortniteAt + " Uhr: Fortnite"))
+        << text.toStdString();
 
-    // The same category again changes nothing
-    this->graph.noteCategory("Valorant");
-    EXPECT_EQ(this->graph.description().count("Valorant"), 1);
+    // The same category again is no change
+    this->graph.noteCategory("Fortnite");
+    EXPECT_EQ(text.count("Fortnite"), 1);
 }
 
-TEST_F(FlexiiActivityGraphFixture, AMarkMovesAlongAndFallsOffTheEnd)
+TEST_F(FlexiiActivityGraphFixture, AChangeBeforeTheCurveStartsIsNotListed)
 {
     this->graph.noteCategory("Just Chatting");
     this->graph.noteCategory("Valorant");
+    ASSERT_TRUE(this->graph.description().contains("Valorant"));
 
-    for (int i = 0; i < 4; i++)
-    {
-        this->graph.shift();
-    }
-    // Four half minutes back
-    EXPECT_TRUE(this->graph.description().contains("vor 2 Min."))
+    // Without a stream the curve only covers the last quarter hour
+    this->pass(20 * 60);
+    EXPECT_FALSE(this->graph.description().contains("Valorant"))
+        << this->graph.description().toStdString();
+}
+
+TEST_F(FlexiiActivityGraphFixture, ALongStreamDoesNotKeepEverything)
+{
+    this->graph.followStream("42", this->clock);
+    this->chat();
+
+    // More than a day later the oldest counts have been let go of, and
+    // nothing falls over
+    this->pass(26 * 3600);
+    this->chat();
+    EXPECT_TRUE(this->graph.description().contains("1 Nachrichten"))
+        << this->graph.description().toStdString();
+}
+
+TEST_F(FlexiiActivityGraphFixture, ATickEveryFewMinutesAtMost)
+{
+    // A stream that just started is still drawn over five minutes, so the
+    // scale does not jump about
+    this->graph.followStream("42", this->clock.addSecs(-30));
+    EXPECT_TRUE(this->graph.description().contains("je 1 Min."))
         << this->graph.description().toStdString();
 
-    for (size_t i = 0; i < ActivityGraph::SPANS; i++)
-    {
-        this->graph.shift();
-    }
-    EXPECT_FALSE(this->graph.description().contains("Valorant"));
-}
-
-TEST_F(FlexiiActivityGraphFixture, ShiftingLeavesTheNewestSpanEmpty)
-{
-    this->chat();
-    this->graph.shift();
-    this->chat();
-    EXPECT_TRUE(this->graph.description().contains("2 Nachrichten"));
-
-    for (size_t i = 0; i < ActivityGraph::SPANS; i++)
-    {
-        this->graph.shift();
-    }
-    EXPECT_TRUE(this->graph.description().contains("0 Nachrichten"));
+    // Half a day gets hours
+    this->graph.followStream("43", this->clock.addSecs(-12 * 3600));
+    EXPECT_TRUE(this->graph.description().contains("Std."))
+        << this->graph.description().toStdString();
 }
 
 namespace {

@@ -324,12 +324,17 @@ void LookPage::buildTabsTab(GeneralPageView &layout)
         ->addKeywords({"avatar", "spiel", "game", "kategorie", "cover"})
         ->addTo(layout);
     SettingWidget::checkbox("Aktivitäts-Kurve zeigen", s.splitHeaderActivity)
-        ->setTooltip("Eine kleine Kurve rechts im Split-Kopf: wie viel in der "
-                     "letzten Viertelstunde im Chat los war. Darunter eine "
-                     "Linie mit einem Strich je Minute, und wo der Kanal die "
-                     "Kategorie gewechselt hat, ein senkrechter Strich. "
-                     "Zählt ab dem Einschalten; im schmalen Split wird sie "
-                     "kürzer, damit der Titel bleibt.")
+        ->setTooltip("Eine kleine Kurve rechts im Split-Kopf: wie viel im "
+                     "Chat los war. Ist der Kanal live, reicht sie über den "
+                     "ganzen Stream, sonst über die letzte Viertelstunde. "
+                     "Darunter eine Zeitachse, deren Striche je nach Länge "
+                     "eine Minute bis mehrere Stunden auseinander liegen; "
+                     "wo der Kanal die Kategorie gewechselt hat, steht ein "
+                     "senkrechter Strich, und der Tooltip nennt Uhrzeit und "
+                     "Kategorie. Was war, bevor du den Kanal geöffnet hast, "
+                     "weiß niemand - der Anfang bleibt dann leer. Im "
+                     "schmalen Split wird die Kurve kürzer, damit der Titel "
+                     "bleibt.")
         ->addKeywords({"aktivität", "activity", "kurve", "graph"})
         ->addTo(layout);
     addStandardButton(layout, "Nur der Name, wie bisher", [&s] {

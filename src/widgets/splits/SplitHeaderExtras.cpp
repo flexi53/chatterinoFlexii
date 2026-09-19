@@ -16,6 +16,8 @@
 
 #include <algorithm>
 #include <numeric>
+#include <utility>
+#include <vector>
 
 namespace chatterino {
 
@@ -73,15 +75,33 @@ void HeaderPicture::paintEvent(QPaintEvent * /*event*/)
 
 ActivityGraph::ActivityGraph(QWidget *parent)
     : BaseWidget(parent)
+    , clock_([] {
+        return QDateTime::currentDateTimeUtc();
+    })
 {
     this->hide();
     this->scaleChangedEvent(this->scale());
+    this->spansStart_ = this->now();
+    this->spans_.push_back(0);
+
     this->timer_.setInterval(SPAN_SECONDS * 1000);
     QObject::connect(&this->timer_, &QTimer::timeout, this, [this] {
-        this->shift();
+        this->catchUp();
     });
     this->timer_.start();
     this->updateTooltip();
+}
+
+void ActivityGraph::setClock(std::function<QDateTime()> clock)
+{
+    this->clock_ = std::move(clock);
+    this->spansStart_ = this->now();
+    this->spans_.assign(1, 0);
+}
+
+QDateTime ActivityGraph::now() const
+{
+    return this->clock_();
 }
 
 void ActivityGraph::setChannel(const ChannelPtr &channel)
@@ -91,10 +111,14 @@ void ActivityGraph::setChannel(const ChannelPtr &channel)
         return;
     }
     this->channel_ = channel;
-    this->counts_.fill(0);
-    this->changes_.fill({});
+    this->spans_.assign(1, 0);
+    this->spansStart_ = this->now();
+    this->changes_.clear();
     this->category_.clear();
+    this->streamStart_ = {};
+    this->streamId_.clear();
     this->connections_.clear();
+
     if (channel != nullptr)
     {
         this->connections_.managedConnect(
@@ -102,43 +126,117 @@ void ActivityGraph::setChannel(const ChannelPtr &channel)
                 // What people write, not what the app says
                 if (!message->flags.has(MessageFlag::System))
                 {
-                    this->counts_.back()++;
+                    this->spans_.at(this->currentSpan())++;
+                    this->update();
                 }
             });
 
         if (auto *twitch = dynamic_cast<TwitchChannel *>(channel.get()))
         {
-            // What it streams now is the starting point, not a change
-            this->category_ = twitch->accessStreamStatus()->game;
             this->connections_.managedConnect(twitch->streamStatusChanged,
                                               [this] {
-                                                  this->checkCategory();
+                                                  this->checkStream();
                                               });
+            this->checkStream();
         }
     }
     this->updateTooltip();
     this->update();
 }
 
-void ActivityGraph::shift()
+size_t ActivityGraph::currentSpan()
 {
-    std::rotate(this->counts_.begin(), this->counts_.begin() + 1,
-                this->counts_.end());
-    this->counts_.back() = 0;
-    std::rotate(this->changes_.begin(), this->changes_.begin() + 1,
-                this->changes_.end());
-    this->changes_.back().clear();
+    const auto passed = this->spansStart_.secsTo(this->now());
+    const auto wanted = size_t(std::max<qint64>(0, passed / SPAN_SECONDS)) + 1;
+
+    if (wanted > this->spans_.size())
+    {
+        this->spans_.resize(wanted, 0);
+    }
+    if (this->spans_.size() > MOST_SPANS)
+    {
+        const auto tooMany = this->spans_.size() - MOST_SPANS;
+        this->spans_.erase(this->spans_.begin(),
+                           this->spans_.begin() + qsizetype(tooMany));
+        this->spansStart_ =
+            this->spansStart_.addSecs(qint64(tooMany) * SPAN_SECONDS);
+    }
+    return this->spans_.size() - 1;
+}
+
+void ActivityGraph::catchUp()
+{
+    this->currentSpan();
+    this->update();
+}
+
+void ActivityGraph::checkStream()
+{
+    auto *twitch = dynamic_cast<TwitchChannel *>(this->channel_.get());
+    if (twitch == nullptr)
+    {
+        return;
+    }
+
+    QString id;
+    QString game;
+    int uptime = 0;
+    bool live = false;
+    {
+        auto status = twitch->accessStreamStatus();
+        live = status->live;
+        id = status->streamId;
+        game = status->game;
+        uptime = status->uptimeSeconds;
+    }
+
+    if (!live)
+    {
+        this->unfollowStream();
+        return;
+    }
+
+    const auto started = id != this->streamId_;
+    this->followStream(id, this->now().addSecs(-uptime));
+    if (started)
+    {
+        // What it streams now is the starting point, not a change
+        this->category_ = game;
+        this->updateTooltip();
+        return;
+    }
+
+    this->noteCategory(game);
+}
+
+void ActivityGraph::followStream(const QString &id, const QDateTime &start)
+{
+    if (id == this->streamId_)
+    {
+        return;
+    }
+
+    // Another stream: what came before belongs to the last one
+    this->streamId_ = id;
+    this->streamStart_ = start;
+    this->spans_.assign(1, 0);
+    this->spansStart_ = this->now();
+    this->changes_.clear();
+    this->category_.clear();
     this->updateTooltip();
     this->update();
 }
 
-void ActivityGraph::checkCategory()
+void ActivityGraph::unfollowStream()
 {
-    auto *twitch = dynamic_cast<TwitchChannel *>(this->channel_.get());
-    if (twitch != nullptr)
+    if (this->streamId_.isEmpty() && !this->streamStart_.isValid())
     {
-        this->noteCategory(twitch->accessStreamStatus()->game);
+        return;
     }
+    this->streamStart_ = {};
+    this->streamId_.clear();
+    this->updateTooltip();
+    this->update();
 }
 
 void ActivityGraph::noteCategory(const QString &category)
@@ -157,9 +255,37 @@ void ActivityGraph::noteCategory(const QString &category)
         return;
     }
 
-    this->changes_.back() = category;
+    this->changes_.emplace_back(this->now(), category);
     this->updateTooltip();
     this->update();
+}
+
+std::pair<QDateTime, QDateTime> ActivityGraph::window() const
+{
+    const auto to = this->clock_();
+    if (this->streamStart_.isValid())
+    {
+        auto from = this->streamStart_;
+        if (from.secsTo(to) < SHORTEST_SECONDS)
+        {
+            from = to.addSecs(-SHORTEST_SECONDS);
+        }
+        return {from, to};
+    }
+    return {to.addSecs(-WINDOW_SECONDS), to};
+}
+
+int ActivityGraph::tickSeconds(qint64 seconds)
+{
+    // A tick every so often, so there are never more than about ten
+    for (const auto step : {60, 300, 900, 1800, 3600, 7200, 14400, 21600})
+    {
+        if (seconds / step <= 10)
+        {
+            return step;
+        }
+    }
+    return 43200;
 }
 
 bool ActivityGraph::event(QEvent *event)
@@ -178,31 +304,67 @@ void ActivityGraph::updateTooltip()
 
 QString ActivityGraph::description() const
 {
-    // The last two spans make the last minute
-    const auto lastMinute =
-        this->counts_.at(this->counts_.size() - 2) + this->counts_.back();
-    const auto total =
-        std::accumulate(this->counts_.begin(), this->counts_.end(), 0);
-    const auto minutes = int(SPANS) * SPAN_SECONDS / 60;
-
-    auto text = QStringLiteral("Chat-Aktivität der letzten %1 Minuten\n"
-                               "%2 Nachrichten, zuletzt etwa %3 pro Minute\n"
-                               "Ein Strich unten je Minute")
-                    .arg(minutes)
-                    .arg(total)
-                    .arg(lastMinute);
-
-    // What it streams, and where that changed
-    for (size_t i = 0; i < SPANS; i++)
+    const auto [from, to] = this->window();
+    const auto seconds = std::max<qint64>(1, from.secsTo(to));
+    // Only what falls inside the stretch the curve shows
+    int total = 0;
+    for (size_t i = 0; i < this->spans_.size(); i++)
     {
-        if (this->changes_.at(i).isEmpty())
+        const auto when = this->spansStart_.addSecs(qint64(i) * SPAN_SECONDS);
+        if (when >= from && when <= to)
+        {
+            total += this->spans_.at(i);
+        }
+    }
+
+    // The last two spans make the last minute
+    auto lastMinute = this->spans_.back();
+    if (this->spans_.size() > 1)
+    {
+        lastMinute += this->spans_.at(this->spans_.size() - 2);
+    }
+
+    QString text;
+    if (this->streamStart_.isValid())
+    {
+        const auto hours = seconds / 3600;
+        const auto minutes = (seconds % 3600) / 60;
+        text = QStringLiteral("Chat-Aktivität seit Streamstart (vor %1)")
+                   .arg(hours > 0 ? QStringLiteral("%1 Std. %2 Min.")
+                                        .arg(hours)
+                                        .arg(minutes)
+                                  : QStringLiteral("%1 Min.").arg(minutes));
+    }
+    else
+    {
+        text = QStringLiteral("Chat-Aktivität der letzten %1 Minuten")
+                   .arg(WINDOW_SECONDS / 60);
+    }
+
+    text += QStringLiteral("\n%1 Nachrichten, zuletzt etwa %2 pro Minute")
+                .arg(total)
+                .arg(lastMinute);
+
+    const auto tick = tickSeconds(seconds);
+    text += QStringLiteral("\nEin Strich unten je %1")
+                .arg(tick < 3600 ? QStringLiteral("%1 Min.").arg(tick / 60)
+                                 : QStringLiteral("%1 Std.").arg(tick / 3600));
+
+    // Where the counting could not reach back
+    if (this->spansStart_ > from.addSecs(SPAN_SECONDS))
+    {
+        text += QStringLiteral("\nVor dem Öffnen des Kanals zählt niemand "
+                               "mit - der Anfang bleibt leer");
+    }
+
+    for (const auto &[when, what] : this->changes_)
+    {
+        if (when < from)
         {
             continue;
         }
-        const auto ago = int(SPANS - i) * SPAN_SECONDS / 60;
-        text += QStringLiteral("\nvor %1 Min.: %2")
-                    .arg(ago)
-                    .arg(this->changes_.at(i));
+        text += QStringLiteral("\n%1 Uhr: %2")
+                    .arg(when.toLocalTime().toString("HH:mm"), what);
     }
 
     return text;
@@ -211,8 +373,8 @@ QString ActivityGraph::description() const
 void ActivityGraph::scaleChangedEvent(float scale)
 {
     // Room before the curve and some more after it. It would like to be
-    // wide enough that a quarter of an hour is worth looking at, but gives
-    // way to the title when the split is narrow.
+    // wide enough that a whole stream is worth looking at, but gives way
+    // to the title when the split is narrow.
     this->setFixedHeight(int(20 * scale));
     this->updateGeometry();
 }
@@ -232,21 +394,56 @@ void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    const auto highest = std::max(
-        1, *std::max_element(this->counts_.begin(), this->counts_.end()));
     // Room at the bottom for the line of time under the curve
     const QRectF area = QRectF(this->rect())
                             .adjusted(3 * this->scale(), 2, -6 * this->scale(),
                                       -6 * this->scale());
-    const auto step = area.width() / qreal(this->counts_.size() - 1);
+    if (area.width() <= 1)
+    {
+        return;
+    }
+
+    const auto [from, to] = this->window();
+    const auto seconds = std::max<qint64>(1, from.secsTo(to));
+    const auto columns = size_t(std::max(2.0, area.width()));
+    const auto perColumn = double(seconds) / double(columns);
+
+    // What was written, gathered into one value per column of pixels. A
+    // column stands for what came in per half minute on average, so a
+    // single burst does not tower over a whole busy hour.
+    std::vector<double> values(columns, 0.0);
+    std::vector<int> counted(columns, 0);
+    for (size_t i = 0; i < this->spans_.size(); i++)
+    {
+        const auto when = this->spansStart_.addSecs(qint64(i) * SPAN_SECONDS);
+        const auto offset = double(from.secsTo(when));
+        if (offset < 0 || offset > double(seconds))
+        {
+            continue;
+        }
+        const auto column =
+            size_t(std::min(double(columns - 1), offset / perColumn));
+        values.at(column) += double(this->spans_.at(i));
+        counted.at(column)++;
+    }
+    for (size_t c = 0; c < columns; c++)
+    {
+        if (counted.at(c) > 1)
+        {
+            values.at(c) /= double(counted.at(c));
+        }
+    }
+
+    const auto highest =
+        std::max(1.0, *std::max_element(values.begin(), values.end()));
 
     QPainterPath line;
-    for (size_t i = 0; i < this->counts_.size(); i++)
+    for (size_t c = 0; c < columns; c++)
     {
         const QPointF point(
-            area.left() + (step * qreal(i)),
-            area.bottom() - (area.height() * this->counts_.at(i) / highest));
-        if (i == 0)
+            area.left() + (area.width() * double(c) / double(columns - 1)),
+            area.bottom() - (area.height() * values.at(c) / highest));
+        if (c == 0)
         {
             line.moveTo(point);
         }
@@ -258,7 +455,6 @@ void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
 
     // Red, as live is shown
     QColor color = getTheme()->tabs.liveIndicator;
-    // A soft fill under the curve, and the curve itself
     QPainterPath fill = line;
     fill.lineTo(area.bottomRight());
     fill.lineTo(area.bottomLeft());
@@ -273,48 +469,57 @@ void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
     painter.setPen(pen);
     painter.drawPath(line);
 
-    // The line of time: one tick per minute, a taller one every five, so
-    // it is clear how far back the curve reaches
-    const auto axisY = area.bottom() + (1.5 * this->scale());
     auto muted = this->palette().color(QPalette::WindowText);
-    muted.setAlpha(60);
-    QPen axisPen(muted);
-    axisPen.setWidthF(1);
-    painter.setPen(axisPen);
+
+    // The stretch before the channel was open here - nobody counted then
+    const auto unknown = double(from.secsTo(this->spansStart_));
+    if (unknown > perColumn)
+    {
+        auto dark = muted;
+        dark.setAlpha(30);
+        QRectF band = area;
+        band.setWidth(area.width() * std::min(1.0, unknown / double(seconds)));
+        painter.fillRect(band, dark);
+    }
+
+    // The line of time: a tick every so often, so it is clear how far back
+    // the curve reaches
+    const auto axisY = area.bottom() + (1.5 * this->scale());
+    auto axis = muted;
+    axis.setAlpha(60);
+    painter.setPen(QPen(axis, 1));
     painter.drawLine(QPointF(area.left(), axisY), QPointF(area.right(), axisY));
 
-    const auto perMinute = size_t(60 / SPAN_SECONDS);
-    for (size_t k = 0; k * perMinute < SPANS; k++)
+    const auto tick = tickSeconds(seconds);
+    for (qint64 back = 0; back <= seconds; back += tick)
     {
-        const auto i = SPANS - 1 - (k * perMinute);
-        const auto x = area.left() + (step * qreal(i));
-        const auto every5 = k % 5 == 0;
-        auto tick = muted;
-        tick.setAlpha(every5 ? 130 : 60);
-        painter.setPen(QPen(tick, 1));
+        const auto x =
+            area.right() - (area.width() * double(back) / double(seconds));
+        const auto tall = (back / tick) % 5 == 0;
+        auto mark = muted;
+        mark.setAlpha(tall ? 130 : 60);
+        painter.setPen(QPen(mark, 1));
         painter.drawLine(
             QPointF(x, axisY),
-            QPointF(x, axisY + ((every5 ? 3.5 : 2) * this->scale())));
-        if (i == 0)
-        {
-            break;
-        }
+            QPointF(x, axisY + ((tall ? 3.5 : 2) * this->scale())));
     }
 
     // Where the channel changed what it streams
-    auto changeColor = this->palette().color(QPalette::WindowText);
-    changeColor.setAlpha(150);
+    // Bright enough to stand out against the curve behind it
+    auto changeColor = muted;
+    changeColor.setAlpha(220);
     QPen changePen(changeColor);
-    changePen.setWidthF(1);
-    changePen.setStyle(Qt::DotLine);
+    changePen.setWidthF(std::max(1.0, 1.0 * this->scale()));
+    changePen.setStyle(Qt::DashLine);
     painter.setPen(changePen);
-    for (size_t i = 0; i < SPANS; i++)
+    for (const auto &[when, what] : this->changes_)
     {
-        if (this->changes_.at(i).isEmpty())
+        const auto offset = double(from.secsTo(when));
+        if (offset < 0 || offset > double(seconds))
         {
             continue;
         }
-        const auto x = area.left() + (step * qreal(i));
+        const auto x = area.left() + (area.width() * offset / double(seconds));
         painter.drawLine(QPointF(x, area.top()), QPointF(x, axisY));
     }
 }
