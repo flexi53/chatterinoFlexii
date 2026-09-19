@@ -64,6 +64,7 @@ set(test_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/BalancedResolverResults.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/Flexii.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/FlexiiNotebook.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/FlexiiProfilePictures.cpp
 
     ${CMAKE_CURRENT_LIST_DIR}/src/lib/Snapshot.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/lib/Snapshot.hpp

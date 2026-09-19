@@ -8,6 +8,7 @@
 #include "messages/Image.hpp"  // IWYU pragma: keep
 #include "providers/seventv/SeventvEmotes.hpp"
 #include "singletons/Settings.hpp"
+#include "util/PostToThread.hpp"
 
 namespace chatterino {
 
@@ -34,6 +35,13 @@ EmotePtr SeventvBadges::createBadge(const QString &id,
     {
         return nullptr;  // Bad images
     }
+
+    // ChattiFlexii: loaded as soon as 7TV names the badge rather than when it
+    // is first shown, so it is there by the time a chatter who has it writes
+    runInGuiThread([images = emote.images] {
+        images.getImage1()->load();
+        images.getImage2()->load();
+    });
 
     return std::make_shared<const Emote>(std::move(emote));
 }

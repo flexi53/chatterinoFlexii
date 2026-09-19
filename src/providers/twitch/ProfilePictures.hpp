@@ -28,10 +28,14 @@ struct TwitchProfile {
     QDateTime createdAt;
 };
 
-/// Twitch profiles and their pictures, looked up once per run and shared by
-/// everything that shows one: captions in chat, the alert windows, the mod
-/// highlights list and the user card. Names are looked up in batches, and
-/// pictures come through the network cache - from disk after the first time.
+/// Twitch profiles and their pictures, shared by everything that shows one:
+/// tabs, captions in chat, the alert windows, the mod highlights list and the
+/// user card. Names asked about within a moment of each other are looked up
+/// together, a hundred at a time. What Twitch answered is kept on disk, so
+/// after a restart the pictures are there at once - looked up again in the
+/// background once it is a week old - and pictures come through the network
+/// cache. A name Twitch gave no answer for - not logged in yet, no
+/// connection - is asked again soon, and at once when the login is there.
 namespace profilepictures {
 
 /// The login @a word stands for when it is written as a Twitch name in a
@@ -43,8 +47,9 @@ QString loginOf(const QString &word);
 std::optional<TwitchProfile> profile(const QString &login);
 
 /// Calls @a done with the profile of @a login once it is known - right away
-/// when it already is. Not at all for a name that is no Twitch user, while
-/// Twitch gives no answer, or once @a context is gone. GUI thread only.
+/// when it already is. While Twitch gives no answer it keeps waiting for the
+/// next try; not at all for a name that is no Twitch user, or once
+/// @a context is gone. GUI thread only.
 void whenKnown(const QString &login, QObject *context,
                std::function<void(const TwitchProfile &)> done);
 

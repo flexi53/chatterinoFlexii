@@ -35,7 +35,19 @@ struct Release {
 
 /// Newest first. Add to the top when something lands that is worth telling
 /// the user about; everything above what they last saw is shown at once.
-const std::array<Release, 13> RELEASES{{
+const std::array<Release, 14> RELEASES{{
+    {"19 September 2026 (7)",
+     "19. September 2026 - Nachtrag 6",
+     {
+         "Profilbilder - in den Tabs, bei Mods im Chat und in den "
+         "Alarmfenstern - laden schneller und zuverlässig: Namen werden "
+         "gesammelt nachgeschlagen, was Twitch geantwortet hat, bleibt "
+         "gespeichert, sodass die Bilder nach einem Neustart sofort da sind, "
+         "und ein Bild, das beim Start noch nicht kam, wird nachgeholt, "
+         "statt ganz zu fehlen.",
+         "7TV-Badges werden geladen, sobald 7TV sie meldet, nicht erst wenn "
+         "sie zum ersten Mal gezeigt werden - sie sind also schneller da.",
+     }},
     {"19 September 2026 (6)",
      "19. September 2026 - Nachtrag 5",
      {
