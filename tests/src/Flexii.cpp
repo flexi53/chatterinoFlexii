@@ -1186,6 +1186,18 @@ TEST(FlexiiEmoteSpam, WithBothNewRulesOffNothingChanges)
     EXPECT_EQ(EmoteSpamDetector::reasonFor(asBefore, 7, 7, 12), Reason::None);
 }
 
+namespace {
+
+/// The word of @a list that @a text holds, empty when none does
+QString wordIn(const QString &text,
+               const std::vector<WordAlertDetector::Watched> &list)
+{
+    const auto match = WordAlertDetector::find(text, list);
+    return match ? match->word : QString{};
+}
+
+}  // namespace
+
 TEST(FlexiiWordAlert, AWordIsFoundHoweverItIsWritten)
 {
     const auto list = WordAlertDetector::parseWords("sybau");
@@ -1193,30 +1205,46 @@ TEST(FlexiiWordAlert, AWordIsFoundHoweverItIsWritten)
     EXPECT_EQ(list.front().word, "sybau");
 
     // Plainly, dressed up, and in another case
-    EXPECT_EQ(WordAlertDetector::found("sybau", list), "sybau");
-    EXPECT_EQ(WordAlertDetector::found("SYBAU lol", list), "sybau");
-    EXPECT_EQ(WordAlertDetector::found("syb4u", list), "sybau");
-    EXPECT_EQ(WordAlertDetector::found("s.y.b.a.u", list), "sybau");
+    EXPECT_EQ(wordIn("sybau", list), "sybau");
+    EXPECT_EQ(wordIn("SYBAU lol", list), "sybau");
+    EXPECT_EQ(wordIn("syb4u", list), "sybau");
+    EXPECT_EQ(wordIn("s.y.b.a.u", list), "sybau");
 
     // And not where it is not
-    EXPECT_TRUE(WordAlertDetector::found("hallo zusammen", list).isEmpty());
+    EXPECT_TRUE(wordIn("hallo zusammen", list).isEmpty());
+}
+
+TEST(FlexiiWordAlert, TheAlertLearnsHowItWasWritten)
+{
+    const auto list = WordAlertDetector::parseWords("felix");
+
+    // So the window can say which word was meant, next to what stood there
+    const auto plain = WordAlertDetector::find("hallo felix", list);
+    ASSERT_TRUE(plain.has_value());
+    EXPECT_EQ(plain->word, "felix");
+    EXPECT_EQ(plain->asWritten, "felix");
+
+    const auto dressed = WordAlertDetector::find("hallo f3l1x", list);
+    ASSERT_TRUE(dressed.has_value());
+    EXPECT_EQ(dressed->word, "felix");
+    EXPECT_EQ(dressed->asWritten, "f3l1x");
 }
 
 TEST(FlexiiWordAlert, OnlyAsAWholeWordUnlessSaidOtherwise)
 {
     const auto whole = WordAlertDetector::parseWords("ass");
-    EXPECT_TRUE(WordAlertDetector::found("eine Klasse für sich", whole).isEmpty());
-    EXPECT_EQ(WordAlertDetector::found("ass", whole), "ass");
+    EXPECT_TRUE(wordIn("eine Klasse für sich", whole).isEmpty());
+    EXPECT_EQ(wordIn("ass", whole), "ass");
 
     const auto anywhere = WordAlertDetector::parseWords("ass", true, false);
-    EXPECT_EQ(WordAlertDetector::found("eine Klasse für sich", anywhere), "ass");
+    EXPECT_EQ(wordIn("eine Klasse für sich", anywhere), "ass");
 }
 
 TEST(FlexiiWordAlert, WithoutVariantsOnlyTheWordItself)
 {
     const auto exact = WordAlertDetector::parseWords("sybau", false);
-    EXPECT_EQ(WordAlertDetector::found("SYBAU", exact), "sybau");
-    EXPECT_TRUE(WordAlertDetector::found("syb4u", exact).isEmpty());
+    EXPECT_EQ(wordIn("SYBAU", exact), "sybau");
+    EXPECT_TRUE(wordIn("syb4u", exact).isEmpty());
 }
 
 TEST(FlexiiWordAlert, TheListTakesOneWordPerLineAndNotes)
@@ -1229,6 +1257,49 @@ TEST(FlexiiWordAlert, TheListTakesOneWordPerLineAndNotes)
 
     EXPECT_TRUE(WordAlertDetector::parseWords("").empty());
     EXPECT_TRUE(WordAlertDetector::parseWords("# nur Notizen").empty());
+}
+
+TEST(FlexiiWordAlert, AWordCanBringItsOwnSteps)
+{
+    const auto list = WordAlertDetector::parseWords(
+        "sybau\nkys = 1d, bann\nspam = löschen, 5m");
+    ASSERT_EQ(list.size(), 3);
+
+    // Nothing of its own: it follows the steps set for all of them
+    EXPECT_EQ(list[0].word, "sybau");
+    EXPECT_TRUE(list[0].steps.empty());
+
+    EXPECT_EQ(list[1].word, "kys");
+    EXPECT_EQ(list[1].steps, (std::vector<int>{86400, 0}));
+
+    EXPECT_EQ(list[2].word, "spam");
+    EXPECT_EQ(list[2].steps,
+              (std::vector<int>{WordAlertDetector::DELETE, 300}));
+
+    // The word is still found, the steps are not part of it
+    EXPECT_EQ(wordIn("kys", list), "kys");
+}
+
+TEST(FlexiiWordAlert, TheListIsWrittenBackTheWayItIsRead)
+{
+    const auto text = QStringLiteral("sybau\nkys = 1d, bann");
+    const auto written =
+        WordAlertDetector::writeWords(WordAlertDetector::parseWords(text));
+    EXPECT_EQ(written, text);
+
+    // And reading that again gives the same list
+    const auto again = WordAlertDetector::parseWords(written);
+    ASSERT_EQ(again.size(), 2);
+    EXPECT_EQ(again[1].steps, (std::vector<int>{86400, 0}));
+}
+
+TEST(FlexiiWordAlert, TheDeleteButtonTakesAsManyAsAsked)
+{
+    EXPECT_EQ(WordAlertDetector::deleteLimit(0),
+              WordAlertDetector::MOST_DELETED);
+    EXPECT_EQ(WordAlertDetector::deleteLimit(1), 1);
+    EXPECT_EQ(WordAlertDetector::deleteLimit(99),
+              WordAlertDetector::MOST_DELETED);
 }
 
 TEST(FlexiiWordAlert, TheStepsReadLikeTheOtherAlerts)

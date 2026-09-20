@@ -12,6 +12,7 @@
 #include "providers/twitch/TwitchIrcServer.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/WindowManager.hpp"
+#include "util/FormatTime.hpp"
 #include "util/SpellingVariants.hpp"
 #include "widgets/dialogs/ModAlertPopup.hpp"
 #include "widgets/Window.hpp"
@@ -26,9 +27,6 @@ using namespace chatterino;
 
 /// Quiet for this long and they start with a clean slate
 constexpr int RESET_SECONDS = 30 * 60;
-/// The most messages one alert deletes
-constexpr qsizetype MAX_DELETED = 10;
-
 QString keyOf(const QString &channel, const QString &login)
 {
     return channel + '\n' + login;
@@ -91,11 +89,24 @@ std::vector<WordAlertDetector::Watched> WordAlertDetector::parseWords(
     std::vector<Watched> words;
     for (const auto &line : text.split('\n'))
     {
-        const auto word = line.trimmed();
+        auto word = line.trimmed();
         // A line starting with # is a note to self, not a word to watch for
         if (word.isEmpty() || word.startsWith('#'))
         {
             continue;
+        }
+
+        // What this word alone offers stands behind an equals sign
+        std::vector<int> ownSteps;
+        const auto equals = word.indexOf('=');
+        if (equals > 0)
+        {
+            ownSteps = parseSteps(word.mid(equals + 1));
+            word = word.left(equals).trimmed();
+            if (word.isEmpty())
+            {
+                continue;
+            }
         }
 
         const auto pattern = spelling::pattern(word, options);
@@ -109,9 +120,69 @@ std::vector<WordAlertDetector::Watched> WordAlertDetector::parseWords(
         {
             continue;
         }
-        words.push_back({.word = word, .pattern = compiled});
+        words.push_back({
+            .word = word,
+            .pattern = compiled,
+            .steps = ownSteps,
+        });
     }
     return words;
+}
+
+QString WordAlertDetector::writeWords(const std::vector<Watched> &list)
+{
+    QStringList lines;
+    for (const auto &watched : list)
+    {
+        if (watched.word.trimmed().isEmpty())
+        {
+            continue;
+        }
+        if (watched.steps.empty())
+        {
+            lines.append(watched.word);
+            continue;
+        }
+
+        QStringList steps;
+        for (const auto step : watched.steps)
+        {
+            if (step == DELETE)
+            {
+                steps.append(QStringLiteral("löschen"));
+            }
+            else if (step == 0)
+            {
+                steps.append(QStringLiteral("bann"));
+            }
+            else
+            {
+                steps.append(formatTime(step));
+            }
+        }
+        lines.append(watched.word + QStringLiteral(" = ") +
+                     steps.join(QStringLiteral(", ")));
+    }
+    return lines.join('\n');
+}
+
+const std::vector<int> &WordAlertDetector::palette()
+{
+    // What a word can be given on its own, shortest first - deleting
+    // before the timeouts, a ban last
+    static const std::vector<int> buttons{
+        DELETE, 60, 300, 600, 1800, 3600, 86400, 604800, 0,
+    };
+    return buttons;
+}
+
+int WordAlertDetector::deleteLimit(int setting)
+{
+    if (setting <= 0)
+    {
+        return MOST_DELETED;
+    }
+    return std::min(setting, MOST_DELETED);
 }
 
 const std::vector<WordAlertDetector::Watched> &WordAlertDetector::words()
@@ -139,17 +210,22 @@ const std::vector<WordAlertDetector::Watched> &WordAlertDetector::words()
     return built;
 }
 
-QString WordAlertDetector::found(const QString &text,
-                                 const std::vector<Watched> &list)
+std::optional<WordAlertDetector::Match> WordAlertDetector::find(
+    const QString &text, const std::vector<Watched> &list)
 {
     for (const auto &watched : list)
     {
-        if (watched.pattern.match(text).hasMatch())
+        const auto match = watched.pattern.match(text);
+        if (match.hasMatch())
         {
-            return watched.word;
+            return Match{
+                .word = watched.word,
+                .asWritten = match.captured().trimmed(),
+                .steps = watched.steps,
+            };
         }
     }
-    return {};
+    return std::nullopt;
 }
 
 void WordAlertDetector::onMessage(const QString &channelName,
@@ -180,8 +256,8 @@ void WordAlertDetector::onMessage(const QString &channelName,
         return;
     }
 
-    const auto word = found(text, words());
-    if (word.isEmpty())
+    const auto match = find(text, words());
+    if (!match)
     {
         return;
     }
@@ -226,7 +302,9 @@ void WordAlertDetector::onMessage(const QString &channelName,
     {
         state.pendingIds.append(messageId);
     }
-    while (state.pendingIds.size() > MAX_DELETED)
+    const auto keep =
+        deleteLimit(getSettings()->wordAlertDeleteCount.getValue());
+    while (state.pendingIds.size() > keep)
     {
         state.pendingIds.removeFirst();
     }
@@ -239,16 +317,18 @@ void WordAlertDetector::onMessage(const QString &channelName,
         return;
     }
 
-    const auto steps = WordAlertDetector::steps();
+    // What this word alone offers, or the steps set for all of them
+    const auto steps =
+        match->steps.empty() ? WordAlertDetector::steps() : match->steps;
     const auto level = state.escalation.level;
     const auto action =
         steps[std::min<size_t>(static_cast<size_t>(level), steps.size() - 1)];
 
     auto *popup = ModAlertPopup::obtain(
         channel, login, &getApp()->getWindows()->getMainWindow());
-    popup->setWordAlert(displayName.isEmpty() ? login : displayName, word,
-                        action, state.pendingIds, level,
-                        state.escalation.actions,
+    popup->setWordAlert(displayName.isEmpty() ? login : displayName,
+                        match->word, match->asWritten, action,
+                        state.pendingIds, level, state.escalation.actions,
                         static_cast<int>(steps.size()));
     if (offer)
     {

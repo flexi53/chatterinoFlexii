@@ -394,6 +394,9 @@ public:
     /// What the word alert offers, one step further each time
     QStringSetting wordAlertSteps = {"/moderation/wordAlert/steps",
                                      "5m, 10m, 30m, 1h, 1d"};
+    /// How many of the found messages the delete button takes down; 0 for
+    /// all of them
+    IntSetting wordAlertDeleteCount = {"/moderation/wordAlert/deleteCount", 0};
     /// Seconds over which the emote alert adds up a chatter's emotes
     IntSetting emoteAlertWindowSeconds = {
         "/moderation/emoteAlert/windowSeconds", 60};

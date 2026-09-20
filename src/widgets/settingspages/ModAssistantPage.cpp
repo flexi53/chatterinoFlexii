@@ -90,6 +90,177 @@ void addStepsEditor(QVBoxLayout *layout, QStringSetting &setting,
     layout->addWidget(preview);
 }
 
+
+/// The list of words, one row each: the word itself and the buttons for
+/// what it alone offers. The buttons sit there greyed out; pressing them
+/// picks the steps for that word. With none picked the word follows the
+/// steps set below for all of them.
+class WordRows : public QWidget
+{
+public:
+    explicit WordRows(QWidget *parent = nullptr)
+        : QWidget(parent)
+        , rows_(new QVBoxLayout(this))
+    {
+        this->rows_->setContentsMargins(0, 0, 0, 0);
+        this->rows_->setSpacing(2);
+        this->reload();
+    }
+
+    /// Reads the words from the settings and builds their rows
+    void reload()
+    {
+        this->loading_ = true;
+        while (auto *item = this->rows_->takeAt(0))
+        {
+            delete item->widget();
+            delete item;
+        }
+        for (const auto &word :
+             WordAlertDetector::parseWords(
+                 getSettings()->wordAlertWords.getValue()))
+        {
+            this->addRow(word.word, word.steps);
+        }
+        this->loading_ = false;
+    }
+
+    /// A row for a word yet to be typed
+    void addEmptyRow()
+    {
+        this->addRow({}, {});
+        this->rows_->itemAt(this->rows_->count() - 1)
+            ->widget()
+            ->findChild<QLineEdit *>()
+            ->setFocus();
+    }
+
+private:
+    void addRow(const QString &word, const std::vector<int> &steps)
+    {
+        auto *row = new QWidget(this);
+        auto *layout = new QHBoxLayout(row);
+        layout->setContentsMargins(0, 0, 0, 0);
+        layout->setSpacing(3);
+
+        auto *edit = new QLineEdit(word);
+        edit->setPlaceholderText("Wort");
+        edit->setFixedWidth(150);
+        layout->addWidget(edit);
+        QObject::connect(edit, &QLineEdit::textChanged, this, [this] {
+            this->save();
+        });
+
+        const auto accent =
+            ModAlertPopup::reasonColor(ModAlertPopup::Kind::Word);
+        for (const auto step : WordAlertDetector::palette())
+        {
+            auto *button = new QPushButton(stepLabel(step));
+            button->setCheckable(true);
+            button->setChecked(std::find(steps.begin(), steps.end(), step) !=
+                               steps.end());
+            button->setProperty("flexiiStep", step);
+            button->setToolTip(
+                QStringLiteral("Für dieses Wort %1 vorschlagen")
+                    .arg(stepLabel(step)));
+            button->setStyleSheet(
+                QStringLiteral(
+                    "QPushButton { padding: 1px 6px; border: 1px solid "
+                    "#4a4a4a; border-radius: 4px; color: #8c8c8c; "
+                    "background: transparent; }"
+                    "QPushButton:checked { color: #ffffff; border: 1px solid "
+                    "%1; background: rgba(%2, %3, %4, 55); }")
+                    .arg(accent.name())
+                    .arg(accent.red())
+                    .arg(accent.green())
+                    .arg(accent.blue()));
+            layout->addWidget(button);
+            QObject::connect(button, &QPushButton::toggled, this, [this] {
+                this->save();
+            });
+        }
+
+        layout->addStretch(1);
+
+        auto *remove = new QPushButton(QStringLiteral("✕"));
+        remove->setToolTip("Dieses Wort von der Liste nehmen");
+        remove->setFixedWidth(26);
+        layout->addWidget(remove);
+        QObject::connect(remove, &QPushButton::clicked, this, [this, row] {
+            row->deleteLater();
+            this->rows_->removeWidget(row);
+            this->save();
+        });
+
+        this->rows_->addWidget(row);
+    }
+
+    /// What the buttons say, in the order the palette has them
+    static QString stepLabel(int step)
+    {
+        if (step == WordAlertDetector::DELETE)
+        {
+            return QStringLiteral("Löschen");
+        }
+        if (step == 0)
+        {
+            return QStringLiteral("Bann");
+        }
+        return formatTime(step);
+    }
+
+    void save()
+    {
+        if (this->loading_)
+        {
+            return;
+        }
+
+        std::vector<WordAlertDetector::Watched> words;
+        for (int i = 0; i < this->rows_->count(); i++)
+        {
+            auto *row = this->rows_->itemAt(i)->widget();
+            if (row == nullptr)
+            {
+                continue;
+            }
+            auto *edit = row->findChild<QLineEdit *>();
+            if (edit == nullptr || edit->text().trimmed().isEmpty())
+            {
+                continue;
+            }
+
+            std::vector<int> steps;
+            for (auto *button : row->findChildren<QPushButton *>())
+            {
+                if (button->isCheckable() && button->isChecked())
+                {
+                    steps.push_back(button->property("flexiiStep").toInt());
+                }
+            }
+            // In the order the buttons stand in, however they were pressed
+            std::sort(steps.begin(), steps.end(), [](int a, int b) {
+                const auto &palette = WordAlertDetector::palette();
+                return std::find(palette.begin(), palette.end(), a) <
+                       std::find(palette.begin(), palette.end(), b);
+            });
+
+            words.push_back({
+                .word = edit->text().trimmed(),
+                .pattern = {},
+                .steps = steps,
+            });
+        }
+
+        getSettings()->wordAlertWords.setValue(
+            WordAlertDetector::writeWords(words));
+    }
+
+    QVBoxLayout *rows_;
+    /// While the rows are being built, nothing is written back
+    bool loading_ = false;
+};
+
 }  // namespace
 
 ModAssistantPage::ModAssistantPage()
@@ -600,13 +771,21 @@ ModAssistantPage::ModAssistantPage()
 
     addHeading(words, "Wörter");
     {
-        auto *edit = new QPlainTextEdit(getSettings()->wordAlertWords.getValue());
-        edit->setPlaceholderText("sybau\nein anderes Wort");
-        edit->setToolTip(
-            "Ein Wort oder eine Wendung pro Zeile. Eine Zeile, die mit # "
-            "anfängt, ist nur eine Notiz für dich.");
-        edit->setMinimumHeight(110);
-        words->addWidget(edit);
+        auto *rows = new WordRows;
+        words->addWidget(rows);
+
+        auto *add = new QPushButton("Wort hinzufügen");
+        QObject::connect(add, &QPushButton::clicked, this, [rows] {
+            rows->addEmptyRow();
+        });
+        addButtonRow(words, add);
+
+        addText(words,
+                "Die Knöpfe hinter einem Wort sagen, was der Alarm für "
+                "dieses Wort vorschlägt - in der Reihenfolge, in der sie "
+                "stehen. Ist keiner gedrückt, gelten die Stufen weiter "
+                "unten, die für alle Wörter zählen.",
+                true);
 
         auto *preview = new QLabel;
         preview->setWordWrap(true);
@@ -646,13 +825,11 @@ ModAssistantPage::ModAssistantPage()
                     .arg(shown.join(QStringLiteral(", "))));
         };
         show();
-
-        QObject::connect(edit, &QPlainTextEdit::textChanged, this,
-                         [edit, show] {
-                             getSettings()->wordAlertWords.setValue(
-                                 edit->toPlainText());
-                             show();
-                         });
+        getSettings()->wordAlertWords.connect(
+            [show](const QString &, auto) {
+                show();
+            },
+            this->managedConnections_, false);
 
         auto *variants = this->createCheckBox(
             "Auch abgewandelte Schreibweisen finden",
@@ -666,8 +843,7 @@ ModAssistantPage::ModAssistantPage()
         words->addWidget(variants);
 
         auto *wholeWord = this->createCheckBox(
-            "Nur als ganzes Wort",
-            getSettings()->wordAlertWholeWord,
+            "Nur als ganzes Wort", getSettings()->wordAlertWholeWord,
             "An heißt: „ass\" schlägt nicht bei „Klasse\" an. Aus findet das "
             "Wort auch mitten in einem längeren.");
         QObject::connect(wholeWord, &QCheckBox::toggled, this, [show] {
@@ -684,6 +860,18 @@ ModAssistantPage::ModAssistantPage()
                 "dauerhaften Bann. Durch Kommas getrennt. Die nächste Stufe "
                 "kommt erst, wenn wirklich gelöscht oder getimeoutet wurde.",
                 true);
+
+        auto *form = new QFormLayout;
+        auto *deleteCount = this->createSpinBox(
+            getSettings()->wordAlertDeleteCount, 0,
+            WordAlertDetector::MOST_DELETED);
+        deleteCount->setSuffix(" Nachrichten");
+        deleteCount->setSpecialValueText("alle gefundenen");
+        deleteCount->setToolTip(
+            "Wie viele Nachrichten der Löschen-Knopf wegnimmt: die neuesten "
+            "so vielen, in denen ein Wort von der Liste stand.");
+        form->addRow("Löschen nimmt", deleteCount);
+        words->addLayout(form);
 
         addStepsEditor(words, getSettings()->wordAlertSteps,
                        QStringLiteral("5m, 10m, 30m, 1h, 1d"),

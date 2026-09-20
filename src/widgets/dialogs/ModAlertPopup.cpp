@@ -684,7 +684,8 @@ void ModAlertPopup::setCase(const QString &displayName, int seconds, int step,
 }
 
 void ModAlertPopup::setWordAlert(const QString &displayName,
-                                 const QString &word, int action,
+                                 const QString &word,
+                                 const QString &asWritten, int action,
                                  const QStringList &messageIds, int step,
                                  int actionsServed, int stepCount)
 {
@@ -716,12 +717,23 @@ void ModAlertPopup::setWordAlert(const QString &displayName,
                 .arg(word));
     }
 
-    this->setReason(
-        QStringLiteral("Wort von der Liste"),
-        QStringLiteral("„%1\" &middot; Stufe %2 von %3")
-            .arg(word)
-            .arg(std::min(std::max(0, step), std::max(1, stepCount) - 1) + 1)
-            .arg(std::max(1, stepCount)));
+    // Where it was dressed up - fеlix with a Cyrillic е - the list's word
+    // is named next to what actually stood there
+    const auto dressedUp =
+        !asWritten.isEmpty() &&
+        asWritten.compare(word, Qt::CaseInsensitive) != 0;
+    const auto named =
+        dressedUp ? QStringLiteral("„%1\" - geschrieben als „%2\"")
+                        .arg(word, asWritten)
+                  : QStringLiteral("„%1\"").arg(word);
+
+    this->setReason(QStringLiteral("Wort von der Liste"),
+                    QStringLiteral("%1 &middot; Stufe %2 von %3")
+                        .arg(named)
+                        .arg(std::min(std::max(0, step),
+                                      std::max(1, stepCount) - 1) +
+                             1)
+                        .arg(std::max(1, stepCount)));
 
     this->setActions(action);
     this->showRecentLines();

@@ -118,10 +118,12 @@ public:
     /// The emote alert with made up lines, at step @a step
     void showTestEmoteSpam(int step);
 
-    /// Shows that @a displayName said @a word, with @a action on offer -
-    /// deleting the message or a timeout - at @a step of @a stepCount
+    /// Shows that @a displayName said @a word - written as @a asWritten,
+    /// which may be dressed up - with @a action on offer, deleting the
+    /// message or a timeout, at @a step of @a stepCount
     void setWordAlert(const QString &displayName, const QString &word,
-                      int action, const QStringList &messageIds, int step,
+                      const QString &asWritten, int action,
+                      const QStringList &messageIds, int step,
                       int actionsServed, int stepCount);
 
     /// The word alert with a made-up case, to see what it looks like
