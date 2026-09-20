@@ -200,6 +200,11 @@ private:
     QLabel *testNote_{};
     QWidget *countdownBar_{};
     QPushButton *ignore_{};
+    /// ChattiFlexii: on a suggestion - says this does not fit here, so
+    /// nothing like it is suggested again
+    QPushButton *doesNotFit_{};
+    /// What the suggestion was about, to turn it down by
+    QString suggestedText_;
     /// The action buttons, rebuilt for each alert
     QHBoxLayout *actions_{};
 

@@ -481,6 +481,18 @@ ModAlertPopup::ModAlertPopup(QString channel, QString login, QWidget *parent)
     this->ignore_->setCursor(Qt::PointingHandCursor);
     this->ignore_->setStyleSheet(this->quietButtonStyle());
     buttons->addWidget(this->ignore_);
+
+    // Only a suggestion can be wrong about this channel; the rule alerts
+    // go by numbers you set yourself
+    this->doesNotFit_ = new QPushButton(QStringLiteral("Passt nicht"));
+    this->doesNotFit_->setCursor(Qt::PointingHandCursor);
+    this->doesNotFit_->setStyleSheet(this->quietButtonStyle());
+    this->doesNotFit_->setToolTip(
+        QStringLiteral("Der Vorschlag passt hier nicht - etwas Ähnliches "
+                       "wird nicht wieder vorgeschlagen. Was Mods wirklich "
+                       "tun, zählt weiter mehr."));
+    this->doesNotFit_->hide();
+    buttons->addWidget(this->doesNotFit_);
     buttons->addStretch(1);
     this->actions_ = new QHBoxLayout;
     this->actions_->setSpacing(4);
@@ -491,6 +503,15 @@ ModAlertPopup::ModAlertPopup(QString channel, QString login, QWidget *parent)
     layout->addLayout(buttons);
 
     QObject::connect(this->ignore_, &QPushButton::clicked, this, [this] {
+        this->close();
+    });
+
+    QObject::connect(this->doesNotFit_, &QPushButton::clicked, this, [this] {
+        if (!this->test_ && !this->suggestedText_.isEmpty())
+        {
+            ModerationAssistant::instance().reject(this->channel_,
+                                                   this->suggestedText_);
+        }
         this->close();
     });
 
@@ -768,16 +789,31 @@ void ModAlertPopup::setSuggestion(const QString &displayName,
     this->kind_ = Kind::Suggestion;
     this->showChatter(displayName);
     this->applySuggestion(suggestion);
+    // The window keeps what it was about, so "Passt nicht" knows what to
+    // turn down
+    this->suggestedText_ = suggestion.about;
+    this->doesNotFit_->show();
     this->showRecentLines();
     this->restartCountdown();
 }
 
 void ModAlertPopup::applySuggestion(const ModSuggestion &suggestion)
 {
+    // Where the channel streams the same as it did then, that is worth
+    // saying - the same words mean different things in a game and in Just
+    // Chatting
+    const auto where =
+        suggestion.sameCategory > 0 && !suggestion.category.isEmpty()
+            ? QStringLiteral(", %1 davon in %2")
+                  .arg(suggestion.sameCategory)
+                  .arg(suggestion.category.toHtmlEscaped())
+            : QString{};
+
     this->headline_->setText(
-        QStringLiteral("Ähnelt %1 früheren Fällen in diesem Kanal. Mods "
-                       "gaben %2.")
+        QStringLiteral("Ähnelt %1 früheren Fällen in diesem Kanal%2. Mods "
+                       "gaben %3.")
             .arg(suggestion.similarCases)
+            .arg(where)
             .arg(suggestion.spread));
 
     const auto described = describeSuggestion(suggestion);
@@ -822,6 +858,10 @@ void ModAlertPopup::setReason(const QString &reason, const QString &details,
     if (this->reasonLevel_ != nullptr)
     {
         this->reasonLevel_->hide();
+    if (this->kind_ != Kind::Suggestion && this->doesNotFit_ != nullptr)
+    {
+        this->doesNotFit_->hide();
+    }
     }
     this->reasonDetails_->setVisible(!details.isEmpty());
     this->reasonBox_->setToolTip(tooltip);
@@ -1081,6 +1121,8 @@ void ModAlertPopup::showTestCase(bool afterTimeout)
 
 void ModAlertPopup::showTestSuggestion()
 {
+    // The test window shows the same buttons as a real suggestion; pressing
+    // them does nothing here
     this->showTestChatter(QStringLiteral("Mod-Assistent – Test"));
 
     const QString name = QStringLiteral("TestUser");
@@ -1124,6 +1166,7 @@ void ModAlertPopup::showTestSuggestion()
     suggestion.closest.push_back(makeMatch(
         "followme", "modxy", "gratis viewer und follower", 3600, 0.62, 5));
 
+    this->doesNotFit_->show();
     this->applySuggestion(suggestion);
     this->messages_->setChannel(this->view_);
     this->restartCountdown();

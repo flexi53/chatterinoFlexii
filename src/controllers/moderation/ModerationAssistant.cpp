@@ -294,8 +294,56 @@ void ModerationAssistant::removeCase(const QString &channelName,
     }
 }
 
+void ModerationAssistant::reject(const QString &channelName,
+                                 const QString &text)
+{
+    const auto words = wordsOf(text);
+    if (words.isEmpty())
+    {
+        return;
+    }
+
+    const auto channel = channelName.toLower();
+    std::lock_guard lock(this->mutex_);
+    auto &channelData = this->data(channel);
+    channelData.rejected.append(words);
+    // Enough to remember what came up lately; older ones say little
+    while (channelData.rejected.size() > 200)
+    {
+        channelData.rejected.removeFirst();
+    }
+    this->save(channel, channelData);
+}
+
+bool ModerationAssistant::wasRejected(const QString &channelName,
+                                      const QString &text) const
+{
+    const auto words = wordsOf(text);
+    if (words.isEmpty())
+    {
+        return false;
+    }
+
+    const auto *settings = getSettings();
+    const auto threshold =
+        std::clamp(settings->modAssistSimilarity.getValue(), 1, 100) / 100.0;
+
+    const auto channel = channelName.toLower();
+    std::lock_guard lock(this->mutex_);
+    const auto &channelData = this->data(channel);
+    for (const auto &turned : channelData.rejected)
+    {
+        if (similarity(words, turned) >= threshold)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::optional<ModSuggestion> ModerationAssistant::suggest(
-    const QString &channelName, const QString &text) const
+    const QString &channelName, const QString &text,
+    const QString &category) const
 {
     // Checked first and without touching the disk, so channels that are not
     // suggesting - nearly all of them - cost nothing
@@ -321,6 +369,16 @@ std::optional<ModSuggestion> ModerationAssistant::suggest(
         settings->modAssistMinCases.getValue())
     {
         return std::nullopt;
+    }
+
+    // A moderator has said before that something like this does not fit
+    // here - their word weighs more than the likeness of the words
+    for (const auto &turned : channelData.rejected)
+    {
+        if (similarity(words, turned) >= threshold)
+        {
+            return std::nullopt;
+        }
     }
 
     struct Hit {
@@ -383,11 +441,30 @@ std::optional<ModSuggestion> ModerationAssistant::suggest(
             describe(ranked[i].first), QString::number(ranked[i].second)));
     }
 
+    // How many of them happened while the channel streamed what it streams
+    // now. The same words mean different things in a game and in Just
+    // Chatting, so it is worth saying - it never decides on its own.
+    int sameCategory = 0;
+    if (!category.isEmpty())
+    {
+        for (const auto &hit : hits)
+        {
+            if (hit.entry->modCase.category.compare(
+                    category, Qt::CaseInsensitive) == 0)
+            {
+                sameCategory++;
+            }
+        }
+    }
+
     ModSuggestion suggestion{
         .seconds = ranked.front().first,
         .similarCases = similar,
+        .sameCategory = sameCategory,
+        .category = category,
         .spread = spread.join(QStringLiteral(", ")),
     };
+    suggestion.about = text;
 
     // The closest cases, so the window can show what the suggestion rests on
     std::ranges::sort(hits, [](const Hit &a, const Hit &b) {
@@ -466,7 +543,15 @@ void ModerationAssistant::onMessage(const QString &channelName,
         return;
     }
 
-    auto suggestion = this->suggest(channel, text);
+    // What the channel streams now, so the window can say how many of the
+    // cases happened while it streamed the same
+    QString category;
+    if (twitch->isLive())
+    {
+        category = twitch->accessStreamStatus()->game;
+    }
+
+    auto suggestion = this->suggest(channel, text, category);
     if (!suggestion)
     {
         return;
@@ -806,6 +891,7 @@ ModerationAssistant::ChannelData &ModerationAssistant::data(
         modCase.user = object.value(QStringLiteral("user")).toString();
         modCase.seconds = object.value(QStringLiteral("seconds")).toInt();
         modCase.reason = object.value(QStringLiteral("reason")).toString();
+        modCase.category = object.value(QStringLiteral("category")).toString();
         for (const auto message :
              object.value(QStringLiteral("messages")).toArray())
         {
@@ -818,6 +904,15 @@ ModerationAssistant::ChannelData &ModerationAssistant::data(
         }
 
         add(channelData, std::move(modCase));
+    }
+
+    for (const auto value : root.value(QStringLiteral("rejected")).toArray())
+    {
+        const auto words = wordsOf(value.toString());
+        if (!words.isEmpty())
+        {
+            channelData.rejected.append(words);
+        }
     }
 
     return channelData;
@@ -842,6 +937,7 @@ void ModerationAssistant::save(const QString &channel,
             {QStringLiteral("user"), modCase.user},
             {QStringLiteral("seconds"), modCase.seconds},
             {QStringLiteral("reason"), modCase.reason},
+            {QStringLiteral("category"), modCase.category},
             {QStringLiteral("messages"),
              QJsonArray::fromStringList(modCase.messages)},
             {QStringLiteral("reasons"),
@@ -849,12 +945,25 @@ void ModerationAssistant::save(const QString &channel,
         });
     }
 
+    // What was turned down is kept as the words it was matched by - the
+    // message itself is nobody's business once it is out of the chat
+    QJsonArray rejected;
+    for (const auto &words : channelData.rejected)
+    {
+        QStringList list(words.begin(), words.end());
+        list.sort();
+        rejected.append(list.join(' '));
+    }
+
     QSaveFile file(QDir(directory).absoluteFilePath(channel + ".json"));
     if (!file.open(QIODevice::WriteOnly))
     {
         return;
     }
-    file.write(QJsonDocument(QJsonObject{{QStringLiteral("cases"), cases}})
+    file.write(QJsonDocument(QJsonObject{
+                                 {QStringLiteral("cases"), cases},
+                                 {QStringLiteral("rejected"), rejected},
+                             })
                    .toJson(QJsonDocument::Compact));
     file.commit();
 }

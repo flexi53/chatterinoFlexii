@@ -41,6 +41,10 @@ struct ModCase {
     /// Why it happened, as far as can be told. For now what can be read off
     /// the messages outright - a link, a repeated message and so on.
     QStringList reasons;
+    /// What the channel was streaming at the time, empty where it was not
+    /// live or nobody knew. The same words mean different things in a game
+    /// and in Just Chatting, so it is worth keeping.
+    QString category;
 };
 
 /// An earlier case a message resembles, and what it has in common with it
@@ -60,12 +64,19 @@ struct ModSuggestion {
     int seconds = 0;
     /// How many past cases resemble the message
     int similarCases = 0;
+    /// How many of them happened while the channel streamed what it
+    /// streams now
+    int sameCategory = 0;
+    /// What it streams now, empty where it is not live
+    QString category;
     /// The actions those cases ended in, e.g. "10m ×7, 1h ×2"
     QString spread;
     /// What can be read off the chatter's latest lines outright
     QStringList messageReasons;
     /// The closest of those cases, closest first, at most three
     std::vector<ModMatch> closest;
+    /// The message it is about, so it can be turned down
+    QString about;
 };
 
 /// Learns from the timeouts and bans moderators hand out in a channel, and
@@ -94,9 +105,19 @@ public:
                     const QString &user);
 
     /// A suggestion for a message, if the channel is suggesting and enough
-    /// past cases resemble it
+    /// past cases resemble it. @a category is what the channel streams now,
+    /// which is counted but never required.
     std::optional<ModSuggestion> suggest(const QString &channel,
-                                         const QString &text) const;
+                                         const QString &text,
+                                         const QString &category = {}) const;
+
+    /// Remembers that a suggestion for @a text did not fit here, so
+    /// nothing like it is suggested again. What the moderators actually do
+    /// still counts - a real timeout for such a message outweighs this.
+    void reject(const QString &channel, const QString &text);
+
+    /// Whether @a text was turned down before
+    bool wasRejected(const QString &channel, const QString &text) const;
 
     /// A live chat message. Opens a suggestion for it if the channel is
     /// suggesting and enough earlier cases resemble it. @a badges is the raw
@@ -132,6 +153,9 @@ private:
         bool loaded = false;
         /// Oldest first
         std::vector<Entry> entries;
+        /// Messages a moderator said do not fit here, prepared for
+        /// matching - newest last
+        QList<QSet<QString>> rejected;
     };
 
     /// Loads a channel's cases on first use. The caller holds mutex_.

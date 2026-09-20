@@ -7,6 +7,7 @@
 
 #include "controllers/highlights/HighlightBadge.hpp"
 #include "controllers/moderation/EmoteSpamDetector.hpp"
+#include "controllers/moderation/ModerationAssistant.hpp"
 #include "controllers/moderation/WordAlertDetector.hpp"
 #include "controllers/moderation/ModHighlights.hpp"
 #include "controllers/moderation/RepeatSpamDetector.hpp"

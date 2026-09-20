@@ -13,11 +13,16 @@
 #include "messages/MessageBuilder.hpp"
 #include "mocks/BaseApplication.hpp"
 #include "singletons/Fonts.hpp"
+#include "singletons/Paths.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
 #include "singletons/WindowManager.hpp"
 #include "Test.hpp"
+
+#include <QDir>
+#include <QFile>
 #include "controllers/moderation/AlertMute.hpp"
+#include "controllers/moderation/ModerationAssistant.hpp"
 #include "widgets/helper/ActiveBorder.hpp"
 #include "widgets/splits/SendWaitBar.hpp"
 #include "widgets/splits/SplitHeaderExtras.hpp"
@@ -413,4 +418,52 @@ TEST_F(FlexiiAlertMuteFixture, TheNameIsTakenAsItComes)
     alertmute::setMuted("TryMacs", true);
     EXPECT_TRUE(alertmute::isMuted("trymacs"));
     EXPECT_TRUE(alertmute::isMuted("TRYMACS"));
+}
+
+namespace {
+
+class FlexiiAssistantRejectionFixture : public ::testing::Test
+{
+protected:
+    /// A channel of its own for every run: the cases live in a profile the
+    /// tests share, and the assistant keeps what it read in memory
+    FlexiiAssistantRejectionFixture()
+        : channel(QStringLiteral("rejectiontest%1")
+                      .arg(QDateTime::currentMSecsSinceEpoch()))
+    {
+    }
+
+    ~FlexiiAssistantRejectionFixture() override
+    {
+        QFile::remove(
+            QDir(getApp()->getPaths().miscDirectory)
+                .absoluteFilePath("moderation-assistant/" + channel + ".json"));
+    }
+
+    MockApplication app;
+    QString channel;
+};
+
+}  // namespace
+
+TEST_F(FlexiiAssistantRejectionFixture,
+       WhatAModeratorTurnsDownIsNotSuggestedAgain)
+{
+    auto &assistant = ModerationAssistant::instance();
+    const QString text = "gratis follower bei www.example.net";
+
+    EXPECT_FALSE(assistant.wasRejected(channel, text));
+
+    assistant.reject(channel, text);
+    EXPECT_TRUE(assistant.wasRejected(channel, text));
+
+    // Near enough counts as the same - that is how suggestions match too
+    EXPECT_TRUE(
+        assistant.wasRejected(channel, "gratis follower bei www.example.com"));
+
+    // Something else does not
+    EXPECT_FALSE(assistant.wasRejected(channel, "guten morgen zusammen leute"));
+
+    // And it holds for that channel alone
+    EXPECT_FALSE(assistant.wasRejected(channel + "other", text));
 }

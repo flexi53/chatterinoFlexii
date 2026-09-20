@@ -172,6 +172,16 @@ static void recordModerationCase(const ChannelPtr &channel,
         modCase.user = user.toLower();
         modCase.seconds = seconds;
         modCase.reason = reason;
+        // What the channel was streaming then - the same words mean
+        // different things in a game and in Just Chatting
+        if (auto *twitch = dynamic_cast<TwitchChannel *>(channel.get()))
+        {
+            auto status = twitch->accessStreamStatus();
+            if (status->live)
+            {
+                modCase.category = status->game;
+            }
+        }
 
         const auto snapshot = channel->getMessageSnapshot();
         for (auto it = snapshot.rbegin();
