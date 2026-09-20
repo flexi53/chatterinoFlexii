@@ -6,6 +6,8 @@
 
 #include "widgets/buttons/Button.hpp"
 
+#include <QString>
+
 #include <pajlada/signals/signalholder.hpp>
 
 namespace chatterino {
@@ -20,11 +22,17 @@ class AlertMuteButton : public Button
 public:
     explicit AlertMuteButton(BaseWidget *parent = nullptr);
 
+    /// The channel it switches - the one its split shows
+    void setChannel(const QString &channel);
+
 protected:
     void paintContent(QPainter &painter) override;
 
 private:
     void refreshTooltip();
+    bool muted() const;
+
+    QString channel_;
 
     pajlada::Signals::SignalHolder connections_;
 };

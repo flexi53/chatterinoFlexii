@@ -9,6 +9,7 @@
 #include "controllers/moderation/ModerationAssistant.hpp"
 #include "widgets/dialogs/ModAlertPopup.hpp"
 
+#include "controllers/moderation/AlertMute.hpp"
 #include "widgets/dialogs/AlertLevelBar.hpp"
 
 #ifdef Q_OS_MACOS
@@ -542,7 +543,7 @@ void ModAlertPopup::present()
     // Silenced from the input bar: the case is still followed, the window
     // just stays away. A test window always shows, or the test buttons
     // would do nothing.
-    if (!this->test_ && getSettings()->modAlertMuted)
+    if (!this->test_ && alertmute::isMuted(this->channel_))
     {
         return;
     }

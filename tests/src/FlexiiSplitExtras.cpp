@@ -17,6 +17,7 @@
 #include "singletons/Theme.hpp"
 #include "singletons/WindowManager.hpp"
 #include "Test.hpp"
+#include "controllers/moderation/AlertMute.hpp"
 #include "widgets/helper/ActiveBorder.hpp"
 #include "widgets/splits/SendWaitBar.hpp"
 #include "widgets/splits/SplitHeaderExtras.hpp"
@@ -366,4 +367,50 @@ TEST(FlexiiButtons, EveryButtonStartsWhereItWas)
 
     // Chatterino's own send button stays off, as it always was
     EXPECT_FALSE(s->showSendButton.getDefaultValue());
+}
+
+namespace {
+
+class FlexiiAlertMuteFixture : public ::testing::Test
+{
+protected:
+    ~FlexiiAlertMuteFixture() override
+    {
+        getSettings()->modAlertMutedChannels.setValue(
+            getSettings()->modAlertMutedChannels.getDefaultValue());
+    }
+
+    MockApplication app;
+};
+
+}  // namespace
+
+TEST_F(FlexiiAlertMuteFixture, NothingIsSilencedToBeginWith)
+{
+    EXPECT_FALSE(alertmute::isMuted("trymacs"));
+    // A split without a channel switches nothing
+    EXPECT_FALSE(alertmute::isMuted(""));
+}
+
+TEST_F(FlexiiAlertMuteFixture, OneChannelAtATime)
+{
+    alertmute::setMuted("trymacs", true);
+    EXPECT_TRUE(alertmute::isMuted("trymacs"));
+    // The others go on as they were
+    EXPECT_FALSE(alertmute::isMuted("zarbex"));
+
+    alertmute::setMuted("zarbex", true);
+    EXPECT_TRUE(alertmute::isMuted("trymacs"));
+    EXPECT_TRUE(alertmute::isMuted("zarbex"));
+
+    alertmute::setMuted("trymacs", false);
+    EXPECT_FALSE(alertmute::isMuted("trymacs"));
+    EXPECT_TRUE(alertmute::isMuted("zarbex"));
+}
+
+TEST_F(FlexiiAlertMuteFixture, TheNameIsTakenAsItComes)
+{
+    alertmute::setMuted("TryMacs", true);
+    EXPECT_TRUE(alertmute::isMuted("trymacs"));
+    EXPECT_TRUE(alertmute::isMuted("TRYMACS"));
 }

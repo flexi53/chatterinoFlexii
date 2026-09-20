@@ -493,6 +493,9 @@ void SplitInput::updateModAssistButton()
         moderates && getSettings()->showModAssistButton);
     this->ui_.alertMuteButton->setVisible(
         moderates && getSettings()->showAlertMuteButton);
+    // It silences the channel it stands in, like the shield beside it
+    this->ui_.alertMuteButton->setChannel(
+        twitch != nullptr ? twitch->getName() : QString{});
 }
 
 void SplitInput::openEmotePopup()

@@ -810,10 +810,11 @@ TEST(FlexiiSync, SilencedAlertsStayOnTheComputerTheyWereSilencedOn)
     // Silenced here, not there
     writeJson(local.path() + "/Settings/settings.json",
               {{"moderation",
-                QJsonObject{{"alert", QJsonObject{{"muted", true}}}}}});
+                QJsonObject{
+                    {"alert", QJsonObject{{"mutedChannels", "trymacs"}}}}}});
     writeJson(staged.path() + "/Settings/settings.json",
               {{"moderation",
-                QJsonObject{{"alert", QJsonObject{{"muted", false},
+                QJsonObject{{"alert", QJsonObject{{"mutedChannels", ""},
                                                   {"colorWord", "#112233"}}}}}});
 
     profilesync::keepWindowPlaces(local.path(), staged.path());
@@ -822,7 +823,7 @@ TEST(FlexiiSync, SilencedAlertsStayOnTheComputerTheyWereSilencedOn)
     const auto alert = settings["moderation"].toObject()["alert"].toObject();
     // Taken from here, so a bell pressed on one computer does not silence
     // the other
-    EXPECT_TRUE(alert["muted"].toBool());
+    EXPECT_EQ(alert["mutedChannels"].toString(), "trymacs");
     // What belongs to the alert itself still comes from there
     EXPECT_EQ(alert["colorWord"].toString(), "#112233");
 }

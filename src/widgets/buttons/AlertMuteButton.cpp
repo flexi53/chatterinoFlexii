@@ -4,7 +4,9 @@
 
 #include "widgets/buttons/AlertMuteButton.hpp"
 
+#include "controllers/moderation/AlertMute.hpp"
 #include "singletons/Settings.hpp"
+#include "widgets/helper/ActiveBorder.hpp"
 #include "singletons/Theme.hpp"
 
 #include <QPainter>
@@ -20,37 +22,65 @@ AlertMuteButton::AlertMuteButton(BaseWidget *parent)
     this->refreshTooltip();
 
     QObject::connect(this, &Button::leftClicked, this, [this] {
-        getSettings()->modAlertMuted.setValue(!getSettings()->modAlertMuted);
+        alertmute::setMuted(this->channel_, !this->muted());
     });
 
-    getSettings()->modAlertMuted.connect(
-        [this](const bool, auto) {
+    getSettings()->modAlertMutedChannels.connect(
+        [this](const QString &, auto) {
             this->refreshTooltip();
             this->update();
         },
         this->connections_, false);
 }
 
+void AlertMuteButton::setChannel(const QString &channel)
+{
+    if (channel == this->channel_)
+    {
+        return;
+    }
+    this->channel_ = channel;
+    this->refreshTooltip();
+    this->update();
+}
+
+bool AlertMuteButton::muted() const
+{
+    return alertmute::isMuted(this->channel_);
+}
+
 void AlertMuteButton::refreshTooltip()
 {
+    const auto where = this->channel_.isEmpty()
+                           ? QStringLiteral("diesem Kanal")
+                           : QStringLiteral("#%1").arg(this->channel_);
     this->setToolTip(
-        getSettings()->modAlertMuted
-            ? QStringLiteral("Alarm-Fenster sind aus - es geht keines mehr "
-                             "auf. Klicken, um sie wieder zu erlauben.")
-            : QStringLiteral("Alarm-Fenster ausschalten - der Mod-Assistent "
-                             "passt weiter auf, aber nichts ploppt mehr auf."));
+        this->muted()
+            ? QStringLiteral("Alarm-Fenster für %1 sind aus - es geht keines "
+                             "mehr auf. Klicken, um sie wieder zu erlauben.")
+                  .arg(where)
+            : QStringLiteral("Alarm-Fenster für %1 ausschalten - der "
+                             "Mod-Assistent passt weiter auf, aber nichts "
+                             "ploppt mehr auf. Andere Kanäle bleiben, wie "
+                             "sie sind.")
+                  .arg(where));
 }
 
 void AlertMuteButton::paintContent(QPainter &painter)
 {
-    const bool muted = getSettings()->modAlertMuted;
+    const bool muted = this->muted();
 
-    // The colour and weight of the icons next to it
+    // Quiet like the icons next to it while the alerts may come; red while
+    // they are held back, so a channel left silent does not go unnoticed
     QColor color =
         getTheme()->isLightTheme() ? QColor("#333333") : QColor("#e6e6e6");
+    if (muted)
+    {
+        color = activeborder::fallback();
+    }
     if (!this->mouseOver())
     {
-        color.setAlpha(200);
+        color.setAlpha(muted ? 235 : 200);
     }
 
     const auto scale = this->scale();
