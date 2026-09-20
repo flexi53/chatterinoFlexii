@@ -742,6 +742,8 @@ set(SOURCE_FILES
         widgets/Window.cpp
         widgets/Window.hpp
 
+        widgets/buttons/AlertMuteButton.cpp
+        widgets/buttons/AlertMuteButton.hpp
         widgets/buttons/Button.cpp
         widgets/buttons/Button.hpp
         widgets/buttons/ClearChatButton.cpp

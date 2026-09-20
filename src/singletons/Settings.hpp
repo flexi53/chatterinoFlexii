@@ -409,6 +409,9 @@ public:
     QStringSetting modAlertSoundEmote = {"/moderation/alerts/soundEmote",
                                          "builtin:dringend"};
     QStringSetting modAlertSoundWord = {"/moderation/alert/soundWord", ""};
+    /// While this is set no alert window opens - the bell in the input bar
+    /// switches it. Stays on this computer.
+    BoolSetting modAlertMuted = {"/moderation/alert/muted", false};
     QStringSetting modAlertSoundSuggestion = {
         "/moderation/alerts/soundSuggestion", "builtin:glocke"};
     /// The size alert windows open with, as the moderator last dragged one

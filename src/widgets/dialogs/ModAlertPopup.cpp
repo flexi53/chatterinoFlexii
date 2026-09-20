@@ -520,6 +520,14 @@ void ModAlertPopup::closeFor(const QString &channel, const QString &login)
 
 void ModAlertPopup::present()
 {
+    // Silenced from the input bar: the case is still followed, the window
+    // just stays away. A test window always shows, or the test buttons
+    // would do nothing.
+    if (!this->test_ && getSettings()->modAlertMuted)
+    {
+        return;
+    }
+
     // The ping goes with a window coming up, not with one already on screen
     // being updated. Test windows come through here too, so they sound like
     // the real thing.

@@ -43,6 +43,7 @@ class SvgButton;
 class SpellCheckHighlighter;
 enum class CompletionKind;
 
+class AlertMuteButton;
 class SendWaitBar;
 
 class SplitInput : public BaseWidget
@@ -198,6 +199,8 @@ protected:
         SendWaitBar *sendWaitBar;
         SvgButton *emoteButton;
         SvgButton *modAssistButton;
+        /// ChattiFlexii: silences the alert windows
+        AlertMuteButton *alertMuteButton;
         FocusButton *focusButton;
         ClearChatButton *clearButton;
     } ui_;

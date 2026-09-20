@@ -801,6 +801,32 @@ TEST(FlexiiSync, TakingASetupKeepsTheWindowsWhereTheyAreHere)
     EXPECT_TRUE(settings["appearance"].toObject()["focusMode"].toBool());
 }
 
+TEST(FlexiiSync, SilencedAlertsStayOnTheComputerTheyWereSilencedOn)
+{
+    QTemporaryDir local;
+    QTemporaryDir staged;
+    ASSERT_TRUE(local.isValid() && staged.isValid());
+
+    // Silenced here, not there
+    writeJson(local.path() + "/Settings/settings.json",
+              {{"moderation",
+                QJsonObject{{"alert", QJsonObject{{"muted", true}}}}}});
+    writeJson(staged.path() + "/Settings/settings.json",
+              {{"moderation",
+                QJsonObject{{"alert", QJsonObject{{"muted", false},
+                                                  {"colorWord", "#112233"}}}}}});
+
+    profilesync::keepWindowPlaces(local.path(), staged.path());
+
+    const auto settings = readJson(staged.path() + "/Settings/settings.json");
+    const auto alert = settings["moderation"].toObject()["alert"].toObject();
+    // Taken from here, so a bell pressed on one computer does not silence
+    // the other
+    EXPECT_TRUE(alert["muted"].toBool());
+    // What belongs to the alert itself still comes from there
+    EXPECT_EQ(alert["colorWord"].toString(), "#112233");
+}
+
 namespace {
 
 ChatRole roleWith(std::initializer_list<const char *> badges)

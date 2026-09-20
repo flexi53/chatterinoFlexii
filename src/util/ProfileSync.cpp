@@ -52,7 +52,7 @@ const QString FRESH_PREFIX = QStringLiteral("ChattiFlexii-Abgleich (neu)");
 const QString SHARED_MARKER = QStringLiteral("chattiflexii-abgleich.json");
 /// How fingerprint() works - a setup from a version that worked it out
 /// otherwise cannot be checked against it
-constexpr int FORMAT = 5;
+constexpr int FORMAT = 6;
 
 /// Setup offers already answered with "Später" since the app started
 QSet<QString> &putOff()
@@ -182,6 +182,8 @@ const std::vector<QStringList> SETTINGS_PLACES{
     {"appearance", "focusMode"},
     // Which view is loaded - each computer switches on its own
     {"snapshots", "current"},
+    // Silencing the alerts is a thing of the moment, here
+    {"moderation", "alert", "muted"},
 };
 
 QString rootDirectory()
