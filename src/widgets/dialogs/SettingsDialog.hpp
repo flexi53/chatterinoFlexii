@@ -15,7 +15,6 @@
 
 #include <functional>
 
-class QCheckBox;
 class QLabel;
 class QLineEdit;
 
@@ -64,15 +63,14 @@ private:
     QLabel *addSectionLabel(const QString &text);
     /// Hides a heading whose pages are all filtered away
     void refreshHeadings();
+    /// ChattiFlexii: puts the icons of the look that is on now on the tabs
+    void refreshIcons();
     void addTab(std::function<SettingsPage *()> page, const QString &name,
                 const QString &iconPath, SettingsTabId id = {},
                 Qt::Alignment alignment = Qt::AlignTop);
     void selectTab(SettingsDialogTab *tab, const bool byUser = true);
     void selectTab(SettingsTabId id);
     void filterElements(const QString &query);
-    /// ChattiFlexii: shows only the settings that are not where they
-    /// started, and the pages that hold them
-    void showOnlyChanged(bool only);
     void setElementFilter(const QString &query);
     bool eventFilter(QObject *object, QEvent *event) override;
 
@@ -88,10 +86,15 @@ private:
         QPushButton *okButton{};
         QPushButton *cancelButton{};
         QLineEdit *search{};
-        /// ChattiFlexii: shows only what was changed
-        QCheckBox *onlyChanged{};
     } ui_;
     std::vector<SettingsDialogTab *> tabs_;
+    /// ChattiFlexii: what each tab shows in either look
+    struct TabIcons {
+        SettingsDialogTab *tab{};
+        QString classic;
+        QString modern;
+    };
+    std::vector<TabIcons> tabIcons_;
     /// ChattiFlexii: how many of them are ours - they come first
     int ownTabs_ = 0;
     QLabel *ownHeading_{};

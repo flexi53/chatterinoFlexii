@@ -289,6 +289,8 @@ public:
     QStringSetting activeSplitBorderColor = {
         "/appearance/splitheader/activeBorderColor", "#e91916"};
     /// A border around the tab you are on, in the same colour
+    /// Whether the example chat over the Look page is unfolded
+    BoolSetting lookPreviewOpen = {"/appearance/lookPreviewOpen", true};
     BoolSetting activeTabBorder = {"/appearance/tabs/activeBorder", false};
     QStringSetting activeTabBorderColor = {"/appearance/tabs/activeBorderColor",
                                            ""};

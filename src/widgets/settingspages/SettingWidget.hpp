@@ -5,6 +5,7 @@
 #pragma once
 
 #include "common/ChatterinoSetting.hpp"
+#include "util/QMagicEnum.hpp"
 
 #include <pajlada/signals/signalholder.hpp>
 #include <QBoxLayout>
@@ -139,6 +140,26 @@ public:
         };
         this->reset_ = [&setting] {
             setting.setValue(setting.getDefaultValue());
+        };
+        setting.connect(
+            [this](const auto &, auto) {
+                this->refreshMark();
+            },
+            this->managedConnections, false);
+        this->refreshMark();
+    }
+
+    /// An enum setting keeps the name of its value, and its default is the
+    /// value rather than that name - so the two are compared as values
+    template <typename E>
+    void follow(EnumStringSetting<E> &setting)
+    {
+        this->isDefault_ = [&setting] {
+            return setting.getEnum() == setting.defaultValue;
+        };
+        this->reset_ = [&setting] {
+            setting.setValue(
+                qmagicenum::enumNameString(setting.defaultValue).toLower());
         };
         setting.connect(
             [this](const auto &, auto) {

@@ -35,6 +35,9 @@ public:
                       const QString &name, QString imageFileName,
                       SettingsTabId id);
 
+    /// ChattiFlexii: swaps the icon, for when the look changes
+    void setIcon(const QString &imageFileName);
+
     void setSelected(bool selected_);
     SettingsPage *page();
     SettingsTabId id() const;

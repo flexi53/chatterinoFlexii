@@ -81,16 +81,6 @@ bool SettingsPage::filterElements(const QString &query)
     return filterItemsRec(this, query) || query.isEmpty();
 }
 
-int SettingsPage::changedSettings()
-{
-    return -1;
-}
-
-void SettingsPage::showOnlyChanged(bool only)
-{
-    (void)only;
-}
-
 SettingsDialogTab *SettingsPage::tab() const
 {
     return this->tab_;

@@ -29,14 +29,6 @@ public:
 
     virtual bool filterElements(const QString &query);
 
-    /// ChattiFlexii: how many settings on this page are not where they
-    /// started. -1 where the page cannot tell - a list of highlights or of
-    /// words, say, which is not a switch that has a default.
-    virtual int changedSettings();
-
-    /// ChattiFlexii: shows only what was changed, or everything again
-    virtual void showOnlyChanged(bool only);
-
     SettingsDialogTab *tab() const;
     void setTab(SettingsDialogTab *tab);
 

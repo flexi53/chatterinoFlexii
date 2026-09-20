@@ -33,8 +33,8 @@
 #include "widgets/settingspages/PluginsPage.hpp"
 #include "widgets/settingspages/TransferPage.hpp"
 
-#include <QCheckBox>
 #include <QDialogButtonBox>
+#include <QHash>
 #include <QLabel>
 #include <QFile>
 #include <QLineEdit>
@@ -44,6 +44,35 @@ namespace {
 /// How wide the column of page names is - German names need more room than
 /// the English ones this was once set for
 constexpr int TAB_COLUMN_WIDTH = 185;
+
+/// The icon a page gets in the modern look. Chatterino's own mix a filled,
+/// grey style with a drawn one; these are all drawn the same way, like the
+/// ones this fork brings. Empty where there is nothing to swap.
+QString modernIcon(const QString &name)
+{
+    static const QHash<QString, QString> icons{
+        {"General", "general"},
+        {"Accounts", "accounts"},
+        {"Nicknames", "nicknames"},
+        {"Commands", "commands"},
+        {"Highlights", "highlights"},
+        {"Ignores", "ignores"},
+        {"Filters", "filters"},
+        {"Hotkeys", "hotkeys"},
+        {"Moderation", "moderation"},
+        {"Live Notifications", "live"},
+        {"External tools", "tools"},
+        {"Plugins", "plugins"},
+        {"About", "about"},
+    };
+
+    const auto found = icons.find(name);
+    if (found == icons.end())
+    {
+        return {};
+    }
+    return QStringLiteral(":/settings/flexii/%1.svg").arg(found.value());
+}
 
 }  // namespace
 
@@ -79,6 +108,14 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     this->initUi();
     this->addTabs();
     this->overrideBackgroundColor_ = QColor("#111111");
+
+    // The window is opened once and kept, so a change of look has to reach
+    // the icons that are already on screen
+    getSettings()->uiStyle.connect(
+        [this](const auto &, auto) {
+            this->refreshIcons();
+        },
+        this->signalHolder_, false);
 
     this->addShortcuts();
     this->signalHolder_.managedConnect(getApp()->getHotkeys()->onItemsUpdated,
@@ -138,19 +175,6 @@ void SettingsDialog::initUi()
                     .assign(&this->ui_.search);
     this->setSearchPlaceholderText();
 
-    // ChattiFlexii: what is not where it started, at a glance
-    this->ui_.onlyChanged = new QCheckBox("Nur Geändertes");
-    this->ui_.onlyChanged->setToolTip(
-        "Zeigt nur die Einstellungen, die du geändert hast, und blendet die "
-        "Seiten aus, auf denen nichts geändert ist. Listen wie Markierungen "
-        "oder deine Wörter bleiben dabei außen vor - sie haben keinen "
-        "Standard, von dem sie abweichen könnten.");
-    title.getElement()->layout()->addWidget(this->ui_.onlyChanged);
-    QObject::connect(this->ui_.onlyChanged, &QCheckBox::toggled, this,
-                     [this](bool on) {
-                         this->showOnlyChanged(on);
-                     });
-
     edit->setClearButtonEnabled(true);
     edit->findChild<QAbstractButton *>()->setIcon(
         QPixmap(":/buttons/clearSearch.png"));
@@ -200,58 +224,8 @@ void SettingsDialog::initUi()
                      &SettingsDialog::onCancelClicked);
 }
 
-void SettingsDialog::showOnlyChanged(bool only)
-{
-    int changed = 0;
-    for (auto *tab : this->tabs_)
-    {
-        auto *page = tab->page();
-        page->showOnlyChanged(only);
-
-        const auto count = page->changedSettings();
-        if (count > 0)
-        {
-            changed += count;
-        }
-        // A page that cannot tell - a list rather than switches - is left
-        // out while only the changed ones are shown
-        tab->setVisible(!only || count > 0);
-    }
-
-    this->ui_.onlyChanged->setText(
-        only ? QStringLiteral("Nur Geändertes (%1)").arg(changed)
-             : QStringLiteral("Nur Geändertes"));
-    this->refreshHeadings();
-
-    if (!only)
-    {
-        // Back to whatever the search says
-        this->filterElements(this->ui_.search->text());
-        return;
-    }
-
-    if (this->selectedTab_ != nullptr && !this->selectedTab_->isVisible())
-    {
-        for (auto *tab : this->tabs_)
-        {
-            if (tab->isVisible())
-            {
-                this->selectTab(tab, false);
-                break;
-            }
-        }
-    }
-}
-
 void SettingsDialog::filterElements(const QString &text)
 {
-    // The search takes over from the filter
-    if (!text.isEmpty() && this->ui_.onlyChanged != nullptr &&
-        this->ui_.onlyChanged->isChecked())
-    {
-        this->ui_.onlyChanged->setChecked(false);
-    }
-
     // filter elements and hide pages
     for (auto &&tab : this->tabs_)
     {
@@ -342,6 +316,9 @@ void SettingsDialog::addTabs()
     this->addTab([]{return new ModAssistantPage;},     "Mod-Assistent",  ":/settings/modassistant.svg");
     this->addTab([]{return new ModHighlightsPage;},    "Mod-Highlights", ":/settings/modhighlights.svg");
     this->addTab([]{return new TransferPage;},         "Sichern & Übertragen", ":/settings/transfer.svg");
+    // Ours are drawn in the modern way to begin with; Chatterino's own get
+    // a second set, picked when the modern look is on
+
     this->ui_.tabContainer->addSpacing(10);
     this->ownTabs_ = static_cast<int>(this->tabs_.size());
     this->chatterinoHeading_ = this->addSectionLabel("Chatterino");
@@ -371,8 +348,16 @@ void SettingsDialog::addTab(std::function<SettingsPage *()> page,
                             const QString &name, const QString &iconPath,
                             SettingsTabId id, Qt::Alignment alignment)
 {
+    // In the modern look Chatterino's own pages get an icon drawn like the
+    // rest; the classic one keeps what it always had
+    const auto modern = modernIcon(name);
+    const auto shown =
+        getSettings()->uiStyle == UiStyle::Modern && !modern.isEmpty()
+            ? modern
+            : iconPath;
     auto *tab = new SettingsDialogTab(this, std::move(page), german::say(name),
-                                      iconPath, id);
+                                      shown, id);
+    this->tabIcons_.push_back({tab, iconPath, modern});
     tab->setFixedHeight(static_cast<int>(30 * this->dpi_));
 
     this->ui_.tabContainer->addWidget(tab, 0, alignment);
@@ -381,6 +366,16 @@ void SettingsDialog::addTab(std::function<SettingsPage *()> page,
     if (this->tabs_.size() == 1)
     {
         this->selectTab(tab);
+    }
+}
+
+void SettingsDialog::refreshIcons()
+{
+    const bool modern = getSettings()->uiStyle == UiStyle::Modern;
+    for (const auto &icons : this->tabIcons_)
+    {
+        icons.tab->setIcon(modern && !icons.modern.isEmpty() ? icons.modern
+                                                             : icons.classic);
     }
 }
 
@@ -425,12 +420,6 @@ void SettingsDialog::selectTab(SettingsDialogTab *tab, bool byUser)
         this->ui_.pageStack->addWidget(tab->page());
         // The pages that build their labels themselves say them in English
         german::translateWidgets(tab->page());
-        // A page built while the filter is on starts filtered
-        if (this->ui_.onlyChanged != nullptr &&
-            this->ui_.onlyChanged->isChecked())
-        {
-            tab->page()->showOnlyChanged(true);
-        }
     }();
 
     this->ui_.pageStack->setCurrentWidget(tab->page());

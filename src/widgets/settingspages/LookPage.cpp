@@ -113,13 +113,46 @@ LookPage::LookPage()
     outer->setContentsMargins(0, 0, 0, 0);
 
     // A made-up chat above the switches: everything set here shows in it at
-    // once, rather than after closing the window
+    // once, rather than after closing the window. Folded away for whoever
+    // would rather have the room.
     auto *preview = new ChannelView(this, ChannelView::Context::UserCard, 12);
     preview->setFixedHeight(152);
     preview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     auto shown = std::make_shared<Channel>("vorschau", Channel::Type::None);
     preview->setChannel(shown);
+
+    auto *fold = new QPushButton;
+    fold->setFlat(true);
+    fold->setCursor(Qt::PointingHandCursor);
+    fold->setStyleSheet(
+        QStringLiteral("QPushButton { border: none; background: transparent; "
+                       "color: #9a9a9a; padding: 3px 6px; text-align: left; }"
+                       "QPushButton:hover { color: #d0d0d0; }"));
+    const auto refreshFold = [fold, preview] {
+        const bool open = getSettings()->lookPreviewOpen;
+        preview->setVisible(open);
+        fold->setText(open ? QStringLiteral("▾  Beispiel-Chat")
+                           : QStringLiteral("▸  Beispiel-Chat"));
+        fold->setToolTip(open ? QStringLiteral("Den Beispiel-Chat einklappen")
+                              : QStringLiteral("Zeigt an einem erfundenen "
+                                               "Chat, was die Schalter hier "
+                                               "bewirken"));
+    };
+    QObject::connect(fold, &QPushButton::clicked, this, [] {
+        getSettings()->lookPreviewOpen.setValue(
+            !getSettings()->lookPreviewOpen);
+    });
+    // Whoever changes it - the button here, a view being switched to -
+    // the preview follows
+    getSettings()->lookPreviewOpen.connect(
+        [refreshFold](const bool, auto) {
+            refreshFold();
+        },
+        this->managedConnections_, false);
+
+    outer->addWidget(fold);
     outer->addWidget(preview);
+    refreshFold();
 
     shown->addMessage(previewLine("Zarbex", "moin zusammen",
                                   QColor(0x5b, 0xc8, 0xff), {"broadcaster"}),
@@ -174,24 +207,6 @@ bool LookPage::filterElements(const QString &query)
     return any;
 }
 
-int LookPage::changedSettings()
-{
-    int changed = 0;
-    for (auto *view : this->views_)
-    {
-        changed += view->countChanged();
-    }
-    return changed;
-}
-
-void LookPage::showOnlyChanged(bool only)
-{
-    for (auto *view : this->views_)
-    {
-        view->showOnlyChanged(only);
-    }
-}
-
 void LookPage::buildStyleTab(GeneralPageView &layout)
 {
     auto &s = *getSettings();
@@ -243,8 +258,11 @@ void LookPage::buildStyleTab(GeneralPageView &layout)
 
     layout.addTitle("Aussehen");
     layout.addDescription(
-        "Classic ist Chatterino, wie es immer aussah. Modern rundet die Tabs "
-        "ab und gibt ihnen etwas Tiefe. Wirkt sofort.");
+        "Classic ist Chatterino, wie es immer aussah. Modern rundet ab und "
+        "beruhigt: die Tabs mit etwas Tiefe, das Eingabefeld, den Griff der "
+        "Bildlaufleiste, dazu ein durchgehend gezeichneter Symbolsatz in "
+        "dieser Leiste hier und Alarm-Fenster, die sanft aufgehen statt "
+        "aufzuspringen. Wirkt sofort, und zurück geht es jederzeit.");
     SettingWidget::dropdown("Stil", s.uiStyle)->addTo(layout);
 
     layout.addTitle("Fokus-Ansicht");

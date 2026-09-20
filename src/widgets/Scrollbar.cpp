@@ -307,16 +307,27 @@ void Scrollbar::paintEvent(QPaintEvent * /*event*/)
     {
         this->thumbRect_.setX(xOffset);
 
-        // mouse over thumb
-        if (this->mouseDownLocation_ == MouseLocation::InsideThumb)
+        const auto color =
+            this->mouseDownLocation_ == MouseLocation::InsideThumb
+                ? this->theme->scrollbars.thumbSelected
+                : this->theme->scrollbars.thumb;
+
+        // Modern rounds the handle off, the way it rounds the tabs and the
+        // input; classic keeps the square bar Chatterino has always drawn
+        if (getSettings()->uiStyle == UiStyle::Modern)
         {
-            painter.fillRect(this->thumbRect_,
-                             this->theme->scrollbars.thumbSelected);
+            painter.save();
+            painter.setRenderHint(QPainter::Antialiasing, true);
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(color);
+            const auto radius = this->thumbRect_.width() / 2.0;
+            painter.drawRoundedRect(QRectF(this->thumbRect_).adjusted(0, 1, 0, -1),
+                                    radius, radius);
+            painter.restore();
         }
-        // mouse not over thumb
         else
         {
-            painter.fillRect(this->thumbRect_, this->theme->scrollbars.thumb);
+            painter.fillRect(this->thumbRect_, color);
         }
     }
 

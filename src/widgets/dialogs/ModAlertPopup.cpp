@@ -51,6 +51,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPainter>
+#include <QPropertyAnimation>
 #include <QPainterPath>
 #include <QPointer>
 #include <QPushButton>
@@ -594,7 +595,24 @@ void ModAlertPopup::present()
     const auto showHere = [this, onAllSpaces] {
         const auto nativeView = static_cast<std::uintptr_t>(this->winId());
         this->placeWindow();
-        this->show();
+        // Modern lets the window come up rather than appear; classic puts
+        // it there at once, as it always did
+        if (getSettings()->uiStyle == UiStyle::Modern && !this->isVisible())
+        {
+            this->setWindowOpacity(0.0);
+            this->show();
+            auto *fade = new QPropertyAnimation(this, "windowOpacity", this);
+            fade->setDuration(130);
+            fade->setStartValue(0.0);
+            fade->setEndValue(1.0);
+            fade->setEasingCurve(QEasingCurve::OutCubic);
+            fade->start(QAbstractAnimation::DeleteWhenStopped);
+        }
+        else
+        {
+            this->setWindowOpacity(1.0);
+            this->show();
+        }
         this->rememberShownGeometry();
         // Qt's raise() activates the whole app on macOS, which would take
         // the keyboard from whatever the moderator is typing into
@@ -620,7 +638,23 @@ void ModAlertPopup::present()
     showHere();
 #else
     this->placeWindow();
-    this->show();
+    // Modern lets the window come up rather than appear
+    if (getSettings()->uiStyle == UiStyle::Modern && !this->isVisible())
+    {
+        this->setWindowOpacity(0.0);
+        this->show();
+        auto *fade = new QPropertyAnimation(this, "windowOpacity", this);
+        fade->setDuration(130);
+        fade->setStartValue(0.0);
+        fade->setEndValue(1.0);
+        fade->setEasingCurve(QEasingCurve::OutCubic);
+        fade->start(QAbstractAnimation::DeleteWhenStopped);
+    }
+    else
+    {
+        this->setWindowOpacity(1.0);
+        this->show();
+    }
     this->rememberShownGeometry();
     this->raise();
 #endif

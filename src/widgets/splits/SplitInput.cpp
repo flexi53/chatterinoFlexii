@@ -206,6 +206,12 @@ void SplitInput::initLayout()
         this->handleSendMessage(arguments);
     });
 
+    getSettings()->uiStyle.connect(
+        [this](const auto &, auto) {
+            this->update();
+        },
+        this->managedConnections_, false);
+
     getSettings()->showSendButton.connect(
         [this](const bool value, auto) {
             if (value)
@@ -1332,7 +1338,19 @@ void SplitInput::paintEvent(QPaintEvent * /*event*/)
 
     painter.setBrush({this->theme->splits.input.background});
     painter.setPen(borderColor);
-    painter.drawRect(inputBoxRect);
+    // Modern rounds the input off, the way it rounds the tabs; classic
+    // keeps the square box Chatterino has always drawn
+    const bool modern = getSettings()->uiStyle == UiStyle::Modern;
+    if (modern)
+    {
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        const auto radius = 6 * this->scale();
+        painter.drawRoundedRect(inputBoxRect, radius, radius);
+    }
+    else
+    {
+        painter.drawRect(inputBoxRect);
+    }
 
     if (this->enableInlineReplying_ && this->replyTarget_ != nullptr)
     {
@@ -1341,7 +1359,15 @@ void SplitInput::paintEvent(QPaintEvent * /*event*/)
 
         painter.setBrush(this->theme->splits.input.background);
         painter.setPen(borderColor);
-        painter.drawRect(replyRect);
+        if (modern)
+        {
+            const auto radius = 6 * this->scale();
+            painter.drawRoundedRect(replyRect, radius, radius);
+        }
+        else
+        {
+            painter.drawRect(replyRect);
+        }
 
         QPoint replyLabelBorderStart(
             replyRect.x(),

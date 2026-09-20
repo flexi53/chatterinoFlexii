@@ -24,9 +24,6 @@ public:
 
     bool filterElements(const QString &query) override;
 
-    int changedSettings() override;
-    void showOnlyChanged(bool only) override;
-
 private:
     void buildStyleTab(GeneralPageView &layout);
     void buildTabsTab(GeneralPageView &layout);

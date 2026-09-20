@@ -30,6 +30,13 @@ SettingsDialogTab::SettingsDialogTab(SettingsDialog *_dialog,
     this->setStyleSheet("color: #FFF");
 }
 
+void SettingsDialogTab::setIcon(const QString &imageFileName)
+{
+    this->ui_.icon = QIcon();
+    this->ui_.icon.addFile(imageFileName);
+    this->update();
+}
+
 void SettingsDialogTab::setSelected(bool _selected)
 {
     if (this->selected_ == _selected)
