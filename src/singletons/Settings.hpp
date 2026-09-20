@@ -378,6 +378,10 @@ public:
     /// That many messages in a row holding nothing but emotes raise the
     /// alert; 0 is off
     IntSetting emoteAlertStreak = {"/moderation/emoteAlert/streak", 0};
+    /// How many of the counted messages the delete button takes down; 0 for
+    /// all of them within the counting window
+    IntSetting emoteAlertDeleteCount = {"/moderation/emoteAlert/deleteCount",
+                                        0};
     /// Channels that raise an alert for words on the list, separated by
     /// commas
     QStringSetting wordAlertChannels = {"/moderation/wordAlert/channels", ""};

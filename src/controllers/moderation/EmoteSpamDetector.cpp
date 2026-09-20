@@ -26,9 +26,6 @@ using namespace chatterino;
 
 /// Quiet for this long and they start with a clean slate
 constexpr int RESET_SECONDS = 30 * 60;
-/// The most messages one alert deletes
-constexpr qsizetype MAX_DELETED = 30;
-
 QString keyOf(const QString &channel, const QString &login)
 {
     return channel + '\n' + login;
@@ -192,8 +189,9 @@ void EmoteSpamDetector::onMessage(const QString &channelName,
             state.pendingIds.append(counted.id);
         }
     }
-    // Deleting a whole afternoon of them one by one would take a while
-    while (state.pendingIds.size() > MAX_DELETED)
+    const auto keep =
+        deleteLimit(getSettings()->emoteAlertDeleteCount.getValue());
+    while (state.pendingIds.size() > keep)
     {
         state.pendingIds.removeFirst();
     }
@@ -331,6 +329,15 @@ int EmoteSpamDetector::emoteCount(const Message &message)
         return 0;
     }
     return held.emotes > 0 && held.emotes >= held.words ? held.emotes : 0;
+}
+
+int EmoteSpamDetector::deleteLimit(int setting)
+{
+    if (setting <= 0)
+    {
+        return MOST_DELETED;
+    }
+    return std::min(setting, MOST_DELETED);
 }
 
 bool EmoteSpamDetector::onlyEmotes(const Message &message)

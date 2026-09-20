@@ -1236,3 +1236,20 @@ TEST(FlexiiSteps, ABanIsWrittenOutRatherThanTimed)
     EXPECT_TRUE(RepeatSpamDetector::parseSteps("0s").empty());
     EXPECT_TRUE(RepeatSpamDetector::parseSteps("30s, bannen").empty());
 }
+
+TEST(FlexiiEmoteSpam, TheDeleteButtonTakesAsManyAsAsked)
+{
+    // Nothing set: all of them, up to what one alert ever deletes
+    EXPECT_EQ(EmoteSpamDetector::deleteLimit(0),
+              EmoteSpamDetector::MOST_DELETED);
+    EXPECT_EQ(EmoteSpamDetector::deleteLimit(-3),
+              EmoteSpamDetector::MOST_DELETED);
+
+    // Often one is all it takes
+    EXPECT_EQ(EmoteSpamDetector::deleteLimit(1), 1);
+    EXPECT_EQ(EmoteSpamDetector::deleteLimit(5), 5);
+
+    // And never more than that, whatever is asked for
+    EXPECT_EQ(EmoteSpamDetector::deleteLimit(500),
+              EmoteSpamDetector::MOST_DELETED);
+}

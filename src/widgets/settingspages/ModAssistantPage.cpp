@@ -287,7 +287,7 @@ ModAssistantPage::ModAssistantPage()
 
         addText(layout,
                 "Jede Farbe wird automatisch kräftig und hell gemacht, damit "
-                "der Reason immer leuchtet. Grau, Schwarz und Weiß leuchten "
+                "der Grund-Kasten immer leuchtet. Grau, Schwarz und Weiß leuchten "
                 "nicht - bei ihnen bleibt es bei der Standardfarbe. Der "
                 "ablaufende Balken im Fenster nimmt dieselbe Farbe.",
                 true);
@@ -367,7 +367,7 @@ ModAssistantPage::ModAssistantPage()
     addText(suggestions,
             "Der Assistent lernt aus Timeouts und Banns, die Mods in deinen "
             "Kanälen geben, und schlägt eine Aktion vor, wenn jemand etwas "
-            "Ähnliches schreibt. Im Fenster steht als Reason, was er an der "
+            "Ähnliches schreibt. Im Fenster steht als Grund, was er an der "
             "Nachricht erkannt hat, und darunter der ähnlichste frühere Fall.");
     addText(suggestions,
             "Ob der Assistent in einem Kanal nur lernt oder auch vorschlägt, "
@@ -538,6 +538,19 @@ ModAssistantPage::ModAssistantPage()
                 "kommt erst, wenn wirklich eine Nachricht gelöscht oder der "
                 "User getimeoutet wurde.",
                 true);
+
+        auto *form = new QFormLayout;
+        auto *deleteCount = this->createSpinBox(
+            getSettings()->emoteAlertDeleteCount, 0,
+            EmoteSpamDetector::MOST_DELETED);
+        deleteCount->setSuffix(" Nachrichten");
+        deleteCount->setSpecialValueText("alle gezählten");
+        deleteCount->setToolTip(
+            "Wie viele Nachrichten der Löschen-Knopf wegnimmt: die neuesten "
+            "so vielen. Auf \"alle gezählten\" nimmt er alle, die im "
+            "Zeitfenster zusammengezählt wurden - höchstens 30.");
+        form->addRow("Löschen nimmt", deleteCount);
+        emotes->addLayout(form);
 
         addStepsEditor(emotes, getSettings()->emoteAlertSteps,
                        QStringLiteral("löschen, löschen, 30s"),

@@ -55,6 +55,15 @@ public:
     /// Whether the message is nothing but emotes - not a word in it
     static bool onlyEmotes(const Message &message);
 
+    /// The most messages one alert deletes, however many were counted
+    static constexpr int MOST_DELETED = 30;
+
+    /// How many messages the delete button takes down, for the number set
+    /// under Mod-Assistent -> Emote-Spam. Nothing set means all of them,
+    /// and never more than MOST_DELETED - deleting a whole afternoon of
+    /// them one by one would take a while.
+    static int deleteLimit(int setting);
+
     /// What put the case in front of the moderator
     enum class Reason {
         /// Nothing did
