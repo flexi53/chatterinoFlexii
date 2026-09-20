@@ -47,6 +47,8 @@ public:
     enum class Kind {
         RepeatedMessage,
         EmoteSpam,
+        /// A word off the list under Mod-Assistent -> Wörter
+        Word,
         Suggestion,
     };
 
@@ -115,6 +117,15 @@ public:
 
     /// The emote alert with made up lines, at step @a step
     void showTestEmoteSpam(int step);
+
+    /// Shows that @a displayName said @a word, with @a action on offer -
+    /// deleting the message or a timeout - at @a step of @a stepCount
+    void setWordAlert(const QString &displayName, const QString &word,
+                      int action, const QStringList &messageIds, int step,
+                      int actionsServed, int stepCount);
+
+    /// The word alert with a made-up case, to see what it looks like
+    void showTestWordAlert(int step);
 
     /// The repeated message alert with made up lines - the first one, or the
     /// one after a timeout - and buttons that send nothing

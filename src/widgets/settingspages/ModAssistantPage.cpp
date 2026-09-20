@@ -6,9 +6,11 @@
 
 #include "Application.hpp"
 #include "controllers/moderation/EmoteSpamDetector.hpp"
+#include "controllers/moderation/WordAlertDetector.hpp"
 #include "controllers/moderation/RepeatSpamDetector.hpp"
 #include "controllers/sound/ISoundController.hpp"
 #include "singletons/Settings.hpp"
+#include "util/SpellingVariants.hpp"
 #include "singletons/WindowManager.hpp"
 #include "util/FormatTime.hpp"
 #include "widgets/dialogs/ColorPickerDialog.hpp"
@@ -25,6 +27,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QPlainTextEdit>
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QSpinBox>
@@ -103,6 +106,7 @@ ModAssistantPage::ModAssistantPage()
     auto *suggestions = addPageTab(tabs, "Vorschläge");
     auto *repeats = addPageTab(tabs, "Wiederholte Nachrichten");
     auto *emotes = addPageTab(tabs, "Emote-Spam");
+    auto *words = addPageTab(tabs, "Wörter");
 
     // ----- Allgemein -----
     addText(general,
@@ -236,7 +240,7 @@ ModAssistantPage::ModAssistantPage()
         addHeading(layout, "Aussehen");
 
         auto *button = new ColorButton(ModAlertPopup::reasonColor(kind));
-        auto *preview = new QLabel(QStringLiteral("REASON"));
+        auto *preview = new QLabel(QStringLiteral("GRUND"));
         auto *reset = new QPushButton("Standardfarbe");
         setting.connect(
             [kind, button, preview](const QString &, auto) {
@@ -278,7 +282,7 @@ ModAssistantPage::ModAssistantPage()
         row->addWidget(reset);
         row->addStretch(1);
         auto *form = new QFormLayout;
-        form->addRow("Farbe für den Reason", row);
+        form->addRow("Farbe für den Grund-Kasten", row);
         layout->addLayout(form);
 
         addText(layout,
@@ -563,6 +567,136 @@ ModAssistantPage::ModAssistantPage()
         addButtonRow(emotes, test);
     }
     emotes->addStretch(1);
+
+    // ----- Wörter -----
+    addText(words,
+            "Ein Alarm für Wörter, die du im Chat nicht sehen willst. Schreib "
+            "sie hier untereinander - aus jedem Wort wird von selbst ein "
+            "Muster gebaut, das es auch abgewandelt findet: sybau, syb4u, "
+            "s.y.b.a.u, mit kyrillischen Buchstaben.");
+    addText(words,
+            "Eingeschaltet wird der Alarm pro Kanal über den Schild-Knopf in "
+            "diesem Kanal.",
+            true);
+
+    addHeading(words, "Wörter");
+    {
+        auto *edit = new QPlainTextEdit(getSettings()->wordAlertWords.getValue());
+        edit->setPlaceholderText("sybau\nein anderes Wort");
+        edit->setToolTip(
+            "Ein Wort oder eine Wendung pro Zeile. Eine Zeile, die mit # "
+            "anfängt, ist nur eine Notiz für dich.");
+        edit->setMinimumHeight(110);
+        words->addWidget(edit);
+
+        auto *preview = new QLabel;
+        preview->setWordWrap(true);
+        preview->setEnabled(false);
+        words->addWidget(preview);
+
+        // What the words find, so it is clear before it goes live
+        const auto show = [preview] {
+            const auto list = WordAlertDetector::parseWords(
+                getSettings()->wordAlertWords.getValue(),
+                getSettings()->wordAlertVariants,
+                getSettings()->wordAlertWholeWord);
+            if (list.empty())
+            {
+                preview->setText(
+                    "Noch keine Wörter - solange passiert hier nichts.");
+                return;
+            }
+
+            const spelling::Options options{
+                .leet = getSettings()->wordAlertVariants,
+                .lookalikes = getSettings()->wordAlertVariants,
+                .stretched = getSettings()->wordAlertVariants,
+                .separated = getSettings()->wordAlertVariants,
+                .wholeWord = getSettings()->wordAlertWholeWord,
+            };
+            QStringList shown;
+            for (const auto &example :
+                 spelling::examples(list.front().word, options))
+            {
+                shown.append(example.text);
+            }
+            preview->setText(
+                QStringLiteral("%1 Wörter. „%2\" findet zum Beispiel: %3")
+                    .arg(list.size())
+                    .arg(list.front().word)
+                    .arg(shown.join(QStringLiteral(", "))));
+        };
+        show();
+
+        QObject::connect(edit, &QPlainTextEdit::textChanged, this,
+                         [edit, show] {
+                             getSettings()->wordAlertWords.setValue(
+                                 edit->toPlainText());
+                             show();
+                         });
+
+        auto *variants = this->createCheckBox(
+            "Auch abgewandelte Schreibweisen finden",
+            getSettings()->wordAlertVariants,
+            "Findet das Wort auch mit Ziffern statt Buchstaben, mit Punkten "
+            "dazwischen, gestreckt oder mit Buchstaben, die genauso aussehen. "
+            "Aus heißt: nur genau so geschrieben.");
+        QObject::connect(variants, &QCheckBox::toggled, this, [show] {
+            show();
+        });
+        words->addWidget(variants);
+
+        auto *wholeWord = this->createCheckBox(
+            "Nur als ganzes Wort",
+            getSettings()->wordAlertWholeWord,
+            "An heißt: „ass\" schlägt nicht bei „Klasse\" an. Aus findet das "
+            "Wort auch mitten in einem längeren.");
+        QObject::connect(wholeWord, &QCheckBox::toggled, this, [show] {
+            show();
+        });
+        words->addWidget(wholeWord);
+    }
+
+    addHeading(words, "Stufen");
+    {
+        addText(words,
+                "Was der Alarm jeweils anbietet: löschen oder eine "
+                "Timeout-Dauer, durch Kommas getrennt. Die nächste Stufe "
+                "kommt erst, wenn wirklich gelöscht oder getimeoutet wurde.",
+                true);
+
+        addStepsEditor(words, getSettings()->wordAlertSteps,
+                       QStringLiteral("5m, 10m, 30m, 1h, 1d"),
+                       &WordAlertDetector::parseSteps, [](int step) {
+                           return step == WordAlertDetector::DELETE
+                                      ? QStringLiteral("Löschen")
+                                      : formatTime(step);
+                       });
+    }
+
+    addColor(words, getSettings()->modAlertColorWord,
+             ModAlertPopup::Kind::Word);
+    addSound(words, getSettings()->modAlertSoundWord);
+
+    addHeading(words, "Testen");
+    {
+        auto *test = new QPushButton("Test-Alarm für ein Wort anzeigen");
+        test->setToolTip(
+            "Öffnet den Wort-Alarm mit ausgedachten Nachrichten, mit dem "
+            "ersten Wort deiner Liste. Jeder Klick geht eine Stufe weiter. "
+            "Die Knöpfe tun nichts.");
+        QObject::connect(test, &QPushButton::clicked, this, [openTest] {
+            static int step = 0;
+            const int current = step;
+            step = (step + 1) % 3;
+
+            openTest([current](ModAlertPopup *popup) {
+                popup->showTestWordAlert(current);
+            });
+        });
+        addButtonRow(words, test);
+    }
+    words->addStretch(1);
 }
 
 bool ModAssistantPage::filterElements(const QString &query)

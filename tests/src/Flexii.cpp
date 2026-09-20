@@ -7,6 +7,7 @@
 
 #include "controllers/highlights/HighlightBadge.hpp"
 #include "controllers/moderation/EmoteSpamDetector.hpp"
+#include "controllers/moderation/WordAlertDetector.hpp"
 #include "controllers/moderation/ModHighlights.hpp"
 #include "controllers/moderation/RepeatSpamDetector.hpp"
 #include "controllers/moderation/StepEscalation.hpp"
@@ -1157,4 +1158,59 @@ TEST(FlexiiEmoteSpam, WithBothNewRulesOffNothingChanges)
     EXPECT_EQ(EmoteSpamDetector::reasonFor(asBefore, 20, 20, 12),
               Reason::Window);
     EXPECT_EQ(EmoteSpamDetector::reasonFor(asBefore, 7, 7, 12), Reason::None);
+}
+
+TEST(FlexiiWordAlert, AWordIsFoundHoweverItIsWritten)
+{
+    const auto list = WordAlertDetector::parseWords("sybau");
+    ASSERT_EQ(list.size(), 1);
+    EXPECT_EQ(list.front().word, "sybau");
+
+    // Plainly, dressed up, and in another case
+    EXPECT_EQ(WordAlertDetector::found("sybau", list), "sybau");
+    EXPECT_EQ(WordAlertDetector::found("SYBAU lol", list), "sybau");
+    EXPECT_EQ(WordAlertDetector::found("syb4u", list), "sybau");
+    EXPECT_EQ(WordAlertDetector::found("s.y.b.a.u", list), "sybau");
+
+    // And not where it is not
+    EXPECT_TRUE(WordAlertDetector::found("hallo zusammen", list).isEmpty());
+}
+
+TEST(FlexiiWordAlert, OnlyAsAWholeWordUnlessSaidOtherwise)
+{
+    const auto whole = WordAlertDetector::parseWords("ass");
+    EXPECT_TRUE(WordAlertDetector::found("eine Klasse für sich", whole).isEmpty());
+    EXPECT_EQ(WordAlertDetector::found("ass", whole), "ass");
+
+    const auto anywhere = WordAlertDetector::parseWords("ass", true, false);
+    EXPECT_EQ(WordAlertDetector::found("eine Klasse für sich", anywhere), "ass");
+}
+
+TEST(FlexiiWordAlert, WithoutVariantsOnlyTheWordItself)
+{
+    const auto exact = WordAlertDetector::parseWords("sybau", false);
+    EXPECT_EQ(WordAlertDetector::found("SYBAU", exact), "sybau");
+    EXPECT_TRUE(WordAlertDetector::found("syb4u", exact).isEmpty());
+}
+
+TEST(FlexiiWordAlert, TheListTakesOneWordPerLineAndNotes)
+{
+    const auto list = WordAlertDetector::parseWords(
+        "sybau\n# das hier ist nur eine Notiz\n\n  kys  ");
+    ASSERT_EQ(list.size(), 2);
+    EXPECT_EQ(list.front().word, "sybau");
+    EXPECT_EQ(list.back().word, "kys");
+
+    EXPECT_TRUE(WordAlertDetector::parseWords("").empty());
+    EXPECT_TRUE(WordAlertDetector::parseWords("# nur Notizen").empty());
+}
+
+TEST(FlexiiWordAlert, TheStepsReadLikeTheOtherAlerts)
+{
+    const auto del = WordAlertDetector::DELETE;
+    EXPECT_EQ(WordAlertDetector::parseSteps("löschen, 5m, 1d"),
+              (std::vector<int>{del, 300, 86400}));
+    EXPECT_EQ(WordAlertDetector::parseSteps("5m, 10m, 30m, 1h, 1d"),
+              (std::vector<int>{300, 600, 1800, 3600, 86400}));
+    EXPECT_TRUE(WordAlertDetector::parseSteps("5m, bald").empty());
 }

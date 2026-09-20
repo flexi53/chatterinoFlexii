@@ -378,6 +378,18 @@ public:
     /// That many messages in a row holding nothing but emotes raise the
     /// alert; 0 is off
     IntSetting emoteAlertStreak = {"/moderation/emoteAlert/streak", 0};
+    /// Channels that raise an alert for words on the list, separated by
+    /// commas
+    QStringSetting wordAlertChannels = {"/moderation/wordAlert/channels", ""};
+    /// The words to watch for, one per line
+    QStringSetting wordAlertWords = {"/moderation/wordAlert/words", ""};
+    /// Whether a word is found however it is written - syb4u, s.y.b.a.u
+    BoolSetting wordAlertVariants = {"/moderation/wordAlert/variants", true};
+    /// Whether a word only counts where it stands on its own
+    BoolSetting wordAlertWholeWord = {"/moderation/wordAlert/wholeWord", true};
+    /// What the word alert offers, one step further each time
+    QStringSetting wordAlertSteps = {"/moderation/wordAlert/steps",
+                                     "5m, 10m, 30m, 1h, 1d"};
     /// Seconds over which the emote alert adds up a chatter's emotes
     IntSetting emoteAlertWindowSeconds = {
         "/moderation/emoteAlert/windowSeconds", 60};
@@ -392,6 +404,7 @@ public:
                                           "builtin:zweiton"};
     QStringSetting modAlertSoundEmote = {"/moderation/alerts/soundEmote",
                                          "builtin:dringend"};
+    QStringSetting modAlertSoundWord = {"/moderation/alert/soundWord", ""};
     QStringSetting modAlertSoundSuggestion = {
         "/moderation/alerts/soundSuggestion", "builtin:glocke"};
     /// The size alert windows open with, as the moderator last dragged one
@@ -410,6 +423,9 @@ public:
                                           "#ffa31a"};
     QStringSetting modAlertColorEmote = {"/moderation/alerts/colorEmote",
                                          "#ff33f5"};
+    /// The word alert, in its own colour
+    QStringSetting modAlertColorWord = {"/moderation/alert/colorWord",
+                                        "#e0a516"};
     QStringSetting modAlertColorSuggestion = {
         "/moderation/alerts/colorSuggestion", "#1ae8ff"};
 

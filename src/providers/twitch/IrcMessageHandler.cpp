@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "controllers/moderation/EmoteSpamDetector.hpp"
+#include "controllers/moderation/WordAlertDetector.hpp"
 #include "controllers/moderation/ModerationAssistant.hpp"
 #include "providers/twitch/IrcMessageHandler.hpp"
 #include "controllers/moderation/RepeatSpamDetector.hpp"
@@ -561,6 +562,8 @@ void IrcMessageHandler::handleClearChatMessage(Communi::IrcMessage *message)
                 message->tags().value("ban-duration").toInt());
             EmoteSpamDetector::instance().onAction(chanName,
                                                    *clearChat.username);
+            WordAlertDetector::instance().onAction(chanName,
+                                                   *clearChat.username);
         }
     }
 
@@ -611,9 +614,10 @@ void IrcMessageHandler::handleClearMessageMessage(Communi::IrcMessage *message)
     msg->flags.set(MessageFlag::Disabled);
     msg->flags.set(MessageFlag::InvalidReplyTarget);
 
-    // A deleted message counts as a step for the emote alert, whoever
-    // deleted it
+    // A deleted message counts as a step for the emote and word alerts,
+    // whoever deleted it
     EmoteSpamDetector::instance().onAction(chanName, msg->loginName);
+    WordAlertDetector::instance().onAction(chanName, msg->loginName);
 
     if (!getSettings()->hideDeletionActions)
     {
@@ -1301,6 +1305,9 @@ void IrcMessageHandler::addMessage(Communi::IrcMessage *message,
                 tags.value("badges").toString(), msg->serverReceivedTime);
             EmoteSpamDetector::instance().onMessage(
                 chan->getName(), msg, tags.value("badges").toString());
+            WordAlertDetector::instance().onMessage(
+                chan->getName(), msg->loginName, msg->displayName, content,
+                tags.value("badges").toString(), msg->id);
             ModerationAssistant::instance().onMessage(
                 chan->getName(), msg->loginName, msg->displayName, content,
                 tags.value("badges").toString());

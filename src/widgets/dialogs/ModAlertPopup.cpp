@@ -5,6 +5,7 @@
 #include "controllers/sound/ISoundController.hpp"
 #include "common/FlagsEnum.hpp"
 #include "controllers/moderation/EmoteSpamDetector.hpp"
+#include "controllers/moderation/WordAlertDetector.hpp"
 #include "controllers/moderation/ModerationAssistant.hpp"
 #include "widgets/dialogs/ModAlertPopup.hpp"
 
@@ -674,6 +675,51 @@ void ModAlertPopup::setCase(const QString &displayName, int seconds, int step,
     this->restartCountdown();
 }
 
+void ModAlertPopup::setWordAlert(const QString &displayName,
+                                 const QString &word, int action,
+                                 const QStringList &messageIds, int step,
+                                 int actionsServed, int stepCount)
+{
+    this->setWindowTitle(QStringLiteral("Wort – #%1").arg(this->channel_));
+    this->kind_ = Kind::Word;
+    this->deleteIds_ = messageIds;
+
+    this->showChatter(displayName);
+
+    if (step > actionsServed)
+    {
+        this->headline_->setText(
+            QStringLiteral("Sagt es weiter, ohne dass jemand eingegriffen "
+                           "hat: „%1\".")
+                .arg(word));
+    }
+    else if (actionsServed > 0)
+    {
+        this->headline_->setText(
+            QStringLiteral("Sagt „%1\" wieder, nach %2 Eingriffen.")
+                .arg(word)
+                .arg(actionsServed));
+    }
+    else
+    {
+        this->headline_->setText(
+            QStringLiteral("Hat „%1\" geschrieben - ein Wort von deiner "
+                           "Liste.")
+                .arg(word));
+    }
+
+    this->setReason(
+        QStringLiteral("Wort von der Liste"),
+        QStringLiteral("„%1\" &middot; Stufe %2 von %3")
+            .arg(word)
+            .arg(std::min(std::max(0, step), std::max(1, stepCount) - 1) + 1)
+            .arg(std::max(1, stepCount)));
+
+    this->setActions(action);
+    this->showRecentLines();
+    this->restartCountdown();
+}
+
 void ModAlertPopup::setSuggestion(const QString &displayName,
                                   const ModSuggestion &suggestion)
 {
@@ -742,6 +788,8 @@ QColor ModAlertPopup::defaultReasonColor(Kind kind)
             return {settings->modAlertColorRepeat.getDefaultValue()};
         case Kind::EmoteSpam:
             return {settings->modAlertColorEmote.getDefaultValue()};
+        case Kind::Word:
+            return {settings->modAlertColorWord.getDefaultValue()};
         case Kind::Suggestion:
         default:
             return {settings->modAlertColorSuggestion.getDefaultValue()};
@@ -759,6 +807,9 @@ QColor ModAlertPopup::reasonColor(Kind kind)
             break;
         case Kind::EmoteSpam:
             picked = settings->modAlertColorEmote.getValue();
+            break;
+        case Kind::Word:
+            picked = settings->modAlertColorWord.getValue();
             break;
         case Kind::Suggestion:
         default:
@@ -847,6 +898,8 @@ QUrl ModAlertPopup::soundFor(Kind kind)
             return soundUrl(settings->modAlertSoundRepeat.getValue());
         case Kind::EmoteSpam:
             return soundUrl(settings->modAlertSoundEmote.getValue());
+        case Kind::Word:
+            return soundUrl(settings->modAlertSoundWord.getValue());
         case Kind::Suggestion:
         default:
             return soundUrl(settings->modAlertSoundSuggestion.getValue());
@@ -1241,6 +1294,55 @@ void ModAlertPopup::applyEmoteSpam(int emotes, int messages, int window,
             .arg(std::min(std::max(0, step), std::max(1, stepCount) - 1) + 1)
             .arg(std::max(1, stepCount)));
     this->setActions(action);
+}
+
+void ModAlertPopup::showTestWordAlert(int step)
+{
+    this->kind_ = Kind::Word;
+    this->showTestChatter(QStringLiteral("Wort von der Liste – Test"));
+
+    const QString name = QStringLiteral("TestUser");
+    const auto now = QDateTime::currentDateTime();
+    const auto steps = WordAlertDetector::steps();
+    const auto &watched = WordAlertDetector::words();
+    const auto word =
+        watched.empty() ? QStringLiteral("sybau") : watched.front().word;
+
+    // Written the way it is really written: once plainly, once dressed up
+    const QStringList lines{
+        QStringLiteral("hahaha"),
+        word,
+        QStringLiteral("%1 lol").arg(word.toUpper()),
+    };
+    for (qsizetype i = 0; i < lines.size(); i++)
+    {
+        this->view_->addMessage(
+            makeTestMessage(name, lines[i],
+                            now.addSecs(-9 * (lines.size() - 1 - i))),
+            MessageContext::Original);
+    }
+
+    this->deleteIds_ = {QStringLiteral("test1"), QStringLiteral("test2")};
+    this->headline_->setText(
+        step > 0 ? QStringLiteral("Sagt „%1\" wieder, nach %2 Eingriffen.")
+                       .arg(word)
+                       .arg(step)
+                 : QStringLiteral("Hat „%1\" geschrieben - ein Wort von "
+                                  "deiner Liste.")
+                       .arg(word));
+    this->setReason(
+        QStringLiteral("Wort von der Liste"),
+        QStringLiteral("„%1\" &middot; Stufe %2 von %3")
+            .arg(word)
+            .arg(std::min<size_t>(static_cast<size_t>(step),
+                                  steps.size() - 1) +
+                 1)
+            .arg(steps.size()));
+    this->setActions(
+        steps[std::min<size_t>(static_cast<size_t>(step), steps.size() - 1)]);
+
+    this->messages_->setChannel(this->view_);
+    this->restartCountdown();
 }
 
 void ModAlertPopup::showTestEmoteSpam(int step)

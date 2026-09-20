@@ -5,6 +5,7 @@
 #include "widgets/dialogs/ModerationAssistantPopup.hpp"
 
 #include "controllers/moderation/EmoteSpamDetector.hpp"
+#include "controllers/moderation/WordAlertDetector.hpp"
 #include "controllers/moderation/ModerationAssistant.hpp"
 #include "controllers/moderation/RepeatSpamDetector.hpp"
 #include "singletons/Settings.hpp"
@@ -98,6 +99,19 @@ ModerationAssistantPopup::ModerationAssistantPopup(const QString &channel,
         EmoteSpamDetector::instance().setEnabled(this->channel_, on);
     });
     layout->addWidget(emoteAlert);
+
+    auto *wordAlert = new QCheckBox(QStringLiteral("Alarm bei Wörtern von "
+                                                   "der Liste"));
+    wordAlert->setToolTip(QStringLiteral(
+        "Öffnet ein Fenster, wenn jemand ein Wort schreibt, das du unter "
+        "Einstellungen → Mod-Assistent → Wörter hinterlegt hast - auch "
+        "abgewandelt geschrieben. Es schlägt die Timeout-Dauer vor, die du "
+        "dort eingestellt hast. Unabhängig vom Modus oben."));
+    wordAlert->setChecked(WordAlertDetector::instance().isEnabled(this->channel_));
+    QObject::connect(wordAlert, &QCheckBox::toggled, this, [this](bool on) {
+        WordAlertDetector::instance().setEnabled(this->channel_, on);
+    });
+    layout->addWidget(wordAlert);
 
     this->status_ = new QLabel;
     layout->addWidget(this->status_);
