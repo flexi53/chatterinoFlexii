@@ -40,10 +40,12 @@ public:
     /// (0 seconds)
     void onTimeout(const QString &channel, const QString &login, int seconds);
 
-    /// The timeouts offered at each step, in seconds. Never empty.
+    /// The timeouts offered at each step, in seconds - 0 for a ban. Never
+    /// empty.
     static std::vector<int> steps();
-    /// Reads a list like "30s, 1m, 5m". Empty if any part of it is not a
-    /// duration.
+    /// Reads a list like "30s, 1m, 5m, bann". A duration, or "bann" for a
+    /// permanent one, which reads as 0 seconds. Empty if any part of it is
+    /// neither.
     static std::vector<int> parseSteps(const QString &text);
 
 private:

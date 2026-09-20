@@ -438,14 +438,16 @@ ModAssistantPage::ModAssistantPage()
     addHeading(repeats, "Timeout-Stufen");
     {
         addText(repeats,
-                "Der Reihe nach, durch Kommas getrennt. Nach der letzten Stufe "
-                "bleibt es bei der letzten.",
+                "Der Reihe nach, durch Kommas getrennt: Dauern wie 30s, 10m, "
+                "1d - oder bann für einen dauerhaften Bann. Nach der letzten "
+                "Stufe bleibt es bei der letzten.",
                 true);
 
         addStepsEditor(repeats, getSettings()->repeatAlertSteps,
                        QStringLiteral("30s, 1m, 5m, 10m, 30m"),
                        &RepeatSpamDetector::parseSteps, [](int seconds) {
-                           return formatTime(seconds);
+                           return seconds == 0 ? QStringLiteral("Bann")
+                                               : formatTime(seconds);
                        });
     }
 
@@ -530,18 +532,22 @@ ModAssistantPage::ModAssistantPage()
     addHeading(emotes, "Stufen");
     {
         addText(emotes,
-                "Was der Alarm jeweils anbietet: löschen oder eine "
-                "Timeout-Dauer, durch Kommas getrennt. Die nächste Stufe kommt "
-                "erst, wenn wirklich eine Nachricht gelöscht oder der User "
-                "getimeoutet wurde.",
+                "Was der Alarm jeweils anbietet: löschen, eine "
+                "Timeout-Dauer wie 30s, 10m, 1d - oder bann für einen "
+                "dauerhaften Bann. Durch Kommas getrennt. Die nächste Stufe "
+                "kommt erst, wenn wirklich eine Nachricht gelöscht oder der "
+                "User getimeoutet wurde.",
                 true);
 
         addStepsEditor(emotes, getSettings()->emoteAlertSteps,
                        QStringLiteral("löschen, löschen, 30s"),
                        &EmoteSpamDetector::parseSteps, [](int step) {
-                           return step == EmoteSpamDetector::DELETE
-                                      ? QStringLiteral("Löschen")
-                                      : formatTime(step);
+                           if (step == EmoteSpamDetector::DELETE)
+                           {
+                               return QStringLiteral("Löschen");
+                           }
+                           return step == 0 ? QStringLiteral("Bann")
+                                            : formatTime(step);
                        });
     }
 
@@ -660,17 +666,21 @@ ModAssistantPage::ModAssistantPage()
     addHeading(words, "Stufen");
     {
         addText(words,
-                "Was der Alarm jeweils anbietet: löschen oder eine "
-                "Timeout-Dauer, durch Kommas getrennt. Die nächste Stufe "
+                "Was der Alarm jeweils anbietet: löschen, eine "
+                "Timeout-Dauer wie 5m, 1h, 1d - oder bann für einen "
+                "dauerhaften Bann. Durch Kommas getrennt. Die nächste Stufe "
                 "kommt erst, wenn wirklich gelöscht oder getimeoutet wurde.",
                 true);
 
         addStepsEditor(words, getSettings()->wordAlertSteps,
                        QStringLiteral("5m, 10m, 30m, 1h, 1d"),
                        &WordAlertDetector::parseSteps, [](int step) {
-                           return step == WordAlertDetector::DELETE
-                                      ? QStringLiteral("Löschen")
-                                      : formatTime(step);
+                           if (step == WordAlertDetector::DELETE)
+                           {
+                               return QStringLiteral("Löschen");
+                           }
+                           return step == 0 ? QStringLiteral("Bann")
+                                            : formatTime(step);
                        });
     }
 

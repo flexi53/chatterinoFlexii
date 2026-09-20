@@ -352,6 +352,17 @@ std::vector<int> RepeatSpamDetector::parseSteps(const QString &text)
     std::vector<int> steps;
     for (const auto &token : text.split(separators, Qt::SkipEmptyParts))
     {
+        // A ban has no length - it is written out instead
+        const auto lower = token.toLower();
+        if (lower == QStringLiteral("bann") || lower == QStringLiteral("ban") ||
+            lower == QStringLiteral("perma") ||
+            lower == QStringLiteral("permanent") ||
+            lower == QStringLiteral("dauerhaft"))
+        {
+            steps.push_back(0);
+            continue;
+        }
+
         qint64 seconds = 0;
         qsizetype consumed = 0;
 

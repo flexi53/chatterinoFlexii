@@ -1214,3 +1214,25 @@ TEST(FlexiiWordAlert, TheStepsReadLikeTheOtherAlerts)
               (std::vector<int>{300, 600, 1800, 3600, 86400}));
     EXPECT_TRUE(WordAlertDetector::parseSteps("5m, bald").empty());
 }
+
+TEST(FlexiiSteps, ABanIsWrittenOutRatherThanTimed)
+{
+    // Twitch times nobody out for longer than two weeks, so a permanent one
+    // has no length - it reads as zero seconds
+    EXPECT_EQ(RepeatSpamDetector::parseSteps("30s, 1h, bann"),
+              (std::vector<int>{30, 3600, 0}));
+    EXPECT_EQ(RepeatSpamDetector::parseSteps("ban"), (std::vector<int>{0}));
+    EXPECT_EQ(RepeatSpamDetector::parseSteps("Perma"), (std::vector<int>{0}));
+    EXPECT_EQ(RepeatSpamDetector::parseSteps("dauerhaft"),
+              (std::vector<int>{0}));
+
+    // The other alerts read their steps through the same parser
+    EXPECT_EQ(EmoteSpamDetector::parseSteps("löschen, 30s, bann"),
+              (std::vector<int>{EmoteSpamDetector::DELETE, 30, 0}));
+    EXPECT_EQ(WordAlertDetector::parseSteps("5m, 1d, bann"),
+              (std::vector<int>{300, 86400, 0}));
+
+    // A duration of nothing is still a typo, not a ban
+    EXPECT_TRUE(RepeatSpamDetector::parseSteps("0s").empty());
+    EXPECT_TRUE(RepeatSpamDetector::parseSteps("30s, bannen").empty());
+}
