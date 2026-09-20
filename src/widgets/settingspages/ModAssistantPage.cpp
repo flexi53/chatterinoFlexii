@@ -9,6 +9,11 @@
 #include "controllers/moderation/WordAlertDetector.hpp"
 #include "controllers/moderation/RepeatSpamDetector.hpp"
 #include "controllers/sound/ISoundController.hpp"
+#include "common/Channel.hpp"
+#include "messages/Message.hpp"
+#include "messages/MessageBuilder.hpp"
+#include "messages/MessageElement.hpp"
+#include "widgets/helper/ChannelView.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
 #include "util/SpellingVariants.hpp"
@@ -91,6 +96,23 @@ void addStepsEditor(QVBoxLayout *layout, QStringSetting &setting,
     layout->addWidget(preview);
 }
 
+
+/// One made-up chat line for the preview under the word list
+MessagePtr previewLine(const QString &text)
+{
+    MessageBuilder builder;
+    builder.emplace<TimestampElement>(QTime::currentTime());
+    builder.emplace<TextElement>("Jemand:", MessageElementFlag::Username,
+                                 MessageColor(QColor(255, 127, 80)),
+                                 FontStyle::ChatMediumBold);
+    builder.appendOrEmplaceText(text, MessageColor::Text);
+    builder->loginName = "jemand";
+    builder->displayName = "Jemand";
+    builder->messageText = text;
+    builder->searchText = text;
+    builder->flags.set(MessageFlag::DoNotLog);
+    return builder.release();
+}
 
 /// The list of words, one row each: the word itself and the buttons for
 /// what it alone offers. The buttons sit there greyed out; pressing them
@@ -854,12 +876,22 @@ ModAssistantPage::ModAssistantPage()
         preview->setEnabled(false);
         words->addWidget(preview);
 
+        // The same as it would look in chat, rather than as a list of
+        // spellings
+        auto *lines = new ChannelView(this, ChannelView::Context::UserCard, 8);
+        lines->setMinimumHeight(86);
+        lines->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        auto shown = std::make_shared<Channel>("vorschau", Channel::Type::None);
+        lines->setChannel(shown);
+        words->addWidget(lines);
+
         // What the words find, so it is clear before it goes live
-        const auto show = [preview] {
+        const auto show = [preview, shown] {
             const auto list = WordAlertDetector::parseWords(
                 getSettings()->wordAlertWords.getValue(),
                 getSettings()->wordAlertVariants,
                 getSettings()->wordAlertWholeWord);
+            shown->clearMessages();
             if (list.empty())
             {
                 preview->setText(
@@ -874,17 +906,29 @@ ModAssistantPage::ModAssistantPage()
                 .separated = getSettings()->wordAlertVariants,
                 .wholeWord = getSettings()->wordAlertWholeWord,
             };
-            QStringList shown;
-            for (const auto &example :
-                 spelling::examples(list.front().word, options))
-            {
-                shown.append(example.text);
-            }
+            const auto examples = spelling::examples(list.front().word,
+                                                     options);
             preview->setText(
-                QStringLiteral("%1 Wörter. „%2\" findet zum Beispiel: %3")
+                QStringLiteral("%1 Wörter. So würde „%2\" im Chat aussehen - "
+                               "jede dieser Zeilen löst den Alarm aus:")
                     .arg(list.size())
-                    .arg(list.front().word)
-                    .arg(shown.join(QStringLiteral(", "))));
+                    .arg(list.front().word));
+
+            // A few of the spellings, as they would stand in chat
+            int drawn = 0;
+            for (const auto &example : examples)
+            {
+                if (drawn++ >= 3)
+                {
+                    break;
+                }
+                shown->addMessage(
+                    previewLine(example.note.isEmpty()
+                                    ? example.text
+                                    : QStringLiteral("%1   (%2)")
+                                          .arg(example.text, example.note)),
+                    MessageContext::Original);
+            }
         };
         show();
         getSettings()->wordAlertWords.connect(

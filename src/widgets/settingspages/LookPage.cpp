@@ -7,6 +7,12 @@
 #include "Application.hpp"
 #include "messages/layouts/AlternateBackground.hpp"
 #include "messages/layouts/MessageRole.hpp"
+#include "common/Channel.hpp"
+#include "messages/Message.hpp"
+#include "messages/MessageBuilder.hpp"
+#include "messages/MessageElement.hpp"
+#include "providers/twitch/TwitchBadge.hpp"
+#include "widgets/helper/ChannelView.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
 #include "util/FuzzyConvert.hpp"
@@ -71,12 +77,67 @@ void addStandardButton(GeneralPageView &layout, const QString &tooltip,
     layout.addWidget(button);
 }
 
+/// One made-up chat line for the preview: @a badges are the Twitch badges
+/// its writer carries, which is what the role stripes go by
+MessagePtr previewLine(const QString &name, const QString &text,
+                       const QColor &color,
+                       std::initializer_list<const char *> badges = {},
+                       MessageFlag flag = MessageFlag::None)
+{
+    MessageBuilder builder;
+    builder.emplace<TimestampElement>(QTime::currentTime());
+    builder.emplace<TextElement>(name + ":", MessageElementFlag::Username,
+                                 MessageColor(color), FontStyle::ChatMediumBold);
+    builder.appendOrEmplaceText(text, MessageColor::Text);
+    for (const auto *badge : badges)
+    {
+        builder->twitchBadges.emplace_back(badge, "1");
+    }
+    if (flag != MessageFlag::None)
+    {
+        builder->flags.set(flag);
+    }
+    builder->loginName = name.toLower();
+    builder->displayName = name;
+    builder->messageText = text;
+    builder->searchText = name + ": " + text;
+    builder->flags.set(MessageFlag::DoNotLog);
+    return builder.release();
+}
+
 }  // namespace
 
 LookPage::LookPage()
 {
     auto *outer = new QVBoxLayout(this);
     outer->setContentsMargins(0, 0, 0, 0);
+
+    // A made-up chat above the switches: everything set here shows in it at
+    // once, rather than after closing the window
+    auto *preview = new ChannelView(this, ChannelView::Context::UserCard, 12);
+    preview->setFixedHeight(152);
+    preview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    auto shown = std::make_shared<Channel>("vorschau", Channel::Type::None);
+    preview->setChannel(shown);
+    outer->addWidget(preview);
+
+    shown->addMessage(previewLine("Zarbex", "moin zusammen",
+                                  QColor(0x5b, 0xc8, 0xff), {"broadcaster"}),
+                      MessageContext::Original);
+    shown->addMessage(previewLine("Mira", "erste Nachricht des Tages",
+                                  QColor(0xff, 0x7f, 0x50)),
+                      MessageContext::Original);
+    shown->addMessage(previewLine("Mira", "und gleich noch eine",
+                                  QColor(0xff, 0x7f, 0x50)),
+                      MessageContext::Original);
+    shown->addMessage(previewLine("Tom", "@fx_flexii schau mal her",
+                                  QColor(0x8a, 0xe2, 0x34), {"moderator"}),
+                      MessageContext::Original);
+    shown->addMessage(previewLine("Kai", "hat 3 Monate abonniert!",
+                                  QColor(0xd8, 0x7c, 0xff), {"subscriber"},
+                                  MessageFlag::Subscription),
+                      MessageContext::Original);
+
     auto *tabs = new QTabWidget;
     outer->addWidget(tabs);
 

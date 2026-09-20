@@ -9,6 +9,8 @@
 #include "controllers/moderation/ModerationAssistant.hpp"
 #include "widgets/dialogs/ModAlertPopup.hpp"
 
+#include "widgets/dialogs/AlertLevelBar.hpp"
+
 #ifdef Q_OS_MACOS
 #    include "util/MacOsHelpers.h"
 #endif
@@ -443,6 +445,9 @@ ModAlertPopup::ModAlertPopup(QString channel, QString login, QWidget *parent)
     this->reasonDetails_->setTextFormat(Qt::RichText);
     this->reasonDetails_->setWordWrap(true);
     reasonLayout->addWidget(this->reasonDetails_);
+    // The numbers in that line, as a bar
+    this->reasonLevel_ = new AlertLevelBar(this->reasonBox_);
+    reasonLayout->addWidget(this->reasonLevel_);
     this->reasonBox_->hide();
     layout->addWidget(this->reasonBox_);
 
@@ -812,6 +817,11 @@ void ModAlertPopup::setReason(const QString &reason, const QString &details,
     this->reason_->setText(QStringLiteral("<span style=\"color:%1\">%2</span>")
                                .arg(textColor.name(), reason));
     this->reasonDetails_->setText(details);
+    // Only the alerts that count towards a number show the bar
+    if (this->reasonLevel_ != nullptr)
+    {
+        this->reasonLevel_->hide();
+    }
     this->reasonDetails_->setVisible(!details.isEmpty());
     this->reasonBox_->setToolTip(tooltip);
     this->reasonBox_->setVisible(!reason.isEmpty());
@@ -1375,6 +1385,18 @@ void ModAlertPopup::applyEmoteSpam(int emotes, int messages, int window,
             .arg(backing)
             .arg(std::min(std::max(0, step), std::max(1, stepCount) - 1) + 1)
             .arg(std::max(1, stepCount)));
+
+    // The same numbers as a bar: the mark is where the alert goes off,
+    // what is past it is how far over this case went
+    if (this->reasonLevel_ != nullptr)
+    {
+        this->reasonLevel_->show(
+            streak > 1 ? streak : emotes,
+            streak > 1 ? std::max(1, settings->emoteAlertStreak.getValue())
+                       : std::max(1, settings->emoteAlertMinEmotes.getValue()),
+            this->reasonColor_);
+    }
+
     this->setActions(action);
 }
 

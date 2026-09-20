@@ -39,6 +39,8 @@ class PixmapButton;
 ///
 /// The repeated message alert, the emote spam alert and the moderation
 /// assistant's suggestions all use it, and a chatter never has more than one open at a time.
+class AlertLevelBar;
+
 class ModAlertPopup : public BasePopup
 {
     Q_OBJECT
@@ -190,6 +192,8 @@ private:
     QLabel *reasonTag_{};
     QLabel *reason_{};
     QLabel *reasonDetails_{};
+    /// ChattiFlexii: how far past the number the alert goes off at
+    AlertLevelBar *reasonLevel_{};
     /// The colour of the reason shown, which the countdown bar takes too
     QColor reasonColor_;
     ChannelView *messages_{};
