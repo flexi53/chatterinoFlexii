@@ -16,6 +16,7 @@
 #include <functional>
 
 class QCheckBox;
+class QLabel;
 class QLineEdit;
 
 namespace chatterino {
@@ -58,6 +59,11 @@ private:
     void initUi();
     SettingsDialogTab *tab(SettingsTabId id);
     void addTabs();
+    /// ChattiFlexii: a quiet heading over a block of pages, so it is clear
+    /// which are ours and which are Chatterino's
+    QLabel *addSectionLabel(const QString &text);
+    /// Hides a heading whose pages are all filtered away
+    void refreshHeadings();
     void addTab(std::function<SettingsPage *()> page, const QString &name,
                 const QString &iconPath, SettingsTabId id = {},
                 Qt::Alignment alignment = Qt::AlignTop);
@@ -86,6 +92,10 @@ private:
         QCheckBox *onlyChanged{};
     } ui_;
     std::vector<SettingsDialogTab *> tabs_;
+    /// ChattiFlexii: how many of them are ours - they come first
+    int ownTabs_ = 0;
+    QLabel *ownHeading_{};
+    QLabel *chatterinoHeading_{};
     SettingsDialogTab *selectedTab_{};
     SettingsDialogTab *lastSelectedByUser_{};
     float dpi_ = 1.0F;

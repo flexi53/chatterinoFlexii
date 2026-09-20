@@ -35,6 +35,7 @@
 
 #include <QCheckBox>
 #include <QDialogButtonBox>
+#include <QLabel>
 #include <QFile>
 #include <QLineEdit>
 
@@ -220,6 +221,7 @@ void SettingsDialog::showOnlyChanged(bool only)
     this->ui_.onlyChanged->setText(
         only ? QStringLiteral("Nur Geändertes (%1)").arg(changed)
              : QStringLiteral("Nur Geändertes"));
+    this->refreshHeadings();
 
     if (!only)
     {
@@ -275,6 +277,8 @@ void SettingsDialog::filterElements(const QString &text)
         }
     }
 
+    this->refreshHeadings();
+
     // remove duplicate spaces
     bool shouldShowSpace = false;
 
@@ -313,21 +317,34 @@ bool SettingsDialog::eventFilter(QObject *object, QEvent *event)
     return false;
 }
 
+QLabel *SettingsDialog::addSectionLabel(const QString &text)
+{
+    auto *label = new QLabel(text.toUpper());
+    label->setStyleSheet(
+        QStringLiteral("color: #7a7a7a; font-size: 10px; "
+                       "letter-spacing: 1px; padding: 0 0 2px 11px;"));
+    this->ui_.tabContainer->addWidget(label);
+    return label;
+}
+
 void SettingsDialog::addTabs()
 {
     this->ui_.tabContainer->setSpacing(0);
-    this->ui_.tabContainer->setContentsMargins(0, 20, 0, 20);
+    this->ui_.tabContainer->setContentsMargins(0, 14, 0, 20);
 
     // Constructors are wrapped in std::function to remove some strain from first time loading.
 
     // clang-format off
     // What ChattiFlexii adds comes first - that is what gets changed most
+    this->ownHeading_ = this->addSectionLabel("ChattiFlexii");
     this->addTab([]{return new LookPage;},             "Aussehen",       ":/settings/look.svg");
     this->addTab([]{return new ButtonsPage;},          "Knöpfe",         ":/settings/buttons.svg");
     this->addTab([]{return new ModAssistantPage;},     "Mod-Assistent",  ":/settings/modassistant.svg");
     this->addTab([]{return new ModHighlightsPage;},    "Mod-Highlights", ":/settings/modhighlights.svg");
     this->addTab([]{return new TransferPage;},         "Sichern & Übertragen", ":/settings/transfer.svg");
-    this->ui_.tabContainer->addSpacing(16);
+    this->ui_.tabContainer->addSpacing(10);
+    this->ownTabs_ = static_cast<int>(this->tabs_.size());
+    this->chatterinoHeading_ = this->addSectionLabel("Chatterino");
     this->addTab([]{return new GeneralPage;},          "General",        ":/settings/about.svg", SettingsTabId::General);
     this->ui_.tabContainer->addSpacing(16);
     this->addTab([]{return new AccountsPage;},         "Accounts",       ":/settings/accounts.svg", SettingsTabId::Accounts);
@@ -364,6 +381,32 @@ void SettingsDialog::addTab(std::function<SettingsPage *()> page,
     if (this->tabs_.size() == 1)
     {
         this->selectTab(tab);
+    }
+}
+
+void SettingsDialog::refreshHeadings()
+{
+    // A heading with nothing under it left would only be in the way
+    const auto anyOf = [this](int from, int to) {
+        for (int i = from; i < to && i < static_cast<int>(this->tabs_.size());
+             i++)
+        {
+            if (this->tabs_[i]->isVisible())
+            {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    if (this->ownHeading_ != nullptr)
+    {
+        this->ownHeading_->setVisible(anyOf(0, this->ownTabs_));
+    }
+    if (this->chatterinoHeading_ != nullptr)
+    {
+        this->chatterinoHeading_->setVisible(
+            anyOf(this->ownTabs_, static_cast<int>(this->tabs_.size())));
     }
 }
 
