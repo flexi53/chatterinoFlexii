@@ -288,6 +288,10 @@ public:
                                      false};
     QStringSetting activeSplitBorderColor = {
         "/appearance/splitheader/activeBorderColor", "#e91916"};
+    /// A border around the tab you are on, in the same colour
+    BoolSetting activeTabBorder = {"/appearance/tabs/activeBorder", false};
+    QStringSetting activeTabBorderColor = {"/appearance/tabs/activeBorderColor",
+                                           ""};
     /// Which saved view of the settings was last loaded - see Ansichten
     QStringSetting currentSnapshot = {"/snapshots/current", ""};
     /// Own colours over the theme's; each empty one keeps the theme's

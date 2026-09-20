@@ -28,6 +28,7 @@
 #include "widgets/dialogs/SelectChannelDialog.hpp"
 #include "widgets/dialogs/SelectChannelFiltersDialog.hpp"
 #include "widgets/dialogs/UserInfoPopup.hpp"
+#include "widgets/helper/ActiveBorder.hpp"
 #include "widgets/helper/ChannelView.hpp"
 #include "widgets/helper/DebugPopup.hpp"
 #include "widgets/helper/NotebookTab.hpp"
@@ -78,11 +79,7 @@ public:
 protected:
     void paintEvent(QPaintEvent * /*event*/) override
     {
-        QColor color(getSettings()->activeSplitBorderColor.getValue());
-        if (!color.isValid())
-        {
-            color = QColor(0xe9, 0x19, 0x16);
-        }
+        const auto color = activeborder::forSplit();
         QPainter painter(this);
         const auto width = std::max(2, int(std::round(this->devicePixelRatioF())));
         painter.fillRect(QRect(0, 0, this->width(), width), color);

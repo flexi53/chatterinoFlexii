@@ -17,6 +17,7 @@
 #include "singletons/Theme.hpp"
 #include "singletons/WindowManager.hpp"
 #include "Test.hpp"
+#include "widgets/helper/ActiveBorder.hpp"
 #include "widgets/splits/SendWaitBar.hpp"
 #include "widgets/splits/SplitHeaderExtras.hpp"
 
@@ -299,4 +300,53 @@ TEST_F(FlexiiSendWaitBarFixture, SwitchingItOffWhileItRunsTakesItAway)
 
     getSettings()->slowModeBar.setValue(false);
     EXPECT_TRUE(this->bar.isHidden());
+}
+
+namespace {
+
+class FlexiiActiveBorderFixture : public ::testing::Test
+{
+protected:
+    ~FlexiiActiveBorderFixture() override
+    {
+        auto *s = getSettings();
+        s->activeSplitBorderColor.setValue(
+            s->activeSplitBorderColor.getDefaultValue());
+        s->activeTabBorderColor.setValue(
+            s->activeTabBorderColor.getDefaultValue());
+    }
+
+    MockApplication app;
+};
+
+}  // namespace
+
+TEST_F(FlexiiActiveBorderFixture, BothBordersStartOutTheSameRed)
+{
+    EXPECT_EQ(activeborder::forSplit(), activeborder::fallback());
+    EXPECT_EQ(activeborder::forTab(), activeborder::fallback());
+}
+
+TEST_F(FlexiiActiveBorderFixture, TheTabFollowsTheSplitUntilItIsGivenItsOwn)
+{
+    getSettings()->activeSplitBorderColor.setValue("#1060ff");
+    EXPECT_EQ(activeborder::forSplit(), QColor("#1060ff"));
+    EXPECT_EQ(activeborder::forTab(), QColor("#1060ff"));
+
+    getSettings()->activeTabBorderColor.setValue("#32e01b");
+    EXPECT_EQ(activeborder::forTab(), QColor("#32e01b"));
+    // The split keeps its own
+    EXPECT_EQ(activeborder::forSplit(), QColor("#1060ff"));
+}
+
+TEST_F(FlexiiActiveBorderFixture, AColourThatMakesNoSenseFallsBack)
+{
+    getSettings()->activeSplitBorderColor.setValue("not a colour");
+    EXPECT_EQ(activeborder::forSplit(), activeborder::fallback());
+    EXPECT_EQ(activeborder::forTab(), activeborder::fallback());
+}
+
+TEST_F(FlexiiActiveBorderFixture, TheBorderAroundTheTabStartsOff)
+{
+    EXPECT_FALSE(getSettings()->activeTabBorder.getDefaultValue());
 }

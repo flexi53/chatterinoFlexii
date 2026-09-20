@@ -18,6 +18,7 @@
 #include "util/Helpers.hpp"
 #include "util/RoundPixmap.hpp"
 #include "widgets/dialogs/SettingsDialog.hpp"
+#include "widgets/helper/ActiveBorder.hpp"
 #include "widgets/Notebook.hpp"
 #include "widgets/splits/DraggedSplit.hpp"
 #include "widgets/splits/Split.hpp"
@@ -145,6 +146,22 @@ NotebookTab::NotebookTab(Notebook *notebook)
         this->managedConnections_, false);
     getSettings()->tabLiveRing.connect(
         [this](const auto &, const auto &) {
+            this->update();
+        },
+        this->managedConnections_, false);
+    getSettings()->activeTabBorder.connect(
+        [this](const auto &, const auto &) {
+            this->update();
+        },
+        this->managedConnections_, false);
+    getSettings()->activeTabBorderColor.connect(
+        [this](const auto &, const auto &) {
+            this->update();
+        },
+        this->managedConnections_, false);
+    getSettings()->activeSplitBorderColor.connect(
+        [this](const auto &, const auto &) {
+            // An empty colour of its own follows the split's
             this->update();
         },
         this->managedConnections_, false);
@@ -1159,7 +1176,8 @@ void NotebookTab::paintEvent(QPaintEvent *)
 
     painter.restore();
 
-    if (modernLook)
+    if (modernLook &&
+        !(this->selected_ && getSettings()->activeTabBorder))
     {
         painter.save();
         painter.setRenderHint(QPainter::Antialiasing, true);
@@ -1178,6 +1196,25 @@ void NotebookTab::paintEvent(QPaintEvent *)
         painter.setBrush(Qt::NoBrush);
         painter.drawPath(this->tabShapePath(rimRect, scale));
 
+        painter.restore();
+    }
+
+    // Look -> Tabs: a border around the tab you are on, the same red as
+    // the one around the split you type in
+    // A group header is never the selected tab, so this only ever draws
+    // around a real one
+    if (this->selected_ && getSettings()->activeTabBorder)
+    {
+        const auto border = activeborder::forTab();
+
+        painter.save();
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        const auto thickness = std::max(1.0, qreal(1.5) * scale);
+        const auto inset = thickness / 2;
+        painter.setPen(QPen(border, thickness));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawPath(this->tabShapePath(
+            QRectF(bgRect).adjusted(inset, inset, -inset, -inset), scale));
         painter.restore();
     }
 

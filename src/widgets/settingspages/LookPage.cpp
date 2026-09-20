@@ -342,6 +342,25 @@ void LookPage::buildTabsTab(GeneralPageView &layout)
         s.splitHeaderActivity.setValue(false);
     });
 
+    layout.addTitle("Aktiver Tab");
+    layout.addDescription(
+        "Der Tab, in dem du gerade bist, bekommt einen farbigen Rahmen - "
+        "in derselben Farbe wie der aktive Split, damit beides zusammen "
+        "gehört.");
+    SettingWidget::checkbox("Rahmen um den Tab, in dem du bist",
+                            s.activeTabBorder)
+        ->addKeywords({"tab", "rahmen", "rand", "aktiv"})
+        ->addTo(layout);
+    SettingWidget::colorButton("Farbe des Rahmens", s.activeTabBorderColor)
+        ->setTooltip("Leer heißt: dieselbe Farbe wie der Rand um den "
+                     "aktiven Split.")
+        ->conditionallyEnabledBy(s.activeTabBorder)
+        ->addTo(layout);
+    addStandardButton(layout, "Kein Rahmen um den aktiven Tab", [&s] {
+        s.activeTabBorder.setValue(false);
+        s.activeTabBorderColor.setValue("");
+    });
+
     layout.addTitle("Aktiver Split");
     layout.addDescription(
         "Hat ein Tab mehrere Chats nebeneinander, bekommt der, in den du "
@@ -502,12 +521,10 @@ void LookPage::buildChatTab(GeneralPageView &layout)
         ->setTooltip("Derselbe Schalter wie General -> Chat -> Show countdown "
                      "on slow mode or when timed out.")
         ->addTo(layout);
-    addStandardButton(layout, "Kein Balken, Restzeit wie bei Chatterino",
-                      [&s] {
-                          s.slowModeBar.setValue(false);
-                          s.showSendWaitTimer.setValue(
-                              s.showSendWaitTimer.getDefaultValue());
-                      });
+    addStandardButton(layout, "Kein Balken, Restzeit wie bei Chatterino", [&s] {
+        s.slowModeBar.setValue(false);
+        s.showSendWaitTimer.setValue(s.showSendWaitTimer.getDefaultValue());
+    });
 
     layout.addTitle("Profilbilder im Chat");
     SettingWidget::checkbox("Profilbild vor jedem Namen", s.chatAvatars)
