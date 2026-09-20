@@ -194,7 +194,17 @@ QPixmap initialAvatar(const QString &name, const QColor &color)
 
 QString grey(const QString &html)
 {
-    return QStringLiteral("<span style=\"color:#9a9a9a\">%1</span>").arg(html);
+    // The theme's quiet colour, so it reads on a light one as well
+    return QStringLiteral("<span style=\"color:%1\">%2</span>")
+        .arg(getTheme()->messages.textColors.system.name(), html);
+}
+
+/// The amber that marks something worth a second look - deeper on a light
+/// theme, where the bright one would wash out
+QString amber()
+{
+    return getTheme()->isLightTheme() ? QStringLiteral("#a35c00")
+                                      : QStringLiteral("#ffaa00");
 }
 
 QString elided(const QString &text, qsizetype length)
@@ -775,14 +785,19 @@ void ModAlertPopup::setReason(const QString &reason, const QString &details,
     const auto color = reasonColor(this->kind_);
     this->reasonColor_ = color;
 
+    // The labels in the box need a colour of their own: a frame with a
+    // style sheet of its own no longer passes the window's text colour on,
+    // which left the line under the reason white on a light theme
     this->reasonBox_->setStyleSheet(
         QStringLiteral("QFrame#reasonBox { background: rgba(%1, %2, %3, 40); "
                        "border: 1px solid rgba(%1, %2, %3, 120); "
-                       "border-left: 4px solid %4; border-radius: 6px; }")
+                       "border-left: 4px solid %4; border-radius: 6px; }"
+                       "QFrame#reasonBox QLabel { color: %5; }")
             .arg(color.red())
             .arg(color.green())
             .arg(color.blue())
-            .arg(color.name()));
+            .arg(color.name(),
+                 this->theme->messages.textColors.system.name()));
     this->reasonTag_->setStyleSheet(reasonTagStyle(color));
     if (auto *glow = qobject_cast<QGraphicsDropShadowEffect *>(
             this->reasonTag_->graphicsEffect()))
@@ -990,9 +1005,10 @@ void ModAlertPopup::showTestChatter(const QString &title)
 
     const QString name = QStringLiteral("TestUser");
     this->name_->setText(name);
-    this->details_->setText(QStringLiteral(
-        "testuser &middot; <span style=\"color:#ffaa00\">Account vor 2 Tagen "
-        "erstellt</span>"));
+    this->details_->setText(
+        QStringLiteral("testuser &middot; <span style=\"color:%1\">Account "
+                       "vor 2 Tagen erstellt</span>")
+            .arg(amber()));
     this->avatar_->setPixmap(initialAvatar(name, this->theme->accent));
 
     this->liveMessages_.reset();
@@ -1470,9 +1486,9 @@ void ModAlertPopup::loadProfile()
                 QStringLiteral("%1 &middot; %2")
                     .arg(this->login_.toHtmlEscaped(),
                          days < NEW_ACCOUNT_DAYS
-                             ? QStringLiteral(
-                                   "<span style=\"color:#ffaa00\">%1</span>")
-                                   .arg(createdText)
+                             ? QStringLiteral("<span style=\"color:%1\">%2"
+                                              "</span>")
+                                   .arg(amber(), createdText)
                              : createdText));
             this->details_->setToolTip(profile.createdAt.toString(Qt::ISODate));
         });

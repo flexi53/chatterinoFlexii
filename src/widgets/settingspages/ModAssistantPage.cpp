@@ -10,6 +10,7 @@
 #include "controllers/moderation/RepeatSpamDetector.hpp"
 #include "controllers/sound/ISoundController.hpp"
 #include "singletons/Settings.hpp"
+#include "singletons/Theme.hpp"
 #include "util/SpellingVariants.hpp"
 #include "singletons/WindowManager.hpp"
 #include "util/FormatTime.hpp"
@@ -139,20 +140,62 @@ private:
     void addRow(const QString &word, const std::vector<int> &steps)
     {
         auto *row = new QWidget(this);
-        auto *layout = new QHBoxLayout(row);
-        layout->setContentsMargins(0, 0, 0, 0);
-        layout->setSpacing(3);
+        auto *lines = new QVBoxLayout(row);
+        lines->setContentsMargins(0, 0, 0, 0);
+        lines->setSpacing(2);
+
+        auto *top = new QHBoxLayout;
+        top->setContentsMargins(0, 0, 0, 0);
+        top->setSpacing(3);
+        lines->addLayout(top);
 
         auto *edit = new QLineEdit(word);
         edit->setPlaceholderText("Wort");
         edit->setFixedWidth(150);
-        layout->addWidget(edit);
+        top->addWidget(edit);
         QObject::connect(edit, &QLineEdit::textChanged, this, [this] {
             this->save();
         });
 
+        // The steps stay folded away - a row of nine buttons per word would
+        // make a wall of them. What is picked stands on the button that
+        // unfolds them.
+        auto *steppers = new QWidget(row);
+        steppers->hide();
+        auto *stepRow = new QHBoxLayout(steppers);
+        stepRow->setContentsMargins(0, 0, 0, 0);
+        stepRow->setSpacing(3);
+
+        auto *unfold = new QPushButton;
+        unfold->setCheckable(true);
+        unfold->setToolTip(
+            "Was der Alarm für dieses Wort vorschlägt. Ohne Auswahl gelten "
+            "die Stufen weiter unten.");
+        top->addWidget(unfold);
+        QObject::connect(unfold, &QPushButton::toggled, steppers,
+                         [steppers](bool on) {
+                             steppers->setVisible(on);
+                         });
+
         const auto accent =
             ModAlertPopup::reasonColor(ModAlertPopup::Kind::Word);
+        // What the unfolding button says: the steps picked, or that the
+        // general ones hold
+        const auto describe = [unfold, steppers] {
+            QStringList picked;
+            for (auto *button : steppers->findChildren<QPushButton *>())
+            {
+                if (button->isChecked())
+                {
+                    picked.append(button->text());
+                }
+            }
+            unfold->setText(picked.isEmpty()
+                                ? QStringLiteral("Stufen: Standard")
+                                : QStringLiteral("Stufen: %1")
+                                      .arg(picked.join(QStringLiteral(", "))));
+        };
+
         for (const auto step : WordAlertDetector::palette())
         {
             auto *button = new QPushButton(stepLabel(step));
@@ -160,32 +203,26 @@ private:
             button->setChecked(std::find(steps.begin(), steps.end(), step) !=
                                steps.end());
             button->setProperty("flexiiStep", step);
-            button->setToolTip(
-                QStringLiteral("Für dieses Wort %1 vorschlagen")
-                    .arg(stepLabel(step)));
-            button->setStyleSheet(
-                QStringLiteral(
-                    "QPushButton { padding: 1px 6px; border: 1px solid "
-                    "#4a4a4a; border-radius: 4px; color: #8c8c8c; "
-                    "background: transparent; }"
-                    "QPushButton:checked { color: #ffffff; border: 1px solid "
-                    "%1; background: rgba(%2, %3, %4, 55); }")
-                    .arg(accent.name())
-                    .arg(accent.red())
-                    .arg(accent.green())
-                    .arg(accent.blue()));
-            layout->addWidget(button);
-            QObject::connect(button, &QPushButton::toggled, this, [this] {
-                this->save();
-            });
+            button->setToolTip(QStringLiteral("Für dieses Wort %1 vorschlagen")
+                                   .arg(stepLabel(step)));
+            button->setStyleSheet(stepButtonStyle(accent));
+            stepRow->addWidget(button);
+            QObject::connect(button, &QPushButton::toggled, this,
+                             [this, describe] {
+                                 describe();
+                                 this->save();
+                             });
         }
+        stepRow->addStretch(1);
+        lines->addWidget(steppers);
+        describe();
 
-        layout->addStretch(1);
+        top->addStretch(1);
 
         auto *remove = new QPushButton(QStringLiteral("✕"));
         remove->setToolTip("Dieses Wort von der Liste nehmen");
         remove->setFixedWidth(26);
-        layout->addWidget(remove);
+        top->addWidget(remove);
         QObject::connect(remove, &QPushButton::clicked, this, [this, row] {
             row->deleteLater();
             this->rows_->removeWidget(row);
@@ -193,6 +230,28 @@ private:
         });
 
         this->rows_->addWidget(row);
+    }
+
+    /// How a step button looks: quiet while it is not picked, in the
+    /// alert's colour once it is
+    static QString stepButtonStyle(const QColor &accent)
+    {
+        const auto light = getTheme()->isLightTheme();
+        const auto quiet = light ? QStringLiteral("#5a5a5a")
+                                 : QStringLiteral("#8c8c8c");
+        const auto line = light ? QStringLiteral("#b4b4b4")
+                                : QStringLiteral("#4a4a4a");
+        const auto picked = light ? QStringLiteral("#101010")
+                                  : QStringLiteral("#ffffff");
+        return QStringLiteral(
+                   "QPushButton { padding: 1px 6px; border: 1px solid %1; "
+                   "border-radius: 4px; color: %2; background: transparent; }"
+                   "QPushButton:checked { color: %3; border: 1px solid %4; "
+                   "background: rgba(%5, %6, %7, 55); }")
+            .arg(line, quiet, picked, accent.name())
+            .arg(accent.red())
+            .arg(accent.green())
+            .arg(accent.blue());
     }
 
     /// What the buttons say, in the order the palette has them
@@ -233,9 +292,12 @@ private:
             std::vector<int> steps;
             for (auto *button : row->findChildren<QPushButton *>())
             {
-                if (button->isCheckable() && button->isChecked())
+                // The button that unfolds the others is checkable too, but
+                // carries no step
+                const auto step = button->property("flexiiStep");
+                if (step.isValid() && button->isChecked())
                 {
-                    steps.push_back(button->property("flexiiStep").toInt());
+                    steps.push_back(step.toInt());
                 }
             }
             // In the order the buttons stand in, however they were pressed

@@ -487,7 +487,10 @@ void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
     painter.setPen(pen);
     painter.drawPath(line);
 
-    auto muted = this->palette().color(QPalette::WindowText);
+    // From the theme rather than the palette: the header's palette is not
+    // repainted when the theme changes, which left the line of time dark on
+    // a light theme
+    auto muted = getTheme()->messages.textColors.regular;
 
     // The stretch before the channel was open here - nobody counted then
     const auto unknown = double(from.secsTo(this->spansStart_));
