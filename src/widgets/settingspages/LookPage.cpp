@@ -113,6 +113,24 @@ bool LookPage::filterElements(const QString &query)
     return any;
 }
 
+int LookPage::changedSettings()
+{
+    int changed = 0;
+    for (auto *view : this->views_)
+    {
+        changed += view->countChanged();
+    }
+    return changed;
+}
+
+void LookPage::showOnlyChanged(bool only)
+{
+    for (auto *view : this->views_)
+    {
+        view->showOnlyChanged(only);
+    }
+}
+
 void LookPage::buildStyleTab(GeneralPageView &layout)
 {
     auto &s = *getSettings();

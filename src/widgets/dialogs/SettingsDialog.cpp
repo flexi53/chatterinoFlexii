@@ -33,6 +33,7 @@
 #include "widgets/settingspages/PluginsPage.hpp"
 #include "widgets/settingspages/TransferPage.hpp"
 
+#include <QCheckBox>
 #include <QDialogButtonBox>
 #include <QFile>
 #include <QLineEdit>
@@ -135,6 +136,20 @@ void SettingsDialog::initUi()
                     .emplace<QLineEdit>()
                     .assign(&this->ui_.search);
     this->setSearchPlaceholderText();
+
+    // ChattiFlexii: what is not where it started, at a glance
+    this->ui_.onlyChanged = new QCheckBox("Nur Geändertes");
+    this->ui_.onlyChanged->setToolTip(
+        "Zeigt nur die Einstellungen, die du geändert hast, und blendet die "
+        "Seiten aus, auf denen nichts geändert ist. Listen wie Markierungen "
+        "oder deine Wörter bleiben dabei außen vor - sie haben keinen "
+        "Standard, von dem sie abweichen könnten.");
+    title.getElement()->layout()->addWidget(this->ui_.onlyChanged);
+    QObject::connect(this->ui_.onlyChanged, &QCheckBox::toggled, this,
+                     [this](bool on) {
+                         this->showOnlyChanged(on);
+                     });
+
     edit->setClearButtonEnabled(true);
     edit->findChild<QAbstractButton *>()->setIcon(
         QPixmap(":/buttons/clearSearch.png"));
@@ -184,8 +199,57 @@ void SettingsDialog::initUi()
                      &SettingsDialog::onCancelClicked);
 }
 
+void SettingsDialog::showOnlyChanged(bool only)
+{
+    int changed = 0;
+    for (auto *tab : this->tabs_)
+    {
+        auto *page = tab->page();
+        page->showOnlyChanged(only);
+
+        const auto count = page->changedSettings();
+        if (count > 0)
+        {
+            changed += count;
+        }
+        // A page that cannot tell - a list rather than switches - is left
+        // out while only the changed ones are shown
+        tab->setVisible(!only || count > 0);
+    }
+
+    this->ui_.onlyChanged->setText(
+        only ? QStringLiteral("Nur Geändertes (%1)").arg(changed)
+             : QStringLiteral("Nur Geändertes"));
+
+    if (!only)
+    {
+        // Back to whatever the search says
+        this->filterElements(this->ui_.search->text());
+        return;
+    }
+
+    if (this->selectedTab_ != nullptr && !this->selectedTab_->isVisible())
+    {
+        for (auto *tab : this->tabs_)
+        {
+            if (tab->isVisible())
+            {
+                this->selectTab(tab, false);
+                break;
+            }
+        }
+    }
+}
+
 void SettingsDialog::filterElements(const QString &text)
 {
+    // The search takes over from the filter
+    if (!text.isEmpty() && this->ui_.onlyChanged != nullptr &&
+        this->ui_.onlyChanged->isChecked())
+    {
+        this->ui_.onlyChanged->setChecked(false);
+    }
+
     // filter elements and hide pages
     for (auto &&tab : this->tabs_)
     {
@@ -318,6 +382,12 @@ void SettingsDialog::selectTab(SettingsDialogTab *tab, bool byUser)
         this->ui_.pageStack->addWidget(tab->page());
         // The pages that build their labels themselves say them in English
         german::translateWidgets(tab->page());
+        // A page built while the filter is on starts filtered
+        if (this->ui_.onlyChanged != nullptr &&
+            this->ui_.onlyChanged->isChecked())
+        {
+            tab->page()->showOnlyChanged(true);
+        }
     }();
 
     this->ui_.pageStack->setCurrentWidget(tab->page());

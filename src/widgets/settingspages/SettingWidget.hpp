@@ -11,6 +11,7 @@
 #include <QComboBox>
 #include <QDebug>
 #include <QLabel>
+#include <QPushButton>
 #include <QObject>
 #include <QString>
 #include <QStringBuilder>
@@ -123,6 +124,30 @@ public:
         conditionallyEnabledBy(QStringSetting &setting,
                                const QString &expectedValue);
 
+    /// Whether the setting is still where it started. True for the few
+    /// widgets that carry no setting of their own.
+    bool atDefault() const;
+
+    /// Remembers how to tell whether @a setting is still where it started
+    /// and how to put it back - that is what the dot in front of the row
+    /// does. Called by the makers above.
+    template <typename T>
+    void follow(T &setting)
+    {
+        this->isDefault_ = [&setting] {
+            return setting.getValue() == setting.getDefaultValue();
+        };
+        this->reset_ = [&setting] {
+            setting.setValue(setting.getDefaultValue());
+        };
+        setting.connect(
+            [this](const auto &, auto) {
+                this->refreshMark();
+            },
+            this->managedConnections, false);
+        this->refreshMark();
+    }
+
     void addTo(GeneralPageView &view);
     void addTo(GeneralPageView &view, QFormLayout *formLayout);
 
@@ -133,8 +158,17 @@ private:
     /// Registers this widget & its optional label to the given page view
     void registerWidget(GeneralPageView &view);
 
+    /// Shows the dot where the setting is not where it started, and takes
+    /// it back when pressed
+    void refreshMark();
+
     QWidget *label = nullptr;
     QWidget *actionWidget = nullptr;
+    /// The dot in front of the row - always there, so the rows line up,
+    /// but only marked where something was changed
+    QPushButton *mark = nullptr;
+    std::function<bool()> isDefault_;
+    std::function<void()> reset_;
 
     QVBoxLayout *vLayout;
     QHBoxLayout *hLayout;

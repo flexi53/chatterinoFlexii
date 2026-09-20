@@ -144,4 +144,17 @@ bool ButtonsPage::filterElements(const QString &query)
     return false;
 }
 
+int ButtonsPage::changedSettings()
+{
+    return this->view_ != nullptr ? this->view_->countChanged() : -1;
+}
+
+void ButtonsPage::showOnlyChanged(bool only)
+{
+    if (this->view_ != nullptr)
+    {
+        this->view_->showOnlyChanged(only);
+    }
+}
+
 }  // namespace chatterino

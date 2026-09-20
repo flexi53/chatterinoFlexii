@@ -248,6 +248,13 @@ public:
     void addSeparator();
     bool filterElements(const QString &query);
 
+    /// How many settings here are not where they started
+    int countChanged() const;
+
+    /// Shows only the settings that are not where they started, or
+    /// everything again
+    void showOnlyChanged(bool only);
+
 protected:
     void resizeEvent(QResizeEvent *event) override
     {

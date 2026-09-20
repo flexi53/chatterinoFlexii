@@ -43,6 +43,25 @@ SettingWidget::SettingWidget(const QString &mainKeyword)
     this->hLayout->setContentsMargins(0, 0, 0, 0);
     this->vLayout->addLayout(this->hLayout);
 
+    // A dot in front of the row where the setting is not where it started.
+    // Always there, so every row lines up, and only marked when it has
+    // something to say.
+    this->mark = new QPushButton(this);
+    this->mark->setFlat(true);
+    this->mark->setFixedWidth(14);
+    this->mark->setFocusPolicy(Qt::NoFocus);
+    this->mark->setStyleSheet(
+        QStringLiteral("QPushButton { border: none; background: transparent; "
+                       "color: #4FC3F7; padding: 0; text-align: left; }"));
+    QObject::connect(this->mark, &QPushButton::clicked, this, [this] {
+        if (this->reset_)
+        {
+            this->reset_();
+        }
+    });
+    this->hLayout->addWidget(this->mark);
+    this->refreshMark();
+
     this->keywords.append(german::bothWords(mainKeyword));
 }
 
@@ -70,6 +89,7 @@ SettingWidget *SettingWidget::checkbox(const QString &label,
 
     widget->actionWidget = check;
     widget->label = check;
+    widget->follow(setting);
 
     return widget;
 }
@@ -98,6 +118,7 @@ SettingWidget *SettingWidget::inverseCheckbox(const QString &label,
 
     widget->actionWidget = check;
     widget->label = check;
+    widget->follow(setting);
 
     return widget;
 }
@@ -167,6 +188,7 @@ SettingWidget *SettingWidget::intInput(const QString &label,
 
     widget->actionWidget = input;
     widget->label = lbl;
+    widget->follow(setting);
 
     return widget;
 }
@@ -192,6 +214,7 @@ SettingWidget *SettingWidget::dropdown(const QString &label,
 
     widget->actionWidget = combo;
     widget->label = lbl;
+    widget->follow(setting);
 
     widget->hLayout->addWidget(lbl);
     widget->hLayout->addStretch(1);
@@ -267,6 +290,7 @@ SettingWidget *SettingWidget::dropdown(const QString &label,
 
     widget->actionWidget = combo;
     widget->label = lbl;
+    widget->follow(setting);
 
     widget->hLayout->addWidget(lbl);
     widget->hLayout->addStretch(1);
@@ -350,6 +374,7 @@ SettingWidget *SettingWidget::dropdown(
 
     widget->actionWidget = combo;
     widget->label = lbl;
+    widget->follow(setting);
 
     widget->hLayout->addWidget(lbl);
     widget->hLayout->addStretch(1);
@@ -431,6 +456,7 @@ SettingWidget *SettingWidget::colorButton(const QString &label,
 
     widget->actionWidget = colorButton;
     widget->label = lbl;
+    widget->follow(setting);
 
     return widget;
 }
@@ -473,6 +499,7 @@ SettingWidget *SettingWidget::lineEdit(const QString &label,
 
     widget->actionWidget = edit;
     widget->label = lbl;
+    widget->follow(setting);
 
     return widget;
 }
@@ -512,6 +539,9 @@ SettingWidget *SettingWidget::fontButton(const QString &label,
 
     widget->actionWidget = button;
     widget->label = lbl;
+    // The font is more than the family this setting holds, so the dot only
+    // follows the family
+    widget->follow(familySetting);
 
     return widget;
 }
@@ -590,6 +620,28 @@ SettingWidget *SettingWidget::conditionallyEnabledBy(
         this->managedConnections);
 
     return this;
+}
+
+bool SettingWidget::atDefault() const
+{
+    return !this->isDefault_ || this->isDefault_();
+}
+
+void SettingWidget::refreshMark()
+{
+    if (this->mark == nullptr)
+    {
+        return;
+    }
+
+    const bool changed = !this->atDefault();
+    this->mark->setText(changed ? QStringLiteral("●") : QString{});
+    this->mark->setEnabled(changed);
+    this->mark->setCursor(changed ? Qt::PointingHandCursor : Qt::ArrowCursor);
+    this->mark->setToolTip(
+        changed ? QStringLiteral("Nicht mehr so, wie es war - klicken setzt "
+                                 "diese Einstellung zurück")
+                : QString{});
 }
 
 void SettingWidget::addTo(GeneralPageView &view)

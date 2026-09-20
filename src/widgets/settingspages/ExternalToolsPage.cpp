@@ -111,6 +111,19 @@ bool ExternalToolsPage::filterElements(const QString &query)
     return false;
 }
 
+int ExternalToolsPage::changedSettings()
+{
+    return this->view != nullptr ? this->view->countChanged() : -1;
+}
+
+void ExternalToolsPage::showOnlyChanged(bool only)
+{
+    if (this->view != nullptr)
+    {
+        this->view->showOnlyChanged(only);
+    }
+}
+
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void ExternalToolsPage::initLayout(GeneralPageView &layout)
 {

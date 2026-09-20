@@ -135,6 +135,10 @@ public:
     /// A suggestion with made up lines and buttons that send nothing
     void showTestSuggestion();
 
+protected:
+    /// Puts the buttons back in the colours of the theme that just came
+    void themeChangedEvent() override;
+
 private:
     void showChatter(const QString &displayName);
     void showRecentLines();
@@ -149,6 +153,10 @@ private:
     void applySuggestion(const ModSuggestion &suggestion);
     void applyEmoteSpam(int emotes, int messages, int window, int action,
                         int step, int actionsServed, int stepCount, int streak);
+    /// How the buttons that are not the recommended one look: the rounded,
+    /// quiet shape the rest of ChattiFlexii uses, rather than the system's
+    QString quietButtonStyle() const;
+
     /// The reason box: what the alert is about in a few words, set off in the
     /// colour of its kind, with what backs it up underneath
     void setReason(const QString &reason, const QString &details,

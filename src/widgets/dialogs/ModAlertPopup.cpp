@@ -460,6 +460,10 @@ ModAlertPopup::ModAlertPopup(QString channel, QString login, QWidget *parent)
     // recommended lit up in the alert's colour
     auto *buttons = new QHBoxLayout;
     this->ignore_ = new QPushButton(QStringLiteral("Ignorieren"));
+    // The way out, in the same shape as the rest but quieter - it is the
+    // one button that changes nothing
+    this->ignore_->setCursor(Qt::PointingHandCursor);
+    this->ignore_->setStyleSheet(this->quietButtonStyle());
     buttons->addWidget(this->ignore_);
     buttons->addStretch(1);
     this->actions_ = new QHBoxLayout;
@@ -1098,6 +1102,40 @@ void ModAlertPopup::showTestSuggestion()
     this->restartCountdown();
 }
 
+void ModAlertPopup::themeChangedEvent()
+{
+    BasePopup::themeChangedEvent();
+    if (this->ignore_ != nullptr)
+    {
+        this->ignore_->setStyleSheet(this->quietButtonStyle());
+    }
+}
+
+QString ModAlertPopup::quietButtonStyle() const
+{
+    const auto light = this->theme->isLightTheme();
+    const auto text = this->theme->messages.textColors.regular;
+    const auto line = light ? QColor(0, 0, 0, 60) : QColor(255, 255, 255, 45);
+    const auto hover = light ? QColor(0, 0, 0, 18) : QColor(255, 255, 255, 22);
+    const auto pressed =
+        light ? QColor(0, 0, 0, 34) : QColor(255, 255, 255, 40);
+
+    const auto rgba = [](const QColor &color) {
+        return QStringLiteral("rgba(%1, %2, %3, %4)")
+            .arg(color.red())
+            .arg(color.green())
+            .arg(color.blue())
+            .arg(color.alpha());
+    };
+
+    return QStringLiteral(
+               "QPushButton { border: 1px solid %1; border-radius: 5px; "
+               "padding: 3px 10px; background: transparent; color: %2; }"
+               "QPushButton:hover { background: %3; }"
+               "QPushButton:pressed { background: %4; }")
+        .arg(rgba(line), text.name(), rgba(hover), rgba(pressed));
+}
+
 void ModAlertPopup::setActions(int recommended)
 {
     while (auto *item = this->actions_->takeAt(0))
@@ -1150,7 +1188,9 @@ void ModAlertPopup::setActions(int recommended)
                 this->actions_->addSpacing(10);
             }
             auto *label = new QLabel(QStringLiteral("Timeout"));
-            label->setStyleSheet(QStringLiteral("color: #9a9a9a;"));
+            label->setStyleSheet(
+                QStringLiteral("color: %1;")
+                    .arg(this->theme->messages.textColors.system.name()));
             this->actions_->addWidget(label);
             timeoutsLabelled = true;
         }
@@ -1181,17 +1221,23 @@ void ModAlertPopup::setActions(int recommended)
 
         auto *button = new QPushButton(text);
         button->setToolTip(tooltip);
+        button->setCursor(Qt::PointingHandCursor);
+        button->setStyleSheet(this->quietButtonStyle());
         if (value == recommended)
         {
             button->setToolTip(tooltip + QStringLiteral(" - empfohlen"));
             button->setStyleSheet(
-                QStringLiteral("QPushButton { border: 2px solid %1; "
-                               "border-radius: 5px; padding: 3px 10px; "
-                               "background: rgba(%2, %3, %4, 45); }")
+                QStringLiteral(
+                    "QPushButton { border: 2px solid %1; "
+                    "border-radius: 5px; padding: 3px 10px; "
+                    "background: rgba(%2, %3, %4, 45); color: %5; }"
+                    "QPushButton:hover { background: rgba(%2, %3, %4, 75); }"
+                    "QPushButton:pressed { background: rgba(%2, %3, %4, 110); }")
                     .arg(color.name())
                     .arg(color.red())
                     .arg(color.green())
-                    .arg(color.blue()));
+                    .arg(color.blue())
+                    .arg(this->theme->messages.textColors.regular.name()));
             auto *glow = new QGraphicsDropShadowEffect(button);
             glow->setOffset(0, 0);
             glow->setBlurRadius(16);

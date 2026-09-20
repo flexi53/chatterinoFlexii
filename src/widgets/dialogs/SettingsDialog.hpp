@@ -15,6 +15,7 @@
 
 #include <functional>
 
+class QCheckBox;
 class QLineEdit;
 
 namespace chatterino {
@@ -63,6 +64,9 @@ private:
     void selectTab(SettingsDialogTab *tab, const bool byUser = true);
     void selectTab(SettingsTabId id);
     void filterElements(const QString &query);
+    /// ChattiFlexii: shows only the settings that are not where they
+    /// started, and the pages that hold them
+    void showOnlyChanged(bool only);
     void setElementFilter(const QString &query);
     bool eventFilter(QObject *object, QEvent *event) override;
 
@@ -78,6 +82,8 @@ private:
         QPushButton *okButton{};
         QPushButton *cancelButton{};
         QLineEdit *search{};
+        /// ChattiFlexii: shows only what was changed
+        QCheckBox *onlyChanged{};
     } ui_;
     std::vector<SettingsDialogTab *> tabs_;
     SettingsDialogTab *selectedTab_{};

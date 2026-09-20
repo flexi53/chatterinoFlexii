@@ -125,6 +125,19 @@ bool GeneralPage::filterElements(const QString &query)
     }
 }
 
+int GeneralPage::changedSettings()
+{
+    return this->view_ != nullptr ? this->view_->countChanged() : -1;
+}
+
+void GeneralPage::showOnlyChanged(bool only)
+{
+    if (this->view_ != nullptr)
+    {
+        this->view_->showOnlyChanged(only);
+    }
+}
+
 void GeneralPage::initLayout(GeneralPageView &layout)
 {
     auto &s = *getSettings();

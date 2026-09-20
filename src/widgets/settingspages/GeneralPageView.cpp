@@ -16,6 +16,9 @@
 #include <QScrollArea>
 #include <QScrollBar>
 
+#include <algorithm>
+#include <vector>
+
 namespace {
 
 constexpr int MAX_TOOLTIP_LINE_LENGTH = 50;
@@ -219,6 +222,70 @@ DescriptionLabel *GeneralPageView::addDescription(const QString &text)
 void GeneralPageView::addSeparator()
 {
     this->addWidget(new Line(false));
+}
+
+int GeneralPageView::countChanged() const
+{
+    int changed = 0;
+    std::vector<const SettingWidget *> counted;
+    for (const auto &group : this->groups_)
+    {
+        for (const auto &widget : group.widgets)
+        {
+            const auto *setting =
+                dynamic_cast<const SettingWidget *>(widget.parentElement);
+            if (setting == nullptr || setting->atDefault())
+            {
+                continue;
+            }
+            // A row registers its label and its control, both pointing at
+            // the same setting
+            if (std::find(counted.begin(), counted.end(), setting) !=
+                counted.end())
+            {
+                continue;
+            }
+            counted.push_back(setting);
+            changed++;
+        }
+    }
+    return changed;
+}
+
+void GeneralPageView::showOnlyChanged(bool only)
+{
+    for (auto &&group : this->groups_)
+    {
+        bool anyShown = false;
+        for (auto &&widget : group.widgets)
+        {
+            bool show = true;
+            if (only)
+            {
+                const auto *setting =
+                    dynamic_cast<const SettingWidget *>(widget.parentElement);
+                show = setting != nullptr && !setting->atDefault();
+            }
+
+            widget.element->setVisible(show);
+            if (widget.parentElement != nullptr)
+            {
+                widget.parentElement->setVisible(show);
+            }
+            anyShown = anyShown || show;
+        }
+
+        // A heading with nothing under it says nothing
+        group.title->setVisible(anyShown);
+        if (group.space != nullptr)
+        {
+            group.space->setVisible(anyShown);
+        }
+        if (group.navigationLink != nullptr)
+        {
+            group.navigationLink->setVisible(anyShown);
+        }
+    }
 }
 
 bool GeneralPageView::filterElements(const QString &query)
