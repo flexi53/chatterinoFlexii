@@ -219,6 +219,20 @@ void SplitInput::initLayout()
         },
         this->managedConnections_);
 
+    // Look -> Knöpfe: which of them are in the input bar
+    for (auto *setting : {&getSettings()->showEmoteButton,
+                          &getSettings()->showClearChatButton,
+                          &getSettings()->showFocusButton,
+                          &getSettings()->showModAssistButton,
+                          &getSettings()->showAlertMuteButton})
+    {
+        setting->connect(
+            [this](const bool, auto) {
+                this->updateInputButtons();
+            },
+            this->managedConnections_, false);
+    }
+
     // right box
     auto box = hboxLayout.emplace<QVBoxLayout>().withoutMargin();
     box->setSpacing(0);
@@ -325,6 +339,7 @@ void SplitInput::initLayout()
     watchModState();
     this->signalHolder_.managedConnect(this->split_->channelChanged,
                                        watchModState);
+    this->updateInputButtons();
 
     // clear input and remove reply thread
     QObject::connect(this->ui_.cancelReplyButton, &Button::leftClicked, [this] {
@@ -455,6 +470,15 @@ void SplitInput::updateCancelReplyButton()
     this->ui_.cancelReplyButton->setFixedWidth(int(20 * scale));
 }
 
+void SplitInput::updateInputButtons()
+{
+    this->ui_.emoteButton->setVisible(getSettings()->showEmoteButton);
+    this->ui_.clearButton->setVisible(getSettings()->showClearChatButton);
+    this->ui_.focusButton->setVisible(getSettings()->showFocusButton);
+    // These two also depend on moderating the channel
+    this->updateModAssistButton();
+}
+
 void SplitInput::updateModAssistButton()
 {
     // Timeouts and bans only reach moderators, so anywhere else there would
@@ -463,8 +487,12 @@ void SplitInput::updateModAssistButton()
         dynamic_cast<TwitchChannel *>(this->split_->getChannel().get());
     const bool moderates =
         twitch != nullptr && (twitch->isMod() || twitch->isBroadcaster());
-    this->ui_.modAssistButton->setVisible(moderates);
-    this->ui_.alertMuteButton->setVisible(moderates);
+    // Look -> Knöpfe: both are only ever there where they could do
+    // something, and only while they are switched on
+    this->ui_.modAssistButton->setVisible(
+        moderates && getSettings()->showModAssistButton);
+    this->ui_.alertMuteButton->setVisible(
+        moderates && getSettings()->showAlertMuteButton);
 }
 
 void SplitInput::openEmotePopup()

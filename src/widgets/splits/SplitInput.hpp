@@ -150,6 +150,9 @@ protected:
     void insertCompletionText(const QString &input_) const;
     void openEmotePopup();
     /// Shows the moderation assistant button only where the user moderates
+    /// ChattiFlexii: which buttons the input bar shows - see the Knöpfe
+    /// page in the settings
+    void updateInputButtons();
     void updateModAssistButton();
     void clearReplyTarget();
 

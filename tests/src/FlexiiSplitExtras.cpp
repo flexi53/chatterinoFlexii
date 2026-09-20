@@ -350,3 +350,20 @@ TEST_F(FlexiiActiveBorderFixture, TheBorderAroundTheTabStartsOff)
 {
     EXPECT_FALSE(getSettings()->activeTabBorder.getDefaultValue());
 }
+
+TEST(FlexiiButtons, EveryButtonStartsWhereItWas)
+{
+    MockApplication app;
+    const auto *s = getSettings();
+
+    // Switching them off is the new part; nothing moves for someone who
+    // never opens the page
+    EXPECT_TRUE(s->showEmoteButton.getDefaultValue());
+    EXPECT_TRUE(s->showClearChatButton.getDefaultValue());
+    EXPECT_TRUE(s->showFocusButton.getDefaultValue());
+    EXPECT_TRUE(s->showModAssistButton.getDefaultValue());
+    EXPECT_TRUE(s->showAlertMuteButton.getDefaultValue());
+
+    // Chatterino's own send button stays off, as it always was
+    EXPECT_FALSE(s->showSendButton.getDefaultValue());
+}

@@ -16,6 +16,7 @@
 #include "widgets/helper/SettingsDialogTab.hpp"
 #include "widgets/settingspages/AboutPage.hpp"
 #include "widgets/settingspages/AccountsPage.hpp"
+#include "widgets/settingspages/ButtonsPage.hpp"
 #include "widgets/settingspages/CommandPage.hpp"
 #include "widgets/settingspages/ExternalToolsPage.hpp"
 #include "widgets/settingspages/FiltersPage.hpp"
@@ -258,6 +259,7 @@ void SettingsDialog::addTabs()
     // clang-format off
     // What ChattiFlexii adds comes first - that is what gets changed most
     this->addTab([]{return new LookPage;},             "Aussehen",       ":/settings/look.svg");
+    this->addTab([]{return new ButtonsPage;},          "Knöpfe",         ":/settings/buttons.svg");
     this->addTab([]{return new ModAssistantPage;},     "Mod-Assistent",  ":/settings/modassistant.svg");
     this->addTab([]{return new ModHighlightsPage;},    "Mod-Highlights", ":/settings/modhighlights.svg");
     this->addTab([]{return new TransferPage;},         "Sichern & Übertragen", ":/settings/transfer.svg");

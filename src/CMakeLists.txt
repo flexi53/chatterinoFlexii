@@ -920,6 +920,8 @@ set(SOURCE_FILES
         widgets/settingspages/AboutPage.hpp
         widgets/settingspages/AccountsPage.cpp
         widgets/settingspages/AccountsPage.hpp
+        widgets/settingspages/ButtonsPage.cpp
+        widgets/settingspages/ButtonsPage.hpp
         widgets/settingspages/CommandPage.cpp
         widgets/settingspages/CommandPage.hpp
         widgets/settingspages/CustomWidgets.hpp

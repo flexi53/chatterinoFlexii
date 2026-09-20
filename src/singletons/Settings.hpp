@@ -1070,6 +1070,13 @@ public:
     /// UI
 
     BoolSetting showSendButton = {"/ui/showSendButton", false};
+    /// ChattiFlexii: which of the buttons in the input bar are there - see
+    /// the Knöpfe page. Each starts where it has always been.
+    BoolSetting showEmoteButton = {"/ui/buttons/emote", true};
+    BoolSetting showClearChatButton = {"/ui/buttons/clearChat", true};
+    BoolSetting showFocusButton = {"/ui/buttons/focus", true};
+    BoolSetting showModAssistButton = {"/ui/buttons/modAssist", true};
+    BoolSetting showAlertMuteButton = {"/ui/buttons/alertMute", true};
 
     struct {
         // this isn't shown in the UI
