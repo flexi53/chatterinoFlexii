@@ -52,6 +52,41 @@ public:
     /// streamer rather than fill the chat.
     static int emoteCount(const Message &message);
 
+    /// Whether the message is nothing but emotes - not a word in it
+    static bool onlyEmotes(const Message &message);
+
+    /// What put the case in front of the moderator
+    enum class Reason {
+        /// Nothing did
+        None,
+        /// Enough emotes added up over the counting window
+        Window,
+        /// This one message alone had that many emotes
+        SingleMessage,
+        /// That many messages in a row held nothing but emotes
+        Streak,
+    };
+
+    /// The numbers the alert goes off at, as set under Mod-Assistent ->
+    /// Emote-Spam. A zero means that rule is switched off.
+    struct Thresholds {
+        /// Emotes added up over the window
+        int window = 0;
+        /// Emotes in one message
+        int single = 0;
+        /// Messages in a row holding nothing but emotes
+        int streak = 0;
+
+        /// What is set right now
+        static Thresholds fromSettings();
+    };
+
+    /// Why the alert should go off for a chatter who has @a total emotes
+    /// within the window, @a inMessage of them in the message that just
+    /// came, and @a streak messages in a row holding nothing but emotes
+    static Reason reasonFor(const Thresholds &thresholds, int total,
+                            int inMessage, int streak);
+
     /// What is on offer at each step: DELETE, or a timeout length in
     /// seconds. Never empty.
     static std::vector<int> steps();
@@ -71,6 +106,8 @@ private:
     struct UserState {
         /// Their emote heavy messages within the counting window
         QList<Counted> recent;
+        /// How many of their messages in a row held nothing but emotes
+        int streak = 0;
         StepEscalation escalation;
         /// The messages the alert would delete
         QStringList pendingIds;

@@ -412,7 +412,7 @@ ModAlertPopup::ModAlertPopup(QString channel, QString login, QWidget *parent)
     reasonLayout->setSpacing(5);
     auto *reasonRow = new QHBoxLayout;
     reasonRow->setSpacing(9);
-    this->reasonTag_ = new QLabel(QStringLiteral("REASON"));
+    this->reasonTag_ = new QLabel(QStringLiteral("GRUND"));
     this->reasonTag_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     auto *glow = new QGraphicsDropShadowEffect(this->reasonTag_);
     glow->setOffset(0, 0);
@@ -1179,7 +1179,7 @@ void ModAlertPopup::act(int action)
 void ModAlertPopup::setEmoteSpam(const QString &displayName, int emotes,
                                  int messages, int window, int action,
                                  const QStringList &messageIds, int step,
-                                 int actionsServed, int stepCount)
+                                 int actionsServed, int stepCount, int streak)
 {
     this->setWindowTitle(QStringLiteral("Emote-Spam – #%1").arg(this->channel_));
     this->kind_ = Kind::EmoteSpam;
@@ -1187,19 +1187,26 @@ void ModAlertPopup::setEmoteSpam(const QString &displayName, int emotes,
 
     this->showChatter(displayName);
     this->applyEmoteSpam(emotes, messages, window, action, step, actionsServed,
-                         stepCount);
+                         stepCount, streak);
     this->showRecentLines();
     this->restartCountdown();
 }
 
 void ModAlertPopup::applyEmoteSpam(int emotes, int messages, int window,
                                    int action, int step, int actionsServed,
-                                   int stepCount)
+                                   int stepCount, int streak)
 {
     if (step > actionsServed)
     {
         this->headline_->setText(QStringLiteral(
             "Flutet weiter mit Emotes, ohne dass jemand eingegriffen hat."));
+    }
+    else if (streak > 1)
+    {
+        this->headline_->setText(
+            QStringLiteral("Hat %1 Nachrichten hintereinander geschickt, in "
+                           "denen nichts als Emotes standen.")
+                .arg(streak));
     }
     else
     {
@@ -1213,13 +1220,24 @@ void ModAlertPopup::applyEmoteSpam(int emotes, int messages, int window,
                       .arg(messages)
                       .arg(window));
     }
+    const auto *settings = getSettings();
+    // What the alert leans on: the run of emote only messages where that is
+    // what set it off, the emotes over the window otherwise
+    const auto backing =
+        streak > 1
+            ? QStringLiteral(
+                  "%1 Nachrichten hintereinander nur Emotes, Alarm ab %2")
+                  .arg(streak)
+                  .arg(std::max(1, settings->emoteAlertStreak.getValue()))
+            : QStringLiteral("%1 Emotes in %2 s, Alarm ab %3")
+                  .arg(emotes)
+                  .arg(window)
+                  .arg(std::max(1, settings->emoteAlertMinEmotes.getValue()));
+
     this->setReason(
         QStringLiteral("Emote-Spam"),
-        QStringLiteral("%1 Emotes in %2 s, Alarm ab %3 &middot; Stufe %4 von "
-                       "%5")
-            .arg(emotes)
-            .arg(window)
-            .arg(std::max(1, getSettings()->emoteAlertMinEmotes.getValue()))
+        QStringLiteral("%1 &middot; Stufe %2 von %3")
+            .arg(backing)
             .arg(std::min(std::max(0, step), std::max(1, stepCount) - 1) + 1)
             .arg(std::max(1, stepCount)));
     this->setActions(action);
@@ -1255,7 +1273,7 @@ void ModAlertPopup::showTestEmoteSpam(int step)
         12, static_cast<int>(lines.size()),
         std::max(1, getSettings()->emoteAlertWindowSeconds.getValue()),
         steps[std::min<size_t>(static_cast<size_t>(step), steps.size() - 1)],
-        step, step, static_cast<int>(steps.size()));
+        step, step, static_cast<int>(steps.size()), 0);
 
     this->messages_->setChannel(this->view_);
     this->restartCountdown();

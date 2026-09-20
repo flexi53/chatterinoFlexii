@@ -372,6 +372,12 @@ public:
                                          ""};
     /// How many emotes within the counting window raise the emote alert
     IntSetting emoteAlertMinEmotes = {"/moderation/emoteAlert/minEmotes", 8};
+    /// One message alone with that many emotes raises the alert; 0 is off
+    IntSetting emoteAlertSingleMessage = {
+        "/moderation/emoteAlert/singleMessage", 0};
+    /// That many messages in a row holding nothing but emotes raise the
+    /// alert; 0 is off
+    IntSetting emoteAlertStreak = {"/moderation/emoteAlert/streak", 0};
     /// Seconds over which the emote alert adds up a chatter's emotes
     IntSetting emoteAlertWindowSeconds = {
         "/moderation/emoteAlert/windowSeconds", 60};

@@ -111,7 +111,7 @@ public:
     /// alert.
     void setEmoteSpam(const QString &displayName, int emotes, int messages,
                       int window, int action, const QStringList &messageIds,
-                      int step, int actionsServed, int stepCount);
+                      int step, int actionsServed, int stepCount, int streak);
 
     /// The emote alert with made up lines, at step @a step
     void showTestEmoteSpam(int step);
@@ -135,7 +135,7 @@ private:
     /// Headline, why line and button for a suggestion
     void applySuggestion(const ModSuggestion &suggestion);
     void applyEmoteSpam(int emotes, int messages, int window, int action,
-                        int step, int actionsServed, int stepCount);
+                        int step, int actionsServed, int stepCount, int streak);
     /// The reason box: what the alert is about in a few words, set off in the
     /// colour of its kind, with what backs it up underneath
     void setReason(const QString &reason, const QString &details,

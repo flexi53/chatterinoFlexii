@@ -112,15 +112,9 @@ void EmoteSpamDetector::onMessage(const QString &channelName,
     }
 
     const auto emotes = emoteCount(*message);
-    if (emotes == 0)
-    {
-        return;
-    }
-
-    const auto *settings = getSettings();
-    const auto threshold = std::max(1, settings->emoteAlertMinEmotes.getValue());
+    const auto thresholds = Thresholds::fromSettings();
     const auto window =
-        std::max(1, settings->emoteAlertWindowSeconds.getValue());
+        std::max(1, getSettings()->emoteAlertWindowSeconds.getValue());
     const auto now = QDateTime::currentDateTime();
 
     // Keeps the map from growing for as long as the app runs
@@ -142,6 +136,22 @@ void EmoteSpamDetector::onMessage(const QString &channelName,
     }
     state.lastActivity = now;
 
+    // Message after message with nothing but emotes in them. A message with
+    // a word in it ends the run, however many emotes it carries.
+    if (onlyEmotes(*message))
+    {
+        state.streak++;
+    }
+    else
+    {
+        state.streak = 0;
+    }
+
+    if (emotes == 0)
+    {
+        return;
+    }
+
     state.recent.append({now, emotes, message->id});
     while (!state.recent.isEmpty() &&
            state.recent.first().time.secsTo(now) > window)
@@ -162,11 +172,13 @@ void EmoteSpamDetector::onMessage(const QString &channelName,
         return;
     }
 
-    // Until the first offer it takes the full amount within the window; after
-    // it, what they send on counts towards the next step up
+    const auto reason = reasonFor(thresholds, total, emotes, state.streak);
+
+    // Until the first offer one of the rules has to be met; after it, what
+    // they send on counts towards the next step up
     if (!state.escalation.offered)
     {
-        if (total < threshold)
+        if (reason == Reason::None)
         {
             return;
         }
@@ -186,7 +198,7 @@ void EmoteSpamDetector::onMessage(const QString &channelName,
         state.pendingIds.removeFirst();
     }
 
-    const auto offer = state.escalation.more(emotes, threshold);
+    const auto offer = state.escalation.more(emotes, thresholds.window);
     if (!offer && open == nullptr)
     {
         // Offered and let go - back once they have flooded as much again
@@ -202,9 +214,9 @@ void EmoteSpamDetector::onMessage(const QString &channelName,
         channel, login, &getApp()->getWindows()->getMainWindow());
     popup->setEmoteSpam(
         message->displayName.isEmpty() ? login : message->displayName, total,
-        static_cast<int>(state.recent.size()), window, action,
-        state.pendingIds, level, state.escalation.actions,
-        static_cast<int>(steps.size()));
+        static_cast<int>(state.recent.size()), window, action, state.pendingIds,
+        level, state.escalation.actions, static_cast<int>(steps.size()),
+        reason == Reason::Streak ? state.streak : 0);
     if (offer)
     {
         popup->present();
@@ -242,17 +254,28 @@ void EmoteSpamDetector::onAction(const QString &channelName,
     }
 }
 
-int EmoteSpamDetector::emoteCount(const Message &message)
-{
+namespace {
+
+/// What a message holds: how many emotes, and how many words the chatter
+/// wrote next to them
+struct Held {
     int emotes = 0;
     int words = 0;
+    /// Bits pay the streamer rather than fill the chat, so a cheer counts
+    /// for nothing at all
+    bool cheer = false;
+};
+
+Held heldBy(const Message &message)
+{
+    Held held;
     for (const auto &element : message.elements)
     {
         const auto flags = element->getFlags();
 
         if (dynamic_cast<LayeredEmoteElement *>(element.get()) != nullptr)
         {
-            emotes++;
+            held.emotes++;
             continue;
         }
 
@@ -261,12 +284,13 @@ int EmoteSpamDetector::emoteCount(const Message &message)
             if (flags.hasAny({MessageElementFlag::BitsStatic,
                               MessageElementFlag::BitsAnimated}))
             {
-                return 0;
+                held.cheer = true;
+                return held;
             }
             if (flags.hasAny({MessageElementFlag::EmoteImage,
                               MessageElementFlag::EmojiImage}))
             {
-                emotes++;
+                held.emotes++;
             }
             continue;
         }
@@ -289,12 +313,60 @@ int EmoteSpamDetector::emoteCount(const Message &message)
                         return ch.isLetterOrNumber();
                     }))
                 {
-                    words++;
+                    held.words++;
                 }
             }
         }
     }
-    return emotes > 0 && emotes >= words ? emotes : 0;
+    return held;
+}
+
+}  // namespace
+
+int EmoteSpamDetector::emoteCount(const Message &message)
+{
+    const auto held = heldBy(message);
+    if (held.cheer)
+    {
+        return 0;
+    }
+    return held.emotes > 0 && held.emotes >= held.words ? held.emotes : 0;
+}
+
+bool EmoteSpamDetector::onlyEmotes(const Message &message)
+{
+    const auto held = heldBy(message);
+    return !held.cheer && held.emotes > 0 && held.words == 0;
+}
+
+EmoteSpamDetector::Thresholds EmoteSpamDetector::Thresholds::fromSettings()
+{
+    const auto *settings = getSettings();
+    return {
+        .window = std::max(1, settings->emoteAlertMinEmotes.getValue()),
+        .single = std::max(0, settings->emoteAlertSingleMessage.getValue()),
+        .streak = std::max(0, settings->emoteAlertStreak.getValue()),
+    };
+}
+
+EmoteSpamDetector::Reason EmoteSpamDetector::reasonFor(
+    const Thresholds &thresholds, int total, int inMessage, int streak)
+{
+    // One message that is a wall of emotes all by itself
+    if (thresholds.single > 0 && inMessage >= thresholds.single)
+    {
+        return Reason::SingleMessage;
+    }
+    // Message after message with nothing but emotes in them
+    if (thresholds.streak > 0 && streak >= thresholds.streak)
+    {
+        return Reason::Streak;
+    }
+    if (thresholds.window > 0 && total >= thresholds.window)
+    {
+        return Reason::Window;
+    }
+    return Reason::None;
 }
 
 std::vector<int> EmoteSpamDetector::steps()
@@ -315,7 +387,8 @@ std::vector<int> EmoteSpamDetector::parseSteps(const QString &text)
     for (const auto &token : text.split(separators, Qt::SkipEmptyParts))
     {
         const auto lower = token.toLower();
-        if (lower == QStringLiteral("delete") || lower == QStringLiteral("del") ||
+        if (lower == QStringLiteral("delete") ||
+            lower == QStringLiteral("del") ||
             lower == QStringLiteral("löschen") ||
             lower == QStringLiteral("loeschen"))
         {

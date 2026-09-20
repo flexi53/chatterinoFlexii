@@ -475,7 +475,10 @@ ModAssistantPage::ModAssistantPage()
             "Ein Alarm für User, die den Chat mit Emotes fluten. Er zählt die "
             "Emotes aus allen Nachrichten zusammen, in denen Emotes überwiegen "
             "- viele kurze Schwälle zählen also genauso wie eine lange "
-            "Emote-Wand.");
+            "Emote-Wand. Dazu kommen zwei Regeln, die für sich allein "
+            "auslösen: eine einzelne Nachricht mit sehr vielen Emotes, und "
+            "mehrere Nachrichten hintereinander, in denen nichts als Emotes "
+            "stehen.");
     addText(emotes,
             "Eingeschaltet wird der Alarm pro Kanal über den Schild-Knopf in "
             "diesem Kanal.",
@@ -495,6 +498,28 @@ ModAssistantPage::ModAssistantPage()
             "Wie weit zurück die Emotes zusammengezählt werden. Eine einzelne "
             "Nachricht mit genug Emotes löst den Alarm auch allein aus.");
         form->addRow("Zusammengezählt über", window);
+
+        auto *single =
+            this->createSpinBox(getSettings()->emoteAlertSingleMessage, 0, 200);
+        single->setSuffix(" Emotes");
+        single->setSpecialValueText("aus");
+        single->setToolTip(
+            "Eine einzelne Nachricht mit so vielen Emotes löst den Alarm "
+            "sofort aus, auch wenn über das Zeitfenster noch nicht genug "
+            "zusammengekommen ist. Auf \"aus\" zählt nur das Zeitfenster.");
+        form->addRow("Eine Nachricht ab", single);
+
+        auto *streak =
+            this->createSpinBox(getSettings()->emoteAlertStreak, 0, 50);
+        streak->setSuffix(" Nachrichten");
+        streak->setSpecialValueText("aus");
+        streak->setToolTip(
+            "So viele Nachrichten desselben Users hintereinander, in denen "
+            "nichts als Emotes stehen, lösen den Alarm aus - auch wenn es "
+            "jedes Mal nur ein oder zwei Emotes sind. Eine Nachricht mit "
+            "einem Wort darin beendet die Reihe.");
+        form->addRow("Nur Emotes hintereinander", streak);
+
         emotes->addLayout(form);
     }
 

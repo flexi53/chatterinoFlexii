@@ -1095,3 +1095,66 @@ TEST(FlexiiSelfUpdate, TheSwapPutsTheNewAppInPlaceOfTheOld)
 }
 
 #endif
+
+namespace {
+
+using Reason = EmoteSpamDetector::Reason;
+using Thresholds = EmoteSpamDetector::Thresholds;
+
+/// The numbers as they come out of the box: only the window rule
+constexpr Thresholds ONLY_WINDOW{.window = 8, .single = 0, .streak = 0};
+
+}  // namespace
+
+TEST(FlexiiEmoteSpam, WithoutEnoughEmotesNothingHappens)
+{
+    EXPECT_EQ(EmoteSpamDetector::reasonFor(ONLY_WINDOW, 7, 7, 3), Reason::None);
+    EXPECT_EQ(EmoteSpamDetector::reasonFor(ONLY_WINDOW, 8, 3, 0),
+              Reason::Window);
+}
+
+TEST(FlexiiEmoteSpam, OneMessageCanBeEnoughOnItsOwn)
+{
+    constexpr Thresholds withSingle{.window = 20, .single = 6, .streak = 0};
+
+    // Six in one message, far short of the twenty over the window
+    EXPECT_EQ(EmoteSpamDetector::reasonFor(withSingle, 6, 6, 0),
+              Reason::SingleMessage);
+    EXPECT_EQ(EmoteSpamDetector::reasonFor(withSingle, 5, 5, 0), Reason::None);
+
+    // Switched off, only the window counts
+    constexpr Thresholds off{.window = 20, .single = 0, .streak = 0};
+    EXPECT_EQ(EmoteSpamDetector::reasonFor(off, 6, 6, 0), Reason::None);
+}
+
+TEST(FlexiiEmoteSpam, MessagesInARowOfNothingButEmotesAreEnough)
+{
+    constexpr Thresholds withStreak{.window = 20, .single = 0, .streak = 5};
+
+    // Five in a row, though they hold two emotes each
+    EXPECT_EQ(EmoteSpamDetector::reasonFor(withStreak, 10, 2, 5),
+              Reason::Streak);
+    EXPECT_EQ(EmoteSpamDetector::reasonFor(withStreak, 8, 2, 4), Reason::None);
+
+    constexpr Thresholds off{.window = 20, .single = 0, .streak = 0};
+    EXPECT_EQ(EmoteSpamDetector::reasonFor(off, 8, 2, 9), Reason::None);
+}
+
+TEST(FlexiiEmoteSpam, TheOneMessageRuleIsNamedFirst)
+{
+    // All three would do; the alert says what is easiest to see
+    constexpr Thresholds all{.window = 8, .single = 6, .streak = 3};
+    EXPECT_EQ(EmoteSpamDetector::reasonFor(all, 12, 6, 4),
+              Reason::SingleMessage);
+    EXPECT_EQ(EmoteSpamDetector::reasonFor(all, 12, 2, 4), Reason::Streak);
+    EXPECT_EQ(EmoteSpamDetector::reasonFor(all, 12, 2, 1), Reason::Window);
+}
+
+TEST(FlexiiEmoteSpam, WithBothNewRulesOffNothingChanges)
+{
+    // Which is how they start out - only the window rule then decides
+    constexpr Thresholds asBefore{.window = 8, .single = 0, .streak = 0};
+    EXPECT_EQ(EmoteSpamDetector::reasonFor(asBefore, 20, 20, 12),
+              Reason::Window);
+    EXPECT_EQ(EmoteSpamDetector::reasonFor(asBefore, 7, 7, 12), Reason::None);
+}
