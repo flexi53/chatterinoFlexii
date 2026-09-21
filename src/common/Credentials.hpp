@@ -22,6 +22,10 @@ public:
              const QString &credential);
     void erase(const QString &provider, const QString &name);
 
+    /// ChattiFlexii: whether what is set goes into the system's keychain -
+    /// false in the portable version, which keeps it in a file instead
+    static bool isSecure();
+
 private:
     Credentials() = default;
 };

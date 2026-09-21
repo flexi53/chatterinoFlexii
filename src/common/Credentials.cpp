@@ -59,6 +59,19 @@ bool useKeyring()
 #endif
 }
 
+}  // namespace
+
+namespace chatterino {
+
+bool Credentials::isSecure()
+{
+    return useKeyring();
+}
+
+}  // namespace chatterino
+
+namespace {
+
 // Insecure storage:
 QString insecurePath()
 {

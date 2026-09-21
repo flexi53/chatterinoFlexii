@@ -25,6 +25,9 @@ public:
 private:
     void initLayout(GeneralPageView &layout);
     void initTitleBar(GeneralPageView &layout);
+    /// Choosing a badge as on twitch.tv - for now only whether Twitch lets
+    /// this app do it at all
+    void initBadgeTest(GeneralPageView &layout);
 
     QTabWidget *tabs_{};
     GeneralPageView *view_{};

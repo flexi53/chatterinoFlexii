@@ -25,6 +25,7 @@
 #include "controllers/moderation/ModerationAssistant.hpp"
 #include "widgets/helper/ActiveBorder.hpp"
 #include "widgets/splits/SendWaitBar.hpp"
+#include "providers/twitch/TwitchWebBadges.hpp"
 #include "util/QMagicEnumTagged.hpp"
 #include "util/UiStyle.hpp"
 #include "widgets/helper/NotebookTab.hpp"
@@ -783,4 +784,24 @@ TEST_F(FlexiiUiStyleFixture, WhatWasSavedBeforeStillReadsTheSame)
     // Something unknown falls back to Classic
     getSettings()->uiStyle.setValue(QStringLiteral("glas"));
     EXPECT_EQ(getSettings()->uiStyle.getEnum(), UiStyle::Classic);
+}
+
+TEST(FlexiiWebBadges, WhatIsPastedIsCleanedUp)
+{
+    const QString token = "abcdefghijklmnopqrstuvwxyz1234";
+    EXPECT_EQ(webbadges::normalize("  " + token + "\n"), token);
+    EXPECT_EQ(webbadges::normalize("OAuth " + token), token);
+    EXPECT_EQ(webbadges::normalize("\"" + token + "\""), token);
+    EXPECT_EQ(webbadges::normalize("auth-token=" + token), token);
+}
+
+TEST(FlexiiWebBadges, OnlyWhatLooksLikeALoginIsKept)
+{
+    EXPECT_TRUE(webbadges::looksLikeToken("abcdefghijklmnopqrstuvwxyz1234"));
+    EXPECT_FALSE(webbadges::looksLikeToken(""));
+    EXPECT_FALSE(webbadges::looksLikeToken("abc"));
+    EXPECT_FALSE(webbadges::looksLikeToken("abcdefghij klmnopqrstuvwxyz1234"));
+    EXPECT_FALSE(webbadges::looksLikeToken("abcdefghijklmnopqrstuvwxyz12;4"));
+    // Nothing is kept that does not look like one
+    EXPECT_FALSE(webbadges::store("abc"));
 }

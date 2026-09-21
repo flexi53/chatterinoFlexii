@@ -530,6 +530,8 @@ set(SOURCE_FILES
         providers/twitch/TwitchUser.hpp
         providers/twitch/TwitchUsers.cpp
         providers/twitch/TwitchUsers.hpp
+        providers/twitch/TwitchWebBadges.cpp
+        providers/twitch/TwitchWebBadges.hpp
         providers/twitch/UserColor.cpp
         providers/twitch/UserColor.hpp
 
