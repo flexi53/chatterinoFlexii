@@ -126,8 +126,7 @@ public:
         this->setFixedHeight(40);
         this->setCursor(Qt::PointingHandCursor);
         this->setAttribute(Qt::WA_Hover);
-        this->setToolTip(open ? QStringLiteral("Einklappen")
-                              : QStringLiteral("Aufklappen"));
+        this->setOpen(open);
         if (worn)
         {
             this->wornTitle_ = worn->title;
@@ -141,6 +140,14 @@ public:
                                    }
                                });
         }
+    }
+
+    void setOpen(bool open)
+    {
+        this->open_ = open;
+        this->setToolTip(open ? QStringLiteral("Einklappen")
+                              : QStringLiteral("Aufklappen"));
+        this->update();
     }
 
 protected:
@@ -411,11 +418,14 @@ void BadgePicker::setChoices(const webbadges::Choices &choices)
 
 void BadgePicker::rebuild()
 {
-    // Take out what was there, to lay it out anew
+    // Take out what was there, to lay it out anew. Gone from sight at once:
+    // it is only deleted once the click that led here is over, and until
+    // then it would lie under what comes in its place.
     while (auto *item = this->content_->takeAt(0))
     {
         if (auto *widget = item->widget())
         {
+            widget->hide();
             widget->deleteLater();
         }
         delete item;
@@ -461,23 +471,28 @@ void BadgePicker::rebuild()
         layout->setContentsMargins(0, 0, 0, 0);
         layout->setSpacing(2);
 
-        // Folded shut it is only its head - what is worn is still there
+        // Folded shut it is only its head - what is worn is still there.
+        // Folding only hides the tiles; nothing is built anew for it.
         auto *head = new SectionHeader(heading, where, worn, open.getValue(),
                                        c.text, c.dim, c.hover, box);
-        QObject::connect(head, &QAbstractButton::clicked, this, [this, &open] {
-            open.setValue(!open.getValue());
-            this->rebuild();
-            this->place();
-        });
         layout->addWidget(head);
-        if (!open.getValue())
-        {
-            return box;
-        }
+        auto *body = new QWidget(box);
+        auto *bodyLayout = new QVBoxLayout(body);
+        bodyLayout->setContentsMargins(0, 0, 0, 0);
+        layout->addWidget(body);
+        body->setVisible(open.getValue());
+        QObject::connect(head, &QAbstractButton::clicked, this,
+                         [this, &open, head, body] {
+                             open.setValue(!open.getValue());
+                             head->setOpen(open.getValue());
+                             body->setVisible(open.getValue());
+                             this->place();
+                         });
 
         if (badges.empty())
         {
-            layout->addWidget(dimLabel(QStringLiteral("Keins zur Auswahl.")));
+            bodyLayout->addWidget(
+                dimLabel(QStringLiteral("Keins zur Auswahl.")));
             return box;
         }
 
@@ -489,7 +504,7 @@ void BadgePicker::rebuild()
         for (const auto &badge : badges)
         {
             auto *tile = new BadgeTile(badge, worn && *worn == badge, c.hover,
-                                       c.accent, box);
+                                       c.accent, body);
             QObject::connect(tile, &QAbstractButton::clicked, this,
                              [this, badge, global] {
                                  this->wear(badge, global);
@@ -498,7 +513,7 @@ void BadgePicker::rebuild()
             ++index;
         }
         grid->setColumnStretch(COLUMNS, 1);
-        layout->addLayout(grid);
+        bodyLayout->addLayout(grid);
         return box;
     };
 
@@ -578,7 +593,26 @@ void BadgePicker::wear(const webbadges::Badge &badge, bool global)
 
 void BadgePicker::place()
 {
-    this->adjustSize();
+    // As high as what it holds now - smaller as well as larger, which
+    // adjustSize alone does not always manage for a window
+    // Every part measured afresh first: a part that just folded would
+    // otherwise still count with its old height
+    for (auto *child : this->findChildren<QWidget *>())
+    {
+        if (child->layout() != nullptr)
+        {
+            child->layout()->invalidate();
+        }
+        // Also forgets the size its parent keeps for it
+        child->updateGeometry();
+    }
+    auto *layout = this->layout();
+    layout->invalidate();
+    layout->activate();
+    const int height = layout->hasHeightForWidth()
+                           ? layout->totalHeightForWidth(WIDTH)
+                           : layout->totalSizeHint().height();
+    this->resize(WIDTH, height);
     this->follow();
 }
 
