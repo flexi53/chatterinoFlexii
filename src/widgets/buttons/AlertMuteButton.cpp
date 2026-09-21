@@ -98,6 +98,11 @@ void AlertMuteButton::paintContent(QPainter &painter)
     QRectF box(0, 0, side, side);
     box.moveCenter(QRectF(this->rect()).center());
 
+    paintBell(painter, box, muted);
+}
+
+void paintBell(QPainter &painter, const QRectF &box, bool struck)
+{
     const auto x = [&](qreal part) {
         return box.left() + (box.width() * part);
     };
@@ -116,7 +121,7 @@ void AlertMuteButton::paintContent(QPainter &painter)
     painter.drawPath(bell);
     painter.drawLine(QPointF(x(0.42), y(0.82)), QPointF(x(0.58), y(0.82)));
 
-    if (!muted)
+    if (!struck)
     {
         return;
     }

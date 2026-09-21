@@ -184,6 +184,8 @@ private:
     /// Look -> Tabs: the channel whose picture goes in front of the name -
     /// the first split's, when it is a Twitch channel - or an empty string
     QString avatarLogin() const;
+    /// ChattiFlexii: the Twitch channels of this tab's splits, lower case
+    QStringList twitchChannels() const;
     /// How wide the picture is, and the gap after it; 0 without one
     int avatarSpace() const;
     int avatarSide() const;

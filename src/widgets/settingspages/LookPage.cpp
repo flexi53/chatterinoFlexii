@@ -458,6 +458,29 @@ void LookPage::buildTabsTab(GeneralPageView &layout)
         s.activeTabBorderColor.setValue("");
     });
 
+    layout.addTitle("Zustände am Tab");
+    SettingWidget::checkbox("Stumme Kanäle am Tab zeigen", s.tabMarkMuted)
+        ->setTooltip("Ist in einem Kanal die Glocke aus, steht am Tab eine "
+                     "kleine rote durchgestrichene Glocke - auf dem Profilbild "
+                     "oder, ohne Bild, in der Ecke. So vergisst du keinen "
+                     "Kanal, den du stumm geschaltet hast.")
+        ->addKeywords({"glocke", "stumm", "alarm"})
+        ->addTo(layout);
+    SettingWidget::checkbox(
+        "Offline-Kanäle in immer gezeigten Gruppen ausgrauen",
+        s.tabDimOfflinePinned)
+        ->setTooltip("In einer Tab-Gruppe mit „Always Show Group“ tritt ein "
+                     "Kanal, der gerade nicht live ist, etwas zurück. Der Tab "
+                     "bleibt, wo er ist; der, auf dem du gerade bist, bleibt "
+                     "hell.")
+        ->addKeywords({"offline", "grau", "gruppe"})
+        ->addTo(layout);
+    addStandardButton(layout, "Keine Zeichen am Tab, nichts ausgegraut",
+                      [&s] {
+                          s.tabMarkMuted.setValue(false);
+                          s.tabDimOfflinePinned.setValue(false);
+                      });
+
     layout.addTitle("Aktiver Split");
     layout.addDescription(
         "Hat ein Tab mehrere Chats nebeneinander, bekommt der, in den du "

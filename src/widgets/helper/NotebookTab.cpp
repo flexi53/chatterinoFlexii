@@ -18,6 +18,8 @@
 #include "util/Helpers.hpp"
 #include "util/RoundPixmap.hpp"
 #include "widgets/dialogs/SettingsDialog.hpp"
+#include "controllers/moderation/AlertMute.hpp"
+#include "widgets/buttons/AlertMuteButton.hpp"
 #include "widgets/helper/ActiveBorder.hpp"
 #include "widgets/Notebook.hpp"
 #include "widgets/splits/DraggedSplit.hpp"
@@ -145,6 +147,20 @@ NotebookTab::NotebookTab(Notebook *notebook)
         },
         this->managedConnections_, false);
     getSettings()->tabLiveRing.connect(
+        [this](const auto &, const auto &) {
+            this->update();
+        },
+        this->managedConnections_, false);
+    for (auto *setting :
+         {&getSettings()->tabMarkMuted, &getSettings()->tabDimOfflinePinned})
+    {
+        setting->connect(
+            [this](const auto &, const auto &) {
+                this->update();
+            },
+            this->managedConnections_, false);
+    }
+    getSettings()->modAlertMutedChannels.connect(
         [this](const auto &, const auto &) {
             this->update();
         },
@@ -572,6 +588,25 @@ void NotebookTab::setDefaultTitle(const QString &title)
 const QString &NotebookTab::getDefaultTitle() const
 {
     return this->defaultTitle_;
+}
+
+QStringList NotebookTab::twitchChannels() const
+{
+    QStringList names;
+    const auto *container = dynamic_cast<const SplitContainer *>(this->page);
+    if (container == nullptr)
+    {
+        return names;
+    }
+    for (auto *split : container->getSplits())
+    {
+        const auto channel = split->getChannel();
+        if (channel != nullptr && channel->getType() == Channel::Type::Twitch)
+        {
+            names.append(channel->getName().toLower());
+        }
+    }
+    return names;
 }
 
 QString NotebookTab::avatarLogin() const
@@ -1252,6 +1287,26 @@ void NotebookTab::paintEvent(QPaintEvent *)
         painter.drawEllipse(liveIndicatorRect);
     }
 
+    // Look -> Tabs: in a group that is always shown, a channel that is not
+    // live steps back - the tab stays where it is, only quieter. The tab
+    // you are on is left as it is, so it can still be read.
+    const auto channels = this->twitchChannels();
+    const bool dimmed = getSettings()->tabDimOfflinePinned &&
+                        !this->selected_ && !this->isLive_ &&
+                        !channels.isEmpty() &&
+                        this->notebook_->isTabPinnedByGroup(this);
+    if (dimmed)
+    {
+        painter.setOpacity(0.45);
+    }
+
+    // Look -> Tabs: whether the alerts of one of its channels are silenced
+    const bool silenced =
+        getSettings()->tabMarkMuted &&
+        std::any_of(channels.begin(), channels.end(), [](const auto &name) {
+            return alertmute::isMuted(name);
+        });
+
     // set the pen color
     painter.setPen(colors.text);
 
@@ -1319,6 +1374,26 @@ void NotebookTab::paintEvent(QPaintEvent *)
                 circle.adjusted(-1.2 * scale, -1.2 * scale, 1.2 * scale,
                                 1.2 * scale));
         }
+        if (silenced)
+        {
+            // A small struck bell on the picture's lower right, on a disc of
+            // the tab's own colour so it reads over any picture
+            const auto badge = side * 0.62;
+            const QRectF disc(circle.right() - badge * 0.7,
+                              circle.bottom() - badge * 0.7, badge, badge);
+            painter.setOpacity(1.0);
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(tabBackground);
+            painter.drawEllipse(disc);
+            QPen pen(activeborder::fallback());
+            pen.setWidthF(std::max(1.0, 1.1 * scale));
+            pen.setCapStyle(Qt::RoundCap);
+            painter.setPen(pen);
+            painter.setBrush(Qt::NoBrush);
+            paintBell(painter, disc.adjusted(badge * 0.14, badge * 0.14,
+                                             -badge * 0.14, -badge * 0.14),
+                      true);
+        }
         painter.restore();
 
         QTextOption option(Qt::AlignLeft | Qt::AlignVCenter);
@@ -1341,7 +1416,27 @@ void NotebookTab::paintEvent(QPaintEvent *)
         QTextOption option(alignment);
         option.setWrapMode(QTextOption::NoWrap);
         painter.drawText(textRect, this->getTitle(), option);
+
+        if (silenced)
+        {
+            // Without a picture to sit on, the bell takes the corner
+            const auto size = 9 * scale;
+            const QRectF box(2 * scale, 3 * scale, size, size);
+            painter.save();
+            painter.setOpacity(1.0);
+            painter.setRenderHint(QPainter::Antialiasing, true);
+            QPen pen(activeborder::fallback());
+            pen.setWidthF(std::max(1.0, 1.1 * scale));
+            pen.setCapStyle(Qt::RoundCap);
+            painter.setPen(pen);
+            painter.setBrush(Qt::NoBrush);
+            paintBell(painter, box, true);
+            painter.restore();
+        }
     }
+
+    // What follows - the close button - is not dimmed
+    painter.setOpacity(1.0);
 
     // draw close x
     if (this->shouldDrawXButton())

@@ -39,6 +39,11 @@ class Notebook : public BaseWidget
     Q_OBJECT
 
 public:
+    /// Whether @a tab is shown regardless of the tab visibility filter because
+    /// its group is pinned open. Public, as the tab asks it to know whether
+    /// to step back while its channel is offline.
+    bool isTabPinnedByGroup(const NotebookTab *tab) const;
+
     explicit Notebook(QWidget *parent);
     ~Notebook() override = default;
 
@@ -311,9 +316,6 @@ private:
     /// filter.
     bool isTabHiddenByGroup(const NotebookTab *tab) const;
 
-    /// Whether @a tab is shown regardless of the tab visibility filter because
-    /// its group is pinned open.
-    bool isTabPinnedByGroup(const NotebookTab *tab) const;
 
     /// Whether @a group's header belongs on screen. A header whose group has
     /// nothing to show is a label for nothing, so it goes too, unless the

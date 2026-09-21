@@ -289,6 +289,11 @@ public:
     QStringSetting activeSplitBorderColor = {
         "/appearance/splitheader/activeBorderColor", "#e91916"};
     /// A border around the tab you are on, in the same colour
+    /// A struck bell on the tab of a channel whose alerts are silenced
+    BoolSetting tabMarkMuted = {"/appearance/tabs/markMuted", false};
+    /// Offline channels in a group that is always shown, greyed out
+    BoolSetting tabDimOfflinePinned = {"/appearance/tabs/dimOfflinePinned",
+                                       false};
     /// Whether the example chat over the Look page is unfolded
     BoolSetting lookPreviewOpen = {"/appearance/lookPreviewOpen", true};
     BoolSetting activeTabBorder = {"/appearance/tabs/activeBorder", false};

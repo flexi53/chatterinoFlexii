@@ -6,11 +6,19 @@
 
 #include "widgets/buttons/Button.hpp"
 
+#include <QRectF>
 #include <QString>
 
 #include <pajlada/signals/signalholder.hpp>
 
+class QPainter;
+
 namespace chatterino {
+
+/// The bell the alert buttons are drawn as, filling @a box, in the pen the
+/// painter holds. @a struck adds the line through it that says the alerts
+/// are silenced. Shared by the bell in the input bar and the mark on a tab.
+void paintBell(QPainter &painter, const QRectF &box, bool struck);
 
 /// Silences the alert windows of the moderation assistant - they stop
 /// popping up until it is pressed again. What the alerts watch for goes on
