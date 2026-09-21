@@ -25,6 +25,7 @@
 #include "controllers/moderation/ModerationAssistant.hpp"
 #include "widgets/helper/ActiveBorder.hpp"
 #include "widgets/splits/SendWaitBar.hpp"
+#include "widgets/splits/HeaderParts.hpp"
 #include "widgets/splits/SplitHeaderExtras.hpp"
 
 using namespace chatterino;
@@ -237,19 +238,19 @@ TEST_F(FlexiiActivityGraphFixture, ATickEveryFewMinutesAtMost)
         << this->graph.description().toStdString();
 }
 
-TEST_F(FlexiiActivityGraphFixture, TheRoomBesideTheTitleWidensTheCurve)
+TEST_F(FlexiiActivityGraphFixture, TheHeaderCanAskForAnotherWidth)
 {
     const auto own = this->graph.sizeHint().width();
     EXPECT_EQ(this->graph.ownWidth(), own);
 
-    // What the header hands it comes on top of its own width
-    this->graph.setExtraWidth(80);
+    this->graph.setWantedWidth(own + 80);
     EXPECT_EQ(this->graph.sizeHint().width(), own + 80);
     EXPECT_EQ(this->graph.ownWidth(), own);
 
-    // A title that needs more than there is gives nothing - the curve
-    // never gets narrower for it
-    this->graph.setExtraWidth(-40);
+    // Nothing asked for is its own width again
+    this->graph.setWantedWidth(0);
+    EXPECT_EQ(this->graph.sizeHint().width(), own);
+    this->graph.setWantedWidth(-40);
     EXPECT_EQ(this->graph.sizeHint().width(), own);
 }
 
@@ -492,4 +493,144 @@ TEST(FlexiiActivityGraphLabels, MarksReadTheWayOneSaysThem)
     EXPECT_EQ(ActivityGraph::timeLabel(7200), "2h");
     EXPECT_EQ(ActivityGraph::timeLabel(5400), "1h30");
     EXPECT_EQ(ActivityGraph::timeLabel(3900), "1h05");
+}
+
+namespace {
+
+class FlexiiHeaderPartsFixture : public ::testing::Test
+{
+protected:
+    ~FlexiiHeaderPartsFixture() override
+    {
+        headerparts::reset();
+    }
+
+    MockApplication app;
+};
+
+using headerparts::Part;
+
+}  // namespace
+
+TEST(FlexiiHeaderParts, NothingChangedIsChatterinosOrder)
+{
+    const auto order = headerparts::parseOrder({});
+    ASSERT_EQ(order.size(), headerparts::all().size());
+    for (size_t i = 0; i < order.size(); i++)
+    {
+        EXPECT_EQ(order.at(i), headerparts::all().at(i).part);
+    }
+    EXPECT_TRUE(headerparts::writeOrder(order).isEmpty());
+}
+
+TEST(FlexiiHeaderParts, AnOrderIsKeptAsWritten)
+{
+    const auto order = headerparts::parseOrder(
+        "picture,cover,activity,title,mode,moderation,chatters,menu,add");
+    EXPECT_EQ(order.at(2), Part::Activity);
+    EXPECT_EQ(order.at(3), Part::Title);
+    EXPECT_EQ(headerparts::writeOrder(order),
+              "picture,cover,activity,title,mode,moderation,chatters,menu,add");
+}
+
+TEST(FlexiiHeaderParts, WhatIsMissingGoesWhereItBelongs)
+{
+    // Saved before there was a curve: it goes behind the title, as it does
+    // by default. What is unknown or there twice is left out.
+    const auto order = headerparts::parseOrder(
+        "menu, nonsense, title, picture, cover, mode, moderation, chatters, "
+        "add, menu");
+    const std::vector<Part> expected{
+        Part::Menu,  Part::Title,      Part::Activity,
+        Part::Picture, Part::Cover,    Part::Mode,
+        Part::Moderation, Part::Chatters, Part::Add,
+    };
+    EXPECT_EQ(order, expected);
+}
+
+TEST(FlexiiHeaderParts, WithoutASharePlainHalfOfWhatIsFree)
+{
+    // 600 shared, the title needs 100, the curve's own 200: 300 are free,
+    // the curve takes half of them
+    EXPECT_EQ(headerparts::curveWidth(600, 100, 200, 0, 100), 350);
+
+    // A title that needs everything leaves the curve its own width
+    EXPECT_EQ(headerparts::curveWidth(600, 500, 200, 0, 100), 200);
+}
+
+TEST(FlexiiHeaderParts, ADraggedShareIsKeptButTheTitleStaysReadable)
+{
+    EXPECT_EQ(headerparts::curveWidth(600, 100, 200, 50, 100), 300);
+
+    // At 90 per cent the title would get 60 - it keeps 100
+    EXPECT_EQ(headerparts::curveWidth(600, 300, 200, 90, 100), 500);
+
+    // A short title keeps only what it needs
+    EXPECT_EQ(headerparts::curveWidth(600, 40, 200, 90, 100), 540);
+
+    // Out of range is brought back in
+    EXPECT_EQ(headerparts::curveWidth(600, 40, 200, 150, 100), 540);
+    EXPECT_EQ(headerparts::curveWidth(600, 40, 200, 3, 100), 60);
+}
+
+TEST_F(FlexiiHeaderPartsFixture, TitleAndMenuCanNotBeSwitchedOff)
+{
+    headerparts::setShown(Part::Title, false);
+    headerparts::setShown(Part::Menu, false);
+    EXPECT_TRUE(headerparts::isShown(Part::Title));
+    EXPECT_TRUE(headerparts::isShown(Part::Menu));
+}
+
+TEST_F(FlexiiHeaderPartsFixture, ChatterinosButtonsStartOnTheExtrasOff)
+{
+    EXPECT_TRUE(headerparts::isShown(Part::Mode));
+    EXPECT_TRUE(headerparts::isShown(Part::Moderation));
+    EXPECT_TRUE(headerparts::isShown(Part::Chatters));
+    EXPECT_TRUE(headerparts::isShown(Part::Add));
+    EXPECT_FALSE(headerparts::isShown(Part::Picture));
+    EXPECT_FALSE(headerparts::isShown(Part::Cover));
+    EXPECT_FALSE(headerparts::isShown(Part::Activity));
+    EXPECT_EQ(getSettings()->splitHeaderActivityShare.getValue(), 0);
+}
+
+TEST_F(FlexiiHeaderPartsFixture, OnePictureCanComeOnWithoutTheOther)
+{
+    headerparts::setShown(Part::Cover, true);
+    EXPECT_TRUE(headerparts::isShown(Part::Cover));
+    EXPECT_FALSE(headerparts::isShown(Part::Picture));
+    EXPECT_TRUE(getSettings()->splitHeaderPictures.getValue());
+
+    headerparts::setShown(Part::Picture, true);
+    EXPECT_TRUE(headerparts::isShown(Part::Picture));
+
+    // Both off again is what Look calls off - nothing left behind
+    headerparts::setShown(Part::Picture, false);
+    headerparts::setShown(Part::Cover, false);
+    EXPECT_FALSE(getSettings()->splitHeaderPictures.getValue());
+    EXPECT_TRUE(getSettings()->splitHeaderHidden.getValue().isEmpty());
+}
+
+TEST_F(FlexiiHeaderPartsFixture, AButtonSwitchedOffStaysOff)
+{
+    headerparts::setShown(Part::Chatters, false);
+    EXPECT_FALSE(headerparts::isShown(Part::Chatters));
+    EXPECT_TRUE(headerparts::isShown(Part::Moderation));
+
+    headerparts::setShown(Part::Chatters, true);
+    EXPECT_TRUE(headerparts::isShown(Part::Chatters));
+    EXPECT_TRUE(getSettings()->splitHeaderHidden.getValue().isEmpty());
+}
+
+TEST_F(FlexiiHeaderPartsFixture, StandardPutsEverythingBack)
+{
+    headerparts::setOrder({Part::Menu, Part::Title});
+    headerparts::setShown(Part::Add, false);
+    headerparts::setShown(Part::Activity, true);
+    getSettings()->splitHeaderActivityShare.setValue(70);
+
+    headerparts::reset();
+    EXPECT_TRUE(getSettings()->splitHeaderOrder.getValue().isEmpty());
+    EXPECT_TRUE(headerparts::isShown(Part::Add));
+    EXPECT_FALSE(headerparts::isShown(Part::Activity));
+    EXPECT_EQ(getSettings()->splitHeaderActivityShare.getValue(), 0);
 }

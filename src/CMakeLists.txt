@@ -926,6 +926,8 @@ set(SOURCE_FILES
         widgets/settingspages/AccountsPage.hpp
         widgets/settingspages/ButtonsPage.cpp
         widgets/settingspages/ButtonsPage.hpp
+        widgets/settingspages/HeaderPreview.cpp
+        widgets/settingspages/HeaderPreview.hpp
         widgets/settingspages/CommandPage.cpp
         widgets/settingspages/CommandPage.hpp
         widgets/settingspages/CustomWidgets.hpp
@@ -987,6 +989,8 @@ set(SOURCE_FILES
         widgets/splits/SplitHeader.hpp
         widgets/splits/SplitHeaderExtras.cpp
         widgets/splits/SplitHeaderExtras.hpp
+        widgets/splits/HeaderParts.cpp
+        widgets/splits/HeaderParts.hpp
         widgets/splits/SplitInput.cpp
         widgets/splits/SplitInput.hpp
         widgets/splits/SplitOverlay.cpp

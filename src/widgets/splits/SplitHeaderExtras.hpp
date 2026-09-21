@@ -78,6 +78,10 @@ public:
     static constexpr int LABEL_ROOM = 9;
     /// Room before the curve, between it and the title
     static constexpr int LEFT_ROOM = 2;
+    /// Room after it, before the chat mode
+    static constexpr int RIGHT_ROOM = 6;
+    /// How narrow the curve itself gets in a small split
+    static constexpr int NARROWEST = 36;
 
     /// How a mark on the line of time is labelled: "10 min", "1h", "1h30"
     static QString timeLabel(qint64 seconds);
@@ -115,11 +119,13 @@ public:
     /// stream of hours can pass in a moment.
     void setClock(std::function<QDateTime()> clock);
 
-    /// Room taken beyond its own width, in pixels - the header hands it
-    /// half of what the title leaves free
-    void setExtraWidth(int pixels);
-    /// How wide it is without that extra room
+    /// How wide the header wants it, in pixels - 0 for its own width
+    void setWantedWidth(int pixels);
+    /// How wide it is when nobody asks for more or less
     int ownWidth() const;
+
+    /// A made-up quarter hour of chat, for the preview in the settings
+    void showSample();
 
     /// As wide as it would like to be
     QSize sizeHint() const override;
@@ -162,7 +168,7 @@ private:
     QString streamId_;
 
     std::function<QDateTime()> clock_;
-    int extraWidth_{};
+    int wantedWidth_{};
     ChannelPtr channel_;
     pajlada::Signals::SignalHolder connections_;
     QTimer timer_;

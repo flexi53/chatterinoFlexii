@@ -12,6 +12,7 @@
 #include <pajlada/signals/connection.hpp>
 #include <pajlada/signals/signalholder.hpp>
 #include <QElapsedTimer>
+#include <QHBoxLayout>
 #include <QMenu>
 #include <QPoint>
 
@@ -62,9 +63,12 @@ protected:
 
 private:
     void initializeLayout();
-    /// Hands the curve half of the room the title does not need, so a
-    /// short title does not float in a wide gap
+    /// Hands the curve its share of the room beside the title - by default
+    /// half of what the title does not need, so a short title does not
+    /// float in a wide gap
     void fitActivity();
+    /// Buttons -> Title bar: puts the parts in the order asked for
+    void arrangeParts();
     std::unique_ptr<QMenu> createMainMenu();
     std::unique_ptr<QMenu> createChatModeMenu();
 
@@ -102,6 +106,11 @@ private:
     SvgButton *moderationButton_{};
     SvgButton *chattersButton_{};
     DrawnButton *addButton_{};
+    /// Whether this split is the one the plus belongs to
+    bool addButtonWanted_{false};
+    /// The bit of room after the title, which goes wherever it goes
+    BaseWidget *titleSpace_{};
+    QHBoxLayout *partsLayout_{};
 
     HeaderPicture *channelPicture_{};
     HeaderPicture *coverPicture_{};

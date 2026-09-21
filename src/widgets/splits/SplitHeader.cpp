@@ -35,6 +35,7 @@
 #include "widgets/Label.hpp"
 #include "widgets/splits/Split.hpp"
 #include "widgets/splits/SplitContainer.hpp"
+#include "widgets/splits/HeaderParts.hpp"
 #include "widgets/splits/SplitHeaderExtras.hpp"
 #include "widgets/TooltipWidget.hpp"
 
@@ -331,6 +332,25 @@ SplitHeader::SplitHeader(Split *split)
     getSettings()->headerUptime.connect(_, this->managedConnections_);
     getSettings()->splitHeaderPictures.connect(_, this->managedConnections_);
     getSettings()->splitHeaderActivity.connect(_, this->managedConnections_);
+    // Buttons -> Title bar
+    getSettings()->splitHeaderOrder.connect(
+        [this] {
+            this->arrangeParts();
+        },
+        this->managedConnections_, false);
+    getSettings()->splitHeaderHidden.connect(
+        [this] {
+            this->updateChannelText();
+            this->updateRoomModes();
+            this->updateIcons();
+            this->setAddButtonVisible(this->addButtonWanted_);
+        },
+        this->managedConnections_, false);
+    getSettings()->splitHeaderActivityShare.connect(
+        [this] {
+            this->fitActivity();
+        },
+        this->managedConnections_, false);
 
     auto *window = dynamic_cast<BaseWindow *>(this->window());
     if (window)
@@ -394,47 +414,37 @@ void SplitHeader::initializeLayout()
     // split keeps its title
     this->activity_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
 
+    // title
+    this->titleLabel_ = makeWidget<Label>([](auto w) {
+        w->setSizePolicy(QSizePolicy::MinimumExpanding,
+                         QSizePolicy::Preferred);
+        w->setCentered(true);
+        w->setPadding(QMargins{});
+        // ChattiFlexii: a title too long for the header ends in "...",
+        // rather than running under what is next to it
+        w->setShouldElide(true);
+    });
+    // space - ChattiFlexii: a quarter of what it was, so the title keeps
+    // close to what follows it
+    this->titleSpace_ = makeWidget<BaseWidget>([](auto w) {
+        w->setScaleIndependentSize(2, 4);
+    });
+    // mode
+    this->modeButton_ = makeWidget<LabelButton>([&](auto w) {
+        w->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+        w->hide();
+        w->setMenu(this->createChatModeMenu());
+    });
+
+    // The space at the start stays first; everything after it stands in
+    // the order Buttons -> Title bar asks for - see arrangeParts
     auto *layout = makeLayout<QHBoxLayout>({
         // space
         makeWidget<BaseWidget>([](auto w) {
             w->setScaleIndependentSize(8, 4);
         }),
-        // Look -> Tabs: the channel's picture and the cover of what it
-        // streams
-        this->channelPicture_,
-        this->coverPicture_,
-        // title
-        this->titleLabel_ = makeWidget<Label>([](auto w) {
-            w->setSizePolicy(QSizePolicy::MinimumExpanding,
-                             QSizePolicy::Preferred);
-            w->setCentered(true);
-            w->setPadding(QMargins{});
-            // ChattiFlexii: a title too long for the header ends in "...",
-            // rather than running under what is next to it
-            w->setShouldElide(true);
-        }),
-        // space - ChattiFlexii: a quarter of what it was, so the title
-        // keeps close to what follows it
-        makeWidget<BaseWidget>([](auto w) {
-            w->setScaleIndependentSize(2, 4);
-        }),
-        // Look -> Tabs: how lively the chat was
-        this->activity_,
-        // mode
-        this->modeButton_ = makeWidget<LabelButton>([&](auto w) {
-            w->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-            w->hide();
-            w->setMenu(this->createChatModeMenu());
-        }),
-        // moderator
-        this->moderationButton_,
-        // chatter list
-        this->chattersButton_,
-        // dropdown
-        this->dropdownButton_,
-        // add split
-        this->addButton_,
     });
+    this->partsLayout_ = layout;
 
     QObject::connect(
         this->moderationButton_, &Button::clicked, this,
@@ -490,6 +500,7 @@ void SplitHeader::initializeLayout()
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
     this->setLayout(layout);
+    this->arrangeParts();
 
     // ChattiFlexii: the curve takes part of what the title leaves free
     this->titleLabel_->installEventFilter(this);
@@ -895,7 +906,8 @@ void SplitHeader::updateRoomModes()
         if (!text.isEmpty())
         {
             this->modeButton_->setText(text);
-            this->modeButton_->show();
+            this->modeButton_->setVisible(
+                headerparts::isShown(headerparts::Part::Mode));
         }
         else
         {
@@ -915,7 +927,8 @@ void SplitHeader::updateRoomModes()
         if (!text.isEmpty())
         {
             this->modeButton_->setText(text);
-            this->modeButton_->show();
+            this->modeButton_->setVisible(
+                headerparts::isShown(headerparts::Part::Mode));
         }
         else
         {
@@ -974,7 +987,9 @@ void SplitHeader::scaleChangedEvent(float scale)
 
 void SplitHeader::setAddButtonVisible(bool value)
 {
-    this->addButton_->setVisible(value);
+    this->addButtonWanted_ = value;
+    this->addButton_->setVisible(
+        value && headerparts::isShown(headerparts::Part::Add));
 }
 
 void SplitHeader::updatePictures()
@@ -985,11 +1000,14 @@ void SplitHeader::updatePictures()
     }
     const auto channel = this->split_->getChannel();
     auto *twitchChannel = dynamic_cast<TwitchChannel *>(channel.get());
-    const bool pictures =
-        getSettings()->splitHeaderPictures && twitchChannel != nullptr;
+    // Buttons -> Title bar can leave out either of them
+    const bool picture = twitchChannel != nullptr &&
+                         headerparts::isShown(headerparts::Part::Picture);
+    const bool cover = twitchChannel != nullptr &&
+                       headerparts::isShown(headerparts::Part::Cover);
 
     // The channel's own picture
-    const auto login = pictures ? channel->getName().toLower() : QString();
+    const auto login = picture ? channel->getName().toLower() : QString();
     if (login != this->pictureLogin_)
     {
         this->pictureLogin_ = login;
@@ -1011,7 +1029,7 @@ void SplitHeader::updatePictures()
     // The cover of what it streams, while it is live
     QString gameId;
     QString game;
-    if (pictures)
+    if (cover)
     {
         const auto status = twitchChannel->accessStreamStatus();
         if (status->live)
@@ -1167,6 +1185,52 @@ void SplitHeader::updateChannelText()
     this->fitActivity();
 }
 
+void SplitHeader::arrangeParts()
+{
+    using headerparts::Part;
+
+    auto *layout = this->partsLayout_;
+    while (layout->count() > 1)
+    {
+        delete layout->takeAt(1);
+    }
+
+    for (const auto part : headerparts::order())
+    {
+        switch (part)
+        {
+            case Part::Picture:
+                layout->addWidget(this->channelPicture_);
+                break;
+            case Part::Cover:
+                layout->addWidget(this->coverPicture_);
+                break;
+            case Part::Title:
+                layout->addWidget(this->titleLabel_);
+                layout->addWidget(this->titleSpace_);
+                break;
+            case Part::Activity:
+                layout->addWidget(this->activity_);
+                break;
+            case Part::Mode:
+                layout->addWidget(this->modeButton_);
+                break;
+            case Part::Moderation:
+                layout->addWidget(this->moderationButton_);
+                break;
+            case Part::Chatters:
+                layout->addWidget(this->chattersButton_);
+                break;
+            case Part::Menu:
+                layout->addWidget(this->dropdownButton_);
+                break;
+            case Part::Add:
+                layout->addWidget(this->addButton_);
+                break;
+        }
+    }
+}
+
 void SplitHeader::fitActivity()
 {
     if (this->activity_ == nullptr || this->titleLabel_ == nullptr)
@@ -1175,13 +1239,14 @@ void SplitHeader::fitActivity()
     }
     if (this->activity_->isHidden())
     {
-        this->activity_->setExtraWidth(0);
+        this->activity_->setWantedWidth(0);
         return;
     }
 
-    // Title and curve share what the rest of the header leaves. The title
-    // gets what it needs first, a long one all of it; of what is left over
-    // the curve takes half, which halves the gap either side of the title.
+    // Title and curve share what the rest of the header leaves. Unless the
+    // curve was given a share of its own, the title gets what it needs
+    // first, a long one all of it, and the curve half of what is left over
+    // - which halves the gap either side of the title.
     const auto shared = this->titleLabel_->width() + this->activity_->width();
     const auto needed = static_cast<int>(std::ceil(
         getApp()
@@ -1189,8 +1254,10 @@ void SplitHeader::fitActivity()
             ->getFontMetrics(this->titleLabel_->getFontStyle(),
                              this->titleLabel_->scale())
             .horizontalAdvance(this->titleLabel_->getText())));
-    this->activity_->setExtraWidth(
-        (shared - this->activity_->ownWidth() - needed) / 2);
+    this->activity_->setWantedWidth(headerparts::curveWidth(
+        shared, needed, this->activity_->ownWidth(),
+        getSettings()->splitHeaderActivityShare,
+        int(headerparts::TITLE_KEEPS * this->scale())));
 }
 
 bool SplitHeader::eventFilter(QObject *watched, QEvent *event)
@@ -1229,7 +1296,8 @@ void SplitHeader::updateIcons()
 
         if (channel->hasModRights() || moderationMode)
         {
-            this->moderationButton_->show();
+            this->moderationButton_->setVisible(
+                headerparts::isShown(headerparts::Part::Moderation));
         }
         else
         {
@@ -1238,7 +1306,8 @@ void SplitHeader::updateIcons()
 
         if (channel->hasModRights() && channel->isTwitchChannel())
         {
-            this->chattersButton_->show();
+            this->chattersButton_->setVisible(
+                headerparts::isShown(headerparts::Part::Chatters));
         }
         else
         {

@@ -411,17 +411,19 @@ void LookPage::buildTabsTab(GeneralPageView &layout)
         s.tabLiveRing.setValue(false);
     });
 
-    layout.addTitle("Split-Kopf");
+    layout.addTitle("Titelleiste");
     layout.addDescription(
-        "Die Leiste über jedem Chat, mit dem Namen des Kanals.");
+        "Die Leiste über jedem Chat, mit dem Namen des Kanals. Welche Teile "
+        "sie hat, in welcher Reihenfolge und wie breit die Kurve ist, "
+        "stellst du unter Knöpfe → Titelleiste ein.");
     SettingWidget::checkbox("Profilbild und Kategorie zeigen",
                             s.splitHeaderPictures)
-        ->setTooltip("Links im Split-Kopf das Bild des Kanals und, solange "
-                     "er live ist, das Cover dessen, was er streamt.")
+        ->setTooltip("Links in der Titelleiste das Bild des Kanals und, "
+                     "solange er live ist, das Cover dessen, was er streamt.")
         ->addKeywords({"avatar", "spiel", "game", "kategorie", "cover"})
         ->addTo(layout);
     SettingWidget::checkbox("Aktivitäts-Kurve zeigen", s.splitHeaderActivity)
-        ->setTooltip("Eine kleine Kurve rechts im Split-Kopf: wie viel im "
+        ->setTooltip("Eine kleine Kurve rechts in der Titelleiste: wie viel im "
                      "Chat los war. Ist der Kanal live, reicht sie über den "
                      "ganzen Stream, sonst über die letzte Viertelstunde. "
                      "Darunter eine Zeitachse, deren Striche je nach Länge "
@@ -806,7 +808,7 @@ void LookPage::buildColorsTab(GeneralPageView &layout)
         {"Systemtext", &s.customColorSystemText},
         {"Links", &s.customColorLink},
         {"Akzentfarbe", &s.customColorAccent},
-        {"Split-Kopf", &s.customColorHeader},
+        {"Titelleiste", &s.customColorHeader},
         {"Eingabefeld", &s.customColorInput},
     }};
     for (const auto &[name, setting] : colors)

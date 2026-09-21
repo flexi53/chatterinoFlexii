@@ -1,0 +1,81 @@
+// SPDX-FileCopyrightText: 2026 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
+#pragma once
+
+#include <QString>
+
+#include <vector>
+
+/// Buttons -> Title bar: which parts the split header has, in what order,
+/// and how wide its curve is. Nothing changed, it is the header Chatterino
+/// has.
+namespace chatterino::headerparts {
+
+/// The parts of the split header, in the order they stand when nothing
+/// was changed
+enum class Part {
+    Picture,
+    Cover,
+    Title,
+    Activity,
+    Mode,
+    Moderation,
+    Chatters,
+    Menu,
+    Add,
+};
+
+struct Info {
+    Part part;
+    /// How it is written in the settings
+    QString id;
+    /// What it is called on the settings page
+    QString name;
+    /// What it is, and when it shows at all
+    QString about;
+    /// The title and the menu always stay: without the title nobody knows
+    /// whose chat it is, without the menu a split can not be closed
+    bool canHide;
+};
+
+/// Every part, in the order Chatterino has them
+const std::vector<Info> &all();
+const Info &info(Part part);
+
+/// The order written in @a text. A part it misses goes where it stands by
+/// default, and what it does not know is left out.
+std::vector<Part> parseOrder(const QString &text);
+/// @a order as the settings keep it - empty when it is the standard one
+QString writeOrder(const std::vector<Part> &order);
+
+/// The order the settings ask for
+std::vector<Part> order();
+void setOrder(const std::vector<Part> &order);
+
+/// Whether @a part is wanted in the header. A few still show only where
+/// they make sense: the chat mode where one is on, the moderation button
+/// and the chatter list where you are a mod, the plus on the last split.
+bool isShown(Part part);
+void setShown(Part part, bool shown);
+
+/// Everything back to the header as Chatterino has it
+void reset();
+
+/// The least room the title keeps however wide the curve is made, in
+/// unscaled pixels - a narrow split still says whose chat it is
+constexpr int TITLE_KEEPS = 100;
+/// How far the curve can be dragged, as its share of the room it has
+/// with the title
+constexpr int LEAST_SHARE = 10;
+constexpr int MOST_SHARE = 90;
+
+/// How wide the curve should be. @a shared is the room it has together
+/// with the title, @a needed what the title needs to show in full, @a own
+/// the curve's own width, @a share the percent of @a shared it was set to
+/// - 0 for half of what the title leaves free - and @a titleKeeps what
+/// the title keeps at the least.
+int curveWidth(int shared, int needed, int own, int share, int titleKeeps);
+
+}  // namespace chatterino::headerparts

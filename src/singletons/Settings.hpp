@@ -277,6 +277,15 @@ public:
     /// split header
     BoolSetting splitHeaderActivity = {"/appearance/splitheader/activity",
                                        false};
+    /// Buttons -> Title bar: the parts of the split header in the order they
+    /// stand, as their ids - empty for the order Chatterino has them in
+    QStringSetting splitHeaderOrder = {"/appearance/splitheader/order", ""};
+    /// Buttons -> Title bar: the parts switched off, as their ids
+    QStringSetting splitHeaderHidden = {"/appearance/splitheader/hidden", ""};
+    /// Buttons -> Title bar: how much of the room beside the title the
+    /// curve takes, in percent - 0 for half of what the title leaves free
+    IntSetting splitHeaderActivityShare = {
+        "/appearance/splitheader/activityShare", 0};
     /// Subs, raids, bans and the like marked with a symbol and a colour
     BoolSetting eventSymbols = {"/appearance/messages/eventSymbols", false};
     /// A message mentioning you lights up briefly as it comes in

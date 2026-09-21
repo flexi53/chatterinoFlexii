@@ -5,11 +5,16 @@
 #include "widgets/settingspages/ButtonsPage.hpp"
 
 #include "singletons/Settings.hpp"
+#include "widgets/settingspages/HeaderPreview.hpp"
 #include "widgets/settingspages/SettingWidget.hpp"
+#include "widgets/splits/HeaderParts.hpp"
 
-#include <QFrame>
+#include <QAbstractItemModel>
 #include <QHBoxLayout>
+#include <QListWidget>
 #include <QPushButton>
+#include <QTabWidget>
+#include <QTimer>
 #include <QVBoxLayout>
 
 #include <functional>
@@ -31,18 +36,159 @@ void addStandardButton(GeneralPageView &layout, const QString &tooltip,
 
 }  // namespace
 
-ButtonsPage::ButtonsPage()
-    : view_(GeneralPageView::withoutNavigation(this))
+namespace {
+
+/// Buttons -> Title bar: every part of the header with a tick, in the
+/// order they stand. Dragging a row moves the part, as dragging it in the
+/// preview does.
+class PartList : public QListWidget
 {
-    auto *outer = new QVBoxLayout;
-    auto *row = new QHBoxLayout;
-    row->addWidget(this->view_);
-    auto *frame = new QFrame;
-    frame->setLayout(row);
-    outer->addWidget(frame);
-    this->setLayout(outer);
+public:
+    PartList()
+    {
+        this->setDragDropMode(QAbstractItemView::InternalMove);
+        this->setDefaultDropAction(Qt::MoveAction);
+        this->setSelectionMode(QAbstractItemView::SingleSelection);
+        this->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        this->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+        QObject::connect(this, &QListWidget::itemChanged, this,
+                         [this](QListWidgetItem *item) {
+                             if (this->loading_)
+                             {
+                                 return;
+                             }
+                             headerparts::setShown(
+                                 partOf(item),
+                                 item->checkState() == Qt::Checked);
+                         });
+        // Read once the move is done, not while the rows are on their way
+        QObject::connect(this->model(), &QAbstractItemModel::rowsMoved, this,
+                         [this] {
+                             this->writeOrderSoon();
+                         });
+        QObject::connect(this->model(), &QAbstractItemModel::rowsInserted,
+                         this, [this] {
+                             this->writeOrderSoon();
+                         });
+
+        auto *s = getSettings();
+        const auto load = [this] {
+            this->load();
+        };
+        s->splitHeaderOrder.connect(load, this->connections_, false);
+        s->splitHeaderHidden.connect(load, this->connections_, false);
+        s->splitHeaderPictures.connect(load, this->connections_, false);
+        s->splitHeaderActivity.connect(load, this->connections_, false);
+        this->load();
+    }
+
+private:
+    static headerparts::Part partOf(const QListWidgetItem *item)
+    {
+        return static_cast<headerparts::Part>(item->data(Qt::UserRole).toInt());
+    }
+
+    void load()
+    {
+        this->loading_ = true;
+        this->clear();
+        for (const auto part : headerparts::order())
+        {
+            const auto &info = headerparts::info(part);
+            auto *item = new QListWidgetItem(
+                info.canHide ? info.name : info.name + " (bleibt immer)");
+            item->setData(Qt::UserRole, static_cast<int>(part));
+            item->setToolTip(info.about);
+            auto flags = Qt::ItemIsEnabled | Qt::ItemIsSelectable |
+                         Qt::ItemIsDragEnabled;
+            if (info.canHide)
+            {
+                flags |= Qt::ItemIsUserCheckable;
+            }
+            item->setFlags(flags);
+            item->setCheckState(headerparts::isShown(part) ? Qt::Checked
+                                                           : Qt::Unchecked);
+            this->addItem(item);
+        }
+        this->setFixedHeight(this->sizeHintForRow(0) * this->count() +
+                             2 * this->frameWidth() + 2);
+        this->loading_ = false;
+    }
+
+    void writeOrderSoon()
+    {
+        if (this->loading_ || this->writePending_)
+        {
+            return;
+        }
+        this->writePending_ = true;
+        QTimer::singleShot(0, this, [this] {
+            this->writePending_ = false;
+            std::vector<headerparts::Part> order;
+            for (int i = 0; i < this->count(); i++)
+            {
+                order.push_back(partOf(this->item(i)));
+            }
+            headerparts::setOrder(order);
+        });
+    }
+
+    bool loading_ = false;
+    bool writePending_ = false;
+    pajlada::Signals::SignalHolder connections_;
+};
+
+}  // namespace
+
+ButtonsPage::ButtonsPage()
+{
+    auto *outer = new QVBoxLayout(this);
+    outer->setContentsMargins(0, 0, 0, 0);
+    this->tabs_ = new QTabWidget;
+    outer->addWidget(this->tabs_);
+
+    this->view_ = GeneralPageView::withoutNavigation(this->tabs_);
+    this->tabs_->addTab(this->view_, "Eingabe && Tabs");
+    this->titleBar_ = GeneralPageView::withoutNavigation(this->tabs_);
+    this->tabs_->addTab(this->titleBar_, "Titelleiste");
 
     this->initLayout(*this->view_);
+    this->initTitleBar(*this->titleBar_);
+}
+
+void ButtonsPage::initTitleBar(GeneralPageView &layout)
+{
+    layout.addTitle("Titelleiste");
+    layout.addDescription(
+        "Die Leiste über jedem Chat. Zieh in der Vorschau einen Teil an "
+        "eine andere Stelle, oder den Rand der Kurve zum Titel hin, um sie "
+        "breiter oder schmaler zu machen - ein Doppelklick auf den Rand "
+        "stellt sie wieder auf automatisch. Es gilt für alle Chats, sobald "
+        "du loslässt.");
+
+    auto *preview = new HeaderPreview;
+    layout.addWidget(preview, {"titelleiste", "vorschau", "kurve", "breite",
+                               "reihenfolge", "split-kopf", "header"});
+
+    layout.addSubtitle("Was drin ist");
+    layout.addDescription(
+        "Ein Haken zeigt den Teil, Ziehen einer Zeile verschiebt ihn. Manche "
+        "erscheinen nur, wo sie Sinn haben: der Chatmodus, wenn einer an "
+        "ist, Moderationsmodus und Chatterliste, wo du Mod bist, das Plus "
+        "am letzten Split rechts. In der Vorschau sind sie alle zu sehen.");
+    layout.addWidget(new PartList,
+                     {"profilbild", "kategorie", "cover", "titel", "kurve",
+                      "chatmodus", "moderation", "chatter", "menü", "split"});
+
+    addStandardButton(layout,
+                      "Reihenfolge, Teile und Breite der Kurve wieder so, "
+                      "wie Chatterino die Leiste hat",
+                      [] {
+                          headerparts::reset();
+                      });
+
+    layout.addStretch();
 }
 
 void ButtonsPage::initLayout(GeneralPageView &layout)
@@ -137,11 +283,23 @@ void ButtonsPage::initLayout(GeneralPageView &layout)
 
 bool ButtonsPage::filterElements(const QString &query)
 {
-    if (this->view_ != nullptr)
+    if (this->view_ == nullptr || this->titleBar_ == nullptr)
     {
-        return this->view_->filterElements(query) || query.isEmpty();
+        return false;
     }
-    return false;
+    const bool buttons = this->view_->filterElements(query);
+    const bool titleBar = this->titleBar_->filterElements(query);
+
+    // A search that only finds something about the title bar opens it
+    if (!query.isEmpty() && titleBar && !buttons)
+    {
+        this->tabs_->setCurrentWidget(this->titleBar_);
+    }
+    else if (!query.isEmpty() && buttons && !titleBar)
+    {
+        this->tabs_->setCurrentWidget(this->view_);
+    }
+    return buttons || titleBar || query.isEmpty();
 }
 
 }  // namespace chatterino

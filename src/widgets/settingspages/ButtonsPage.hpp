@@ -7,10 +7,13 @@
 #include "widgets/settingspages/GeneralPageView.hpp"
 #include "widgets/settingspages/SettingsPage.hpp"
 
+class QTabWidget;
+
 namespace chatterino {
 
 /// Which of the small buttons are there - the row under the chat and the
-/// ones in the tab bar. Everything they do can be reached another way, so
+/// ones in the tab bar - and, in a tab of its own, what the title bar over
+/// each chat holds. Everything they do can be reached another way, so
 /// nothing is lost by switching one off; the row just gets quieter.
 class ButtonsPage : public SettingsPage
 {
@@ -21,8 +24,11 @@ public:
 
 private:
     void initLayout(GeneralPageView &layout);
+    void initTitleBar(GeneralPageView &layout);
 
+    QTabWidget *tabs_{};
     GeneralPageView *view_{};
+    GeneralPageView *titleBar_{};
 };
 
 }  // namespace chatterino

@@ -413,30 +413,44 @@ void ActivityGraph::scaleChangedEvent(float scale)
     this->updateGeometry();
 }
 
-void ActivityGraph::setExtraWidth(int pixels)
+void ActivityGraph::setWantedWidth(int pixels)
 {
     pixels = std::max(pixels, 0);
-    if (pixels == this->extraWidth_)
+    if (pixels == this->wantedWidth_)
     {
         return;
     }
-    this->extraWidth_ = pixels;
+    this->wantedWidth_ = pixels;
     this->updateGeometry();
 }
 
 int ActivityGraph::ownWidth() const
 {
-    return int((LEFT_ROOM + WIDE + 6) * this->scale());
+    return int((LEFT_ROOM + WIDE + RIGHT_ROOM) * this->scale());
+}
+
+void ActivityGraph::showSample()
+{
+    // Quiet, a burst, calmer, and busy again towards now - the whole
+    // quarter hour, so no stretch is left unknown
+    const std::vector<int> sample{
+        2, 3, 2, 4, 5, 4, 6, 9, 14, 11, 7, 5, 4, 5, 6, 5,
+        4, 3, 4, 6, 8, 7, 6, 8, 10, 12, 11, 9, 10, 12, 11,
+    };
+    this->spans_.assign(sample.begin(), sample.end());
+    this->spansStart_ = this->now().addSecs(-WINDOW_SECONDS);
+    this->update();
 }
 
 QSize ActivityGraph::sizeHint() const
 {
-    return {this->ownWidth() + this->extraWidth_, int(HEIGHT * this->scale())};
+    return {this->wantedWidth_ > 0 ? this->wantedWidth_ : this->ownWidth(),
+            int(HEIGHT * this->scale())};
 }
 
 QSize ActivityGraph::minimumSizeHint() const
 {
-    return {int((LEFT_ROOM + 36 + 6) * this->scale()),
+    return {int((LEFT_ROOM + NARROWEST + RIGHT_ROOM) * this->scale()),
             int(HEIGHT * this->scale())};
 }
 
@@ -449,7 +463,7 @@ void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
     // that for what its marks stand for
     const QRectF area =
         QRectF(this->rect())
-            .adjusted(LEFT_ROOM * this->scale(), 2, -6 * this->scale(),
+            .adjusted(LEFT_ROOM * this->scale(), 2, -RIGHT_ROOM * this->scale(),
                       -(6 + LABEL_ROOM) * this->scale());
     if (area.width() <= 1)
     {
@@ -484,6 +498,28 @@ void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
         if (counted.at(c) > 1)
         {
             values.at(c) /= double(counted.at(c));
+        }
+    }
+
+    // A wide curve has more columns than there are half minutes. Such a
+    // column holds the half minute it falls in, rather than dropping to
+    // nothing between the starts - which drew a comb instead of a line.
+    for (size_t c = 0; c < columns; c++)
+    {
+        if (counted.at(c) > 0)
+        {
+            continue;
+        }
+        const auto since = double(this->spansStart_.secsTo(from)) +
+                           (double(c) * perColumn);
+        if (since < 0)
+        {
+            continue;
+        }
+        const auto span = size_t(since / SPAN_SECONDS);
+        if (span < this->spans_.size())
+        {
+            values.at(c) = double(this->spans_.at(span));
         }
     }
 
