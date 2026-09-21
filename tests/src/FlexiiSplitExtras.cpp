@@ -634,3 +634,55 @@ TEST_F(FlexiiHeaderPartsFixture, StandardPutsEverythingBack)
     EXPECT_FALSE(headerparts::isShown(Part::Activity));
     EXPECT_EQ(getSettings()->splitHeaderActivityShare.getValue(), 0);
 }
+
+namespace {
+
+TwitchChannel::StreamStatus liveStream()
+{
+    TwitchChannel::StreamStatus status;
+    status.live = true;
+    status.streamType = "live";
+    status.uptime = "2h 13m";
+    status.viewerCount = 42;
+    status.game = "Just Chatting";
+    status.title = "Hallo  Chat";
+    return status;
+}
+
+}  // namespace
+
+TEST_F(FlexiiHeaderPartsFixture, TheTitleSaysLiveAndNothingMoreAtFirst)
+{
+    EXPECT_EQ(headerparts::titleAfterName(liveStream()), " (live)");
+}
+
+TEST_F(FlexiiHeaderPartsFixture, EachPartOfTheTitleComesOnByItself)
+{
+    auto *s = getSettings();
+    s->headerUptime.setValue(true);
+    EXPECT_EQ(headerparts::titleAfterName(liveStream()), " (live) - 2h 13m");
+
+    s->headerUptime.setValue(false);
+    s->headerViewerCount.setValue(true);
+    s->headerStreamTitle.setValue(true);
+    EXPECT_EQ(headerparts::titleAfterName(liveStream()),
+              " (live) - 42 - Hallo Chat");
+
+    s->headerGame.setValue(true);
+    EXPECT_EQ(headerparts::titleAfterName(liveStream()),
+              " (live) - 42 - Just Chatting - Hallo Chat");
+}
+
+TEST_F(FlexiiHeaderPartsFixture, LiveCanBeLeftOut)
+{
+    auto *s = getSettings();
+    s->headerLiveMarker.setValue(false);
+    EXPECT_TRUE(headerparts::titleAfterName(liveStream()).isEmpty());
+
+    s->headerUptime.setValue(true);
+    EXPECT_EQ(headerparts::titleAfterName(liveStream()), " - 2h 13m");
+
+    // Standard brings it back, with the rest off again
+    headerparts::reset();
+    EXPECT_EQ(headerparts::titleAfterName(liveStream()), " (live)");
+}

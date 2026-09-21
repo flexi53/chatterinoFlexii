@@ -286,6 +286,10 @@ public:
     /// curve takes, in percent - 0 for half of what the title leaves free
     IntSetting splitHeaderActivityShare = {
         "/appearance/splitheader/activityShare", 0};
+    /// Buttons -> Title bar: "(live)" or "(rerun)" after the channel's name,
+    /// as Chatterino always has it
+    BoolSetting headerLiveMarker = {"/appearance/splitheader/showLiveMarker",
+                                    true};
     /// Subs, raids, bans and the like marked with a symbol and a colour
     BoolSetting eventSymbols = {"/appearance/messages/eventSymbols", false};
     /// A message mentioning you lights up briefly as it comes in

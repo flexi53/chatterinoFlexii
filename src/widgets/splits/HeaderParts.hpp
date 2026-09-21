@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "providers/twitch/TwitchChannel.hpp"
+
 #include <QString>
 
 #include <vector>
@@ -62,6 +64,11 @@ void setShown(Part part, bool shown);
 
 /// Everything back to the header as Chatterino has it
 void reset();
+
+/// What follows the channel's name in the title while it is live: "(live)"
+/// and, as far as they are switched on, uptime, viewers, category and the
+/// stream's title
+QString titleAfterName(const TwitchChannel::StreamStatus &s);
 
 /// The least room the title keeps however wide the curve is made, in
 /// unscaled pixels - a narrow split still says whose chat it is

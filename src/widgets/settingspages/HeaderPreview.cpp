@@ -53,6 +53,19 @@ QString sampleName()
     return account->getUserName();
 }
 
+/// The title as a live stream would have it, with what is switched on
+QString sampleTitle()
+{
+    TwitchChannel::StreamStatus status;
+    status.live = true;
+    status.streamType = QStringLiteral("live");
+    status.uptime = QStringLiteral("2h 13m");
+    status.viewerCount = 1234;
+    status.game = QStringLiteral("Just Chatting");
+    status.title = QStringLiteral("Titel des Streams");
+    return sampleName() + headerparts::titleAfterName(status);
+}
+
 /// Stands in for a picture until the real one is there
 QPixmap placeholder(QSize size, QColor top, QColor bottom)
 {
@@ -81,7 +94,7 @@ HeaderPreview::HeaderPreview(QWidget *parent)
     this->cover_->setPicture(
         placeholder({52, 72}, QColor(90, 90, 110), QColor(50, 50, 60)));
 
-    this->title_ = new Label(this, sampleName() + " - Just Chatting");
+    this->title_ = new Label(this, sampleTitle());
     this->title_->setCentered(true);
     this->title_->setPadding(QMargins{});
     this->title_->setShouldElide(true);
@@ -156,6 +169,11 @@ HeaderPreview::HeaderPreview(QWidget *parent)
     s->splitHeaderPictures.connect(reload, this->connections_, false);
     s->splitHeaderActivity.connect(reload, this->connections_, false);
     s->splitHeaderActivityShare.connect(reload, this->connections_, false);
+    s->headerLiveMarker.connect(reload, this->connections_, false);
+    s->headerUptime.connect(reload, this->connections_, false);
+    s->headerViewerCount.connect(reload, this->connections_, false);
+    s->headerGame.connect(reload, this->connections_, false);
+    s->headerStreamTitle.connect(reload, this->connections_, false);
 
     this->themeChangedEvent();
     this->reload();
@@ -222,6 +240,7 @@ void HeaderPreview::reload()
     }
     this->order_ = headerparts::order();
     this->share_ = getSettings()->splitHeaderActivityShare;
+    this->title_->setText(sampleTitle());
     this->relayout();
     this->update();
 }

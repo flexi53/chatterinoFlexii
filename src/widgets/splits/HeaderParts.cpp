@@ -5,6 +5,7 @@
 #include "widgets/splits/HeaderParts.hpp"
 
 #include "singletons/Settings.hpp"
+#include "util/Helpers.hpp"
 
 #include <QStringList>
 
@@ -44,9 +45,9 @@ const std::vector<Info> &all()
             .part = Part::Title,
             .id = "title",
             .name = "Titel",
-            .about = "Name des Kanals und, wenn eingeschaltet, Titel, "
-                     "Kategorie und Zuschauer. Bleibt immer, sonst weiß "
-                     "niemand, wessen Chat es ist.",
+            .about = "Der Name des Kanals und, solange er live ist, was "
+                     "du unter „Was im Titel steht“ angehakt hast. Bleibt "
+                     "immer, sonst weiß niemand, wessen Chat es ist.",
             .canHide = false,
         },
         {
@@ -261,6 +262,61 @@ void reset()
         s->splitHeaderActivityShare.getDefaultValue());
     s->splitHeaderPictures.setValue(s->splitHeaderPictures.getDefaultValue());
     s->splitHeaderActivity.setValue(s->splitHeaderActivity.getDefaultValue());
+    s->headerLiveMarker.setValue(s->headerLiveMarker.getDefaultValue());
+    s->headerUptime.setValue(s->headerUptime.getDefaultValue());
+    s->headerViewerCount.setValue(s->headerViewerCount.getDefaultValue());
+    s->headerGame.setValue(s->headerGame.getDefaultValue());
+    s->headerStreamTitle.setValue(s->headerStreamTitle.getDefaultValue());
+}
+
+QString titleAfterName(const TwitchChannel::StreamStatus &s)
+{
+    const auto &settings = *getSettings();
+    auto title = QString();
+
+    // live - ChattiFlexii: can be left out, Buttons -> Title bar
+    if (settings.headerLiveMarker)
+    {
+        if (s.rerun)
+        {
+            title += " (rerun)";
+        }
+        else if (s.streamType.isEmpty())
+        {
+            title += " (" + s.streamType + ")";
+        }
+        else
+        {
+            title += " (live)";
+        }
+    }
+
+    // description
+    if (settings.headerUptime)
+    {
+        title += " - " + s.uptime;
+    }
+    if (settings.headerViewerCount)
+    {
+        title += " - " + localizeNumbers(s.viewerCount);
+
+        // In a Stream Together session the channel's own count is only part of
+        // the audience, so show the combined one next to it.
+        if (s.sharedParticipantCount > 1 && s.sharedViewerCount > s.viewerCount)
+        {
+            title += " (" + localizeNumbers(s.sharedViewerCount) + " total)";
+        }
+    }
+    if (settings.headerGame && !s.game.isEmpty())
+    {
+        title += " - " + s.game;
+    }
+    if (settings.headerStreamTitle && !s.title.isEmpty())
+    {
+        title += " - " + s.title.simplified();
+    }
+
+    return title;
 }
 
 int curveWidth(int shared, int needed, int own, int share, int titleKeeps)

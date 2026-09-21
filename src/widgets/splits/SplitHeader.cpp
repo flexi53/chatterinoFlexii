@@ -222,52 +222,6 @@ auto formatOfflineTooltip(const TwitchChannel::StreamStatus &s)
         .arg(s.title.toHtmlEscaped());
 }
 
-auto formatTitle(const TwitchChannel::StreamStatus &s, Settings &settings)
-{
-    auto title = QString();
-
-    // live
-    if (s.rerun)
-    {
-        title += " (rerun)";
-    }
-    else if (s.streamType.isEmpty())
-    {
-        title += " (" + s.streamType + ")";
-    }
-    else
-    {
-        title += " (live)";
-    }
-
-    // description
-    if (settings.headerUptime)
-    {
-        title += " - " + s.uptime;
-    }
-    if (settings.headerViewerCount)
-    {
-        title += " - " + localizeNumbers(s.viewerCount);
-
-        // In a Stream Together session the channel's own count is only part of
-        // the audience, so show the combined one next to it.
-        if (s.sharedParticipantCount > 1 && s.sharedViewerCount > s.viewerCount)
-        {
-            title += " (" + localizeNumbers(s.sharedViewerCount) + " total)";
-        }
-    }
-    if (settings.headerGame && !s.game.isEmpty())
-    {
-        title += " - " + s.game;
-    }
-    if (settings.headerStreamTitle && !s.title.isEmpty())
-    {
-        title += " - " + s.title.simplified();
-    }
-
-    return title;
-}
-
 TwitchChannel::StreamStatus toTwitchStreamStatus(
     const KickChannel::StreamData &data)
 {
@@ -330,6 +284,7 @@ SplitHeader::SplitHeader(Split *split)
     getSettings()->headerStreamTitle.connect(_, this->managedConnections_);
     getSettings()->headerGame.connect(_, this->managedConnections_);
     getSettings()->headerUptime.connect(_, this->managedConnections_);
+    getSettings()->headerLiveMarker.connect(_, this->managedConnections_);
     getSettings()->splitHeaderPictures.connect(_, this->managedConnections_);
     getSettings()->splitHeaderActivity.connect(_, this->managedConnections_);
     // Buttons -> Title bar
@@ -1136,7 +1091,7 @@ void SplitHeader::updateChannelText()
                 this->lastThumbnail_.restart();
             }
             this->tooltipText_ = formatTooltip(*streamStatus, this->thumbnail_);
-            title += formatTitle(*streamStatus, *getSettings());
+            title += headerparts::titleAfterName(*streamStatus);
         }
         else
         {
@@ -1168,7 +1123,7 @@ void SplitHeader::updateChannelText()
                 this->lastThumbnail_.restart();
             }
             this->tooltipText_ = formatTooltip(twitch, this->thumbnail_, true);
-            title += formatTitle(twitch, *getSettings());
+            title += headerparts::titleAfterName(twitch);
         }
         else
         {

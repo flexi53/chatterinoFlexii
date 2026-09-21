@@ -181,9 +181,39 @@ void ButtonsPage::initTitleBar(GeneralPageView &layout)
                      {"profilbild", "kategorie", "cover", "titel", "kurve",
                       "chatmodus", "moderation", "chatter", "menü", "split"});
 
+    auto &s = *getSettings();
+    layout.addSubtitle("Was im Titel steht");
+    layout.addDescription(
+        "Der Name des Kanals bleibt immer. Alles andere steht nur dahinter, "
+        "solange der Kanal live ist - in dieser Reihenfolge.");
+    SettingWidget::checkbox("(live) hinter dem Namen", s.headerLiveMarker)
+        ->setTooltip("„(live)“, bei einer Wiederholung „(rerun)“. Auch "
+                     "ohne es zeigt der rote Punkt am Tab, dass der Kanal "
+                     "live ist.")
+        ->addKeywords({"live", "rerun"})
+        ->addTo(layout);
+    SettingWidget::checkbox("Laufzeit (Uptime)", s.headerUptime)
+        ->setTooltip("Wie lange der Stream schon läuft, etwa „2h 13m“.")
+        ->addKeywords({"uptime", "laufzeit", "dauer"})
+        ->addTo(layout);
+    SettingWidget::checkbox("Zuschauer", s.headerViewerCount)
+        ->setTooltip("Wie viele gerade zuschauen - bei Stream Together "
+                     "dazu alle zusammen.")
+        ->addKeywords({"zuschauer", "viewer", "user"})
+        ->addTo(layout);
+    SettingWidget::checkbox("Kategorie", s.headerGame)
+        ->setTooltip("Was gestreamt wird, etwa „Just Chatting“.")
+        ->addKeywords({"kategorie", "spiel", "game"})
+        ->addTo(layout);
+    SettingWidget::checkbox("Streamtitel", s.headerStreamTitle)
+        ->setTooltip("Der Titel, den der Streamer gesetzt hat. Ist er zu "
+                     "lang, endet er mit „…“.")
+        ->addKeywords({"titel", "title"})
+        ->addTo(layout);
+
     addStandardButton(layout,
-                      "Reihenfolge, Teile und Breite der Kurve wieder so, "
-                      "wie Chatterino die Leiste hat",
+                      "Reihenfolge, Teile, Breite der Kurve und Titel wieder "
+                      "so, wie Chatterino die Leiste hat",
                       [] {
                           headerparts::reset();
                       });
