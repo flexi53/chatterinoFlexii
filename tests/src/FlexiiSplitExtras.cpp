@@ -467,3 +467,13 @@ TEST_F(FlexiiAssistantRejectionFixture,
     // And it holds for that channel alone
     EXPECT_FALSE(assistant.wasRejected(channel + "other", text));
 }
+
+TEST(FlexiiActivityGraphLabels, MarksReadTheWayOneSaysThem)
+{
+    EXPECT_EQ(ActivityGraph::timeLabel(600), "10 min");
+    EXPECT_EQ(ActivityGraph::timeLabel(1800), "30 min");
+    EXPECT_EQ(ActivityGraph::timeLabel(3600), "1h");
+    EXPECT_EQ(ActivityGraph::timeLabel(7200), "2h");
+    EXPECT_EQ(ActivityGraph::timeLabel(5400), "1h30");
+    EXPECT_EQ(ActivityGraph::timeLabel(3900), "1h05");
+}

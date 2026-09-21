@@ -12,6 +12,7 @@
 
 #include <QEvent>
 #include <QPainter>
+#include <QFontMetricsF>
 #include <QPainterPath>
 
 #include <algorithm>
@@ -306,6 +307,21 @@ int ActivityGraph::tickSeconds(qint64 seconds)
     return 43200;
 }
 
+QString ActivityGraph::timeLabel(qint64 seconds)
+{
+    if (seconds < 3600)
+    {
+        return QStringLiteral("%1 min").arg(seconds / 60);
+    }
+    const auto hours = seconds / 3600;
+    const auto minutes = (seconds % 3600) / 60;
+    if (minutes == 0)
+    {
+        return QStringLiteral("%1h").arg(hours);
+    }
+    return QStringLiteral("%1h%2").arg(hours).arg(minutes, 2, 10, QChar('0'));
+}
+
 bool ActivityGraph::event(QEvent *event)
 {
     if (event->type() == QEvent::ToolTip)
@@ -393,18 +409,18 @@ void ActivityGraph::scaleChangedEvent(float scale)
     // Room before the curve and some more after it. It would like to be
     // wide enough that a whole stream is worth looking at, but gives way
     // to the title when the split is narrow.
-    this->setFixedHeight(int(20 * scale));
+    this->setFixedHeight(int(HEIGHT * scale));
     this->updateGeometry();
 }
 
 QSize ActivityGraph::sizeHint() const
 {
-    return {int((3 + 104 + 6) * this->scale()), int(20 * this->scale())};
+    return {int((3 + WIDE + 6) * this->scale()), int(HEIGHT * this->scale())};
 }
 
 QSize ActivityGraph::minimumSizeHint() const
 {
-    return {int((3 + 36 + 6) * this->scale()), int(20 * this->scale())};
+    return {int((3 + 36 + 6) * this->scale()), int(HEIGHT * this->scale())};
 }
 
 void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
@@ -412,10 +428,12 @@ void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    // Room at the bottom for the line of time under the curve
-    const QRectF area = QRectF(this->rect())
-                            .adjusted(3 * this->scale(), 2, -6 * this->scale(),
-                                      -6 * this->scale());
+    // Room at the bottom for the line of time under the curve, and under
+    // that for what its marks stand for
+    const QRectF area =
+        QRectF(this->rect())
+            .adjusted(3 * this->scale(), 2, -6 * this->scale(),
+                      -(6 + LABEL_ROOM) * this->scale());
     if (area.width() <= 1)
     {
         return;
@@ -523,6 +541,54 @@ void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
         painter.drawLine(
             QPointF(x, axisY),
             QPointF(x, axisY + ((tall ? 3.5 : 2) * this->scale())));
+    }
+
+    // What the marks stand for - "10 min", "30 min", "1h" - under as many
+    // of them as fit without crowding, counted back from now on the right
+    QFont small = this->font();
+    small.setPixelSize(std::max(7, int(8 * this->scale())));
+    painter.setFont(small);
+    const QFontMetricsF metrics(small);
+    auto label = muted;
+    label.setAlpha(150);
+    painter.setPen(label);
+
+    // Round steps read best - 30 min, 1h, 2h rather than 45 min, 1h15 -
+    // so the labels go on the roundest step of the marks that leaves room
+    // enough between them
+    const auto widest = metrics.horizontalAdvance(QStringLiteral("30 min"));
+    const auto perSecond = area.width() / double(seconds);
+    qint64 labelStep = 0;
+    for (const qint64 step : {300, 600, 900, 1800, 3600, 7200, 10800, 14400,
+                              21600, 43200, 86400})
+    {
+        if (step < tick || step % tick != 0)
+        {
+            continue;
+        }
+        if (double(step) * perSecond >= widest + (8 * this->scale()))
+        {
+            labelStep = step;
+            break;
+        }
+    }
+
+    const auto labelTop = axisY + (3.5 * this->scale());
+    for (qint64 back = labelStep; labelStep > 0 && back <= seconds;
+         back += labelStep)
+    {
+        const auto x = area.right() - (double(back) * perSecond);
+        const auto text = timeLabel(back);
+        const auto width = metrics.horizontalAdvance(text);
+        const auto left = x - (width / 2);
+        // Only whole labels - one that would run off the left is left out
+        if (left < 0)
+        {
+            break;
+        }
+        painter.drawText(QRectF(left, labelTop, width + 1,
+                                this->height() - labelTop),
+                         Qt::AlignHCenter | Qt::AlignTop, text);
     }
 
     // Where the channel changed what it streams

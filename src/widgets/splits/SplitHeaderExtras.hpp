@@ -70,6 +70,15 @@ public:
     /// The shortest stretch the curve is drawn over, so a stream that just
     /// started does not give it a jumping scale
     static constexpr int SHORTEST_SECONDS = 300;
+    /// How wide it would like to be and how tall it is, in unscaled pixels -
+    /// the header is 28 high, and the curve gets as much of it as it can
+    static constexpr int WIDE = 190;
+    static constexpr int HEIGHT = 28;
+    /// Room under the line of time for "10 min", "1h" and the like
+    static constexpr int LABEL_ROOM = 9;
+
+    /// How a mark on the line of time is labelled: "10 min", "1h", "1h30"
+    static QString timeLabel(qint64 seconds);
 
     explicit ActivityGraph(QWidget *parent);
 
