@@ -44,6 +44,7 @@ class SpellCheckHighlighter;
 enum class CompletionKind;
 
 class AlertMuteButton;
+class BadgeButton;
 class SendWaitBar;
 
 class SplitInput : public BaseWidget
@@ -204,6 +205,7 @@ protected:
         SvgButton *modAssistButton;
         /// ChattiFlexii: silences the alert windows
         AlertMuteButton *alertMuteButton;
+        BadgeButton *badgeButton;
         FocusButton *focusButton;
         ClearChatButton *clearButton;
     } ui_;

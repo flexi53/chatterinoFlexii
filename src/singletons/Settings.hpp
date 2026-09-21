@@ -1125,6 +1125,9 @@ public:
     BoolSetting showFocusButton = {"/ui/buttons/focus", true};
     BoolSetting showModAssistButton = {"/ui/buttons/modAssist", true};
     BoolSetting showAlertMuteButton = {"/ui/buttons/alertMute", true};
+    /// Choosing the badge you wear - needs the browser login, so off until
+    /// asked for
+    BoolSetting showBadgeButton = {"/ui/buttons/badge", false};
 
     struct {
         // this isn't shown in the UI

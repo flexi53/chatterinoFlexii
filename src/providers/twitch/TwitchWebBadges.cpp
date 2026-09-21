@@ -8,11 +8,13 @@
 #include "common/network/NetworkRequest.hpp"
 #include "common/network/NetworkResult.hpp"
 
+#include <QHash>
 #include <QJsonArray>
 #include <QPointer>
 #include <QRegularExpression>
 #include <QStringList>
 
+#include <algorithm>
 #include <memory>
 
 namespace chatterino::webbadges {
@@ -56,6 +58,40 @@ QString titlesOf(const QJsonArray &badges)
     return titles.isEmpty() ? QStringLiteral("keine") : titles.join(", ");
 }
 
+/// What is asked for every badge
+const auto BADGE_FIELDS =
+    QStringLiteral("setID version title imageURL(size: DOUBLE)");
+
+std::optional<Badge> badgeOf(const QJsonValue &value)
+{
+    const auto object = value.toObject();
+    if (object.isEmpty() || object.value("setID").toString().isEmpty())
+    {
+        return std::nullopt;
+    }
+    return Badge{
+        .setID = object.value("setID").toString(),
+        .version = object.value("version").toString(),
+        .title = object.value("title").toString(),
+        .image = object.value("imageURL").toString(),
+    };
+}
+
+std::vector<Badge> badgesOf(const QJsonValue &value)
+{
+    std::vector<Badge> badges;
+    for (const auto &entry : value.toArray())
+    {
+        if (auto badge = badgeOf(entry);
+            badge &&
+            std::find(badges.begin(), badges.end(), *badge) == badges.end())
+        {
+            badges.push_back(*badge);
+        }
+    }
+    return badges;
+}
+
 QString titleOf(const QJsonValue &badge)
 {
     const auto title = badge.toObject().value("title").toString();
@@ -63,6 +99,165 @@ QString titleOf(const QJsonValue &badge)
 }
 
 }  // namespace
+
+std::optional<Badge> Choices::shown() const
+{
+    return this->channelWorn ? this->channelWorn : this->globalWorn;
+}
+
+Choices parseChoices(const QJsonObject &answer)
+{
+    Choices choices;
+    const auto data = answer.value("data").toObject();
+    const auto user = data.value("currentUser").toObject();
+    if (user.isEmpty())
+    {
+        const auto why = errorsOf(answer);
+        choices.problem =
+            QStringLiteral("Twitch nimmt den Browser-Login nicht an - "
+                           "abgelaufen oder nicht ganz kopiert.") +
+            (why.isEmpty() ? QString() : " (" + why + ")");
+        return choices;
+    }
+
+    const auto self = data.value("user").toObject().value("self").toObject();
+    choices.global = badgesOf(user.value("availableBadges"));
+    choices.globalWorn = badgeOf(user.value("selectedBadge"));
+    choices.channelWorn = badgeOf(self.value("selectedBadge"));
+
+    // What the channel offers, without what is worn everywhere anyway
+    for (const auto &badge : badgesOf(self.value("availableBadges")))
+    {
+        if (std::find(choices.global.begin(), choices.global.end(), badge) ==
+            choices.global.end())
+        {
+            choices.channel.push_back(badge);
+        }
+    }
+    return choices;
+}
+
+void fetchChoices(const QString &channelId, QObject *caller,
+                  std::function<void(const Choices &)> done)
+{
+    const QPointer<QObject> guard(caller);
+    load(caller, [guard, channelId, done](const QString &token) {
+        if (guard.isNull())
+        {
+            return;
+        }
+        if (token.isEmpty())
+        {
+            Choices none;
+            none.problem = QStringLiteral(
+                "Kein Browser-Login gespeichert - einrichten unter "
+                "Einstellungen → Knöpfe → Eingabe & Tabs, ganz unten.");
+            done(none);
+            return;
+        }
+
+        ask(
+            token,
+            QStringLiteral("query($id: ID!) { currentUser { "
+                           "selectedBadge { %1 } availableBadges { %1 } } "
+                           "user(id: $id) { self { selectedBadge { %1 } "
+                           "availableBadges { %1 } } } }")
+                .arg(BADGE_FIELDS),
+            {{"id", channelId}}, guard.data(),
+            [done](const QJsonObject &answer) {
+                done(parseChoices(answer));
+            },
+            [done](const QString &error) {
+                Choices none;
+                none.problem =
+                    QStringLiteral("Twitch war nicht zu erreichen: ") + error;
+                done(none);
+            });
+    });
+}
+
+void choose(const QString &channelId, const Badge &badge, bool global,
+            QObject *caller, std::function<void(const QString &)> done)
+{
+    const QPointer<QObject> guard(caller);
+    load(caller, [guard, channelId, badge, global, done](const QString &token) {
+        if (guard.isNull())
+        {
+            return;
+        }
+        if (token.isEmpty())
+        {
+            done(QStringLiteral("Kein Browser-Login gespeichert."));
+            return;
+        }
+
+        QJsonObject input{
+            {"badgeSetID", badge.setID},
+            {"badgeSetVersion", badge.version},
+        };
+        if (!global)
+        {
+            input.insert("channelID", channelId);
+        }
+        const auto query =
+            global ? QStringLiteral(
+                         "mutation($input: SelectGlobalBadgeInput!) { "
+                         "selectGlobalBadge(input: $input) { user { id } } }")
+                   : QStringLiteral(
+                         "mutation($input: SelectChannelBadgeInput!) { "
+                         "selectChannelBadge(input: $input) { user { id } } "
+                         "}");
+        ask(
+            token, query, {{"input", input}}, guard.data(),
+            [done](const QJsonObject &answer) {
+                const auto data = answer.value("data").toObject();
+                const bool chosen = !data.isEmpty() && !data.begin()
+                                                            ->toObject()
+                                                            .value("user")
+                                                            .toObject()
+                                                            .isEmpty();
+                const auto why = errorsOf(answer);
+                done(chosen && why.isEmpty()
+                         ? QString()
+                         : (why.isEmpty()
+                                ? QStringLiteral("Twitch hat es nicht "
+                                                 "übernommen.")
+                                : why));
+            },
+            [done](const QString &error) {
+                done(QStringLiteral("Twitch war nicht zu erreichen: ") + error);
+            });
+    });
+}
+
+void picture(const QString &url, QObject *caller,
+             std::function<void(const QPixmap &)> done)
+{
+    static QHash<QString, QPixmap> pictures;
+    if (url.isEmpty())
+    {
+        return;
+    }
+    if (auto it = pictures.constFind(url); it != pictures.constEnd())
+    {
+        done(*it);
+        return;
+    }
+
+    // A badge's picture is public - nothing of the login goes with it
+    NetworkRequest(QUrl(url), NetworkRequestType::Get)
+        .cache()
+        .caller(caller)
+        .onSuccess([url, done](const NetworkResult &result) {
+            QPixmap loaded;
+            if (loaded.loadFromData(result.getData()))
+            {
+                pictures.insert(url, loaded);
+                done(loaded);
+            }
+        })
+        .execute();
+}
 
 bool canStore()
 {

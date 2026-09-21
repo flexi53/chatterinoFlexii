@@ -20,6 +20,8 @@
 #include "Test.hpp"
 
 #include <QDir>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QFile>
 #include "controllers/moderation/AlertMute.hpp"
 #include "controllers/moderation/ModerationAssistant.hpp"
@@ -390,6 +392,9 @@ TEST(FlexiiButtons, EveryButtonStartsWhereItWas)
     EXPECT_TRUE(s->showFocusButton.getDefaultValue());
     EXPECT_TRUE(s->showModAssistButton.getDefaultValue());
     EXPECT_TRUE(s->showAlertMuteButton.getDefaultValue());
+
+    // Choosing a badge needs the browser login, so it waits to be asked for
+    EXPECT_FALSE(s->showBadgeButton.getDefaultValue());
 
     // Chatterino's own send button stays off, as it always was
     EXPECT_FALSE(s->showSendButton.getDefaultValue());
@@ -804,4 +809,73 @@ TEST(FlexiiWebBadges, OnlyWhatLooksLikeALoginIsKept)
     EXPECT_FALSE(webbadges::looksLikeToken("abcdefghijklmnopqrstuvwxyz12;4"));
     // Nothing is kept that does not look like one
     EXPECT_FALSE(webbadges::store("abc"));
+}
+
+namespace {
+
+QJsonObject badgeJson(const QString &set, const QString &version,
+                      const QString &title)
+{
+    return {
+        {"setID", set},
+        {"version", version},
+        {"title", title},
+        {"imageURL", "https://static-cdn.jtvnw.net/badges/" + set},
+    };
+}
+
+}  // namespace
+
+TEST(FlexiiWebBadges, TheAnswerIsReadIntoWhatCanBeChosen)
+{
+    const QJsonObject answer{
+        {"data",
+         QJsonObject{
+             {"currentUser",
+              QJsonObject{
+                  {"selectedBadge", badgeJson("premium", "1", "Prime Gaming")},
+                  {"availableBadges",
+                   QJsonArray{badgeJson("premium", "1", "Prime Gaming"),
+                              badgeJson("glhf-pledge", "1", "GLHF Pledge")}},
+              }},
+             {"user",
+              QJsonObject{
+                  {"self",
+                   QJsonObject{
+                       {"selectedBadge", QJsonValue()},
+                       {"availableBadges",
+                        QJsonArray{badgeJson("subscriber", "12", "1-Year Sub"),
+                                   badgeJson("moderator", "1", "Moderator"),
+                                   // Worn everywhere - not listed twice
+                                   badgeJson("premium", "1", "Prime Gaming")}},
+                   }},
+              }},
+         }},
+    };
+
+    const auto choices = webbadges::parseChoices(answer);
+    EXPECT_TRUE(choices.problem.isEmpty());
+    ASSERT_EQ(choices.channel.size(), 2);
+    EXPECT_EQ(choices.channel.at(0).title, "1-Year Sub");
+    EXPECT_EQ(choices.channel.at(1).setID, "moderator");
+    ASSERT_EQ(choices.global.size(), 2);
+    EXPECT_FALSE(choices.channelWorn.has_value());
+    ASSERT_TRUE(choices.globalWorn.has_value());
+
+    // Nothing of the channel's worn: the global one is what is seen
+    ASSERT_TRUE(choices.shown().has_value());
+    EXPECT_EQ(choices.shown()->setID, "premium");
+}
+
+TEST(FlexiiWebBadges, ALoginTwitchDoesNotTakeIsSaid)
+{
+    const QJsonObject answer{
+        {"data", QJsonObject{{"currentUser", QJsonValue()}}},
+        {"errors",
+         QJsonArray{QJsonObject{{"message", "unauthenticated"}}}},
+    };
+    const auto choices = webbadges::parseChoices(answer);
+    EXPECT_TRUE(choices.problem.contains("unauthenticated"));
+    EXPECT_TRUE(choices.channel.empty());
+    EXPECT_FALSE(choices.shown().has_value());
 }

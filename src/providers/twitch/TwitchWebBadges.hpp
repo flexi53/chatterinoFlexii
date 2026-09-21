@@ -5,9 +5,12 @@
 #pragma once
 
 #include <QJsonObject>
+#include <QPixmap>
 #include <QString>
 
 #include <functional>
+#include <optional>
+#include <vector>
 
 class QObject;
 
@@ -41,6 +44,53 @@ void ask(const QString &token, const QString &query,
          const QJsonObject &variables, QObject *caller,
          std::function<void(const QJsonObject &)> done,
          std::function<void(const QString &)> failed);
+
+/// A badge that can be worn
+struct Badge {
+    QString setID;
+    QString version;
+    QString title;
+    /// Where its picture is, twice the size it is shown at
+    QString image;
+
+    bool operator==(const Badge &other) const
+    {
+        return this->setID == other.setID && this->version == other.version;
+    }
+};
+
+/// What can be chosen in one channel: the badges of this channel - sub,
+/// bits, mod and the like - and those worn everywhere, with the one of each
+/// that is worn now
+struct Choices {
+    std::vector<Badge> channel;
+    std::vector<Badge> global;
+    std::optional<Badge> channelWorn;
+    std::optional<Badge> globalWorn;
+    /// Set when there is nothing to show - no login, or Twitch said no
+    QString problem;
+
+    /// What is seen next to the name here: the channel's badge, or the
+    /// global one when none of the channel's is worn
+    std::optional<Badge> shown() const;
+};
+
+/// Reads Twitch's answer to the question fetchChoices asks
+Choices parseChoices(const QJsonObject &answer);
+
+/// What can be chosen in the channel with the id @a channelId
+void fetchChoices(const QString &channelId, QObject *caller,
+                  std::function<void(const Choices &)> done);
+
+/// Wears @a badge - in the channel with the id @a channelId, or everywhere
+/// when @a global. @a done gets what went wrong, or nothing.
+void choose(const QString &channelId, const Badge &badge, bool global,
+            QObject *caller, std::function<void(const QString &)> done);
+
+/// The picture at @a url, once it is there - kept for as long as the app
+/// runs, as the same few badges come up again and again
+void picture(const QString &url, QObject *caller,
+             std::function<void(const QPixmap &)> done);
 
 /// Checks with the kept login what can be done: who it belongs to, which
 /// badges there are, and whether Twitch lets this app change one - by

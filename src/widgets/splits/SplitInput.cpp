@@ -8,12 +8,14 @@
 #include "Application.hpp"
 #include "common/enums/MessageOverflow.hpp"
 #include "common/QLogging.hpp"
+#include "controllers/accounts/AccountController.hpp"
 #include "controllers/commands/CommandController.hpp"
 #include "controllers/hotkeys/HotkeyController.hpp"
 #include "controllers/spellcheck/SpellChecker.hpp"
 #include "messages/Link.hpp"
 #include "messages/Message.hpp"
 #include "providers/kick/KickChannel.hpp"
+#include "providers/twitch/TwitchAccount.hpp"
 #include "providers/twitch/TwitchChannel.hpp"
 #include "providers/twitch/TwitchCommon.hpp"
 #include "providers/twitch/TwitchIrcServer.hpp"
@@ -24,6 +26,7 @@
 #include "util/LayoutCreator.hpp"
 #include "util/UiStyle.hpp"
 #include "widgets/buttons/AlertMuteButton.hpp"
+#include "widgets/buttons/BadgeButton.hpp"
 #include "widgets/buttons/ClearChatButton.hpp"
 #include "widgets/buttons/FocusButton.hpp"
 #include "widgets/buttons/LabelButton.hpp"
@@ -233,7 +236,8 @@ void SplitInput::initLayout()
                           &getSettings()->showClearChatButton,
                           &getSettings()->showFocusButton,
                           &getSettings()->showModAssistButton,
-                          &getSettings()->showAlertMuteButton})
+                          &getSettings()->showAlertMuteButton,
+                          &getSettings()->showBadgeButton})
     {
         setting->connect(
             [this](const bool, auto) {
@@ -278,6 +282,10 @@ void SplitInput::initLayout()
         this->ui_.alertMuteButton = new AlertMuteButton;
         this->ui_.alertMuteButton->hide();
 
+        // Which badge you wear here, as on twitch.tv
+        this->ui_.badgeButton = new BadgeButton;
+        this->ui_.badgeButton->hide();
+
         // In and out of the focus view, here as the input bar stays when
         // the tabs and split headers go
         this->ui_.focusButton = new FocusButton;
@@ -297,6 +305,7 @@ void SplitInput::initLayout()
         buttonRow->addWidget(this->ui_.alertMuteButton);
         buttonRow->addWidget(this->ui_.clearButton);
         buttonRow->addWidget(this->ui_.focusButton);
+        buttonRow->addWidget(this->ui_.badgeButton);
         buttonRow->addWidget(this->ui_.emoteButton);
         box->addLayout(buttonRow);
     }
@@ -462,6 +471,8 @@ void SplitInput::updateEmoteButton()
     this->ui_.modAssistButton->setFixedWidth(width);
     this->ui_.alertMuteButton->setFixedHeight(height);
     this->ui_.alertMuteButton->setFixedWidth(width);
+    this->ui_.badgeButton->setFixedHeight(height);
+    this->ui_.badgeButton->setFixedWidth(width);
 
     this->ui_.focusButton->setFixedHeight(height);
     this->ui_.focusButton->setFixedWidth(width);
@@ -509,6 +520,17 @@ void SplitInput::updateModAssistButton()
     // It silences the channel it stands in, like the shield beside it
     this->ui_.alertMuteButton->setChannel(
         twitch != nullptr ? twitch->getName() : QString{});
+
+    // Buttons -> Input: a badge can be worn wherever you can write - that
+    // is, logged in and once Twitch has said which channel this is
+    const bool canWrite =
+        twitch != nullptr && !twitch->roomId().isEmpty() &&
+        !getApp()->getAccounts()->twitch.getCurrent()->isAnon();
+    this->ui_.badgeButton->setChannel(
+        canWrite ? twitch->getName() : QString{},
+        canWrite ? twitch->roomId() : QString{});
+    this->ui_.badgeButton->setVisible(canWrite &&
+                                      getSettings()->showBadgeButton);
 }
 
 void SplitInput::openEmotePopup()

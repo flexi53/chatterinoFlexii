@@ -750,6 +750,8 @@ set(SOURCE_FILES
 
         widgets/buttons/AlertMuteButton.cpp
         widgets/buttons/AlertMuteButton.hpp
+        widgets/buttons/BadgeButton.cpp
+        widgets/buttons/BadgeButton.hpp
         widgets/buttons/Button.cpp
         widgets/buttons/Button.hpp
         widgets/buttons/ClearChatButton.cpp

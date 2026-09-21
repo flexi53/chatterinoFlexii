@@ -261,6 +261,14 @@ void ButtonsPage::initLayout(GeneralPageView &layout)
         ->addKeywords({"fokus", "focus"})
         ->addTo(layout);
 
+    SettingWidget::checkbox("Badge wechseln", s.showBadgeButton)
+        ->setTooltip("Zeigt, welches Badge du im Kanal trägst, und lässt "
+                     "dich wie auf twitch.tv ein anderes wählen - eins des "
+                     "Kanals oder eins für überall. Braucht den "
+                     "Browser-Login, siehe ganz unten; erscheint nur, wo du "
+                     "eingeloggt schreiben kannst.")
+        ->addKeywords({"badge", "abzeichen", "identität", "sub"})
+        ->addTo(layout);
     layout.addDescription(
         "Die nächsten beiden erscheinen ohnehin nur in Kanälen, in denen du "
         "Mod oder Streamer bist - sonst könnten sie nichts ausrichten.");
@@ -291,6 +299,8 @@ void ButtonsPage::initLayout(GeneralPageView &layout)
                               s.showModAssistButton.getDefaultValue());
                           s.showAlertMuteButton.setValue(
                               s.showAlertMuteButton.getDefaultValue());
+                          s.showBadgeButton.setValue(
+                              s.showBadgeButton.getDefaultValue());
                       });
 
     layout.addTitle("Oben in der Tab-Leiste");
@@ -325,12 +335,13 @@ void ButtonsPage::initLayout(GeneralPageView &layout)
 
 void ButtonsPage::initBadgeTest(GeneralPageView &layout)
 {
-    layout.addTitle("Badge wechseln (Test)");
+    layout.addTitle("Badge wechseln");
     layout.addDescription(
-        "Wie im Chat auf twitch.tv wählen, welches Badge du trägst. Twitch "
-        "bietet das anderen Apps nicht an - es geht nur mit dem Login deines "
-        "Browsers, so wie die Webseite selbst es macht. Das hier prüft erst "
-        "einmal, ob Twitch es zulässt; geändert wird dabei nichts.");
+        "Wie im Chat auf twitch.tv wählen, welches Badge du trägst - mit dem "
+        "Knopf „Badge wechseln“ oben, der in der Eingabezeile erscheint. "
+        "Twitch bietet das anderen Apps nicht an; es geht nur mit dem Login "
+        "deines Browsers, so wie die Webseite selbst es macht. „Testen“ "
+        "prüft, ob der Login taugt, und ändert dabei nichts.");
     layout.addDescription(
         "So kommst du an den Login: twitch.tv im Browser öffnen, angemeldet "
         "sein, mit Rechtsklick → Untersuchen die Entwicklertools öffnen, "
