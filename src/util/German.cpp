@@ -38,8 +38,6 @@ const QHash<QString, QString> &words()
     return words;
 }
 
-/// Writes texts with no entry to the file in CHATTIFLEXII_GERMAN_MISSING,
-/// each once
 /// @a german broken into lines no longer than the longest line of
 /// @a english, on spaces - so a text that was kept narrow stays narrow
 QString brokenLike(const QString &german, const QString &english)
@@ -76,6 +74,8 @@ QString brokenLike(const QString &german, const QString &english)
     return broken;
 }
 
+/// Writes texts with no entry to the file in CHATTIFLEXII_GERMAN_MISSING,
+/// each once
 void noteMissing(const QString &english)
 {
     static const QString path =

@@ -267,9 +267,9 @@ void LookPage::buildStyleTab(GeneralPageView &layout)
 
     layout.addTitle("Fokus-Ansicht");
     layout.addDescription(
-        "Blendet in einem Fenster die Tabs, die Knöpfe daneben und die "
-        "Split-Köpfe aus - übrig bleiben die Chats und die Tab-Gruppen mit "
-        "„Always Show Group“, etwa deine wichtigsten Kanäle. Ein- und "
+        "Blendet in einem Fenster die Tabs und die Knöpfe daneben aus - "
+        "übrig bleiben die Chats mit ihrer Titelleiste und die Tab-Gruppen "
+        "mit „Always Show Group“, etwa deine wichtigsten Kanäle. Ein- und "
         "ausschalten geht mit dem Knopf mit den vier Ecken unten in der "
         "Eingabezeile, neben dem Emote-Knopf - oder per Rechtsklick auf die "
         "Tab-Leiste. Das gilt nur für das Fenster, in dem du ihn drückst; "

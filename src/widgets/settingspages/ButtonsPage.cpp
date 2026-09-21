@@ -70,7 +70,7 @@ void ButtonsPage::initLayout(GeneralPageView &layout)
         ->addKeywords({"clear", "mülleimer", "leeren"})
         ->addTo(layout);
     SettingWidget::checkbox("Fokus-Ansicht", s.showFocusButton)
-        ->setTooltip("Blendet Tabs, Knöpfe und Split-Köpfe aus und wieder "
+        ->setTooltip("Blendet Tabs und Knöpfe aus und wieder "
                      "ein - nur in diesem Fenster.")
         ->addKeywords({"fokus", "focus"})
         ->addTo(layout);

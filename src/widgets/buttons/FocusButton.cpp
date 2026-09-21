@@ -46,9 +46,8 @@ bool FocusButton::active() const
 void FocusButton::refresh()
 {
     this->setToolTip(this->active()
-                         ? QStringLiteral("Fokus beenden - alle Tabs, Knöpfe "
-                                          "und Split-Köpfe in diesem Fenster "
-                                          "zeigen")
+                         ? QStringLiteral("Fokus beenden - alle Tabs und "
+                                          "Knöpfe in diesem Fenster zeigen")
                          : QStringLiteral("Fokus-Ansicht für dieses Fenster - "
                                           "nur die Chats und die Tab-Gruppen, "
                                           "die immer angezeigt werden"));

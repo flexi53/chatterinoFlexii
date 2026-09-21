@@ -1243,10 +1243,10 @@ void Split::showOverlayWindow()
 
 void Split::refreshFocusView()
 {
-    auto *window = dynamic_cast<Window *>(this->window());
-    const bool focus =
-        window != nullptr && window->getNotebook().isFocusMode();
-    this->header_->setVisible(!focus);
+    // The header stays in the focus view: it names the chat and carries
+    // the title and the curve, which is what one looks at there. Only the
+    // tabs and the buttons beside them step back.
+    this->header_->setVisible(true);
     this->input_->refreshFocusButton();
 }
 
