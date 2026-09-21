@@ -36,6 +36,7 @@ public:
 
 protected:
     void paintEvent(QPaintEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
 
 private:
     struct Colors {
@@ -52,7 +53,10 @@ private:
 
     void rebuild();
     void wear(const webbadges::Badge &badge, bool global);
+    /// Sizes it to what it holds, then follow()
     void place();
+    /// Next to the button, on its screen, by the size it has now
+    void follow();
 
     QString channelName_;
     QString channelId_;

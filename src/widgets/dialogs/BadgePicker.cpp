@@ -14,6 +14,7 @@
 #include <QAbstractButton>
 #include <QEvent>
 #include <QGridLayout>
+#include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPainter>
@@ -225,9 +226,18 @@ BadgePicker::BadgePicker(const QString &channelName, const QString &channelId,
 
     this->rebuild();
 
-    if (auto *screen = anchor != nullptr ? anchor->screen() : nullptr)
+    if (anchor != nullptr)
     {
-        this->setScreen(screen);
+        auto *screen = QGuiApplication::screenAt(
+            anchor->mapToGlobal(anchor->rect().center()));
+        if (screen == nullptr)
+        {
+            screen = anchor->screen();
+        }
+        if (screen != nullptr)
+        {
+            this->setScreen(screen);
+        }
     }
     this->place();
 }
@@ -429,15 +439,33 @@ void BadgePicker::wear(const webbadges::Badge &badge, bool global)
 void BadgePicker::place()
 {
     this->adjustSize();
+    this->follow();
+}
+
+void BadgePicker::follow()
+{
     if (this->anchor_.isNull())
     {
         return;
     }
     const QRect button(this->anchor_->mapToGlobal(QPoint(0, 0)),
                        this->anchor_->size());
-    const auto *screen = this->anchor_->screen();
+    // The screen the button is seen on, found by where it is
+    auto *screen = QGuiApplication::screenAt(button.center());
+    if (screen == nullptr)
+    {
+        screen = this->anchor_->screen();
+    }
     const auto area = screen != nullptr ? screen->availableGeometry() : button;
-    this->move(BadgeButton::placeMenu(button, this->sizeHint(), area));
+    // Placed by the size it has - it grows once the badges are there, and
+    // has to move up with it rather than hang down past the button
+    this->move(BadgeButton::placeMenu(button, this->size(), area));
+}
+
+void BadgePicker::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    this->follow();
 }
 
 void BadgePicker::paintEvent(QPaintEvent * /*event*/)
