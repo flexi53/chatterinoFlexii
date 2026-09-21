@@ -62,6 +62,27 @@ QString titlesOf(const QJsonArray &badges)
 const auto BADGE_FIELDS =
     QStringLiteral("setID version title imageURL(size: DOUBLE)");
 
+/// How long a choice made here counts over what Twitch says
+constexpr int RECENT_SECONDS = 180;
+
+struct Recent {
+    Badge badge;
+    QDateTime when;
+};
+
+/// What was chosen here lately - per channel, and the one for everywhere
+QHash<QString, Recent> &recentChannel()
+{
+    static QHash<QString, Recent> recent;
+    return recent;
+}
+
+std::optional<Recent> &recentGlobal()
+{
+    static std::optional<Recent> recent;
+    return recent;
+}
+
 std::optional<Badge> badgeOf(const QJsonValue &value)
 {
     const auto object = value.toObject();
@@ -137,6 +158,36 @@ Choices parseChoices(const QJsonObject &answer)
     return choices;
 }
 
+void remember(const QString &channelId, const Badge &badge, bool global,
+              const QDateTime &now)
+{
+    if (global)
+    {
+        recentGlobal() = Recent{badge, now};
+    }
+    else
+    {
+        recentChannel().insert(channelId, Recent{badge, now});
+    }
+}
+
+void applyRecent(Choices &choices, const QString &channelId,
+                 const QDateTime &now)
+{
+    const auto fresh = [&now](const Recent &recent) {
+        return recent.when.secsTo(now) < RECENT_SECONDS;
+    };
+    if (auto it = recentChannel().constFind(channelId);
+        it != recentChannel().constEnd() && fresh(*it))
+    {
+        choices.channelWorn = it->badge;
+    }
+    if (recentGlobal() && fresh(*recentGlobal()))
+    {
+        choices.globalWorn = recentGlobal()->badge;
+    }
+}
+
 void fetchChoices(const QString &channelId, QObject *caller,
                   std::function<void(const Choices &)> done)
 {
@@ -164,8 +215,13 @@ void fetchChoices(const QString &channelId, QObject *caller,
                            "availableBadges { %1 } } } }")
                 .arg(BADGE_FIELDS),
             {{"id", channelId}}, guard.data(),
-            [done](const QJsonObject &answer) {
-                done(parseChoices(answer));
+            [done, channelId](const QJsonObject &answer) {
+                auto choices = parseChoices(answer);
+                if (choices.problem.isEmpty())
+                {
+                    applyRecent(choices, channelId);
+                }
+                done(choices);
             },
             [done](const QString &error) {
                 Choices none;
@@ -209,7 +265,7 @@ void choose(const QString &channelId, const Badge &badge, bool global,
                          "}");
         ask(
             token, query, {{"input", input}}, guard.data(),
-            [done](const QJsonObject &answer) {
+            [done, channelId, badge, global](const QJsonObject &answer) {
                 const auto data = answer.value("data").toObject();
                 const bool chosen = !data.isEmpty() && !data.begin()
                                                             ->toObject()
@@ -217,6 +273,10 @@ void choose(const QString &channelId, const Badge &badge, bool global,
                                                             .toObject()
                                                             .isEmpty();
                 const auto why = errorsOf(answer);
+                if (chosen && why.isEmpty())
+                {
+                    remember(channelId, badge, global);
+                }
                 done(chosen && why.isEmpty()
                          ? QString()
                          : (why.isEmpty()

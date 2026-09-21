@@ -902,3 +902,38 @@ TEST(FlexiiWebBadges, TheMenuStaysOnTheScreenOfItsButton)
     const QRect right(1910, 2000, 24, 18);
     EXPECT_EQ(BadgeButton::placeMenu(right, menu, lower).x(), 1920 - 220);
 }
+
+TEST(FlexiiWebBadges, AChoiceJustMadeCountsUntilTwitchCatchesUp)
+{
+    const auto now = QDateTime::currentDateTimeUtc();
+    const webbadges::Badge sub{.setID = "subscriber",
+                               .version = "12",
+                               .title = "1-Year Sub",
+                               .image = {}};
+    const webbadges::Badge prime{
+        .setID = "premium", .version = "1", .title = "Prime", .image = {}};
+
+    // Twitch still says nothing is worn in the channel
+    webbadges::Choices choices;
+    webbadges::remember("flexii-test-channel", sub, false, now);
+    webbadges::applyRecent(choices, "flexii-test-channel", now.addSecs(20));
+    ASSERT_TRUE(choices.channelWorn.has_value());
+    EXPECT_EQ(choices.channelWorn->title, "1-Year Sub");
+
+    // Only for that channel
+    webbadges::Choices elsewhere;
+    webbadges::applyRecent(elsewhere, "flexii-other-channel", now);
+    EXPECT_FALSE(elsewhere.channelWorn.has_value());
+
+    // Long after, what Twitch says counts again
+    webbadges::Choices later;
+    webbadges::applyRecent(later, "flexii-test-channel", now.addSecs(600));
+    EXPECT_FALSE(later.channelWorn.has_value());
+
+    // One worn everywhere counts in every channel
+    webbadges::remember({}, prime, true, now);
+    webbadges::Choices anywhere;
+    webbadges::applyRecent(anywhere, "flexii-other-channel", now);
+    ASSERT_TRUE(anywhere.globalWorn.has_value());
+    EXPECT_EQ(anywhere.globalWorn->setID, "premium");
+}

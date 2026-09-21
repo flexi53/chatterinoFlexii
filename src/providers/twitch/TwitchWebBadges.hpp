@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <QDateTime>
 #include <QJsonObject>
 #include <QPixmap>
 #include <QString>
@@ -81,6 +82,14 @@ Choices parseChoices(const QJsonObject &answer);
 /// What can be chosen in the channel with the id @a channelId
 void fetchChoices(const QString &channelId, QObject *caller,
                   std::function<void(const Choices &)> done);
+
+/// Twitch takes a moment before it tells what was just chosen - until then
+/// the choice made here is what counts. @a remember keeps one, @a applyRecent
+/// puts those younger than a few minutes over what Twitch said.
+void remember(const QString &channelId, const Badge &badge, bool global,
+              const QDateTime &now = QDateTime::currentDateTimeUtc());
+void applyRecent(Choices &choices, const QString &channelId,
+                 const QDateTime &now = QDateTime::currentDateTimeUtc());
 
 /// Wears @a badge - in the channel with the id @a channelId, or everywhere
 /// when @a global. @a done gets what went wrong, or nothing.

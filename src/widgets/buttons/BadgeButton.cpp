@@ -4,17 +4,13 @@
 
 #include "widgets/buttons/BadgeButton.hpp"
 
+#include "common/Channel.hpp"
+#include "providers/twitch/TwitchChannel.hpp"
 #include "singletons/Theme.hpp"
-#include "widgets/dialogs/SettingsDialog.hpp"
+#include "widgets/dialogs/BadgePicker.hpp"
 
-#include <QActionGroup>
-#include <QIcon>
-#include <QMenu>
 #include <QPainter>
 #include <QPainterPath>
-#include <QPointer>
-#include <QScreen>
-#include <QToolTip>
 
 #include <algorithm>
 
@@ -26,190 +22,120 @@ BadgeButton::BadgeButton(BaseWidget *parent)
     this->refreshTooltip();
 
     QObject::connect(this, &Button::leftClicked, this, [this] {
-        this->refresh(true);
+        this->openPicker();
     });
 }
 
-void BadgeButton::setChannel(const QString &name, const QString &id)
+void BadgeButton::setChannel(const std::shared_ptr<Channel> &channel)
 {
-    if (name == this->name_ && id == this->id_)
+    if (channel == this->channel_.lock())
     {
         return;
     }
-    this->name_ = name;
-    this->id_ = id;
-    if (this->knownFor_ != id)
-    {
-        this->worn_.reset();
-        this->picture_ = {};
-    }
+    this->channel_ = channel;
+    this->name_ = channel != nullptr ? channel->getName() : QString();
+    this->knownFor_.clear();
+    this->worn_.reset();
+    this->picture_ = {};
     this->refreshTooltip();
     this->update();
+
+    // Twitch says which channel it is a moment after it was joined - with
+    // the chat's modes, so that is when to ask what is worn there
+    this->joined_.reset();
+    if (auto *twitch = dynamic_cast<TwitchChannel *>(channel.get()))
+    {
+        this->joined_.emplace(twitch->roomModesChanged.connect([this] {
+            QMetaObject::invokeMethod(
+                this,
+                [this] {
+                    if (this->isVisible() &&
+                        this->knownFor_ != this->channelId())
+                    {
+                        this->refresh();
+                    }
+                },
+                Qt::QueuedConnection);
+        }));
+    }
 
     // Only asked while it is to be seen - a hidden one costs nothing
     if (this->isVisible())
     {
-        this->refresh(false);
+        this->refresh();
     }
+}
+
+QString BadgeButton::channelId() const
+{
+    auto channel = this->channel_.lock();
+    auto *twitch = dynamic_cast<TwitchChannel *>(channel.get());
+    return twitch != nullptr ? twitch->roomId() : QString();
 }
 
 void BadgeButton::showEvent(QShowEvent *event)
 {
     Button::showEvent(event);
-    if (this->knownFor_ != this->id_)
+    if (this->knownFor_.isEmpty() || this->knownFor_ != this->channelId())
     {
-        this->refresh(false);
+        this->refresh();
     }
 }
 
-void BadgeButton::refresh(bool thenOpen)
+void BadgeButton::refresh()
 {
-    if (this->id_.isEmpty() || this->asking_)
+    const auto id = this->channelId();
+    if (id.isEmpty() || this->asking_)
     {
         return;
     }
     this->asking_ = true;
-    const auto id = this->id_;
-    webbadges::fetchChoices(
-        id, this, [this, id, thenOpen](const webbadges::Choices &choices) {
-            this->asking_ = false;
-            if (id != this->id_)
-            {
-                return;
-            }
-            if (choices.problem.isEmpty())
-            {
-                this->knownFor_ = id;
-                this->showWorn(choices.shown());
-            }
-            if (thenOpen)
-            {
-                this->openMenu(choices);
-            }
-        });
+    webbadges::fetchChoices(id, this,
+                            [this, id](const webbadges::Choices &choices) {
+                                this->asking_ = false;
+                                if (id != this->channelId())
+                                {
+                                    return;
+                                }
+                                if (choices.problem.isEmpty())
+                                {
+                                    this->knownFor_ = id;
+                                    this->showWorn(choices.shown());
+                                }
+                                if (!this->picker_.isNull())
+                                {
+                                    this->picker_->setChoices(choices);
+                                }
+                            });
 }
 
-void BadgeButton::openMenu(const webbadges::Choices &choices)
+void BadgeButton::openPicker()
 {
-    auto *menu = new QMenu(this);
-    menu->setAttribute(Qt::WA_DeleteOnClose);
-
-    if (!choices.problem.isEmpty())
+    if (!this->picker_.isNull())
     {
-        menu->addAction(choices.problem)->setEnabled(false);
-        menu->addAction("Einstellungen öffnen", this, [this] {
-            SettingsDialog::showDialog(this);
-        });
-        this->popup(menu);
+        this->picker_->close();
         return;
     }
 
-    // Twitch keeps one of each: one of the channel's, and one worn
-    // everywhere - both are seen next to the name
-    const auto addSection =
-        [this, menu](const QString &title,
-                     const std::vector<webbadges::Badge> &badges,
-                     const std::optional<webbadges::Badge> &worn, bool global) {
-            // A heading of its own - the Mac leaves out the text of a
-            // menu section
-            if (!menu->isEmpty())
-            {
-                menu->addSeparator();
-            }
-            auto *heading = menu->addAction(title);
-            heading->setEnabled(false);
-            auto font = heading->font();
-            font.setBold(true);
-            heading->setFont(font);
-            if (badges.empty())
-            {
-                menu->addAction("Keins zur Auswahl")->setEnabled(false);
-                return;
-            }
-            auto *group = new QActionGroup(menu);
-            for (const auto &badge : badges)
-            {
-                auto *action = menu->addAction(
-                    badge.title.isEmpty() ? badge.setID : badge.title);
-                action->setCheckable(true);
-                action->setChecked(worn && *worn == badge);
-                // The badge's picture beside its name, on the Mac too
-                action->setIconVisibleInMenu(true);
-                group->addAction(action);
-                QObject::connect(action, &QAction::triggered, this,
-                                 [this, badge, global] {
-                                     this->wear(badge, global);
-                                 });
+    const auto id = this->channelId();
+    auto *picker = new BadgePicker(this->name_, id, this);
+    this->picker_ = picker;
+    picker->onWorn = [this](const std::optional<webbadges::Badge> &shown) {
+        this->showWorn(shown);
+    };
+    picker->show();
 
-                const QPointer<QAction> guard(action);
-                webbadges::picture(badge.image, action,
-                                   [guard](const QPixmap &picture) {
-                                       if (!guard.isNull())
-                                       {
-                                           guard->setIcon(QIcon(picture));
-                                       }
-                                   });
-            }
-        };
-
-    addSection(QStringLiteral("Hier in #%1").arg(this->name_), choices.channel,
-               choices.channelWorn, false);
-    addSection(QStringLiteral("Überall"), choices.global, choices.globalWorn,
-               true);
-
-    this->popup(menu);
-}
-
-QPoint BadgeButton::placeMenu(const QRect &button, const QSize &menu,
-                              const QRect &screen)
-{
-    // Upwards, as the input bar sits at the bottom - downwards only when
-    // the screen ends above it
-    int y = button.top() - menu.height();
-    if (y < screen.top())
+    if (id.isEmpty())
     {
-        y = button.bottom() + 1;
+        webbadges::Choices waiting;
+        waiting.problem = QStringLiteral(
+            "Der Kanal lädt noch - gleich noch einmal versuchen.");
+        picker->setChoices(waiting);
+        return;
     }
-    const int x = std::max(
-        screen.left(),
-        std::min(button.left(), screen.left() + screen.width() - menu.width()));
-    y = std::max(screen.top(),
-                 std::min(y, screen.top() + screen.height() - menu.height()));
-    return {x, y};
-}
-
-void BadgeButton::popup(QMenu *menu)
-{
-    const QRect button(this->mapToGlobal(QPoint(0, 0)), this->size());
-    auto *screen = this->screen();
-    const auto area = screen != nullptr ? screen->availableGeometry() : button;
-    // The Mac would otherwise put a menu's window on its main screen first
-    if (screen != nullptr)
-    {
-        menu->setScreen(screen);
-    }
-    menu->popup(placeMenu(button, menu->sizeHint(), area));
-}
-
-void BadgeButton::wear(const webbadges::Badge &badge, bool global)
-{
-    const auto id = this->id_;
-    webbadges::choose(
-        id, badge, global, this, [this, id](const QString &problem) {
-            if (!problem.isEmpty())
-            {
-                QToolTip::showText(
-                    this->mapToGlobal(QPoint(0, 0)),
-                    QStringLiteral("Badge nicht gewechselt: ") + problem, this);
-                return;
-            }
-            // What is seen next to the name may have changed either way
-            if (id == this->id_)
-            {
-                this->knownFor_.clear();
-                this->refresh(false);
-            }
-        });
+    // Asked afresh each time it opens, so a badge won meanwhile is there
+    this->asking_ = false;
+    this->refresh();
 }
 
 void BadgeButton::showWorn(const std::optional<webbadges::Badge> &badge)
@@ -240,15 +166,35 @@ void BadgeButton::refreshTooltip()
                            : QStringLiteral("#%1").arg(this->name_);
     if (this->worn_)
     {
-        this->setToolTip(QStringLiteral("Badge wählen - in %1 trägst du "
+        this->setToolTip(QStringLiteral("Chat-Identität - in %1 trägst du "
                                         "gerade „%2“.")
                              .arg(where, this->worn_->title));
     }
     else
     {
         this->setToolTip(
-            QStringLiteral("Badge wählen, das du in %1 trägst").arg(where));
+            QStringLiteral("Chat-Identität: Badge wählen, das du in %1 "
+                           "trägst")
+                .arg(where));
     }
+}
+
+QPoint BadgeButton::placeMenu(const QRect &button, const QSize &menu,
+                              const QRect &screen)
+{
+    // Upwards, as the input bar sits at the bottom - downwards only when
+    // the screen ends above it
+    int y = button.top() - menu.height();
+    if (y < screen.top())
+    {
+        y = button.bottom() + 1;
+    }
+    const int x = std::max(
+        screen.left(),
+        std::min(button.left(), screen.left() + screen.width() - menu.width()));
+    y = std::max(screen.top(),
+                 std::min(y, screen.top() + screen.height() - menu.height()));
+    return {x, y};
 }
 
 void BadgeButton::paintContent(QPainter &painter)
