@@ -396,6 +396,9 @@ TEST(FlexiiButtons, EveryButtonStartsWhereItWas)
 
     // Choosing a badge needs the browser login, so it waits to be asked for
     EXPECT_FALSE(s->showBadgeButton.getDefaultValue());
+    // Its window opens small, both parts folded
+    EXPECT_FALSE(s->badgePickerChannelOpen.getDefaultValue());
+    EXPECT_FALSE(s->badgePickerGlobalOpen.getDefaultValue());
 
     // Chatterino's own send button stays off, as it always was
     EXPECT_FALSE(s->showSendButton.getDefaultValue());

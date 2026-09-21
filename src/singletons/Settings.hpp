@@ -1128,6 +1128,11 @@ public:
     /// Choosing the badge you wear - needs the browser login, so off until
     /// asked for
     BoolSetting showBadgeButton = {"/ui/buttons/badge", false};
+    /// Which parts of the chat identity window are open - both folded to
+    /// start, so it opens small
+    BoolSetting badgePickerChannelOpen = {"/ui/badgePicker/channelOpen",
+                                          false};
+    BoolSetting badgePickerGlobalOpen = {"/ui/badgePicker/globalOpen", false};
 
     struct {
         // this isn't shown in the UI

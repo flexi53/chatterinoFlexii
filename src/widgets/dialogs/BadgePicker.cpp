@@ -7,6 +7,7 @@
 #include "Application.hpp"
 #include "controllers/accounts/AccountController.hpp"
 #include "providers/twitch/TwitchAccount.hpp"
+#include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
 #include "widgets/buttons/BadgeButton.hpp"
 #include "widgets/dialogs/SettingsDialog.hpp"
@@ -102,6 +103,140 @@ private:
     bool worn_;
     QColor hover_;
     QColor accent_;
+    QPixmap picture_;
+};
+
+/// The head of a part of the window, to fold it open and shut: an arrow,
+/// the heading and where it counts, and at the right the badge worn, so it
+/// says what is chosen even while folded
+class SectionHeader : public QAbstractButton
+{
+public:
+    SectionHeader(QString heading, QString where,
+                  const std::optional<webbadges::Badge> &worn, bool open,
+                  QColor text, QColor dim, QColor hover, QWidget *parent)
+        : QAbstractButton(parent)
+        , heading_(std::move(heading))
+        , where_(std::move(where))
+        , open_(open)
+        , text_(std::move(text))
+        , dim_(std::move(dim))
+        , hover_(std::move(hover))
+    {
+        this->setFixedHeight(40);
+        this->setCursor(Qt::PointingHandCursor);
+        this->setAttribute(Qt::WA_Hover);
+        this->setToolTip(open ? QStringLiteral("Einklappen")
+                              : QStringLiteral("Aufklappen"));
+        if (worn)
+        {
+            this->wornTitle_ = worn->title;
+            const QPointer<SectionHeader> guard(this);
+            webbadges::picture(worn->image, this,
+                               [guard](const QPixmap &picture) {
+                                   if (!guard.isNull())
+                                   {
+                                       guard->picture_ = picture;
+                                       guard->update();
+                                   }
+                               });
+        }
+    }
+
+protected:
+    bool event(QEvent *event) override
+    {
+        if (event->type() == QEvent::HoverEnter ||
+            event->type() == QEvent::HoverLeave)
+        {
+            this->update();
+        }
+        return QAbstractButton::event(event);
+    }
+
+    void paintEvent(QPaintEvent * /*event*/) override
+    {
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing);
+        painter.setRenderHint(QPainter::SmoothPixmapTransform);
+
+        const QRectF box(this->rect());
+        if (this->underMouse())
+        {
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(this->hover_);
+            painter.drawRoundedRect(box, 6, 6);
+        }
+
+        // The arrow: pointing right while folded, down while open
+        const QPointF tip(12, box.center().y());
+        QPainterPath arrow;
+        if (this->open_)
+        {
+            arrow.moveTo(tip + QPointF(-4, -2));
+            arrow.lineTo(tip + QPointF(0, 2));
+            arrow.lineTo(tip + QPointF(4, -2));
+        }
+        else
+        {
+            arrow.moveTo(tip + QPointF(-2, -4));
+            arrow.lineTo(tip + QPointF(2, 0));
+            arrow.lineTo(tip + QPointF(-2, 4));
+        }
+        painter.setPen(
+            QPen(this->dim_, 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawPath(arrow);
+
+        // What is worn, at the right
+        qreal right = box.right() - 8;
+        if (!this->picture_.isNull())
+        {
+            const QRectF picture(right - 20, box.center().y() - 10, 20, 20);
+            painter.drawPixmap(picture, this->picture_,
+                               QRectF(this->picture_.rect()));
+            right = picture.left() - 6;
+        }
+        const auto plain = this->font();
+        QFontMetricsF plainMetrics(plain);
+        const auto worn = plainMetrics.elidedText(this->wornTitle_.isEmpty()
+                                                      ? QStringLiteral("keins")
+                                                      : this->wornTitle_,
+                                                  Qt::ElideRight, 110);
+        const auto wornWidth = plainMetrics.horizontalAdvance(worn);
+        painter.setFont(plain);
+        painter.setPen(this->dim_);
+        painter.drawText(
+            QRectF(right - wornWidth, box.top(), wornWidth + 1, box.height()),
+            Qt::AlignVCenter | Qt::AlignRight, worn);
+        right -= wornWidth + 10;
+
+        // The heading, and under it where it counts
+        auto bold = plain;
+        bold.setBold(true);
+        const QRectF text(24, box.top() + 3, right - 24, box.height() - 6);
+        painter.setFont(bold);
+        painter.setPen(this->text_);
+        painter.drawText(text, Qt::AlignLeft | Qt::AlignTop,
+                         QFontMetricsF(bold).elidedText(
+                             this->heading_, Qt::ElideRight, text.width()));
+        auto small = plain;
+        small.setPointSizeF(plain.pointSizeF() - 1);
+        painter.setFont(small);
+        painter.setPen(this->dim_);
+        painter.drawText(text, Qt::AlignLeft | Qt::AlignBottom,
+                         QFontMetricsF(small).elidedText(
+                             this->where_, Qt::ElideRight, text.width()));
+    }
+
+private:
+    QString heading_;
+    QString where_;
+    bool open_;
+    QColor text_;
+    QColor dim_;
+    QColor hover_;
+    QString wornTitle_;
     QPixmap picture_;
 };
 
@@ -216,7 +351,7 @@ BadgePicker::BadgePicker(const QString &channelName, const QString &channelId,
 
     this->content_ = new QVBoxLayout;
     this->content_->setContentsMargins(0, 0, 0, 0);
-    this->content_->setSpacing(10);
+    this->content_->setSpacing(6);
     outer->addLayout(this->content_);
 
     this->status_ = new QLabel;
@@ -320,19 +455,25 @@ void BadgePicker::rebuild()
                              const QString &heading, const QString &where,
                              const std::vector<webbadges::Badge> &badges,
                              const std::optional<webbadges::Badge> &worn,
-                             bool global) {
+                             bool global, BoolSetting &open) {
         auto *box = new QWidget;
         auto *layout = new QVBoxLayout(box);
-        layout->setContentsMargins(0, 4, 0, 0);
+        layout->setContentsMargins(0, 0, 0, 0);
         layout->setSpacing(2);
 
-        auto *title = new QLabel(heading);
-        auto font = title->font();
-        font.setBold(true);
-        title->setFont(font);
-        title->setStyleSheet(QStringLiteral("color: %1").arg(c.text.name()));
-        layout->addWidget(title);
-        layout->addWidget(dimLabel(where));
+        // Folded shut it is only its head - what is worn is still there
+        auto *head = new SectionHeader(heading, where, worn, open.getValue(),
+                                       c.text, c.dim, c.hover, box);
+        QObject::connect(head, &QAbstractButton::clicked, this, [this, &open] {
+            open.setValue(!open.getValue());
+            this->rebuild();
+            this->place();
+        });
+        layout->addWidget(head);
+        if (!open.getValue())
+        {
+            return box;
+        }
 
         if (badges.empty())
         {
@@ -341,7 +482,7 @@ void BadgePicker::rebuild()
         }
 
         auto *grid = new QGridLayout;
-        grid->setContentsMargins(0, 6, 0, 0);
+        grid->setContentsMargins(4, 4, 0, 4);
         grid->setHorizontalSpacing(6);
         grid->setVerticalSpacing(6);
         int index = 0;
@@ -361,14 +502,14 @@ void BadgePicker::rebuild()
         return box;
     };
 
-    this->content_->addWidget(
-        section(QStringLiteral("Kanal-Abzeichen"),
-                QStringLiteral("Nur in #%1").arg(this->channelName_),
-                choices.channel, choices.channelWorn, false));
-    this->content_->addWidget(
-        section(QStringLiteral("Globale Abzeichen"),
-                QStringLiteral("In allen Kanälen, neben dem Kanal-Abzeichen"),
-                choices.global, choices.globalWorn, true));
+    auto *s = getSettings();
+    this->content_->addWidget(section(
+        QStringLiteral("Kanal-Abzeichen"),
+        QStringLiteral("Nur in #%1").arg(this->channelName_), choices.channel,
+        choices.channelWorn, false, s->badgePickerChannelOpen));
+    this->content_->addWidget(section(
+        QStringLiteral("Globale Abzeichen"), QStringLiteral("In allen Kanälen"),
+        choices.global, choices.globalWorn, true, s->badgePickerGlobalOpen));
 }
 
 void BadgePicker::wear(const webbadges::Badge &badge, bool global)
