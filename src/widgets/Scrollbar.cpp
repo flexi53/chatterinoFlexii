@@ -8,6 +8,7 @@
 #include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
 #include "singletons/WindowManager.hpp"
+#include "util/UiStyle.hpp"
 #include "widgets/helper/ChannelView.hpp"
 
 #include <QMouseEvent>
@@ -37,7 +38,8 @@ Scrollbar::Scrollbar(size_t messagesLimit, ChannelView *parent)
     , currentValueAnimation_(this, "currentValue_")
     , highlights_(messagesLimit)
 {
-    this->resize(static_cast<int>(16 * this->scale()), 100);
+    this->resize(static_cast<int>(uistyle::scrollbarWidth() * this->scale()),
+                 100);
     this->currentValueAnimation_.setDuration(150);
     this->currentValueAnimation_.setEasingCurve(
         QEasingCurve(QEasingCurve::OutCubic));
@@ -59,6 +61,21 @@ Scrollbar::Scrollbar(size_t messagesLimit, ChannelView *parent)
             this->update();
         },
         this->signalHolder);
+
+    // Look -> Style: Compact is narrower, and the bar stays at the right
+    // edge of the chat
+    getSettings()->uiStyle.connect(
+        [this] {
+            const auto width =
+                static_cast<int>(uistyle::scrollbarWidth() * this->scale());
+            if (auto *chat = this->parentWidget())
+            {
+                this->setGeometry(chat->width() - width, 0, width,
+                                  chat->height());
+            }
+            this->update();
+        },
+        this->signalHolder, false);
 }
 
 boost::circular_buffer<ScrollbarHighlight> Scrollbar::getHighlights() const
@@ -303,7 +320,15 @@ void Scrollbar::paintEvent(QPaintEvent * /*event*/)
     bool enableElevatedMessageHighlights =
         getSettings()->enableElevatedMessageHighlight;
 
-    if (this->shouldShowThumb())
+    // Look -> Style: Flat shows the handle only while the mouse is over the
+    // chat, or on the bar itself
+    const auto *chat = this->parentWidget();
+    const bool flatHidden =
+        uistyle::flat() && !mouseOver &&
+        this->mouseDownLocation_ != MouseLocation::InsideThumb &&
+        !(chat != nullptr && chat->underMouse());
+
+    if (this->shouldShowThumb() && !flatHidden)
     {
         this->thumbRect_.setX(xOffset);
 
@@ -314,7 +339,7 @@ void Scrollbar::paintEvent(QPaintEvent * /*event*/)
 
         // Modern rounds the handle off, the way it rounds the tabs and the
         // input; classic keeps the square bar Chatterino has always drawn
-        if (getSettings()->uiStyle == UiStyle::Modern)
+        if (uistyle::modern())
         {
             painter.save();
             painter.setRenderHint(QPainter::Antialiasing, true);
@@ -391,7 +416,8 @@ void Scrollbar::paintEvent(QPaintEvent * /*event*/)
 
 void Scrollbar::resizeEvent(QResizeEvent * /*event*/)
 {
-    this->resize(static_cast<int>(16 * this->scale()), this->height());
+    this->resize(static_cast<int>(uistyle::scrollbarWidth() * this->scale()),
+                 this->height());
 }
 
 void Scrollbar::mouseMoveEvent(QMouseEvent *event)

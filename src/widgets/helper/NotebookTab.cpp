@@ -17,6 +17,7 @@
 #include "providers/twitch/ProfilePictures.hpp"
 #include "util/Helpers.hpp"
 #include "util/RoundPixmap.hpp"
+#include "util/UiStyle.hpp"
 #include "widgets/dialogs/SettingsDialog.hpp"
 #include "controllers/moderation/AlertMute.hpp"
 #include "widgets/buttons/AlertMuteButton.hpp"
@@ -72,6 +73,16 @@ void translateRectForLocation(QRect &rect, NotebookTabLocation location,
     }
 }
 
+/// Look -> Style: Compact narrows every tab as Chatterino's compact tabs do
+TabStyle effectiveTabStyle()
+{
+    if (uistyle::compact())
+    {
+        return TabStyle::Compact;
+    }
+    return getSettings()->tabStyle.getEnum();
+}
+
 float getCompactDivider(TabStyle tabStyle)
 {
     switch (tabStyle)
@@ -119,6 +130,13 @@ NotebookTab::NotebookTab(Notebook *notebook)
             this->tabSizeChanged();
         },
         this->managedConnections_);
+    // Compact makes tabs lower and narrower, Flat draws them differently
+    getSettings()->uiStyle.connect(
+        [this] {
+            this->tabSizeChanged();
+            this->update();
+        },
+        this->managedConnections_, false);
     getSettings()->showTabLive.connect(
         [this](auto, auto) {
             this->update();
@@ -510,7 +528,7 @@ int NotebookTab::normalTabWidthForHeight(int height) const
     // for the close button - the parts paintEvent draws, in its order
     const qreal content =
         this->avatarSpace() + metrics.horizontalAdvance(this->getTitle());
-    float compactDivider = getCompactDivider(getSettings()->tabStyle);
+    float compactDivider = getCompactDivider(effectiveTabStyle());
     const qreal around =
         (this->hasXButton() ? 32 : 16) / compactDivider * scale;
     width = static_cast<int>(std::ceil(content + around));
@@ -533,7 +551,7 @@ void NotebookTab::updateSize()
 {
     this->sizedWithAvatar_ = this->avatarSpace() > 0;
     float scale = this->scale();
-    auto height = static_cast<int>(NOTEBOOK_TAB_HEIGHT * scale);
+    auto height = static_cast<int>(uistyle::tabHeight() * scale);
     int width = this->normalTabWidthForHeight(height);
 
     if (width < this->growWidth_)
@@ -1044,7 +1062,7 @@ void NotebookTab::paintEvent(QPaintEvent *)
     painter.setFont(font);
     QFontMetricsF metrics(font);
 
-    int height = int(scale * NOTEBOOK_TAB_HEIGHT);
+    int height = int(scale * uistyle::tabHeight());
 
     // select the right tab colors
     Theme::TabColors colors;
@@ -1081,6 +1099,7 @@ void NotebookTab::paintEvent(QPaintEvent *)
         (this->highlightState_ == HighlightState::Highlighted ||
          this->highlightState_ == HighlightState::NewMessage);
 
+    bool pickedColour = false;
     if (!wantsAttention)
     {
         const QColor picked(
@@ -1090,10 +1109,24 @@ void NotebookTab::paintEvent(QPaintEvent *)
         if (picked.isValid())
         {
             tabBackground = picked;
+            pickedColour = true;
         }
     }
 
-    auto selectionOffset = ceil((this->selected_ ? 0.f : 1.f) * scale);
+    // Look -> Style: Flat has no boxes. A tab lies on the bar itself; the
+    // open one and the one under the mouse are only washed a little. A tab
+    // that wants attention and a colour picked on Look keep theirs.
+    const bool flatLook = uistyle::flat() && !this->hasFullyRoundedCorners();
+    if (flatLook && !wantsAttention && !pickedColour)
+    {
+        QColor wash = colors.text;
+        wash.setAlpha(this->selected_ ? 22 : (this->mouseOver_ ? 12 : 0));
+        tabBackground = wash;
+    }
+
+    // Flat tabs all stand level; the others step the open one forward
+    auto selectionOffset =
+        ceil((this->selected_ || flatLook ? 0.f : 1.f) * scale);
 
     // fill the tab background
     auto bgRect = this->rect();
@@ -1207,7 +1240,40 @@ void NotebookTab::paintEvent(QPaintEvent *)
             break;
     }
 
-    painter.fillRect(lineRect, lineColor);
+    // Flat: only the open tab has a line, on the side facing the chat - a
+    // tab with a colour of its own shows it thin there as well
+    if (flatLook)
+    {
+        const auto thickness = int(lineThickness);
+        switch (this->tabLocation_)
+        {
+            case NotebookTabLocation::Top:
+                lineRect = QRect(bgRect.left(), bgRect.bottom() + 1 - thickness,
+                                 bgRect.width(), thickness);
+                break;
+            case NotebookTabLocation::Left:
+                lineRect = QRect(bgRect.right() + 1 - thickness, bgRect.top(),
+                                 thickness, bgRect.height());
+                break;
+            case NotebookTabLocation::Right:
+                lineRect = QRect(bgRect.left(), bgRect.top(), thickness,
+                                 bgRect.height());
+                break;
+            case NotebookTabLocation::Bottom:
+                lineRect = QRect(bgRect.left(), bgRect.top(), bgRect.width(),
+                                 thickness);
+                break;
+        }
+        if (!this->selected_ && !this->customColor_.isValid())
+        {
+            lineRect = QRect();
+        }
+    }
+
+    if (!lineRect.isEmpty())
+    {
+        painter.fillRect(lineRect, lineColor);
+    }
 
     painter.restore();
 
@@ -1310,7 +1376,7 @@ void NotebookTab::paintEvent(QPaintEvent *)
     // set the pen color
     painter.setPen(colors.text);
 
-    float compactDivider = getCompactDivider(getSettings()->tabStyle);
+    float compactDivider = getCompactDivider(effectiveTabStyle());
     // set area for text
     int rectW =
         (!getSettings()->showTabCloseButton ? 0
@@ -1747,7 +1813,7 @@ QRect NotebookTab::getXRect() const
                                ? (size / 3)   // slightly off true center
                                : (size / 2);  // true center
 
-    float compactReducer = getCompactReducer(getSettings()->tabStyle);
+    float compactReducer = getCompactReducer(effectiveTabStyle());
     QRect xRect(rect.right() - static_cast<int>((20 - compactReducer) * s),
                 rect.center().y() - centerAdjustment, size, size);
 

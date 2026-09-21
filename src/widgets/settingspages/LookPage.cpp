@@ -262,7 +262,20 @@ void LookPage::buildStyleTab(GeneralPageView &layout)
         "beruhigt: die Tabs mit etwas Tiefe, das Eingabefeld, den Griff der "
         "Bildlaufleiste, dazu ein durchgehend gezeichneter Symbolsatz in "
         "dieser Leiste hier und Alarm-Fenster, die sanft aufgehen statt "
-        "aufzuspringen. Wirkt sofort, und zurück geht es jederzeit.");
+        "aufzuspringen.");
+    layout.addDescription(
+        "Kompakt bleibt bei Classics Formen, spart aber Platz - für viele "
+        "Chats nebeneinander: niedrigere und schmalere Tabs, eine niedrigere "
+        "Titelleiste ohne Beschriftung unter der Kurve, kleinere Knöpfe am "
+        "Eingabefeld, eine schmalere Bildlaufleiste und weniger Rand in den "
+        "Alarm-Fenstern. Die Schrift bleibt so groß, wie sie ist.");
+    layout.addDescription(
+        "Flach kommt ohne Kästen aus: Tabs liegen auf der Leiste, der offene "
+        "hat nur einen Strich zum Chat hin. Die Titelleiste hat keinen "
+        "Rahmen, das Eingabefeld nur eine Linie darunter, und der Griff der "
+        "Bildlaufleiste zeigt sich erst, wenn die Maus über dem Chat ist. "
+        "Symbole und Alarm-Fenster wie bei Modern.");
+    layout.addDescription("Wirkt sofort, und zurück geht es jederzeit.");
     SettingWidget::dropdown("Stil", s.uiStyle)->addTo(layout);
 
     layout.addTitle("Fokus-Ansicht");

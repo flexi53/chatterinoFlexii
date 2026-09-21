@@ -12,6 +12,7 @@
 #include "singletons/Settings.hpp"
 #include "util/German.hpp"
 #include "util/LayoutCreator.hpp"
+#include "util/UiStyle.hpp"
 #include "widgets/BaseWindow.hpp"
 #include "widgets/helper/SettingsDialogTab.hpp"
 #include "widgets/settingspages/AboutPage.hpp"
@@ -348,13 +349,11 @@ void SettingsDialog::addTab(std::function<SettingsPage *()> page,
                             const QString &name, const QString &iconPath,
                             SettingsTabId id, Qt::Alignment alignment)
 {
-    // In the modern look Chatterino's own pages get an icon drawn like the
-    // rest; the classic one keeps what it always had
+    // In the Modern and Flat looks Chatterino's own pages get an icon drawn
+    // like the rest; Classic and Compact keep what they always had
     const auto modern = modernIcon(name);
     const auto shown =
-        getSettings()->uiStyle == UiStyle::Modern && !modern.isEmpty()
-            ? modern
-            : iconPath;
+        uistyle::drawnIcons() && !modern.isEmpty() ? modern : iconPath;
     auto *tab = new SettingsDialogTab(this, std::move(page), german::say(name),
                                       shown, id);
     this->tabIcons_.push_back({tab, iconPath, modern});
@@ -371,7 +370,7 @@ void SettingsDialog::addTab(std::function<SettingsPage *()> page,
 
 void SettingsDialog::refreshIcons()
 {
-    const bool modern = getSettings()->uiStyle == UiStyle::Modern;
+    const bool modern = uistyle::drawnIcons();
     for (const auto &icons : this->tabIcons_)
     {
         icons.tab->setIcon(modern && !icons.modern.isEmpty() ? icons.modern

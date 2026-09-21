@@ -2012,6 +2012,8 @@ void ChannelView::enterEvent(QEnterEvent * /*event*/)
 void ChannelView::enterEvent(QEvent * /*event*/)
 #endif
 {
+    // Look -> Style: in Flat the scrollbar's handle shows only now
+    this->scrollBar_->update();
 }
 
 void ChannelView::setHoveredMessage(const MessageLayout *layout)
@@ -2029,6 +2031,7 @@ void ChannelView::setHoveredMessage(const MessageLayout *layout)
 
 void ChannelView::leaveEvent(QEvent * /*event*/)
 {
+    this->scrollBar_->update();
     this->tooltipWidget_->hide();
     this->setHoveredMessage(nullptr);
 

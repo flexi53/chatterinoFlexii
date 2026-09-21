@@ -97,11 +97,34 @@ enum class TabStyle : std::uint8_t {
 };
 
 /// Which look the chat uses. Classic is Chatterino as it has always been;
-/// Modern rounds things off more and gives surfaces a bit of depth.
+/// Modern rounds things off more and gives surfaces a bit of depth; Compact
+/// keeps Classic's shapes with less room around them; Flat does without
+/// boxes. See util/UiStyle.hpp for what each one changes.
 enum class UiStyle : std::uint8_t {
     Classic,
     Modern,
+    Compact,
+    Flat,
 };
+
+/// The two later looks are shown by their German names; what is saved stays
+/// the English one, as for the other two
+constexpr std::optional<std::string_view> qmagicenumDisplayName(
+    UiStyle value) noexcept
+{
+    switch (value)
+    {
+        case UiStyle::Compact:
+            return "Kompakt";
+        case UiStyle::Flat:
+            return "Flach";
+
+        case UiStyle::Classic:
+        case UiStyle::Modern:
+            return {};
+    }
+    return {};
+}
 
 enum class EmoteTooltipScale : std::uint8_t {
     Small,

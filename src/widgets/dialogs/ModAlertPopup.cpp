@@ -32,6 +32,7 @@
 #include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
 #include "util/FormatTime.hpp"
+#include "util/UiStyle.hpp"
 #include "widgets/buttons/PixmapButton.hpp"
 #include "widgets/helper/ChannelView.hpp"
 #include "widgets/Label.hpp"
@@ -389,8 +390,10 @@ ModAlertPopup::ModAlertPopup(QString channel, QString login, QWidget *parent)
     this->setMinimumWidth(480);
 
     auto *layout = new QVBoxLayout(this->getLayoutContainer());
-    layout->setContentsMargins(12, 12, 12, 12);
-    layout->setSpacing(8);
+    // Look -> Style: Compact keeps less room around the content
+    const auto margin = uistyle::alertMargin();
+    layout->setContentsMargins(margin, margin, margin, margin);
+    layout->setSpacing(uistyle::compact() ? 5 : 8);
 
     // Who it is, laid out like the top of a user card
     auto *head = new QHBoxLayout;
@@ -595,9 +598,9 @@ void ModAlertPopup::present()
     const auto showHere = [this, onAllSpaces] {
         const auto nativeView = static_cast<std::uintptr_t>(this->winId());
         this->placeWindow();
-        // Modern lets the window come up rather than appear; classic puts
-        // it there at once, as it always did
-        if (getSettings()->uiStyle == UiStyle::Modern && !this->isVisible())
+        // Modern and Flat let the window come up rather than appear; the
+        // others put it there at once, as it always did
+        if (uistyle::drawnIcons() && !this->isVisible())
         {
             this->setWindowOpacity(0.0);
             this->show();
@@ -638,8 +641,8 @@ void ModAlertPopup::present()
     showHere();
 #else
     this->placeWindow();
-    // Modern lets the window come up rather than appear
-    if (getSettings()->uiStyle == UiStyle::Modern && !this->isVisible())
+    // Modern and Flat let the window come up rather than appear
+    if (uistyle::drawnIcons() && !this->isVisible())
     {
         this->setWindowOpacity(0.0);
         this->show();

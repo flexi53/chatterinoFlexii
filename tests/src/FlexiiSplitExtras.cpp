@@ -25,6 +25,9 @@
 #include "controllers/moderation/ModerationAssistant.hpp"
 #include "widgets/helper/ActiveBorder.hpp"
 #include "widgets/splits/SendWaitBar.hpp"
+#include "util/QMagicEnumTagged.hpp"
+#include "util/UiStyle.hpp"
+#include "widgets/helper/NotebookTab.hpp"
 #include "widgets/splits/HeaderParts.hpp"
 #include "widgets/splits/SplitHeaderExtras.hpp"
 
@@ -712,4 +715,72 @@ TEST_F(FlexiiHeaderPartsFixture, WithoutAPictureTheNameStays)
     getSettings()->headerChannelName.setValue(false);
     EXPECT_EQ(headerparts::composeTitle("trymacs", " (live)", false),
               "trymacs (live)");
+}
+
+namespace {
+
+class FlexiiUiStyleFixture : public ::testing::Test
+{
+protected:
+    ~FlexiiUiStyleFixture() override
+    {
+        getSettings()->uiStyle.setValue(QStringLiteral("classic"));
+    }
+
+    MockApplication app;
+};
+
+}  // namespace
+
+TEST_F(FlexiiUiStyleFixture, ClassicIsChatterinoAsItWas)
+{
+    EXPECT_EQ(getSettings()->uiStyle.getEnum(), UiStyle::Classic);
+    EXPECT_EQ(uistyle::tabHeight(), NOTEBOOK_TAB_HEIGHT);
+    EXPECT_EQ(uistyle::headerHeight(), ActivityGraph::HEIGHT);
+    EXPECT_EQ(uistyle::scrollbarWidth(), 16);
+    EXPECT_EQ(uistyle::inputButton(), QSize(24, 18));
+    EXPECT_FALSE(uistyle::drawnIcons());
+    EXPECT_FALSE(uistyle::compact());
+    EXPECT_FALSE(uistyle::flat());
+}
+
+TEST_F(FlexiiUiStyleFixture, CompactSavesRoomEverywhere)
+{
+    getSettings()->uiStyle.setValue(QStringLiteral("compact"));
+    EXPECT_TRUE(uistyle::compact());
+    EXPECT_LT(uistyle::tabHeight(), NOTEBOOK_TAB_HEIGHT);
+    EXPECT_LT(uistyle::headerHeight(), ActivityGraph::HEIGHT);
+    EXPECT_LT(uistyle::scrollbarWidth(), 16);
+    EXPECT_LT(uistyle::inputButton().height(), 18);
+    EXPECT_LT(uistyle::alertMargin(), 12);
+    // Classic's shapes and icons
+    EXPECT_FALSE(uistyle::drawnIcons());
+}
+
+TEST_F(FlexiiUiStyleFixture, FlatKeepsTheSizesAndDrawsItsIcons)
+{
+    getSettings()->uiStyle.setValue(QStringLiteral("flat"));
+    EXPECT_TRUE(uistyle::flat());
+    EXPECT_FALSE(uistyle::modern());
+    EXPECT_TRUE(uistyle::drawnIcons());
+    EXPECT_EQ(uistyle::tabHeight(), NOTEBOOK_TAB_HEIGHT);
+    EXPECT_EQ(uistyle::scrollbarWidth(), 16);
+}
+
+TEST_F(FlexiiUiStyleFixture, WhatWasSavedBeforeStillReadsTheSame)
+{
+    // Saved by their English names, shown by German ones where they differ
+    EXPECT_EQ(qmagicenum::enumNameString(UiStyle::Modern), "Modern");
+    EXPECT_EQ(qmagicenum::enumNameString(UiStyle::Compact), "Compact");
+    EXPECT_EQ(qmagicenum::enumDisplayNameString(UiStyle::Classic), "Classic");
+    EXPECT_EQ(qmagicenum::enumDisplayNameString(UiStyle::Compact), "Kompakt");
+    EXPECT_EQ(qmagicenum::enumDisplayNameString(UiStyle::Flat), "Flach");
+
+    getSettings()->uiStyle.setValue(QStringLiteral("modern"));
+    EXPECT_TRUE(uistyle::modern());
+    EXPECT_TRUE(uistyle::drawnIcons());
+
+    // Something unknown falls back to Classic
+    getSettings()->uiStyle.setValue(QStringLiteral("glas"));
+    EXPECT_EQ(getSettings()->uiStyle.getEnum(), UiStyle::Classic);
 }

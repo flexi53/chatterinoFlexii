@@ -14,6 +14,7 @@
 #include "singletons/Fonts.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
+#include "util/UiStyle.hpp"
 #include "widgets/buttons/DrawnButton.hpp"
 #include "widgets/buttons/LabelButton.hpp"
 #include "widgets/buttons/SvgButton.hpp"
@@ -173,6 +174,12 @@ HeaderPreview::HeaderPreview(QWidget *parent)
     s->splitHeaderActivityShare.connect(reload, this->connections_, false);
     s->headerLiveMarker.connect(reload, this->connections_, false);
     s->headerChannelName.connect(reload, this->connections_, false);
+    s->uiStyle.connect(
+        [this] {
+            this->updateGeometry();
+            this->reload();
+        },
+        this->connections_, false);
     s->headerUptime.connect(reload, this->connections_, false);
     s->headerViewerCount.connect(reload, this->connections_, false);
     s->headerGame.connect(reload, this->connections_, false);
@@ -200,8 +207,8 @@ const std::vector<HeaderPreview::Placed> &HeaderPreview::placed() const
 
 int HeaderPreview::headerHeight() const
 {
-    // As high as the header's buttons are wide
-    return int(28 * this->scale());
+    // As high as the header's buttons are wide - lower in Compact
+    return int(uistyle::headerHeight() * this->scale());
 }
 
 QRect HeaderPreview::headerRect() const
@@ -289,10 +296,11 @@ void HeaderPreview::relayout()
             case Part::Menu:
                 return button;
             case Part::Add:
-                return int(16 * scale);
+                return int((uistyle::compact() ? 13 : 16) * scale);
         }
         return 0;
     };
+    this->activity_->setFixedHeight(button);
     int fixed = int(8 * scale);
     for (const auto part : shown)
     {
@@ -464,12 +472,15 @@ void HeaderPreview::paintEvent(QPaintEvent * /*event*/)
     const auto header = this->headerRect();
     const auto &colors = this->theme->splits.header;
 
-    // As the header draws itself
+    // As the header draws itself - without the frame in Flat
     painter.fillRect(header, colors.background);
-    painter.setPen(colors.border);
-    painter.drawRect(header.adjusted(0, 0, -1, -2));
-    painter.fillRect(header.left(), header.bottom(), header.width(), 1,
-                     colors.background);
+    if (!uistyle::flat())
+    {
+        painter.setPen(colors.border);
+        painter.drawRect(header.adjusted(0, 0, -1, -2));
+        painter.fillRect(header.left(), header.bottom(), header.width(), 1,
+                         colors.background);
+    }
 
     const QColor accent(0, 171, 244);
     for (const auto &placed : this->placed_)

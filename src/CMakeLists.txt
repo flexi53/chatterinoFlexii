@@ -687,6 +687,8 @@ set(SOURCE_FILES
         util/Twitch.cpp
         util/Twitch.hpp
         util/TypeName.hpp
+        util/UiStyle.cpp
+        util/UiStyle.hpp
         util/UpdateCheck.cpp
         util/UpdateCheck.hpp
         util/UnixSignalHandler.cpp

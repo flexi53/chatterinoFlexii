@@ -27,6 +27,7 @@
 #include "util/FormatTime.hpp"
 #include "util/Helpers.hpp"
 #include "util/LayoutHelper.hpp"
+#include "util/UiStyle.hpp"
 #include "widgets/buttons/DrawnButton.hpp"
 #include "widgets/buttons/LabelButton.hpp"
 #include "widgets/buttons/SvgButton.hpp"
@@ -305,6 +306,17 @@ SplitHeader::SplitHeader(Split *split)
     getSettings()->splitHeaderActivityShare.connect(
         [this] {
             this->fitActivity();
+        },
+        this->managedConnections_, false);
+    // Look -> Style: Compact is lower, Flat has no frame
+    getSettings()->uiStyle.connect(
+        [this] {
+            this->scaleChangedEvent(this->scale());
+            this->activity_->setFixedHeight(
+                int(uistyle::headerHeight() * this->scale()));
+            this->activity_->updateGeometry();
+            this->activity_->update();
+            this->update();
         },
         this->managedConnections_, false);
 
@@ -930,8 +942,12 @@ void SplitHeader::handleChannelChanged()
 
 void SplitHeader::scaleChangedEvent(float scale)
 {
-    int w = int(BUTTON_WIDTH * scale);
-    int addSplitWidth = int(ADD_SPLIT_BUTTON_WIDTH * scale);
+    // Look -> Style: Compact makes the header and its buttons smaller
+    int w = int(uistyle::headerHeight() * scale);
+    int addSplitWidth =
+        int((uistyle::compact() ? ADD_SPLIT_BUTTON_WIDTH - 3
+                                : ADD_SPLIT_BUTTON_WIDTH) *
+            scale);
 
     this->setFixedHeight(w);
     this->dropdownButton_->setFixedWidth(w);
@@ -1311,9 +1327,14 @@ void SplitHeader::paintEvent(QPaintEvent * /*event*/)
     }
 
     painter.fillRect(this->rect(), background);
-    painter.setPen(border);
-    painter.drawRect(0, 0, this->width() - 1, this->height() - 2);
-    painter.fillRect(0, this->height() - 1, this->width(), 1, background);
+    // Look -> Style: Flat does without the frame
+    if (!uistyle::flat())
+    {
+        painter.setPen(border);
+        painter.drawRect(0, 0, this->width() - 1, this->height() - 2);
+        painter.fillRect(0, this->height() - 1, this->width(), 1,
+                         background);
+    }
 }
 
 void SplitHeader::mousePressEvent(QMouseEvent *event)

@@ -22,6 +22,7 @@
 #include "singletons/Theme.hpp"
 #include "util/Helpers.hpp"
 #include "util/LayoutCreator.hpp"
+#include "util/UiStyle.hpp"
 #include "widgets/buttons/AlertMuteButton.hpp"
 #include "widgets/buttons/ClearChatButton.hpp"
 #include "widgets/buttons/FocusButton.hpp"
@@ -208,6 +209,8 @@ void SplitInput::initLayout()
 
     getSettings()->uiStyle.connect(
         [this](const auto &, auto) {
+            // Compact has smaller buttons, Flat draws the box differently
+            this->updateEmoteButton();
             this->update();
         },
         this->managedConnections_, false);
@@ -446,21 +449,25 @@ void SplitInput::themeChangedEvent()
 void SplitInput::updateEmoteButton()
 {
     auto scale = this->scale();
+    // Look -> Style: smaller in Compact. Slightly wider than high, so they
+    // are easier to click.
+    const auto size = uistyle::inputButton();
+    const auto height = int(size.height() * scale);
+    const auto width = int(size.width() * scale);
 
-    this->ui_.emoteButton->setFixedHeight(int(18 * scale));
-    // Make button slightly wider so it's easier to click
-    this->ui_.emoteButton->setFixedWidth(int(24 * scale));
+    this->ui_.emoteButton->setFixedHeight(height);
+    this->ui_.emoteButton->setFixedWidth(width);
 
-    this->ui_.modAssistButton->setFixedHeight(int(18 * scale));
-    this->ui_.modAssistButton->setFixedWidth(int(24 * scale));
-    this->ui_.alertMuteButton->setFixedHeight(int(18 * scale));
-    this->ui_.alertMuteButton->setFixedWidth(int(24 * scale));
+    this->ui_.modAssistButton->setFixedHeight(height);
+    this->ui_.modAssistButton->setFixedWidth(width);
+    this->ui_.alertMuteButton->setFixedHeight(height);
+    this->ui_.alertMuteButton->setFixedWidth(width);
 
-    this->ui_.focusButton->setFixedHeight(int(18 * scale));
-    this->ui_.focusButton->setFixedWidth(int(24 * scale));
+    this->ui_.focusButton->setFixedHeight(height);
+    this->ui_.focusButton->setFixedWidth(width);
 
-    this->ui_.clearButton->setFixedHeight(int(18 * scale));
-    this->ui_.clearButton->setFixedWidth(int(24 * scale));
+    this->ui_.clearButton->setFixedHeight(height);
+    this->ui_.clearButton->setFixedWidth(width);
 }
 
 void SplitInput::refreshFocusButton()
@@ -1340,12 +1347,21 @@ void SplitInput::paintEvent(QPaintEvent * /*event*/)
     painter.setPen(borderColor);
     // Modern rounds the input off, the way it rounds the tabs; classic
     // keeps the square box Chatterino has always drawn
-    const bool modern = getSettings()->uiStyle == UiStyle::Modern;
+    const bool modern = uistyle::modern();
+    // Flat has no box, only a line under the text
+    const bool flat = uistyle::flat();
     if (modern)
     {
         painter.setRenderHint(QPainter::Antialiasing, true);
         const auto radius = 6 * this->scale();
         painter.drawRoundedRect(inputBoxRect, radius, radius);
+    }
+    else if (flat)
+    {
+        painter.fillRect(inputBoxRect, this->theme->splits.input.background);
+        painter.fillRect(inputBoxRect.left(), inputBoxRect.bottom(),
+                         inputBoxRect.width() + 1,
+                         std::max(1, int(this->scale())), borderColor);
     }
     else
     {
@@ -1363,6 +1379,10 @@ void SplitInput::paintEvent(QPaintEvent * /*event*/)
         {
             const auto radius = 6 * this->scale();
             painter.drawRoundedRect(replyRect, radius, radius);
+        }
+        else if (flat)
+        {
+            painter.fillRect(replyRect, this->theme->splits.input.background);
         }
         else
         {

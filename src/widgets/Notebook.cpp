@@ -16,6 +16,7 @@
 #include "singletons/Theme.hpp"
 #include "singletons/WindowManager.hpp"
 #include "util/SettingsSnapshots.hpp"
+#include "util/UiStyle.hpp"
 #include "widgets/buttons/DrawnButton.hpp"
 #include "widgets/buttons/InitUpdateButton.hpp"
 #include "widgets/buttons/PixmapButton.hpp"
@@ -106,6 +107,14 @@ Notebook::Notebook(QWidget *parent)
     }
     getSettings()->tabBarGradient.connect(
         [this](const auto &, const auto &) {
+            this->update();
+        },
+        this->signalHolder_, false);
+    // Look -> Style: Compact makes the bar lower
+    getSettings()->uiStyle.connect(
+        [this](const auto &, const auto &) {
+            this->resizeAddButton();
+            this->refresh();
             this->update();
         },
         this->signalHolder_, false);
@@ -812,7 +821,7 @@ void Notebook::setShowAddButton(bool value)
 
 void Notebook::resizeAddButton()
 {
-    int h = static_cast<int>((NOTEBOOK_TAB_HEIGHT - 1) * this->scale());
+    int h = static_cast<int>((uistyle::tabHeight() - 1) * this->scale());
     this->addButton_->setFixedSize(h, h);
 }
 
@@ -918,7 +927,7 @@ void Notebook::performLayout(bool animated)
     }
 
     const auto scale = this->scale();
-    const auto tabHeight = int(NOTEBOOK_TAB_HEIGHT * scale);
+    const auto tabHeight = int(uistyle::tabHeight() * scale);
     const LayoutContext ctx{
         .left = static_cast<int>(2 * this->scale()),
         .right = this->width(),
@@ -1364,14 +1373,14 @@ void Notebook::paintEvent(QPaintEvent *event)
         {
             if (this->tabLocation_ == NotebookTabLocation::Left)
             {
-                painter.fillRect(0, int(NOTEBOOK_TAB_HEIGHT * scale),
+                painter.fillRect(0, int(uistyle::tabHeight() * scale),
                                  this->lineOffset_, int(2 * scale),
                                  this->theme->tabs.dividerLine);
             }
             else
             {
                 painter.fillRect(this->lineOffset_,
-                                 int(NOTEBOOK_TAB_HEIGHT * scale),
+                                 int(uistyle::tabHeight() * scale),
                                  this->width() - this->lineOffset_,
                                  int(2 * scale), this->theme->tabs.dividerLine);
             }

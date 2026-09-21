@@ -73,6 +73,7 @@ public:
     /// How wide it would like to be and how tall it is, in unscaled pixels -
     /// the header is 28 high, and the curve gets as much of it as it can
     static constexpr int WIDE = 190;
+    /// How high it is in the Classic look - see uistyle::headerHeight
     static constexpr int HEIGHT = 28;
     /// Room under the line of time for "10 min", "1h" and the like
     static constexpr int LABEL_ROOM = 9;

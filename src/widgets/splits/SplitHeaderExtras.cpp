@@ -9,6 +9,7 @@
 #include "providers/twitch/TwitchChannel.hpp"
 #include "singletons/Theme.hpp"
 #include "util/RoundPixmap.hpp"
+#include "util/UiStyle.hpp"
 
 #include <QEvent>
 #include <QPainter>
@@ -409,7 +410,7 @@ void ActivityGraph::scaleChangedEvent(float scale)
     // Room before the curve and some more after it. It would like to be
     // wide enough that a whole stream is worth looking at, but gives way
     // to the title when the split is narrow.
-    this->setFixedHeight(int(HEIGHT * scale));
+    this->setFixedHeight(int(uistyle::headerHeight() * scale));
     this->updateGeometry();
 }
 
@@ -445,13 +446,13 @@ void ActivityGraph::showSample()
 QSize ActivityGraph::sizeHint() const
 {
     return {this->wantedWidth_ > 0 ? this->wantedWidth_ : this->ownWidth(),
-            int(HEIGHT * this->scale())};
+            int(uistyle::headerHeight() * this->scale())};
 }
 
 QSize ActivityGraph::minimumSizeHint() const
 {
     return {int((LEFT_ROOM + NARROWEST + RIGHT_ROOM) * this->scale()),
-            int(HEIGHT * this->scale())};
+            int(uistyle::headerHeight() * this->scale())};
 }
 
 void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
@@ -460,11 +461,13 @@ void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
     painter.setRenderHint(QPainter::Antialiasing);
 
     // Room at the bottom for the line of time under the curve, and under
-    // that for what its marks stand for
+    // that for what its marks stand for - Compact's lower header has no
+    // room for those, the tooltip says them
+    const bool labels = !uistyle::compact();
     const QRectF area =
         QRectF(this->rect())
             .adjusted(LEFT_ROOM * this->scale(), 2, -RIGHT_ROOM * this->scale(),
-                      -(6 + LABEL_ROOM) * this->scale());
+                      -(6 + (labels ? LABEL_ROOM : 0)) * this->scale());
     if (area.width() <= 1)
     {
         return;
@@ -627,7 +630,7 @@ void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
     }
 
     const auto labelTop = axisY + (3.5 * this->scale());
-    for (qint64 back = labelStep; labelStep > 0 && back <= seconds;
+    for (qint64 back = labelStep; labels && labelStep > 0 && back <= seconds;
          back += labelStep)
     {
         const auto x = area.right() - (double(back) * perSecond);
