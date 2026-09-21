@@ -29,6 +29,7 @@
 #include "widgets/splits/SendWaitBar.hpp"
 #include "providers/twitch/TwitchWebBadges.hpp"
 #include "util/QMagicEnumTagged.hpp"
+#include "widgets/buttons/BadgeButton.hpp"
 #include "util/UiStyle.hpp"
 #include "widgets/helper/NotebookTab.hpp"
 #include "widgets/splits/HeaderParts.hpp"
@@ -878,4 +879,26 @@ TEST(FlexiiWebBadges, ALoginTwitchDoesNotTakeIsSaid)
     EXPECT_TRUE(choices.problem.contains("unauthenticated"));
     EXPECT_TRUE(choices.channel.empty());
     EXPECT_FALSE(choices.shown().has_value());
+}
+
+TEST(FlexiiWebBadges, TheMenuStaysOnTheScreenOfItsButton)
+{
+    // Two screens, the second one above the first
+    const QRect lower(0, 1080, 1920, 1080);
+    const QSize menu(220, 300);
+
+    // Room above the button: it opens upwards
+    const QRect low(900, 2000, 24, 18);
+    EXPECT_EQ(BadgeButton::placeMenu(low, menu, lower), QPoint(900, 1700));
+
+    // Near the top of its screen it would reach onto the one above - it
+    // opens downwards instead
+    const QRect high(900, 1200, 24, 18);
+    const auto at = BadgeButton::placeMenu(high, menu, lower);
+    EXPECT_EQ(at, QPoint(900, 1218));
+    EXPECT_TRUE(lower.contains(QRect(at, menu)));
+
+    // At the right edge it moves in rather than onto the next screen
+    const QRect right(1910, 2000, 24, 18);
+    EXPECT_EQ(BadgeButton::placeMenu(right, menu, lower).x(), 1920 - 220);
 }

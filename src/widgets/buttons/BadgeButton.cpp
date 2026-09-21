@@ -13,6 +13,7 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPointer>
+#include <QScreen>
 #include <QToolTip>
 
 #include <algorithm>
@@ -99,7 +100,7 @@ void BadgeButton::openMenu(const webbadges::Choices &choices)
         menu->addAction("Einstellungen öffnen", this, [this] {
             SettingsDialog::showDialog(this);
         });
-        menu->popup(this->mapToGlobal(QPoint(0, 0)));
+        this->popup(menu);
         return;
     }
 
@@ -156,9 +157,38 @@ void BadgeButton::openMenu(const webbadges::Choices &choices)
     addSection(QStringLiteral("Überall"), choices.global, choices.globalWorn,
                true);
 
-    // Opens upwards, as the input bar sits at the bottom
-    menu->adjustSize();
-    menu->popup(this->mapToGlobal(QPoint(0, -menu->sizeHint().height())));
+    this->popup(menu);
+}
+
+QPoint BadgeButton::placeMenu(const QRect &button, const QSize &menu,
+                              const QRect &screen)
+{
+    // Upwards, as the input bar sits at the bottom - downwards only when
+    // the screen ends above it
+    int y = button.top() - menu.height();
+    if (y < screen.top())
+    {
+        y = button.bottom() + 1;
+    }
+    const int x = std::max(
+        screen.left(),
+        std::min(button.left(), screen.left() + screen.width() - menu.width()));
+    y = std::max(screen.top(),
+                 std::min(y, screen.top() + screen.height() - menu.height()));
+    return {x, y};
+}
+
+void BadgeButton::popup(QMenu *menu)
+{
+    const QRect button(this->mapToGlobal(QPoint(0, 0)), this->size());
+    auto *screen = this->screen();
+    const auto area = screen != nullptr ? screen->availableGeometry() : button;
+    // The Mac would otherwise put a menu's window on its main screen first
+    if (screen != nullptr)
+    {
+        menu->setScreen(screen);
+    }
+    menu->popup(placeMenu(button, menu->sizeHint(), area));
 }
 
 void BadgeButton::wear(const webbadges::Badge &badge, bool global)
