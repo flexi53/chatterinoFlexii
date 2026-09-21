@@ -70,6 +70,13 @@ void reset();
 /// stream's title
 QString titleAfterName(const TwitchChannel::StreamStatus &s);
 
+/// The whole title: @a name and @a afterName, or only what comes after it
+/// when the name is switched off. @a pictureShown says whether the
+/// channel's picture stands before the title - without it the name stays,
+/// or nobody would know whose chat it is.
+QString composeTitle(const QString &name, const QString &afterName,
+                     bool pictureShown);
+
 /// The least room the title keeps however wide the curve is made, in
 /// unscaled pixels - a narrow split still says whose chat it is
 constexpr int TITLE_KEEPS = 100;

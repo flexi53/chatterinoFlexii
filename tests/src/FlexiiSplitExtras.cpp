@@ -686,3 +686,30 @@ TEST_F(FlexiiHeaderPartsFixture, LiveCanBeLeftOut)
     headerparts::reset();
     EXPECT_EQ(headerparts::titleAfterName(liveStream()), " (live)");
 }
+
+TEST_F(FlexiiHeaderPartsFixture, TheNameStaysUnlessItIsSwitchedOff)
+{
+    EXPECT_EQ(headerparts::composeTitle("trymacs", " (live) - 2h 13m", true),
+              "trymacs (live) - 2h 13m");
+}
+
+TEST_F(FlexiiHeaderPartsFixture, WithoutTheNameTheRestMovesToTheFront)
+{
+    getSettings()->headerChannelName.setValue(false);
+    EXPECT_EQ(headerparts::composeTitle("trymacs", " (live) - 2h 13m", true),
+              "(live) - 2h 13m");
+
+    // Without "(live)" the dash it was joined on goes as well
+    EXPECT_EQ(headerparts::composeTitle("trymacs", " - 2h 13m - 42", true),
+              "2h 13m - 42");
+
+    // Offline there is nothing left - the picture says whose chat it is
+    EXPECT_TRUE(headerparts::composeTitle("trymacs", "", true).isEmpty());
+}
+
+TEST_F(FlexiiHeaderPartsFixture, WithoutAPictureTheNameStays)
+{
+    getSettings()->headerChannelName.setValue(false);
+    EXPECT_EQ(headerparts::composeTitle("trymacs", " (live)", false),
+              "trymacs (live)");
+}

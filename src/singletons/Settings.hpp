@@ -290,6 +290,10 @@ public:
     /// as Chatterino always has it
     BoolSetting headerLiveMarker = {"/appearance/splitheader/showLiveMarker",
                                     true};
+    /// Buttons -> Title bar: the channel's name at the start of the title -
+    /// only left out while its picture stands before it
+    BoolSetting headerChannelName = {"/appearance/splitheader/showChannelName",
+                                     true};
     /// Subs, raids, bans and the like marked with a symbol and a colour
     BoolSetting eventSymbols = {"/appearance/messages/eventSymbols", false};
     /// A message mentioning you lights up briefly as it comes in

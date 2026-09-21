@@ -285,6 +285,7 @@ SplitHeader::SplitHeader(Split *split)
     getSettings()->headerGame.connect(_, this->managedConnections_);
     getSettings()->headerUptime.connect(_, this->managedConnections_);
     getSettings()->headerLiveMarker.connect(_, this->managedConnections_);
+    getSettings()->headerChannelName.connect(_, this->managedConnections_);
     getSettings()->splitHeaderPictures.connect(_, this->managedConnections_);
     getSettings()->splitHeaderActivity.connect(_, this->managedConnections_);
     // Buttons -> Title bar
@@ -975,6 +976,12 @@ void SplitHeader::updatePictures()
                                         {
                                             this->channelPicture_->setPicture(
                                                 picture);
+                                            // The name may go now
+                                            if (!getSettings()
+                                                     ->headerChannelName)
+                                            {
+                                                this->updateChannelText();
+                                            }
                                         }
                                     });
         }
@@ -1035,10 +1042,18 @@ void SplitHeader::updateChannelText()
     this->tooltipText_ = QString();
 
     auto title = channel->getLocalizedName();
+    // ChattiFlexii: what follows the name, kept apart so the name can go
+    QString afterName;
+    // Only once the picture is really there - until it has loaded, or if
+    // it never does, the name says whose chat it is
+    bool nameCanGo = dynamic_cast<TwitchChannel *>(channel.get()) != nullptr &&
+                     headerparts::isShown(headerparts::Part::Picture) &&
+                     !this->channelPicture_->isHidden();
 
     if (indirectChannel.getType() == Channel::Type::TwitchWatching)
     {
         title = "watching: " + (title.isEmpty() ? "none" : title);
+        nameCanGo = false;
     }
 
     if (auto *twitchChannel = dynamic_cast<TwitchChannel *>(channel.get()))
@@ -1091,7 +1106,7 @@ void SplitHeader::updateChannelText()
                 this->lastThumbnail_.restart();
             }
             this->tooltipText_ = formatTooltip(*streamStatus, this->thumbnail_);
-            title += headerparts::titleAfterName(*streamStatus);
+            afterName = headerparts::titleAfterName(*streamStatus);
         }
         else
         {
@@ -1123,7 +1138,7 @@ void SplitHeader::updateChannelText()
                 this->lastThumbnail_.restart();
             }
             this->tooltipText_ = formatTooltip(twitch, this->thumbnail_, true);
-            title += headerparts::titleAfterName(twitch);
+            afterName = headerparts::titleAfterName(twitch);
         }
         else
         {
@@ -1131,12 +1146,18 @@ void SplitHeader::updateChannelText()
         }
     }
 
-    if (!title.isEmpty() && !this->split_->getFilters().empty())
+    // Buttons -> Title bar: the name goes only where its picture stands
+    const bool hadName = !title.isEmpty();
+    title = headerparts::composeTitle(title, afterName, nameCanGo);
+
+    if (hadName && !this->split_->getFilters().empty())
     {
-        title += " - filtered";
+        title += title.isEmpty() ? "filtered" : " - filtered";
     }
 
-    this->titleLabel_->setText(title.isEmpty() ? "<empty>" : title);
+    this->titleLabel_->setText(title.isEmpty() && !(hadName && nameCanGo)
+                                   ? "<empty>"
+                                   : title);
     this->fitActivity();
 }
 

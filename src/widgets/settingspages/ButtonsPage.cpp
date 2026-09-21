@@ -184,8 +184,15 @@ void ButtonsPage::initTitleBar(GeneralPageView &layout)
     auto &s = *getSettings();
     layout.addSubtitle("Was im Titel steht");
     layout.addDescription(
-        "Der Name des Kanals bleibt immer. Alles andere steht nur dahinter, "
-        "solange der Kanal live ist - in dieser Reihenfolge.");
+        "Alles nach dem Namen steht nur da, solange der Kanal live ist - in "
+        "dieser Reihenfolge.");
+    SettingWidget::checkbox("Name des Kanals", s.headerChannelName)
+        ->setTooltip("Weglassen geht nur, solange das Profilbild davor "
+                     "steht - fährst du darüber, steht der Name da. Ohne "
+                     "Profilbild bleibt der Name, sonst wüsste niemand, "
+                     "wessen Chat es ist.")
+        ->addKeywords({"name", "kanal", "username", "channel"})
+        ->addTo(layout);
     SettingWidget::checkbox("(live) hinter dem Namen", s.headerLiveMarker)
         ->setTooltip("„(live)“, bei einer Wiederholung „(rerun)“. Auch "
                      "ohne es zeigt der rote Punkt am Tab, dass der Kanal "

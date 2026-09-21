@@ -46,8 +46,8 @@ const std::vector<Info> &all()
             .id = "title",
             .name = "Titel",
             .about = "Der Name des Kanals und, solange er live ist, was "
-                     "du unter „Was im Titel steht“ angehakt hast. Bleibt "
-                     "immer, sonst weiß niemand, wessen Chat es ist.",
+                     "du unter „Was im Titel steht“ angehakt hast - dort "
+                     "stellst du ein, was davon.",
             .canHide = false,
         },
         {
@@ -263,10 +263,28 @@ void reset()
     s->splitHeaderPictures.setValue(s->splitHeaderPictures.getDefaultValue());
     s->splitHeaderActivity.setValue(s->splitHeaderActivity.getDefaultValue());
     s->headerLiveMarker.setValue(s->headerLiveMarker.getDefaultValue());
+    s->headerChannelName.setValue(s->headerChannelName.getDefaultValue());
     s->headerUptime.setValue(s->headerUptime.getDefaultValue());
     s->headerViewerCount.setValue(s->headerViewerCount.getDefaultValue());
     s->headerGame.setValue(s->headerGame.getDefaultValue());
     s->headerStreamTitle.setValue(s->headerStreamTitle.getDefaultValue());
+}
+
+QString composeTitle(const QString &name, const QString &afterName,
+                     bool pictureShown)
+{
+    if (getSettings()->headerChannelName || !pictureShown)
+    {
+        return name + afterName;
+    }
+
+    // What followed the name, without the dash it was joined on with
+    auto rest = afterName.trimmed();
+    if (rest.startsWith(QStringLiteral("- ")))
+    {
+        rest = rest.mid(2);
+    }
+    return rest;
 }
 
 QString titleAfterName(const TwitchChannel::StreamStatus &s)
