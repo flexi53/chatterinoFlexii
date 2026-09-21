@@ -363,8 +363,7 @@ void BadgePicker::rebuild()
 
     this->content_->addWidget(
         section(QStringLiteral("Kanal-Abzeichen"),
-                QStringLiteral("Nur in #%1 - Sub, Bits, Mod und Co.")
-                    .arg(this->channelName_),
+                QStringLiteral("Nur in #%1").arg(this->channelName_),
                 choices.channel, choices.channelWorn, false));
     this->content_->addWidget(
         section(QStringLiteral("Globale Abzeichen"),

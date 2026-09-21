@@ -146,15 +146,9 @@ Choices parseChoices(const QJsonObject &answer)
     choices.globalWorn = badgeOf(user.value("selectedBadge"));
     choices.channelWorn = badgeOf(self.value("selectedBadge"));
 
-    // What the channel offers, without what is worn everywhere anyway
-    for (const auto &badge : badgesOf(self.value("availableBadges")))
-    {
-        if (std::find(choices.global.begin(), choices.global.end(), badge) ==
-            choices.global.end())
-        {
-            choices.channel.push_back(badge);
-        }
-    }
+    // Everything Twitch offers to wear here - the channel's own, and those
+    // that can be worn everywhere, which can be worn only here as well
+    choices.channel = badgesOf(self.value("availableBadges"));
     return choices;
 }
 

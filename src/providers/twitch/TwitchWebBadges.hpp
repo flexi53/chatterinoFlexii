@@ -60,8 +60,9 @@ struct Badge {
     }
 };
 
-/// What can be chosen in one channel: the badges of this channel - sub,
-/// bits, mod and the like - and those worn everywhere, with the one of each
+/// What can be chosen in one channel: what Twitch offers to wear only here
+/// - the channel's own, sub, bits, mod and the like, and those you have
+/// everywhere - and what can be worn in every channel, with the one of each
 /// that is worn now
 struct Choices {
     std::vector<Badge> channel;

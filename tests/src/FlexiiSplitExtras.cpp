@@ -847,7 +847,8 @@ TEST(FlexiiWebBadges, TheAnswerIsReadIntoWhatCanBeChosen)
                        {"availableBadges",
                         QJsonArray{badgeJson("subscriber", "12", "1-Year Sub"),
                                    badgeJson("moderator", "1", "Moderator"),
-                                   // Worn everywhere - not listed twice
+                                   // One of those for everywhere, offered
+                                   // to wear only here as well
                                    badgeJson("premium", "1", "Prime Gaming")}},
                    }},
               }},
@@ -856,9 +857,10 @@ TEST(FlexiiWebBadges, TheAnswerIsReadIntoWhatCanBeChosen)
 
     const auto choices = webbadges::parseChoices(answer);
     EXPECT_TRUE(choices.problem.isEmpty());
-    ASSERT_EQ(choices.channel.size(), 2);
+    ASSERT_EQ(choices.channel.size(), 3);
     EXPECT_EQ(choices.channel.at(0).title, "1-Year Sub");
     EXPECT_EQ(choices.channel.at(1).setID, "moderator");
+    EXPECT_EQ(choices.channel.at(2).setID, "premium");
     ASSERT_EQ(choices.global.size(), 2);
     EXPECT_FALSE(choices.channelWorn.has_value());
     ASSERT_TRUE(choices.globalWorn.has_value());
@@ -936,4 +938,34 @@ TEST(FlexiiWebBadges, AChoiceJustMadeCountsUntilTwitchCatchesUp)
     webbadges::applyRecent(anywhere, "flexii-other-channel", now);
     ASSERT_TRUE(anywhere.globalWorn.has_value());
     EXPECT_EQ(anywhere.globalWorn->setID, "premium");
+}
+
+TEST(FlexiiWebBadges, WhereNothingIsOwnTheGlobalOnesCanBeWornHere)
+{
+    // A channel you neither moderate nor are subscribed to: Twitch offers
+    // only those you have everywhere - they are still a choice here
+    const QJsonObject answer{
+        {"data",
+         QJsonObject{
+             {"currentUser",
+              QJsonObject{
+                  {"selectedBadge", QJsonValue()},
+                  {"availableBadges",
+                   QJsonArray{badgeJson("premium", "1", "Prime Gaming")}},
+              }},
+             {"user",
+              QJsonObject{
+                  {"self",
+                   QJsonObject{
+                       {"selectedBadge", QJsonValue()},
+                       {"availableBadges",
+                        QJsonArray{badgeJson("premium", "1", "Prime Gaming")}},
+                   }},
+              }},
+         }},
+    };
+    const auto choices = webbadges::parseChoices(answer);
+    ASSERT_EQ(choices.channel.size(), 1);
+    EXPECT_EQ(choices.channel.at(0).setID, "premium");
+    EXPECT_EQ(choices.global.size(), 1);
 }
