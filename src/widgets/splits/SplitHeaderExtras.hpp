@@ -76,6 +76,8 @@ public:
     static constexpr int HEIGHT = 28;
     /// Room under the line of time for "10 min", "1h" and the like
     static constexpr int LABEL_ROOM = 9;
+    /// Room before the curve, between it and the title
+    static constexpr int LEFT_ROOM = 2;
 
     /// How a mark on the line of time is labelled: "10 min", "1h", "1h30"
     static QString timeLabel(qint64 seconds);
@@ -112,6 +114,12 @@ public:
     /// Where the curve gets the time from. Tests hand it their own, so a
     /// stream of hours can pass in a moment.
     void setClock(std::function<QDateTime()> clock);
+
+    /// Room taken beyond its own width, in pixels - the header hands it
+    /// half of what the title leaves free
+    void setExtraWidth(int pixels);
+    /// How wide it is without that extra room
+    int ownWidth() const;
 
     /// As wide as it would like to be
     QSize sizeHint() const override;
@@ -154,6 +162,7 @@ private:
     QString streamId_;
 
     std::function<QDateTime()> clock_;
+    int extraWidth_{};
     ChannelPtr channel_;
     pajlada::Signals::SignalHolder connections_;
     QTimer timer_;

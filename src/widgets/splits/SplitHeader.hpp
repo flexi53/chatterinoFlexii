@@ -58,9 +58,13 @@ protected:
 #endif
     void leaveEvent(QEvent *event) override;
     void mouseDoubleClickEvent(QMouseEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
     void initializeLayout();
+    /// Hands the curve half of the room the title does not need, so a
+    /// short title does not float in a wide gap
+    void fitActivity();
     std::unique_ptr<QMenu> createMainMenu();
     std::unique_ptr<QMenu> createChatModeMenu();
 

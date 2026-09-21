@@ -237,6 +237,22 @@ TEST_F(FlexiiActivityGraphFixture, ATickEveryFewMinutesAtMost)
         << this->graph.description().toStdString();
 }
 
+TEST_F(FlexiiActivityGraphFixture, TheRoomBesideTheTitleWidensTheCurve)
+{
+    const auto own = this->graph.sizeHint().width();
+    EXPECT_EQ(this->graph.ownWidth(), own);
+
+    // What the header hands it comes on top of its own width
+    this->graph.setExtraWidth(80);
+    EXPECT_EQ(this->graph.sizeHint().width(), own + 80);
+    EXPECT_EQ(this->graph.ownWidth(), own);
+
+    // A title that needs more than there is gives nothing - the curve
+    // never gets narrower for it
+    this->graph.setExtraWidth(-40);
+    EXPECT_EQ(this->graph.sizeHint().width(), own);
+}
+
 namespace {
 
 class FlexiiSendWaitBarFixture : public ::testing::Test

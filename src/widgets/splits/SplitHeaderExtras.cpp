@@ -413,14 +413,31 @@ void ActivityGraph::scaleChangedEvent(float scale)
     this->updateGeometry();
 }
 
+void ActivityGraph::setExtraWidth(int pixels)
+{
+    pixels = std::max(pixels, 0);
+    if (pixels == this->extraWidth_)
+    {
+        return;
+    }
+    this->extraWidth_ = pixels;
+    this->updateGeometry();
+}
+
+int ActivityGraph::ownWidth() const
+{
+    return int((LEFT_ROOM + WIDE + 6) * this->scale());
+}
+
 QSize ActivityGraph::sizeHint() const
 {
-    return {int((3 + WIDE + 6) * this->scale()), int(HEIGHT * this->scale())};
+    return {this->ownWidth() + this->extraWidth_, int(HEIGHT * this->scale())};
 }
 
 QSize ActivityGraph::minimumSizeHint() const
 {
-    return {int((3 + 36 + 6) * this->scale()), int(HEIGHT * this->scale())};
+    return {int((LEFT_ROOM + 36 + 6) * this->scale()),
+            int(HEIGHT * this->scale())};
 }
 
 void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
@@ -432,7 +449,7 @@ void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
     // that for what its marks stand for
     const QRectF area =
         QRectF(this->rect())
-            .adjusted(3 * this->scale(), 2, -6 * this->scale(),
+            .adjusted(LEFT_ROOM * this->scale(), 2, -6 * this->scale(),
                       -(6 + LABEL_ROOM) * this->scale());
     if (area.width() <= 1)
     {

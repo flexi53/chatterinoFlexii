@@ -19,6 +19,7 @@
 #include "providers/twitch/TwitchAccount.hpp"
 #include "providers/twitch/TwitchChannel.hpp"
 #include "providers/twitch/TwitchIrcServer.hpp"
+#include "singletons/Fonts.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/StreamerMode.hpp"
 #include "singletons/Theme.hpp"
@@ -382,10 +383,12 @@ void SplitHeader::initializeLayout()
                          this->dropdownButton_->setMenu(this->createMainMenu());
                      });
 
+    // The room after each picture, before the title - halved again, so
+    // the title sits close to what belongs to it
     this->channelPicture_ =
-        new HeaderPicture(HeaderPicture::Shape::Round, 6, this);
+        new HeaderPicture(HeaderPicture::Shape::Round, 3, this);
     this->coverPicture_ =
-        new HeaderPicture(HeaderPicture::Shape::Cover, 5, this);
+        new HeaderPicture(HeaderPicture::Shape::Cover, 3, this);
     this->activity_ = new ActivityGraph(this);
     // As wide as there is room for, down to a third of that, so a narrow
     // split keeps its title
@@ -410,10 +413,10 @@ void SplitHeader::initializeLayout()
             // rather than running under what is next to it
             w->setShouldElide(true);
         }),
-        // space - ChattiFlexii: half of what it was, so the title keeps
-        // closer to what follows it
+        // space - ChattiFlexii: a quarter of what it was, so the title
+        // keeps close to what follows it
         makeWidget<BaseWidget>([](auto w) {
-            w->setScaleIndependentSize(4, 4);
+            w->setScaleIndependentSize(2, 4);
         }),
         // Look -> Tabs: how lively the chat was
         this->activity_,
@@ -487,6 +490,9 @@ void SplitHeader::initializeLayout()
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
     this->setLayout(layout);
+
+    // ChattiFlexii: the curve takes part of what the title leaves free
+    this->titleLabel_->installEventFilter(this);
 
     this->setAddButtonVisible(false);
 }
@@ -1158,6 +1164,43 @@ void SplitHeader::updateChannelText()
     }
 
     this->titleLabel_->setText(title.isEmpty() ? "<empty>" : title);
+    this->fitActivity();
+}
+
+void SplitHeader::fitActivity()
+{
+    if (this->activity_ == nullptr || this->titleLabel_ == nullptr)
+    {
+        return;
+    }
+    if (this->activity_->isHidden())
+    {
+        this->activity_->setExtraWidth(0);
+        return;
+    }
+
+    // Title and curve share what the rest of the header leaves. The title
+    // gets what it needs first, a long one all of it; of what is left over
+    // the curve takes half, which halves the gap either side of the title.
+    const auto shared = this->titleLabel_->width() + this->activity_->width();
+    const auto needed = static_cast<int>(std::ceil(
+        getApp()
+            ->getFonts()
+            ->getFontMetrics(this->titleLabel_->getFontStyle(),
+                             this->titleLabel_->scale())
+            .horizontalAdvance(this->titleLabel_->getText())));
+    this->activity_->setExtraWidth(
+        (shared - this->activity_->ownWidth() - needed) / 2);
+}
+
+bool SplitHeader::eventFilter(QObject *watched, QEvent *event)
+{
+    // The title changes size whenever the header or what is in it does
+    if (watched == this->titleLabel_ && event->type() == QEvent::Resize)
+    {
+        this->fitActivity();
+    }
+    return BaseWidget::eventFilter(watched, event);
 }
 
 void SplitHeader::updateIcons()
