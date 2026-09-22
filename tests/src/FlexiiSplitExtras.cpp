@@ -25,6 +25,8 @@
 #include <QFile>
 #include "controllers/badgealerts/BadgeAlerts.hpp"
 #include "controllers/moderation/AlertMute.hpp"
+#include "controllers/moderation/ModChanges.hpp"
+#include "controllers/moderation/ModHighlights.hpp"
 #include "controllers/moderation/ModerationAssistant.hpp"
 #include "widgets/helper/ActiveBorder.hpp"
 #include "widgets/splits/SendWaitBar.hpp"
@@ -1175,4 +1177,58 @@ TEST(FlexiiSavedOrder, ANewPageGoesWhereItBelongs)
         standard, {"Mod-Assistent", "Aussehen", "Buttons", "Sichern", "Alt"});
     EXPECT_EQ(order, QStringList({"Mod-Assistent", "Badges", "Aussehen",
                                   "Buttons", "Sichern"}));
+}
+
+TEST(FlexiiModChanges, WhoCameAndWhoWent)
+{
+    const auto [came, went] = ModHighlights::difference(
+        {"sonkertd", "fossabot", "xfaaaiith"},
+        {"sonkertd", "XfaaaiitH", "zarbex"});
+    EXPECT_EQ(came, QStringList({"zarbex"}));
+    EXPECT_EQ(went, QStringList({"fossabot"}));
+
+    const auto [none, nobody] =
+        ModHighlights::difference({"a", "b"}, {"b", "a"});
+    EXPECT_TRUE(none.isEmpty());
+    EXPECT_TRUE(nobody.isEmpty());
+}
+
+TEST(FlexiiModChanges, AChangeIsKeptAsItWas)
+{
+    const ModChanges::Change change{
+        .when = QDateTime::fromString("2026-09-22T18:30:00Z", Qt::ISODate),
+        .channel = "zarbex",
+        .login = "sonkertd",
+        .added = false,
+    };
+    const auto back = ModChanges::Change::fromJson(change.toJson());
+    EXPECT_EQ(back.when, change.when);
+    EXPECT_EQ(back.channel, "zarbex");
+    EXPECT_EQ(back.login, "sonkertd");
+    EXPECT_FALSE(back.added);
+}
+
+TEST(FlexiiModChanges, TheMessageSaysWhoAndWhere)
+{
+    MockApplication app;
+    const ModChanges::Change came{QDateTime::currentDateTimeUtc(), "zarbex",
+                                  "sonkertd", true};
+    EXPECT_EQ(ModChanges::messageFor(came)->messageText,
+              "sonkertd ist jetzt Mod in #zarbex");
+
+    auto went = came;
+    went.added = false;
+    const auto message = ModChanges::messageFor(went, QColor(255, 0, 0, 90));
+    EXPECT_EQ(message->messageText, "sonkertd ist kein Mod mehr in #zarbex");
+    EXPECT_TRUE(message->flags.has(MessageFlag::Highlighted));
+    EXPECT_TRUE(message->flags.has(MessageFlag::DoNotLog));
+}
+
+TEST(FlexiiModChanges, NothingIsReportedUntilItIsSwitchedOn)
+{
+    MockApplication app;
+    const auto *s = getSettings();
+    EXPECT_FALSE(s->modChangesEnabled.getDefaultValue());
+    EXPECT_TRUE(s->modChangesHideBots.getDefaultValue());
+    EXPECT_FALSE(s->modChangesSound.getDefaultValue());
 }

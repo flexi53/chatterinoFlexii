@@ -691,6 +691,8 @@ set(SOURCE_FILES
         util/Twitch.cpp
         util/Twitch.hpp
         util/TypeName.hpp
+        util/OpenOwnTab.cpp
+        util/OpenOwnTab.hpp
         util/SavedOrder.cpp
         util/SavedOrder.hpp
         util/UiStyle.cpp
@@ -835,6 +837,8 @@ set(SOURCE_FILES
         widgets/dialogs/WarnDialog.hpp
         controllers/badgealerts/BadgeAlerts.cpp
         controllers/badgealerts/BadgeAlerts.hpp
+        controllers/moderation/ModChanges.cpp
+        controllers/moderation/ModChanges.hpp
         providers/badgebase/BadgeBase.cpp
         providers/badgebase/BadgeBase.hpp
         widgets/dialogs/ModAlertPopup.cpp

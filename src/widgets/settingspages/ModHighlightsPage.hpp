@@ -30,6 +30,8 @@ public:
 private:
     void buildGeneralTab(QVBoxLayout *layout);
     void buildBotsTab(QVBoxLayout *layout);
+    /// A tab that says who became a mod of the chosen channels, or went
+    void buildChangesTab(QVBoxLayout *layout);
     /// Whether the plugin is there, and how many channels and mods are marked
     void showState();
     /// The chosen channels - and those let go while the page is open, so an

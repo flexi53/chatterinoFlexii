@@ -9,11 +9,13 @@
 #include "common/Modes.hpp"
 #include "common/Version.hpp"
 #include "controllers/accounts/AccountController.hpp"
+#include "controllers/badgealerts/BadgeAlerts.hpp"
 #include "controllers/commands/Command.hpp"
 #include "controllers/commands/CommandController.hpp"
 #include "controllers/highlights/HighlightController.hpp"
 #include "controllers/hotkeys/HotkeyController.hpp"
 #include "controllers/ignores/IgnoreController.hpp"
+#include "controllers/moderation/ModChanges.hpp"
 #include "controllers/notifications/NotificationController.hpp"
 #include "controllers/sound/ISoundController.hpp"
 #include "controllers/spellcheck/SpellChecker.hpp"
@@ -279,6 +281,20 @@ void Application::initialize(Settings &settings, const Paths &paths)
 #ifdef CHATTERINO_HAVE_PLUGINS
     this->plugins->initialize(settings);
 #endif
+
+    // ChattiFlexii: the tabs that fill themselves keep watching from the
+    // start while they are switched on - whether their tab is open or not
+    if (!this->isTest())
+    {
+        if (settings.badgeAlertsEnabled)
+        {
+            BadgeAlerts::instance();
+        }
+        if (settings.modChangesEnabled)
+        {
+            ModChanges::instance();
+        }
+    }
 
     // Show crash message.
     // On Windows, the crash message was already shown.

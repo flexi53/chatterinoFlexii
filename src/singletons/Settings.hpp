@@ -537,6 +537,18 @@ public:
 
     BoolSetting modHighlightsIgnoreBotNames = {
         "/moderation/modHighlights/ignoreBotNames", true};
+    /// Mod highlights -> Mod changes: a tab that says who became a mod of
+    /// the channels picked there, or stopped being one
+    BoolSetting modChangesEnabled = {"/moderation/modChanges/enabled", false};
+    /// Bots left out as under Mod highlights
+    BoolSetting modChangesHideBots = {"/moderation/modChanges/hideBots",
+                                      true};
+    BoolSetting modChangesSound = {"/moderation/modChanges/sound", false};
+    BoolSetting modChangesColored = {"/moderation/modChanges/colored", true};
+    QStringSetting modChangesColorAdded = {
+        "/moderation/modChanges/colorAdded", "#5a2fa84f"};
+    QStringSetting modChangesColorRemoved = {
+        "/moderation/modChanges/colorRemoved", "#5ad94040"};
     /// What the emote alert offers at each step: "delete" or a timeout length
     QStringSetting emoteAlertSteps = {"/moderation/emoteAlert/steps",
                                       "delete, delete, 30s"};

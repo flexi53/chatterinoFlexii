@@ -12,6 +12,7 @@
 #include <QStringList>
 
 #include <functional>
+#include <utility>
 #include <mutex>
 
 class QObject;
@@ -78,6 +79,16 @@ public:
 
     /// The mod lists or the chosen channels changed
     pajlada::Signals::NoArgSignal updated;
+
+    /// A channel's mods are not those of last time: the channel, who came
+    /// and who went. Only for a channel fetched before - its first list says
+    /// nothing - and never for a list that came back empty, which is more
+    /// likely a hiccup than everyone gone at once. GUI thread.
+    pajlada::Signals::Signal<QString, QStringList, QStringList> modsChanged;
+
+    /// Who is in @a now but not in @a before, and who the other way round
+    static std::pair<QStringList, QStringList> difference(
+        const QStringList &before, const QStringList &now);
 
 private:
     ModHighlights() = default;

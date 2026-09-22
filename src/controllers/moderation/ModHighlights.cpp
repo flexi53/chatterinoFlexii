@@ -26,6 +26,7 @@
 #include <QTimer>
 
 #include <chrono>
+#include <tuple>
 
 namespace {
 
@@ -424,11 +425,49 @@ void ModHighlights::fetch(const QStringList &channels)
     }
 }
 
+std::pair<QStringList, QStringList> ModHighlights::difference(
+    const QStringList &before, const QStringList &now)
+{
+    QStringList came;
+    QStringList went;
+    for (const auto &login : now)
+    {
+        if (!before.contains(login, Qt::CaseInsensitive))
+        {
+            came.append(login);
+        }
+    }
+    for (const auto &login : before)
+    {
+        if (!now.contains(login, Qt::CaseInsensitive))
+        {
+            went.append(login);
+        }
+    }
+    return {came, went};
+}
+
 void ModHighlights::store(const QString &channel, const QStringList &mods)
 {
-    std::lock_guard lock(this->mutex_);
-    this->mods_.insert(channel, mods);
-    this->updated_ = QDateTime::currentDateTimeUtc();
+    QStringList came;
+    QStringList went;
+    bool changed = false;
+    {
+        std::lock_guard lock(this->mutex_);
+        const auto it = this->mods_.constFind(channel);
+        if (it != this->mods_.constEnd() && !mods.isEmpty())
+        {
+            std::tie(came, went) = difference(*it, mods);
+            changed = !came.isEmpty() || !went.isEmpty();
+        }
+        this->mods_.insert(channel, mods);
+        this->updated_ = QDateTime::currentDateTimeUtc();
+    }
+    // Told outside the lock - whoever listens may ask again
+    if (changed)
+    {
+        this->modsChanged.invoke(channel, came, went);
+    }
 }
 
 void ModHighlights::listsChanged()
