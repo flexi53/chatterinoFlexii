@@ -31,7 +31,6 @@
 #include <QSaveFile>
 #include <QUrl>
 
-#include <algorithm>
 
 namespace chatterino {
 
@@ -416,56 +415,51 @@ void BadgeAlerts::checkBadgeBase(const QString &key)
             .ending = s->badgeAlertsEnding,
             .onlyMissing = s->badgeAlertsOnlyMissing,
         };
-        auto found = events(*claimable, *upcoming, missing, this->reported_,
-                            QDateTime::currentDateTimeUtc(), options);
+        const auto now = QDateTime::currentDateTimeUtc();
+        const auto fresh = events(*claimable, *upcoming, missing,
+                                  this->reported_, now, options);
 
-        // Once each start, what can be had now - those need no message of
-        // their own then
+        // Once each start, everything that holds now - the tab keeps no
+        // messages over a restart, and what was said before still holds.
+        // Only what is new since makes a sound.
         if (!this->summarized_)
         {
             this->summarized_ = true;
-            QStringList titles;
+            const auto current =
+                events(*claimable, *upcoming, missing, {}, now, options);
+
+            int lacking = 0;
             for (const auto &badge : *claimable)
             {
                 if (!missing || missing->contains(badge.id))
                 {
-                    titles.append(badge.title);
+                    lacking++;
                 }
             }
-            if (claimable->empty())
+            QStringList parts;
+            parts.append(
+                QStringLiteral("%1 Badges zu holen").arg(claimable->size()));
+            if (missing)
             {
-                this->note(
-                    QStringLiteral("Gerade gibt es kein Badge zu holen."));
+                parts.append(
+                    lacking == 0
+                        ? QStringLiteral("du hast sie alle")
+                        : QStringLiteral("dir fehlen %1").arg(lacking));
             }
-            else if (missing && titles.isEmpty())
+            if (!upcoming->empty())
             {
-                this->note(
-                    QStringLiteral("Gerade %1 Badges zu holen - du hast sie "
-                                   "alle.")
-                        .arg(claimable->size()));
+                parts.append(
+                    QStringLiteral("%1 kommen bald").arg(upcoming->size()));
             }
-            else
-            {
-                this->note(QStringLiteral("Gerade %1 Badges zu holen%2: %3")
-                               .arg(claimable->size())
-                               .arg(missing ? QStringLiteral(", dir fehlen %1")
-                                                  .arg(titles.size())
-                                            : QString())
-                               .arg(titles.join(QStringLiteral(", "))));
-            }
-            found.erase(std::remove_if(found.begin(), found.end(),
-                                       [this](const Event &event) {
-                                           if (event.kind != Kind::Available)
-                                           {
-                                               return false;
-                                           }
-                                           this->reported_.insert(event.key());
-                                           return true;
-                                       }),
-                        found.end());
+            this->note(QStringLiteral("Stand jetzt: ") +
+                       parts.join(QStringLiteral(", ")) + '.');
+            this->say(current, !fresh.empty());
+        }
+        else
+        {
+            this->say(fresh);
         }
 
-        this->say(found);
         this->save();
         this->asking_ = false;
         this->lastProblem_.clear();
@@ -525,7 +519,7 @@ QString BadgeAlerts::pictureFor(const badgebase::Badge &badge,
     return badge.image;
 }
 
-void BadgeAlerts::say(const std::vector<Event> &events)
+void BadgeAlerts::say(const std::vector<Event> &events, bool sound)
 {
     for (const auto &event : events)
     {
@@ -536,7 +530,7 @@ void BadgeAlerts::say(const std::vector<Event> &events)
             MessageContext::Original);
         this->reported_.insert(event.key());
     }
-    if (!events.empty() && getSettings()->badgeAlertsSound)
+    if (sound && !events.empty() && getSettings()->badgeAlertsSound)
     {
         getApp()->getSound()->play(
             QUrl(QStringLiteral("qrc:/sounds/ping2.wav")));

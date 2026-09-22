@@ -94,7 +94,9 @@ private:
     void check();
     void checkBadgeBase(const QString &key);
     void checkTwitch();
-    void say(const std::vector<Event> &events);
+    /// Puts @a events in the tab and remembers them; @a sound for a sound,
+    /// when switched on
+    void say(const std::vector<Event> &events, bool sound = true);
     void note(const QString &text);
     QString pictureFor(const badgebase::Badge &badge, bool &twitch) const;
 
