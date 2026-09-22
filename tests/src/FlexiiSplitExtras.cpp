@@ -23,10 +23,12 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QFile>
+#include "controllers/badgealerts/BadgeAlerts.hpp"
 #include "controllers/moderation/AlertMute.hpp"
 #include "controllers/moderation/ModerationAssistant.hpp"
 #include "widgets/helper/ActiveBorder.hpp"
 #include "widgets/splits/SendWaitBar.hpp"
+#include "providers/badgebase/BadgeBase.hpp"
 #include "providers/twitch/TwitchWebBadges.hpp"
 #include "util/QMagicEnumTagged.hpp"
 #include "widgets/buttons/BadgeButton.hpp"
@@ -993,4 +995,162 @@ TEST(FlexiiWarn, TheButtonIsThereWithReasonsToPick)
     EXPECT_TRUE(s->showWarnButton.getDefaultValue());
     EXPECT_GE(WarnDialog::choices(s->warnReasons.getDefaultValue(), {}).size(),
               3);
+}
+
+TEST(FlexiiBadgeBase, WhatItSendsIsReadEitherWay)
+{
+    // As the live API sends it
+    const QJsonObject live{
+        {"id", 19126776},
+        {"set_id", "borderlands-4-ripper"},
+        {"title", "Borderlands 4 - Ripper"},
+        {"url", "https://badgebase.de/badge/19126776"},
+        {"image", "https://example.invalid/ripper.png"},
+        {"start", "2026-09-20T18:00:00Z"},
+        {"end", "2026-09-30T21:59:00Z"},
+        {"holders", 12345},
+        {"price", "free"},
+    };
+    const auto badge = badgebase::normalize(live);
+    EXPECT_EQ(badge.id, "19126776");
+    EXPECT_EQ(badge.setId, "borderlands-4-ripper");
+    EXPECT_EQ(badge.image, "https://example.invalid/ripper.png");
+    EXPECT_EQ(badge.end,
+              QDateTime::fromString("2026-09-30T21:59:00Z", Qt::ISODate));
+    EXPECT_EQ(badge.holders, 12345);
+    EXPECT_FALSE(badge.paid);
+
+    // As its own description says it would
+    const QJsonObject spec{
+        {"id", 7},
+        {"title", "Paid one"},
+        {"image_url", "https://example.invalid/paid.png"},
+        {"startDate", "2026-10-01T10:00:00Z"},
+        {"endDate", QJsonValue()},
+        {"collectors", 3},
+        {"paid", true},
+    };
+    const auto other = badgebase::normalize(spec);
+    EXPECT_EQ(other.image, "https://example.invalid/paid.png");
+    EXPECT_TRUE(other.start.isValid());
+    EXPECT_FALSE(other.end.isValid());
+    EXPECT_EQ(other.holders, 3);
+    EXPECT_TRUE(other.paid);
+
+    const QJsonObject answer{{"data", QJsonArray{live, spec}}};
+    EXPECT_EQ(badgebase::badgesIn(answer).size(), 2);
+    EXPECT_TRUE(badgebase::badgesIn(QJsonObject{{"error", "missing key"}})
+                    .empty());
+}
+
+TEST(FlexiiBadgeBase, OnlyWhatLooksLikeAKeyIsKept)
+{
+    EXPECT_TRUE(badgebase::looksLikeKey("bb_0123456789abcdef0123456789"));
+    EXPECT_FALSE(badgebase::looksLikeKey("short"));
+    EXPECT_FALSE(badgebase::looksLikeKey("has a space in it 0123456789"));
+    EXPECT_FALSE(badgebase::storeKey("short"));
+}
+
+namespace {
+
+badgebase::Badge bbBadge(const QString &id, const QDateTime &end = {})
+{
+    badgebase::Badge badge;
+    badge.id = id;
+    badge.title = "Badge " + id;
+    badge.end = end;
+    return badge;
+}
+
+}  // namespace
+
+TEST(FlexiiBadgeAlerts, WhatIsMissingIsSaidOnce)
+{
+    const auto now = QDateTime::currentDateTimeUtc();
+    const std::vector<badgebase::Badge> claimable{
+        bbBadge("1", now.addDays(5)), bbBadge("2", now.addDays(5))};
+    const std::vector<badgebase::Badge> upcoming{bbBadge("3")};
+    const QSet<QString> missing{"1"};
+    const BadgeAlerts::Options options;
+
+    auto found =
+        BadgeAlerts::events(claimable, upcoming, missing, {}, now, options);
+    ASSERT_EQ(found.size(), 2);
+    EXPECT_EQ(found.at(0).kind, BadgeAlerts::Kind::Available);
+    EXPECT_EQ(found.at(0).badge.id, "1");
+    EXPECT_EQ(found.at(1).kind, BadgeAlerts::Kind::Upcoming);
+
+    // Said before: nothing again
+    QSet<QString> reported;
+    for (const auto &event : found)
+    {
+        reported.insert(event.key());
+    }
+    EXPECT_TRUE(BadgeAlerts::events(claimable, upcoming, missing, reported,
+                                    now, options)
+                    .empty());
+}
+
+TEST(FlexiiBadgeAlerts, WithoutKnowingWhatIsMissingEverythingCounts)
+{
+    const auto now = QDateTime::currentDateTimeUtc();
+    const std::vector<badgebase::Badge> claimable{bbBadge("1"), bbBadge("2")};
+    BadgeAlerts::Options options;
+    EXPECT_EQ(
+        BadgeAlerts::events(claimable, {}, std::nullopt, {}, now, options)
+            .size(),
+        2);
+
+    // And switched off, what they have comes too
+    options.onlyMissing = false;
+    EXPECT_EQ(BadgeAlerts::events(claimable, {}, QSet<QString>{"1"}, {}, now,
+                                  options)
+                  .size(),
+              2);
+}
+
+TEST(FlexiiBadgeAlerts, ADayBeforeTheEndItIsSaidToEndSoon)
+{
+    const auto now = QDateTime::currentDateTimeUtc();
+    BadgeAlerts::Options options;
+    options.available = false;
+
+    const std::vector<badgebase::Badge> soon{bbBadge("1", now.addSecs(3600))};
+    auto found =
+        BadgeAlerts::events(soon, {}, QSet<QString>{"1"}, {}, now, options);
+    ASSERT_EQ(found.size(), 1);
+    EXPECT_EQ(found.at(0).kind, BadgeAlerts::Kind::Ending);
+
+    // Days away, or over already: not yet, or no more
+    const std::vector<badgebase::Badge> later{bbBadge("1", now.addDays(3)),
+                                              bbBadge("2", now.addSecs(-60))};
+    EXPECT_TRUE(BadgeAlerts::events(later, {}, QSet<QString>{"1", "2"}, {},
+                                    now, options)
+                    .empty());
+}
+
+TEST(FlexiiBadgeAlerts, TheMessageSaysWhatAndUntilWhen)
+{
+    MockApplication app;
+    auto badge = bbBadge(
+        "1", QDateTime::fromString("2026-09-30T21:59:00Z", Qt::ISODate));
+    badge.title = "Borderlands 4 - Ripper";
+    badge.url = "https://badgebase.de/badge/1";
+    const auto message = BadgeAlerts::messageFor(
+        {BadgeAlerts::Kind::Available, badge}, {}, false);
+    EXPECT_TRUE(message->messageText.startsWith(
+        "Jetzt verfügbar: Borderlands 4 - Ripper"))
+        << message->messageText.toStdString();
+    EXPECT_TRUE(message->messageText.contains("bis "));
+    EXPECT_TRUE(message->messageText.contains("kostenlos"));
+    EXPECT_TRUE(message->flags.has(MessageFlag::DoNotLog));
+}
+
+TEST(FlexiiBadgeAlerts, NothingIsAskedUntilItIsSwitchedOn)
+{
+    MockApplication app;
+    const auto *s = getSettings();
+    EXPECT_FALSE(s->badgeAlertsEnabled.getDefaultValue());
+    EXPECT_TRUE(s->badgeAlertsOnlyMissing.getDefaultValue());
+    EXPECT_FALSE(s->badgeAlertsSound.getDefaultValue());
 }

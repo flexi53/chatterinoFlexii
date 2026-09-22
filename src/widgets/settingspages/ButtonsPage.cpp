@@ -4,7 +4,6 @@
 
 #include "widgets/settingspages/ButtonsPage.hpp"
 
-#include "providers/twitch/TwitchWebBadges.hpp"
 #include "singletons/Settings.hpp"
 #include "widgets/settingspages/HeaderPreview.hpp"
 #include "widgets/settingspages/SettingWidget.hpp"
@@ -266,8 +265,8 @@ void ButtonsPage::initLayout(GeneralPageView &layout)
         ->setTooltip("Zeigt, welches Badge du im Kanal trägst, und lässt "
                      "dich wie auf twitch.tv ein anderes wählen - eins des "
                      "Kanals oder eins für überall. Braucht den "
-                     "Browser-Login, siehe ganz unten; erscheint nur, wo du "
-                     "eingeloggt schreiben kannst.")
+                     "Browser-Login unter Einstellungen → Abzeichen; erscheint "
+                     "nur, wo du eingeloggt schreiben kannst.")
         ->addKeywords({"badge", "abzeichen", "identität", "sub"})
         ->addTo(layout);
     layout.addDescription(
@@ -370,99 +369,7 @@ void ButtonsPage::initLayout(GeneralPageView &layout)
                               s.warnReasons.getDefaultValue());
                       });
 
-    this->initBadgeTest(layout);
-
     layout.addStretch();
-}
-
-void ButtonsPage::initBadgeTest(GeneralPageView &layout)
-{
-    layout.addTitle("Badge wechseln");
-    layout.addDescription(
-        "Wie im Chat auf twitch.tv wählen, welches Badge du trägst - mit dem "
-        "Knopf „Badge wechseln“ oben, der in der Eingabezeile erscheint. "
-        "Twitch bietet das anderen Apps nicht an; es geht nur mit dem Login "
-        "deines Browsers, so wie die Webseite selbst es macht. „Testen“ "
-        "prüft, ob der Login taugt, und ändert dabei nichts.");
-    layout.addDescription(
-        "So kommst du an den Login: twitch.tv im Browser öffnen, angemeldet "
-        "sein, mit Rechtsklick → Untersuchen die Entwicklertools öffnen, "
-        "dort unter Speicher bzw. Anwendung → Cookies → twitch.tv den Wert "
-        "von „auth-token“ kopieren.");
-    layout.addDescription(
-        "Der Wert ist wie ein Passwort: Füge ihn nur hier ein - nie in einen "
-        "Chat, auf einer Webseite oder bei jemandem, der danach fragt. Er "
-        "kommt nur in den Schlüsselbund dieses Computers, nie in die "
-        "Einstellungen, einen Export, ein Backup oder den Abgleich.");
-
-    auto *field = new QLineEdit;
-    field->setEchoMode(QLineEdit::Password);
-    field->setPlaceholderText("auth-token hier einfügen");
-    auto *save = new QPushButton("Speichern");
-    auto *test = new QPushButton("Testen");
-    auto *forget = new QPushButton("Login löschen");
-
-    auto *row = new QHBoxLayout;
-    row->setContentsMargins(0, 0, 0, 0);
-    row->addWidget(field, 1);
-    row->addWidget(save);
-    row->addWidget(test);
-    row->addWidget(forget);
-    auto *rowWidget = new QWidget;
-    rowWidget->setLayout(row);
-    layout.addWidget(rowWidget, {"badge", "login", "browser", "auth-token"});
-
-    auto *status = new QLabel;
-    status->setWordWrap(true);
-    status->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    layout.addWidget(status, {"badge"});
-
-    if (!webbadges::canStore())
-    {
-        for (auto *widget : std::initializer_list<QWidget *>{
-                 field, save, test, forget})
-        {
-            widget->setEnabled(false);
-        }
-        status->setText("Geht nur mit dem Schlüsselbund des Systems - in der "
-                        "portablen Version nicht.");
-        return;
-    }
-
-    const auto showStored = [status] {
-        webbadges::load(status, [status](const QString &token) {
-            status->setText(token.isEmpty()
-                                ? "Kein Browser-Login gespeichert."
-                                : "Ein Browser-Login ist im Schlüsselbund.");
-        });
-    };
-    showStored();
-
-    QObject::connect(save, &QPushButton::clicked, status,
-                     [field, status] {
-                         const auto token =
-                             webbadges::normalize(field->text());
-                         field->clear();
-                         if (!webbadges::store(token))
-                         {
-                             status->setText(
-                                 "Das sieht nicht nach dem auth-token aus - "
-                                 "es sind 30 Buchstaben und Ziffern.");
-                             return;
-                         }
-                         status->setText(
-                             "Gespeichert im Schlüsselbund. Jetzt Testen.");
-                     });
-    QObject::connect(test, &QPushButton::clicked, status, [status] {
-        status->setText("Frage Twitch …");
-        webbadges::test(status, [status](const QString &report) {
-            status->setText(report);
-        });
-    });
-    QObject::connect(forget, &QPushButton::clicked, status, [status] {
-        webbadges::erase();
-        status->setText("Browser-Login gelöscht.");
-    });
 }
 
 bool ButtonsPage::filterElements(const QString &query)

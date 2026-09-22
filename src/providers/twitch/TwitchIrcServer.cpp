@@ -11,6 +11,7 @@
 #include "common/Literals.hpp"
 #include "common/QLogging.hpp"
 #include "controllers/accounts/AccountController.hpp"
+#include "controllers/badgealerts/BadgeAlerts.hpp"
 #include "messages/Message.hpp"
 #include "messages/MessageBuilder.hpp"
 #include "providers/bttv/BttvEmotes.hpp"
@@ -552,6 +553,12 @@ std::shared_ptr<Channel> TwitchIrcServer::getCustomChannel(
     if (channelName == "/automod")
     {
         return this->automodChannel;
+    }
+
+    // ChattiFlexii: Badges -> New badges
+    if (channelName == "/badges")
+    {
+        return BadgeAlerts::instance().channel();
     }
 
     static auto getTimer = [this](ChannelPtr channel, int msBetweenMessages,

@@ -17,6 +17,7 @@
 #include "widgets/helper/SettingsDialogTab.hpp"
 #include "widgets/settingspages/AboutPage.hpp"
 #include "widgets/settingspages/AccountsPage.hpp"
+#include "widgets/settingspages/BadgesPage.hpp"
 #include "widgets/settingspages/ButtonsPage.hpp"
 #include "widgets/settingspages/CommandPage.hpp"
 #include "widgets/settingspages/ExternalToolsPage.hpp"
@@ -316,6 +317,7 @@ void SettingsDialog::addTabs()
     this->addTab([]{return new ButtonsPage;},          "Knöpfe",         ":/settings/buttons.svg");
     this->addTab([]{return new ModAssistantPage;},     "Mod-Assistent",  ":/settings/modassistant.svg");
     this->addTab([]{return new ModHighlightsPage;},    "Mod-Highlights", ":/settings/modhighlights.svg");
+    this->addTab([]{return new BadgesPage;},           "Badges",         ":/settings/badges.svg");
     this->addTab([]{return new TransferPage;},         "Sichern & Übertragen", ":/settings/transfer.svg");
     // Ours are drawn in the modern way to begin with; Chatterino's own get
     // a second set, picked when the modern look is on

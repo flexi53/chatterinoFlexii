@@ -1144,6 +1144,17 @@ public:
     /// The reason given last, offered first the next time
     QStringSetting warnLastReason = {"/moderation/warn/lastReason", ""};
 
+    /// Badges -> New badges: a tab that says when a badge can be had
+    BoolSetting badgeAlertsEnabled = {"/badges/alerts/enabled", false};
+    BoolSetting badgeAlertsAvailable = {"/badges/alerts/available", true};
+    BoolSetting badgeAlertsUpcoming = {"/badges/alerts/upcoming", true};
+    BoolSetting badgeAlertsEnding = {"/badges/alerts/ending", true};
+    /// Only what the user does not have yet - as far as BadgeBase knows
+    BoolSetting badgeAlertsOnlyMissing = {"/badges/alerts/onlyMissing", true};
+    /// Also every new global badge Twitch itself brings out
+    BoolSetting badgeAlertsTwitch = {"/badges/alerts/twitch", true};
+    BoolSetting badgeAlertsSound = {"/badges/alerts/sound", false};
+
     struct {
         // this isn't shown in the UI
         BoolSetting enabled = {"/plugins/repl/enabled", false};

@@ -829,6 +829,10 @@ set(SOURCE_FILES
         widgets/dialogs/BadgePicker.hpp
         widgets/dialogs/WarnDialog.cpp
         widgets/dialogs/WarnDialog.hpp
+        controllers/badgealerts/BadgeAlerts.cpp
+        controllers/badgealerts/BadgeAlerts.hpp
+        providers/badgebase/BadgeBase.cpp
+        providers/badgebase/BadgeBase.hpp
         widgets/dialogs/ModAlertPopup.cpp
         widgets/dialogs/ModAlertPopup.hpp
         widgets/dialogs/SettingsDialog.cpp
@@ -934,6 +938,8 @@ set(SOURCE_FILES
         widgets/settingspages/AboutPage.hpp
         widgets/settingspages/AccountsPage.cpp
         widgets/settingspages/AccountsPage.hpp
+        widgets/settingspages/BadgesPage.cpp
+        widgets/settingspages/BadgesPage.hpp
         widgets/settingspages/ButtonsPage.cpp
         widgets/settingspages/ButtonsPage.hpp
         widgets/settingspages/HeaderPreview.cpp
