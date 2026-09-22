@@ -1133,6 +1133,16 @@ public:
     BoolSetting badgePickerChannelOpen = {"/ui/badgePicker/channelOpen",
                                           false};
     BoolSetting badgePickerGlobalOpen = {"/ui/badgePicker/globalOpen", false};
+    /// Buttons -> Usercard: warning a user as twitch.tv does - they only
+    /// write again once they have read it
+    BoolSetting showWarnButton = {"/ui/usercard/warn", true};
+    /// The reasons offered when warning someone, one per line
+    QStringSetting warnReasons = {
+        "/moderation/warn/reasons",
+        "Bitte kein Spam\nKeine Beleidigungen\nBitte halte dich an die "
+        "Chatregeln\nKeine Eigenwerbung"};
+    /// The reason given last, offered first the next time
+    QStringSetting warnLastReason = {"/moderation/warn/lastReason", ""};
 
     struct {
         // this isn't shown in the UI

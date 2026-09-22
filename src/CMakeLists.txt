@@ -827,6 +827,8 @@ set(SOURCE_FILES
         widgets/dialogs/AlertLevelBar.hpp
         widgets/dialogs/BadgePicker.cpp
         widgets/dialogs/BadgePicker.hpp
+        widgets/dialogs/WarnDialog.cpp
+        widgets/dialogs/WarnDialog.hpp
         widgets/dialogs/ModAlertPopup.cpp
         widgets/dialogs/ModAlertPopup.hpp
         widgets/dialogs/SettingsDialog.cpp

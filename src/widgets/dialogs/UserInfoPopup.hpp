@@ -150,19 +150,22 @@ private:
     class TimeoutWidget : public BaseWidget
     {
     public:
-        enum Action { Ban, Unban, Timeout };
+        enum Action { Ban, Unban, Timeout, Warn };
 
         TimeoutWidget();
 
         pajlada::Signals::Signal<std::pair<Action, int>> buttonClicked;
 
         void setMinTimeout(int minSecs);
+        /// ChattiFlexii: "Verwarnen" is Twitch's own, so only there
+        void setWarnVisible(bool visible);
 
     protected:
         void paintEvent(QPaintEvent *event) override;
 
     private:
         std::vector<std::pair<QWidget *, int>> timeoutButtons;
+        QWidget *warnBox_ = nullptr;
     };
 };
 

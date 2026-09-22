@@ -30,6 +30,7 @@
 #include "providers/twitch/TwitchWebBadges.hpp"
 #include "util/QMagicEnumTagged.hpp"
 #include "widgets/buttons/BadgeButton.hpp"
+#include "widgets/dialogs/WarnDialog.hpp"
 #include "util/UiStyle.hpp"
 #include "widgets/helper/NotebookTab.hpp"
 #include "widgets/splits/HeaderParts.hpp"
@@ -971,4 +972,25 @@ TEST(FlexiiWebBadges, WhereNothingIsOwnTheGlobalOnesCanBeWornHere)
     ASSERT_EQ(choices.channel.size(), 1);
     EXPECT_EQ(choices.channel.at(0).setID, "premium");
     EXPECT_EQ(choices.global.size(), 1);
+}
+
+TEST(FlexiiWarn, TheReasonGivenLastComesFirst)
+{
+    const auto offered = WarnDialog::choices(
+        "Bitte kein Spam\n\n  Keine Beleidigungen  \nBitte kein Spam",
+        "Keine Beleidigungen");
+    const QStringList expected{"Keine Beleidigungen", "Bitte kein Spam"};
+    EXPECT_EQ(offered, expected);
+
+    // Nothing given yet: only the list, each once
+    EXPECT_EQ(WarnDialog::choices("A\nB\nA", {}), QStringList({"A", "B"}));
+}
+
+TEST(FlexiiWarn, TheButtonIsThereWithReasonsToPick)
+{
+    MockApplication app;
+    const auto *s = getSettings();
+    EXPECT_TRUE(s->showWarnButton.getDefaultValue());
+    EXPECT_GE(WarnDialog::choices(s->warnReasons.getDefaultValue(), {}).size(),
+              3);
 }

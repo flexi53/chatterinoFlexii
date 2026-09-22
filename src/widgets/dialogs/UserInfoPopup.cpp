@@ -40,6 +40,7 @@
 #include "widgets/buttons/LabelButton.hpp"
 #include "widgets/buttons/PixmapButton.hpp"
 #include "widgets/dialogs/EditUserNotesDialog.hpp"
+#include "widgets/dialogs/WarnDialog.hpp"
 #include "widgets/helper/ChannelView.hpp"
 #include "widgets/helper/InvisibleSizeGrip.hpp"
 #include "widgets/helper/Line.hpp"
@@ -58,15 +59,19 @@
 #include <QDesktopServices>
 #include <QDir>
 #include <QFile>
+#include <QHBoxLayout>
 #include <QMessageBox>
 #include <QMetaEnum>
 #include <QMovie>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QPainter>
+#include <QPainterPath>
 #include <QPointer>
 #include <QRegularExpression>
 #include <QStringBuilder>
 #include <QTextStream>
+#include <QVBoxLayout>
 
 namespace {
 constexpr QStringView TEXT_FOLLOWERS = u"Followers: %1";
@@ -775,6 +780,9 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
             }
             lineMod->setVisible(visible);
             timeout->setVisible(visible);
+            // Buttons -> Usercard: warning is Twitch's own
+            timeout->setWarnVisible(visible && twitchChannel != nullptr &&
+                                    getSettings()->showWarnButton);
         });
 
         // We can safely ignore this signal connection since we own the button, and
@@ -805,6 +813,25 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
                             value, this->underlyingChannel_, false);
 
                         this->underlyingChannel_->sendMessage(value);
+                    }
+                }
+                break;
+                case TimeoutWidget::Warn: {
+                    // The reason first - Twitch shows it to the user
+                    if (this->underlyingChannel_)
+                    {
+                        auto *dialog = new WarnDialog(this->userName_, this);
+                        const auto channel = this->underlyingChannel_;
+                        const auto user = this->userName_;
+                        dialog->onWarn = [channel,
+                                          user](const QString &reason) {
+                            auto value = QStringLiteral("/warn %1 %2")
+                                             .arg(user, reason);
+                            value = getApp()->getCommands()->execCommand(
+                                value, channel, false);
+                            channel->sendMessage(value);
+                        };
+                        dialog->show();
                     }
                 }
                 break;
@@ -1924,8 +1951,71 @@ UserInfoPopup::TimeoutWidget::TimeoutWidget()
     };
 
     addButton(Unban, "Unban", getResources().buttons.unban);
+
+    // ChattiFlexii: warning as on twitch.tv - softer than any timeout, so
+    // before them. A triangle with a mark, in the yellow warnings wear.
+    {
+        this->warnBox_ = new QWidget;
+        auto *column = new QVBoxLayout(this->warnBox_);
+        column->setContentsMargins(0, 0, 0, 0);
+        column->setSpacing(0);
+        auto *label = new Label(QStringLiteral("Verwarnen"));
+        label->setStyleSheet("color: #BBB");
+        label->setPadding(QMargins{});
+        auto *titleRow = new QHBoxLayout;
+        titleRow->addStretch(1);
+        titleRow->addWidget(label);
+        titleRow->addStretch(1);
+        column->addLayout(titleRow);
+
+        QPixmap sign(64, 64);
+        sign.fill(Qt::transparent);
+        {
+            QPainter painter(&sign);
+            painter.setRenderHint(QPainter::Antialiasing);
+            const QColor yellow(240, 180, 41);
+            QPen pen(yellow, 5);
+            pen.setJoinStyle(Qt::RoundJoin);
+            pen.setCapStyle(Qt::RoundCap);
+            painter.setPen(pen);
+            QPainterPath triangle;
+            triangle.moveTo(32, 10);
+            triangle.lineTo(56, 52);
+            triangle.lineTo(8, 52);
+            triangle.closeSubpath();
+            painter.drawPath(triangle);
+            painter.drawLine(QPointF(32, 25), QPointF(32, 38));
+            painter.setBrush(yellow);
+            painter.drawEllipse(QPointF(32, 45), 1.5, 1.5);
+        }
+        auto *button = new PixmapButton(nullptr);
+        button->setPixmap(sign);
+        button->setScaleIndependentSize(buttonHeight, buttonHeight);
+        button->setBorderColor(QColor(255, 255, 255, 127));
+        button->setToolTip(QStringLiteral(
+            "Wie auf twitch.tv verwarnen: mit einem Grund, den der User "
+            "bestätigen muss, bevor er weiterschreiben kann"));
+        QObject::connect(button, &Button::leftClicked, [this] {
+            this->buttonClicked.invoke(std::make_pair(Warn, -1));
+        });
+        auto *buttonRow = new QHBoxLayout;
+        buttonRow->setSpacing(0);
+        buttonRow->addWidget(button);
+        column->addLayout(buttonRow);
+        layout->addWidget(this->warnBox_);
+        this->warnBox_->hide();
+    }
+
     addTimeouts("Timeouts");
     addButton(Ban, "Ban", getResources().buttons.ban);
+}
+
+void UserInfoPopup::TimeoutWidget::setWarnVisible(bool visible)
+{
+    if (this->warnBox_ != nullptr)
+    {
+        this->warnBox_->setVisible(visible);
+    }
 }
 
 void UserInfoPopup::TimeoutWidget::paintEvent(QPaintEvent *)

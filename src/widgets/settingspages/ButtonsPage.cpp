@@ -15,6 +15,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QPlainTextEdit>
 #include <QPushButton>
 #include <QTabWidget>
 #include <QTimer>
@@ -327,6 +328,47 @@ void ButtonsPage::initLayout(GeneralPageView &layout)
         s.showTabCloseButton.setValue(
             s.showTabCloseButton.getDefaultValue());
     });
+
+    layout.addTitle("In der Usercard");
+    layout.addDescription(
+        "Die Knöpfe unter dem Namen, wenn du jemanden anklickst - dort, wo "
+        "du Mod bist.");
+    SettingWidget::checkbox("Verwarnen", s.showWarnButton)
+        ->setTooltip("Verwarnt wie auf twitch.tv: mit einem Grund, den der "
+                     "User sieht und bestätigen muss, bevor er "
+                     "weiterschreiben kann. Andere Mods sehen die Warnung "
+                     "auch. Dasselbe wie /warn name grund.")
+        ->addKeywords({"warn", "warnung", "verwarnen", "usercard"})
+        ->addTo(layout);
+    layout.addDescription(
+        "Gründe, die beim Verwarnen zur Auswahl stehen - einer pro Zeile. "
+        "Der zuletzt benutzte steht jeweils oben, eigene tippst du einfach.");
+    {
+        auto *reasons = new QPlainTextEdit;
+        reasons->setPlainText(s.warnReasons.getValue());
+        reasons->setFixedHeight(90);
+        QObject::connect(reasons, &QPlainTextEdit::textChanged, reasons,
+                         [reasons, &s] {
+                             s.warnReasons.setValue(reasons->toPlainText());
+                         });
+        // Standard below puts the list back - the box follows
+        s.warnReasons.connect(
+            [reasons](const QString &value, auto) {
+                if (reasons->toPlainText() != value)
+                {
+                    reasons->setPlainText(value);
+                }
+            },
+            this->managedConnections_, false);
+        layout.addWidget(reasons, {"warn", "grund", "gründe"});
+    }
+    addStandardButton(layout, "Verwarnen wieder da, mit den Gründen vom Anfang",
+                      [&s] {
+                          s.showWarnButton.setValue(
+                              s.showWarnButton.getDefaultValue());
+                          s.warnReasons.setValue(
+                              s.warnReasons.getDefaultValue());
+                      });
 
     this->initBadgeTest(layout);
 
