@@ -4,6 +4,7 @@
 
 #include "providers/twitch/TwitchWebBadges.hpp"
 
+#include "common/CachedCredential.hpp"
 #include "common/Credentials.hpp"
 #include "common/network/NetworkRequest.hpp"
 #include "common/network/NetworkResult.hpp"
@@ -27,6 +28,13 @@ constexpr auto WEB_CLIENT_ID = "kimne78kx3ncx6brgo4mv6wki5h1ko";
 
 const QString PROVIDER = QStringLiteral("twitchweb");
 const QString NAME = QStringLiteral("browser");
+
+/// Read from the keychain once per start - every badge button asks for it
+CachedCredential &credential()
+{
+    static CachedCredential cached(PROVIDER, NAME);
+    return cached;
+}
 
 /// What Twitch said went wrong, in one line
 QString errorsOf(const QJsonObject &answer)
@@ -347,13 +355,13 @@ bool store(const QString &token)
     {
         return false;
     }
-    Credentials::instance().set(PROVIDER, NAME, token);
+    credential().set(token);
     return true;
 }
 
 void erase()
 {
-    Credentials::instance().erase(PROVIDER, NAME);
+    credential().erase();
 }
 
 void load(QObject *receiver, std::function<void(const QString &)> done)
@@ -363,7 +371,7 @@ void load(QObject *receiver, std::function<void(const QString &)> done)
         done({});
         return;
     }
-    Credentials::instance().get(PROVIDER, NAME, receiver, std::move(done));
+    credential().get(receiver, std::move(done));
 }
 
 void ask(const QString &token, const QString &query,

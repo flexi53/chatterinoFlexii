@@ -4,6 +4,7 @@
 
 #include "providers/badgebase/BadgeBase.hpp"
 
+#include "common/CachedCredential.hpp"
 #include "common/Credentials.hpp"
 #include "common/network/NetworkRequest.hpp"
 #include "common/network/NetworkResult.hpp"
@@ -18,6 +19,13 @@ namespace {
 const QString PROVIDER = QStringLiteral("badgebase");
 const QString NAME = QStringLiteral("key");
 const QString BASE = QStringLiteral("https://badgebase.de/api/v1");
+
+/// Read from the keychain once per start, not every quarter hour
+CachedCredential &credential()
+{
+    static CachedCredential cached(PROVIDER, NAME);
+    return cached;
+}
 
 QString textOf(const QJsonObject &object, const char *first,
                const char *second = nullptr)
@@ -113,13 +121,13 @@ bool storeKey(const QString &key)
     {
         return false;
     }
-    Credentials::instance().set(PROVIDER, NAME, key);
+    credential().set(key);
     return true;
 }
 
 void eraseKey()
 {
-    Credentials::instance().erase(PROVIDER, NAME);
+    credential().erase();
 }
 
 void loadKey(QObject *receiver, std::function<void(const QString &)> done)
@@ -129,7 +137,7 @@ void loadKey(QObject *receiver, std::function<void(const QString &)> done)
         done({});
         return;
     }
-    Credentials::instance().get(PROVIDER, NAME, receiver, std::move(done));
+    credential().get(receiver, std::move(done));
 }
 
 void get(const QString &key, const QString &path, QObject *caller,

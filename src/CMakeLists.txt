@@ -26,6 +26,8 @@ set(SOURCE_FILES
         common/ChatterinoSetting.hpp
         common/ChatterSet.cpp
         common/ChatterSet.hpp
+        common/CachedCredential.cpp
+        common/CachedCredential.hpp
         common/Credentials.cpp
         common/Credentials.hpp
         common/Env.cpp
