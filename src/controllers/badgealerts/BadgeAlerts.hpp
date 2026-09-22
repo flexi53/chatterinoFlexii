@@ -64,6 +64,8 @@ public:
         bool upcoming = true;
         bool ending = true;
         bool onlyMissing = true;
+        /// Also those that cost something, a sub or a purchase
+        bool paid = true;
     };
 
     /// What is to be said, from what BadgeBase knows. @a missing is what the

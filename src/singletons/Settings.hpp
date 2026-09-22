@@ -1166,6 +1166,8 @@ public:
     /// Also every new global badge Twitch itself brings out
     BoolSetting badgeAlertsTwitch = {"/badges/alerts/twitch", true};
     BoolSetting badgeAlertsSound = {"/badges/alerts/sound", false};
+    /// Also those that cost something - a sub, a purchase
+    BoolSetting badgeAlertsPaid = {"/badges/alerts/paid", true};
     /// Each kind of message on a colour of its own, as picked on the page
     BoolSetting badgeAlertsColored = {"/badges/alerts/colored", true};
     /// The pages in the settings, in the order they were dragged to - their

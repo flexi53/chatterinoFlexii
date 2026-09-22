@@ -155,6 +155,13 @@ void BadgesPage::initAlerts(GeneralPageView &layout)
     SettingWidget::checkbox("Endet bald", s.badgeAlertsEnding)
         ->setTooltip("Einen Tag, bevor ein Badge nicht mehr zu holen ist.")
         ->addTo(layout);
+    SettingWidget::checkbox("Auch kostenpflichtige (z. B. mit Sub)",
+                            s.badgeAlertsPaid)
+        ->setTooltip("Badges, die etwas kosten - meist ein Sub oder ein Kauf. "
+                     "Ohne den Haken meldet der Tab nur, was es kostenlos "
+                     "gibt. Welches was ist, steht vorne an jeder Meldung.")
+        ->addKeywords({"kostenlos", "kostenpflichtig", "sub", "paid", "free"})
+        ->addTo(layout);
     SettingWidget::checkbox("Nur, was mir noch fehlt", s.badgeAlertsOnlyMissing)
         ->setTooltip("BadgeBase weiß, welche Badges du schon hast - dazu "
                      "kommt dann nichts mehr. Das gilt für „Jetzt "
@@ -342,7 +349,7 @@ void BadgesPage::initAlerts(GeneralPageView &layout)
                  {&s.badgeAlertsAvailable, &s.badgeAlertsUpcoming,
                   &s.badgeAlertsEnding, &s.badgeAlertsOnlyMissing,
                   &s.badgeAlertsTwitch, &s.badgeAlertsSound,
-                  &s.badgeAlertsColored})
+                  &s.badgeAlertsColored, &s.badgeAlertsPaid})
             {
                 setting->setValue(setting->getDefaultValue());
             }

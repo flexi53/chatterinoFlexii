@@ -1021,7 +1021,7 @@ TEST(FlexiiBadgeBase, WhatItSendsIsReadEitherWay)
     EXPECT_EQ(badge.end,
               QDateTime::fromString("2026-09-30T21:59:00Z", Qt::ISODate));
     EXPECT_EQ(badge.holders, 12345);
-    EXPECT_FALSE(badge.paid);
+    EXPECT_EQ(badge.paid, false);
 
     // As its own description says it would
     const QJsonObject spec{
@@ -1038,7 +1038,7 @@ TEST(FlexiiBadgeBase, WhatItSendsIsReadEitherWay)
     EXPECT_TRUE(other.start.isValid());
     EXPECT_FALSE(other.end.isValid());
     EXPECT_EQ(other.holders, 3);
-    EXPECT_TRUE(other.paid);
+    EXPECT_EQ(other.paid, true);
 
     const QJsonObject answer{{"data", QJsonArray{live, spec}}};
     EXPECT_EQ(badgebase::badgesIn(answer).size(), 2);
@@ -1141,11 +1141,23 @@ TEST(FlexiiBadgeAlerts, TheMessageSaysWhatAndUntilWhen)
     badge.url = "https://badgebase.de/badge/1";
     const auto message = BadgeAlerts::messageFor(
         {BadgeAlerts::Kind::Available, badge}, {}, false);
+    // Not known whether it costs anything: nothing is said about it
     EXPECT_TRUE(message->messageText.startsWith(
         "Jetzt verfügbar: Borderlands 4 - Ripper"))
         << message->messageText.toStdString();
     EXPECT_TRUE(message->messageText.contains("bis "));
-    EXPECT_TRUE(message->messageText.contains("kostenlos"));
+    EXPECT_FALSE(message->messageText.contains("ostenlos"));
+
+    badge.paid = false;
+    EXPECT_TRUE(BadgeAlerts::messageFor({BadgeAlerts::Kind::Available, badge},
+                                        {}, false)
+                    ->messageText.startsWith(
+                        "Jetzt verfügbar: Kostenlos Borderlands 4"));
+    badge.paid = true;
+    EXPECT_TRUE(BadgeAlerts::messageFor({BadgeAlerts::Kind::Available, badge},
+                                        {}, false)
+                    ->messageText.startsWith(
+                        "Jetzt verfügbar: Kostenpflichtig Borderlands 4"));
     EXPECT_TRUE(message->flags.has(MessageFlag::DoNotLog));
 }
 
@@ -1231,4 +1243,39 @@ TEST(FlexiiModChanges, NothingIsReportedUntilItIsSwitchedOn)
     EXPECT_FALSE(s->modChangesEnabled.getDefaultValue());
     EXPECT_TRUE(s->modChangesHideBots.getDefaultValue());
     EXPECT_FALSE(s->modChangesSound.getDefaultValue());
+}
+
+TEST(FlexiiBadgeAlerts, ThoseThatCostSomethingOnlyWhenAskedFor)
+{
+    const auto now = QDateTime::currentDateTimeUtc();
+    auto free = bbBadge("1");
+    free.paid = false;
+    auto paid = bbBadge("2");
+    paid.paid = true;
+    const auto unknown = bbBadge("3");
+    auto soon = bbBadge("4");
+    soon.paid = true;
+
+    BadgeAlerts::Options options;
+    options.paid = false;
+    const auto found = BadgeAlerts::events({free, paid, unknown}, {soon},
+                                           std::nullopt, {}, now, options);
+    // The free one and the one not known to cost anything
+    ASSERT_EQ(found.size(), 2);
+    EXPECT_EQ(found.at(0).badge.id, "1");
+    EXPECT_EQ(found.at(1).badge.id, "3");
+
+    options.paid = true;
+    EXPECT_EQ(BadgeAlerts::events({free, paid, unknown}, {soon}, std::nullopt,
+                                  {}, now, options)
+                  .size(),
+              4);
+}
+
+TEST(FlexiiBadgeBase, APriceNotSaidIsNotKnown)
+{
+    EXPECT_FALSE(badgebase::normalize(QJsonObject{{"id", 1}}).paid.has_value());
+    EXPECT_EQ(badgebase::normalize(QJsonObject{{"id", 1}, {"price", "FREE"}})
+                  .paid,
+              false);
 }

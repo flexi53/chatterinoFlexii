@@ -76,9 +76,21 @@ Badge normalize(const QJsonObject &object)
     badge.start = timeOf(object, "start", "startDate");
     badge.end = timeOf(object, "end", "endDate");
 
-    const auto price = object.value("price");
-    badge.paid = price.isString() ? price.toString() == QStringLiteral("paid")
-                                  : object.value("paid").toBool();
+    // "free" or "paid" as it sends it, a yes or no as its description says -
+    // and when neither is there, it is not known
+    const auto price = object.value("price").toString().toLower();
+    if (price == QStringLiteral("paid"))
+    {
+        badge.paid = true;
+    }
+    else if (price == QStringLiteral("free"))
+    {
+        badge.paid = false;
+    }
+    else if (object.value("paid").isBool())
+    {
+        badge.paid = object.value("paid").toBool();
+    }
 
     auto holders = object.value("holders");
     if (!holders.isDouble())

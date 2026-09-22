@@ -9,6 +9,7 @@
 #include <QString>
 
 #include <functional>
+#include <optional>
 #include <vector>
 
 class QObject;
@@ -26,7 +27,9 @@ struct Badge {
     /// Its page on badgebase.de
     QString url;
     QString image;
-    bool paid = false;
+    /// Whether it costs something - a sub, a purchase. Unknown when BadgeBase
+    /// does not say.
+    std::optional<bool> paid;
     /// Invalid while not known
     QDateTime start;
     QDateTime end;

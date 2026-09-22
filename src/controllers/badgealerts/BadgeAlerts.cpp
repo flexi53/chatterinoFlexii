@@ -153,10 +153,17 @@ std::vector<BadgeAlerts::Event> BadgeAlerts::events(
         }
     };
 
+    // Those that cost something only when asked for - one not known to cost
+    // anything counts as free
+    const auto wanted = [&options](const badgebase::Badge &badge) {
+        return options.paid || badge.paid != true;
+    };
+
     for (const auto &badge : claimable)
     {
         // What they have already is nothing to say - when that is known
-        if (options.onlyMissing && missing && !missing->contains(badge.id))
+        if ((options.onlyMissing && missing && !missing->contains(badge.id)) ||
+            !wanted(badge))
         {
             continue;
         }
@@ -175,7 +182,10 @@ std::vector<BadgeAlerts::Event> BadgeAlerts::events(
     {
         for (const auto &badge : upcoming)
         {
-            add(Kind::Upcoming, badge);
+            if (wanted(badge))
+            {
+                add(Kind::Upcoming, badge);
+            }
         }
     }
     return found;
@@ -232,11 +242,6 @@ MessagePtr BadgeAlerts::messageFor(const Event &event, const QString &picture,
     {
         details.append(QStringLiteral("bis ") + when(badge.end));
     }
-    if (event.kind != Kind::NewOnTwitch)
-    {
-        details.append(badge.paid ? QStringLiteral("kostenpflichtig")
-                                  : QStringLiteral("kostenlos"));
-    }
     if (badge.holders >= 0)
     {
         details.append(QLocale(QLocale::German).toString(badge.holders) +
@@ -265,6 +270,24 @@ MessagePtr BadgeAlerts::messageFor(const Event &event, const QString &picture,
     }
     builder.emplace<TextElement>(label, MessageElementFlag::Text,
                                  MessageColor::System);
+    // Whether it costs something, where BadgeBase says so - up front, where
+    // it is seen at a glance
+    QString price;
+    if (event.kind != Kind::NewOnTwitch && badge.paid)
+    {
+        const bool paid = *badge.paid;
+        price = paid ? QStringLiteral("Kostenpflichtig")
+                     : QStringLiteral("Kostenlos");
+        builder
+            .emplace<TextElement>(price, MessageElementFlag::Text,
+                                  MessageColor(paid ? QColor(230, 180, 34)
+                                                    : QColor(62, 207, 110)),
+                                  FontStyle::ChatMediumBold)
+            ->setTooltip(paid
+                             ? QStringLiteral("Kostet etwas - meist ein Sub "
+                                              "oder ein Kauf")
+                             : QStringLiteral("Gibt es, ohne etwas zu zahlen"));
+    }
     builder.emplace<TextElement>(badge.title, MessageElementFlag::Text,
                                  MessageColor::Text, FontStyle::ChatMediumBold);
     if (!details.isEmpty())
@@ -281,7 +304,8 @@ MessagePtr BadgeAlerts::messageFor(const Event &event, const QString &picture,
             ->setLink(Link(Link::Url, badge.url));
     }
 
-    auto text = label + ' ' + badge.title;
+    auto text =
+        label + ' ' + (price.isEmpty() ? QString() : price + ' ') + badge.title;
     if (!details.isEmpty())
     {
         text += QStringLiteral(" - ") + details.join(QStringLiteral(" · "));
@@ -390,6 +414,7 @@ void BadgeAlerts::checkBadgeBase(const QString &key)
             .upcoming = s->badgeAlertsUpcoming,
             .ending = s->badgeAlertsEnding,
             .onlyMissing = s->badgeAlertsOnlyMissing,
+            .paid = s->badgeAlertsPaid,
         };
         const auto now = QDateTime::currentDateTimeUtc();
         const auto fresh = events(*claimable, *upcoming, missing,
@@ -405,22 +430,41 @@ void BadgeAlerts::checkBadgeBase(const QString &key)
                 events(*claimable, *upcoming, missing, {}, now, options);
 
             int lacking = 0;
+            int lackingFree = 0;
+            int lackingPaid = 0;
             for (const auto &badge : *claimable)
             {
                 if (!missing || missing->contains(badge.id))
                 {
                     lacking++;
+                    if (badge.paid == false)
+                    {
+                        lackingFree++;
+                    }
+                    else if (badge.paid == true)
+                    {
+                        lackingPaid++;
+                    }
                 }
+            }
+            // How many of them cost something, as far as that is known
+            QString split;
+            if (lackingFree + lackingPaid > 0)
+            {
+                split = QStringLiteral(" (%1 kostenlos, %2 kostenpflichtig)")
+                            .arg(lackingFree)
+                            .arg(lackingPaid);
             }
             QStringList parts;
             parts.append(
-                QStringLiteral("%1 Badges zu holen").arg(claimable->size()));
+                QStringLiteral("%1 Badges zu holen").arg(claimable->size()) +
+                (missing ? QString() : split));
             if (missing)
             {
                 parts.append(
                     lacking == 0
                         ? QStringLiteral("du hast sie alle")
-                        : QStringLiteral("dir fehlen %1").arg(lacking));
+                        : QStringLiteral("dir fehlen %1").arg(lacking) + split);
             }
             if (!upcoming->empty())
             {
