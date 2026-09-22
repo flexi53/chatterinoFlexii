@@ -314,7 +314,7 @@ void SettingsDialog::addTabs()
     // What ChattiFlexii adds comes first - that is what gets changed most
     this->ownHeading_ = this->addSectionLabel("ChattiFlexii");
     this->addTab([]{return new LookPage;},             "Aussehen",       ":/settings/look.svg");
-    this->addTab([]{return new ButtonsPage;},          "Knöpfe",         ":/settings/buttons.svg");
+    this->addTab([]{return new ButtonsPage;},          "Buttons",        ":/settings/buttons.svg");
     this->addTab([]{return new ModAssistantPage;},     "Mod-Assistent",  ":/settings/modassistant.svg");
     this->addTab([]{return new ModHighlightsPage;},    "Mod-Highlights", ":/settings/modhighlights.svg");
     this->addTab([]{return new BadgesPage;},           "Badges",         ":/settings/badges.svg");
@@ -356,8 +356,13 @@ void SettingsDialog::addTab(std::function<SettingsPage *()> page,
     const auto modern = modernIcon(name);
     const auto shown =
         uistyle::drawnIcons() && !modern.isEmpty() ? modern : iconPath;
-    auto *tab = new SettingsDialogTab(this, std::move(page), german::say(name),
-                                      shown, id);
+    // "Buttons" and "Badges" keep their English names on purpose - everything
+    // else is said in German
+    static const QStringList keepTheirName{"Buttons", "Badges"};
+    const auto title =
+        keepTheirName.contains(name) ? name : german::say(name);
+    auto *tab =
+        new SettingsDialogTab(this, std::move(page), title, shown, id);
     this->tabIcons_.push_back({tab, iconPath, modern});
     tab->setFixedHeight(static_cast<int>(30 * this->dpi_));
 

@@ -265,7 +265,7 @@ void ButtonsPage::initLayout(GeneralPageView &layout)
         ->setTooltip("Zeigt, welches Badge du im Kanal trägst, und lässt "
                      "dich wie auf twitch.tv ein anderes wählen - eins des "
                      "Kanals oder eins für überall. Braucht den "
-                     "Browser-Login unter Einstellungen → Abzeichen; erscheint "
+                     "Browser-Login unter Einstellungen → Badges; erscheint "
                      "nur, wo du eingeloggt schreiben kannst.")
         ->addKeywords({"badge", "abzeichen", "identität", "sub"})
         ->addTo(layout);

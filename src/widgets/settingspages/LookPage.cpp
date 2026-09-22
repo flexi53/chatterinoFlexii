@@ -428,7 +428,7 @@ void LookPage::buildTabsTab(GeneralPageView &layout)
     layout.addDescription(
         "Die Leiste über jedem Chat, mit dem Namen des Kanals. Welche Teile "
         "sie hat, in welcher Reihenfolge und wie breit die Kurve ist, "
-        "stellst du unter Knöpfe → Titelleiste ein.");
+        "stellst du unter Buttons → Titelleiste ein.");
     SettingWidget::checkbox("Profilbild und Kategorie zeigen",
                             s.splitHeaderPictures)
         ->setTooltip("Links in der Titelleiste das Bild des Kanals und, "

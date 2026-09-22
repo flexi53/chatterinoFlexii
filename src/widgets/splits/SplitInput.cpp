@@ -231,7 +231,7 @@ void SplitInput::initLayout()
         },
         this->managedConnections_);
 
-    // Look -> Knöpfe: which of them are in the input bar
+    // Buttons: which of them are in the input bar
     for (auto *setting : {&getSettings()->showEmoteButton,
                           &getSettings()->showClearChatButton,
                           &getSettings()->showFocusButton,
@@ -511,7 +511,7 @@ void SplitInput::updateModAssistButton()
         dynamic_cast<TwitchChannel *>(this->split_->getChannel().get());
     const bool moderates =
         twitch != nullptr && (twitch->isMod() || twitch->isBroadcaster());
-    // Look -> Knöpfe: both are only ever there where they could do
+    // Buttons: both are only ever there where they could do
     // something, and only while they are switched on
     this->ui_.modAssistButton->setVisible(
         moderates && getSettings()->showModAssistButton);

@@ -298,7 +298,7 @@ void BadgesPage::initSwitching(GeneralPageView &layout)
     layout.addDescription(
         "Wie im Chat auf twitch.tv wählen, welches Badge du trägst - mit dem "
         "Knopf „Badge wechseln“ in der Eingabezeile, einzuschalten unter "
-        "Knöpfe. "
+        "Buttons. "
         "Twitch bietet das anderen Apps nicht an; es geht nur mit dem Login "
         "deines Browsers, so wie die Webseite selbst es macht. „Testen“ "
         "prüft, ob der Login taugt, und ändert dabei nichts.");
