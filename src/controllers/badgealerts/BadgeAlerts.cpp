@@ -141,7 +141,8 @@ void BadgeAlerts::openTab()
             }
         }
     }
-    notebook.addPage(true)->appendNewSplit(true)->setChannel(channel);
+    // Its own channel - no dialog asking for a Twitch one
+    notebook.addPage(true)->appendNewSplit(false)->setChannel(channel);
 }
 
 QString BadgeAlerts::Event::key() const
