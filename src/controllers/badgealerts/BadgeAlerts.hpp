@@ -7,6 +7,7 @@
 #include "providers/badgebase/BadgeBase.hpp"
 
 #include <pajlada/signals/signalholder.hpp>
+#include <QColor>
 #include <QDateTime>
 #include <QHash>
 #include <QObject>
@@ -78,9 +79,14 @@ public:
     static constexpr int ENDING_SECONDS = 24 * 60 * 60;
 
     /// The message for @a event, with the picture at @a picture - Twitch's
-    /// own at twice the size when @a twitchPicture, BadgeBase's otherwise
+    /// own at twice the size when @a twitchPicture, BadgeBase's otherwise -
+    /// on @a background when that is a colour
     static MessagePtr messageFor(const Event &event, const QString &picture,
-                                 bool twitchPicture);
+                                 bool twitchPicture,
+                                 const QColor &background = {});
+
+    /// The colour picked for @a kind, or none when colours are off
+    static QColor colorFor(Kind kind);
 
 private:
     BadgeAlerts();

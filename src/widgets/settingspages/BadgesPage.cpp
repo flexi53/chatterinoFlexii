@@ -11,6 +11,8 @@
 #include "providers/twitch/TwitchAccount.hpp"
 #include "providers/twitch/TwitchWebBadges.hpp"
 #include "singletons/Settings.hpp"
+#include "widgets/dialogs/ColorPickerDialog.hpp"
+#include "widgets/helper/color/ColorButton.hpp"
 #include "widgets/settingspages/SettingWidget.hpp"
 
 #include <QHBoxLayout>
@@ -170,6 +172,59 @@ void BadgesPage::initAlerts(GeneralPageView &layout)
         ->addKeywords({"ton", "sound"})
         ->addTo(layout);
 
+    layout.addSubtitle("Farben");
+    SettingWidget::checkbox("Meldungen farbig hinterlegen",
+                            s.badgeAlertsColored)
+        ->setTooltip("Jede Art von Meldung auf ihrer Farbe - so siehst du auf "
+                     "einen Blick, was verfügbar ist, was kommt und was bald "
+                     "endet. Gilt für die Meldungen ab jetzt.")
+        ->addKeywords({"farbe", "farbig", "hintergrund"})
+        ->addTo(layout);
+    {
+        const auto colorRow = [this, &layout, &s](const QString &name,
+                                                  QStringSetting &setting) {
+            auto *label = new QLabel(name + ":");
+            auto *button = new ColorButton(QColor(setting.getValue()));
+            button->setFixedSize(50, 24);
+            auto *row = new QHBoxLayout;
+            row->setContentsMargins(20, 0, 0, 0);
+            row->addWidget(label);
+            row->addStretch(1);
+            row->addWidget(button);
+            auto *rowWidget = new QWidget;
+            rowWidget->setLayout(row);
+            layout.addWidget(rowWidget, {"farbe", name});
+
+            QObject::connect(button, &ColorButton::clicked, [button, &setting] {
+                auto *dialog = new ColorPickerDialog(QColor(setting), button);
+                QObject::connect(
+                    dialog, &ColorPickerDialog::colorConfirmed, button,
+                    [&setting](const QColor &picked) {
+                        if (picked.isValid())
+                        {
+                            setting.setValue(picked.name(QColor::HexArgb));
+                        }
+                    });
+                dialog->show();
+            });
+            setting.connect(
+                [button](const QString &value, auto) {
+                    button->setColor(QColor(value));
+                },
+                this->managedConnections_, false);
+            // Greyed out while the messages are not coloured
+            s.badgeAlertsColored.connect(
+                [rowWidget](const bool colored, auto) {
+                    rowWidget->setEnabled(colored);
+                },
+                this->managedConnections_);
+        };
+        colorRow("Jetzt verfügbar", s.badgeColorAvailable);
+        colorRow("Kommt bald", s.badgeColorUpcoming);
+        colorRow("Endet bald", s.badgeColorEnding);
+        colorRow("Neu bei Twitch", s.badgeColorTwitch);
+    }
+
     layout.addSubtitle("BadgeBase-Schlüssel");
     layout.addDescription(
         "Für Termine, „kommt bald“ und „fehlt dir noch“. Jeder braucht einen "
@@ -278,18 +333,25 @@ void BadgesPage::initAlerts(GeneralPageView &layout)
         });
     }
 
-    addStandardButton(layout,
-                      "Was gemeldet wird wieder so wie am Anfang - der "
-                      "Schlüssel bleibt",
-                      [&s] {
-                          for (auto *setting :
-                               {&s.badgeAlertsAvailable, &s.badgeAlertsUpcoming,
-                                &s.badgeAlertsEnding, &s.badgeAlertsOnlyMissing,
-                                &s.badgeAlertsTwitch, &s.badgeAlertsSound})
-                          {
-                              setting->setValue(setting->getDefaultValue());
-                          }
-                      });
+    addStandardButton(
+        layout,
+        "Was gemeldet wird und die Farben wieder so wie am Anfang - der "
+        "Schlüssel bleibt",
+        [&s] {
+            for (auto *setting :
+                 {&s.badgeAlertsAvailable, &s.badgeAlertsUpcoming,
+                  &s.badgeAlertsEnding, &s.badgeAlertsOnlyMissing,
+                  &s.badgeAlertsTwitch, &s.badgeAlertsSound,
+                  &s.badgeAlertsColored})
+            {
+                setting->setValue(setting->getDefaultValue());
+            }
+            for (auto *color : {&s.badgeColorAvailable, &s.badgeColorUpcoming,
+                                &s.badgeColorEnding, &s.badgeColorTwitch})
+            {
+                color->setValue(color->getDefaultValue());
+            }
+        });
 }
 
 void BadgesPage::initSwitching(GeneralPageView &layout)

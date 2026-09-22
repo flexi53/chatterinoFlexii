@@ -288,6 +288,17 @@ void LookPage::buildStyleTab(GeneralPageView &layout)
         "Tab-Leiste. Das gilt nur für das Fenster, in dem du ihn drückst; "
         "jedes Fenster merkt sich das für sich, und jeder Computer auch.");
 
+    layout.addTitle("Einstellungsfenster");
+    layout.addDescription(
+        "Die Seiten links in diesem Fenster kannst du anders anordnen: einen "
+        "Eintrag anfassen und an eine andere Stelle ziehen - innerhalb "
+        "seines Blocks, ChattiFlexii oder Chatterino. „Über“ bleibt unten.");
+    addStandardButton(layout, "Die Seiten wieder in der Reihenfolge vom Anfang",
+                      [&s] {
+                          s.settingsTabOrder.setValue(
+                              s.settingsTabOrder.getDefaultValue());
+                      });
+
     layout.addStretch();
 }
 

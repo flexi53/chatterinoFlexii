@@ -206,8 +206,29 @@ std::vector<BadgeAlerts::Event> BadgeAlerts::events(
     return found;
 }
 
+QColor BadgeAlerts::colorFor(Kind kind)
+{
+    const auto *s = getSettings();
+    if (!s->badgeAlertsColored)
+    {
+        return {};
+    }
+    switch (kind)
+    {
+        case Kind::Available:
+            return QColor(s->badgeColorAvailable.getValue());
+        case Kind::Upcoming:
+            return QColor(s->badgeColorUpcoming.getValue());
+        case Kind::Ending:
+            return QColor(s->badgeColorEnding.getValue());
+        case Kind::NewOnTwitch:
+            return QColor(s->badgeColorTwitch.getValue());
+    }
+    return {};
+}
+
 MessagePtr BadgeAlerts::messageFor(const Event &event, const QString &picture,
-                                   bool twitchPicture)
+                                   bool twitchPicture, const QColor &background)
 {
     const auto &badge = event.badge;
     QString label;
@@ -249,6 +270,13 @@ MessagePtr BadgeAlerts::messageFor(const Event &event, const QString &picture,
 
     MessageBuilder builder;
     builder->flags.set(MessageFlag::DoNotLog);
+    // On its colour as a highlight is - without lighting the tab up as a
+    // mention would
+    if (background.isValid())
+    {
+        builder->flags.set(MessageFlag::Highlighted);
+        builder->highlightColor = std::make_shared<QColor>(background);
+    }
     builder.emplace<TimestampElement>(QTime::currentTime());
     if (!picture.isEmpty())
     {
@@ -503,8 +531,9 @@ void BadgeAlerts::say(const std::vector<Event> &events)
     {
         bool twitch = false;
         const auto picture = this->pictureFor(event.badge, twitch);
-        this->channel_->addMessage(messageFor(event, picture, twitch),
-                                   MessageContext::Original);
+        this->channel_->addMessage(
+            messageFor(event, picture, twitch, colorFor(event.kind)),
+            MessageContext::Original);
         this->reported_.insert(event.key());
     }
     if (!events.empty() && getSettings()->badgeAlertsSound)

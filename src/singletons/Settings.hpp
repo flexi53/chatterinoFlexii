@@ -1154,6 +1154,19 @@ public:
     /// Also every new global badge Twitch itself brings out
     BoolSetting badgeAlertsTwitch = {"/badges/alerts/twitch", true};
     BoolSetting badgeAlertsSound = {"/badges/alerts/sound", false};
+    /// Each kind of message on a colour of its own, as picked on the page
+    BoolSetting badgeAlertsColored = {"/badges/alerts/colored", true};
+    /// The pages in the settings, in the order they were dragged to - their
+    /// names, empty for the order they come in
+    QStringSetting settingsTabOrder = {"/ui/settingsTabOrder", ""};
+    QStringSetting badgeColorAvailable = {"/badges/alerts/colorAvailable",
+                                          "#5a2fa84f"};
+    QStringSetting badgeColorUpcoming = {"/badges/alerts/colorUpcoming",
+                                         "#5a3d8bd9"};
+    QStringSetting badgeColorEnding = {"/badges/alerts/colorEnding",
+                                       "#5ad94040"};
+    QStringSetting badgeColorTwitch = {"/badges/alerts/colorTwitch",
+                                       "#5a9147ff"};
 
     struct {
         // this isn't shown in the UI

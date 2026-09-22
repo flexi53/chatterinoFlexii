@@ -8,8 +8,11 @@
 
 #include <pajlada/settings/setting.hpp>
 #include <QFrame>
+#include <QHash>
+#include <QPoint>
 #include <QPushButton>
 #include <QStackedLayout>
+#include <QStringList>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -65,6 +68,16 @@ private:
     void refreshHeadings();
     /// ChattiFlexii: puts the icons of the look that is on now on the tabs
     void refreshIcons();
+    /// ChattiFlexii: the pages stand in the order they were dragged to,
+    /// each within its block - @a order, or the one saved when empty
+    void applyTabOrder(const QStringList &order = {});
+    /// The block @a tab stands in - 0 ours, 1 Chatterino's, -1 for one that
+    /// stays where it is (About, at the bottom)
+    int blockOf(SettingsDialogTab *tab) const;
+    /// The names of the tabs in the order they stand now
+    QStringList currentTabOrder() const;
+    /// Moves the tab being dragged to where the mouse is, in its block
+    void dragTabTo(const QPoint &globalPos);
     void addTab(std::function<SettingsPage *()> page, const QString &name,
                 const QString &iconPath, SettingsTabId id = {},
                 Qt::Alignment alignment = Qt::AlignTop);
@@ -95,6 +108,12 @@ private:
         QString modern;
     };
     std::vector<TabIcons> tabIcons_;
+    /// ChattiFlexii: each tab by the name it was added with, as the order
+    /// is saved - the shown one may be translated
+    QHash<SettingsDialogTab *, QString> tabKeys_;
+    SettingsDialogTab *draggedTab_{};
+    QPoint dragFrom_;
+    bool dragging_ = false;
     /// ChattiFlexii: how many of them are ours - they come first
     int ownTabs_ = 0;
     QLabel *ownHeading_{};

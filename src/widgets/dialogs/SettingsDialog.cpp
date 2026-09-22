@@ -12,6 +12,7 @@
 #include "singletons/Settings.hpp"
 #include "util/German.hpp"
 #include "util/LayoutCreator.hpp"
+#include "util/SavedOrder.hpp"
 #include "util/UiStyle.hpp"
 #include "widgets/BaseWindow.hpp"
 #include "widgets/helper/SettingsDialogTab.hpp"
@@ -35,11 +36,15 @@
 #include "widgets/settingspages/PluginsPage.hpp"
 #include "widgets/settingspages/TransferPage.hpp"
 
+#include <QApplication>
 #include <QDialogButtonBox>
+#include <QFile>
 #include <QHash>
 #include <QLabel>
-#include <QFile>
 #include <QLineEdit>
+#include <QMouseEvent>
+
+#include <algorithm>
 
 namespace {
 
@@ -110,6 +115,18 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     this->initUi();
     this->addTabs();
     this->overrideBackgroundColor_ = QColor("#111111");
+
+    // ChattiFlexii: the pages in the order they were dragged to - and back
+    // to the one they come in when Look -> Standard says so
+    this->applyTabOrder();
+    getSettings()->settingsTabOrder.connect(
+        [this](const auto &, auto) {
+            if (!this->dragging_)
+            {
+                this->applyTabOrder();
+            }
+        },
+        this->signalHolder_, false);
 
     // The window is opened once and kept, so a change of look has to reach
     // the icons that are already on screen
@@ -278,8 +295,166 @@ void SettingsDialog::setElementFilter(const QString &query)
     this->ui_.search->setText(query);
 }
 
+int SettingsDialog::blockOf(SettingsDialogTab *tab) const
+{
+    const auto it = std::find(this->tabs_.begin(), this->tabs_.end(), tab);
+    if (it == this->tabs_.end() || tab->id() == SettingsTabId::About)
+    {
+        return -1;
+    }
+    return std::distance(this->tabs_.begin(), it) < this->ownTabs_ ? 0 : 1;
+}
+
+QStringList SettingsDialog::currentTabOrder() const
+{
+    std::vector<std::pair<int, QString>> placed;
+    for (auto *tab : this->tabs_)
+    {
+        if (this->blockOf(tab) >= 0)
+        {
+            placed.emplace_back(this->ui_.tabContainer->indexOf(tab),
+                                this->tabKeys_.value(tab));
+        }
+    }
+    std::sort(placed.begin(), placed.end());
+    QStringList order;
+    for (const auto &entry : placed)
+    {
+        order.append(entry.second);
+    }
+    return order;
+}
+
+void SettingsDialog::applyTabOrder(const QStringList &order)
+{
+    const auto wantedOrder =
+        order.isEmpty() ? getSettings()->settingsTabOrder.getValue().split(
+                              ',', Qt::SkipEmptyParts)
+                        : order;
+
+    auto *layout = this->ui_.tabContainer;
+    for (int block = 0; block < 2; block++)
+    {
+        std::vector<SettingsDialogTab *> tabs;
+        QStringList keys;
+        std::vector<int> places;
+        for (auto *tab : this->tabs_)
+        {
+            if (this->blockOf(tab) == block)
+            {
+                tabs.push_back(tab);
+                keys.append(this->tabKeys_.value(tab));
+                places.push_back(layout->indexOf(tab));
+            }
+        }
+        std::sort(places.begin(), places.end());
+        const auto wanted = orderAsSaved(keys, wantedOrder);
+
+        // The block keeps the places it has between the headings and
+        // spaces - only who stands in each changes
+        for (auto *tab : tabs)
+        {
+            layout->removeWidget(tab);
+        }
+        for (size_t i = 0; i < places.size(); i++)
+        {
+            auto *tab = tabs.at(static_cast<size_t>(keys.indexOf(
+                wanted.at(static_cast<qsizetype>(i)))));
+            layout->insertWidget(places.at(i), tab, 0, Qt::AlignTop);
+        }
+    }
+}
+
+void SettingsDialog::dragTabTo(const QPoint &globalPos)
+{
+    const auto block = this->blockOf(this->draggedTab_);
+    if (block < 0)
+    {
+        return;
+    }
+    SettingsDialogTab *target = nullptr;
+    for (auto *tab : this->tabs_)
+    {
+        if (tab != this->draggedTab_ && tab->isVisible() &&
+            this->blockOf(tab) == block &&
+            QRect(tab->mapToGlobal(QPoint(0, 0)), tab->size())
+                .contains(globalPos))
+        {
+            target = tab;
+        }
+    }
+    if (target == nullptr)
+    {
+        return;
+    }
+
+    // Where the one under the mouse was, the dragged one goes
+    auto order = this->currentTabOrder();
+    const auto &dragged = this->tabKeys_.value(this->draggedTab_);
+    const auto at = order.indexOf(this->tabKeys_.value(target));
+    order.removeAll(dragged);
+    order.insert(at, dragged);
+    this->applyTabOrder(order);
+}
+
 bool SettingsDialog::eventFilter(QObject *object, QEvent *event)
 {
+    // ChattiFlexii: a tab taken hold of and moved goes elsewhere in its block
+    if (auto *tab = dynamic_cast<SettingsDialogTab *>(object))
+    {
+        auto *mouse = dynamic_cast<QMouseEvent *>(event);
+        if (mouse != nullptr)
+        {
+            const auto globalPos = mouse->globalPosition().toPoint();
+            if (event->type() == QEvent::MouseButtonPress &&
+                mouse->button() == Qt::LeftButton && this->blockOf(tab) >= 0)
+            {
+                this->draggedTab_ = tab;
+                this->dragFrom_ = globalPos;
+                this->dragging_ = false;
+            }
+            else if (event->type() == QEvent::MouseMove &&
+                     this->draggedTab_ != nullptr &&
+                     (mouse->buttons() & Qt::LeftButton))
+            {
+                if (!this->dragging_ &&
+                    (globalPos - this->dragFrom_).manhattanLength() >=
+                        QApplication::startDragDistance())
+                {
+                    this->dragging_ = true;
+                    this->ui_.tabContainerContainer->setCursor(
+                        Qt::ClosedHandCursor);
+                }
+                if (this->dragging_)
+                {
+                    this->dragTabTo(globalPos);
+                }
+            }
+            else if (event->type() == QEvent::MouseButtonRelease &&
+                     mouse->button() == Qt::LeftButton)
+            {
+                if (this->dragging_)
+                {
+                    this->ui_.tabContainerContainer->unsetCursor();
+                    const auto order = this->currentTabOrder();
+                    QStringList standard;
+                    for (auto *each : this->tabs_)
+                    {
+                        if (this->blockOf(each) >= 0)
+                        {
+                            standard.append(this->tabKeys_.value(each));
+                        }
+                    }
+                    getSettings()->settingsTabOrder.setValue(
+                        order == standard ? QString() : order.join(','));
+                }
+                this->draggedTab_ = nullptr;
+                this->dragging_ = false;
+            }
+        }
+        return false;
+    }
+
     if (object == this->ui_.search && event->type() == QEvent::KeyPress)
     {
         auto *keyEvent = dynamic_cast<QKeyEvent *>(event);
@@ -364,6 +539,9 @@ void SettingsDialog::addTab(std::function<SettingsPage *()> page,
     auto *tab =
         new SettingsDialogTab(this, std::move(page), title, shown, id);
     this->tabIcons_.push_back({tab, iconPath, modern});
+    // Taken hold of, a tab can be dragged elsewhere in its block
+    this->tabKeys_.insert(tab, name);
+    tab->installEventFilter(this);
     tab->setFixedHeight(static_cast<int>(30 * this->dpi_));
 
     this->ui_.tabContainer->addWidget(tab, 0, alignment);

@@ -31,6 +31,7 @@
 #include "providers/badgebase/BadgeBase.hpp"
 #include "providers/twitch/TwitchWebBadges.hpp"
 #include "util/QMagicEnumTagged.hpp"
+#include "util/SavedOrder.hpp"
 #include "widgets/buttons/BadgeButton.hpp"
 #include "widgets/dialogs/WarnDialog.hpp"
 #include "util/UiStyle.hpp"
@@ -1153,4 +1154,25 @@ TEST(FlexiiBadgeAlerts, NothingIsAskedUntilItIsSwitchedOn)
     EXPECT_FALSE(s->badgeAlertsEnabled.getDefaultValue());
     EXPECT_TRUE(s->badgeAlertsOnlyMissing.getDefaultValue());
     EXPECT_FALSE(s->badgeAlertsSound.getDefaultValue());
+}
+
+TEST(FlexiiSavedOrder, TheOrderDraggedToIsKept)
+{
+    const QStringList standard{"Aussehen", "Buttons", "Mod-Assistent",
+                               "Badges"};
+    EXPECT_EQ(orderAsSaved(standard, {}), standard);
+    EXPECT_EQ(orderAsSaved(standard,
+                           {"Badges", "Aussehen", "Buttons", "Mod-Assistent"}),
+              QStringList({"Badges", "Aussehen", "Buttons", "Mod-Assistent"}));
+}
+
+TEST(FlexiiSavedOrder, ANewPageGoesWhereItBelongs)
+{
+    // Saved before "Badges" was there: it goes behind the one it follows
+    const QStringList standard{"Aussehen", "Buttons", "Mod-Assistent",
+                               "Badges", "Sichern"};
+    const auto order = orderAsSaved(
+        standard, {"Mod-Assistent", "Aussehen", "Buttons", "Sichern", "Alt"});
+    EXPECT_EQ(order, QStringList({"Mod-Assistent", "Badges", "Aussehen",
+                                  "Buttons", "Sichern"}));
 }

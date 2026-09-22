@@ -691,6 +691,8 @@ set(SOURCE_FILES
         util/Twitch.cpp
         util/Twitch.hpp
         util/TypeName.hpp
+        util/SavedOrder.cpp
+        util/SavedOrder.hpp
         util/UiStyle.cpp
         util/UiStyle.hpp
         util/UpdateCheck.cpp
