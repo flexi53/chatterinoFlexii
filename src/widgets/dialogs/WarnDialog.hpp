@@ -18,14 +18,18 @@ namespace chatterino {
 class WarnDialog : public QDialog
 {
 public:
-    WarnDialog(const QString &userName, QWidget *parent);
+    /// @a suggestion is offered first, before the reason given last and
+    /// those set under Buttons - for an alert, what it is about
+    WarnDialog(const QString &userName, QWidget *parent,
+               const QString &suggestion = {});
 
     /// Told the reason once "Verwarnen" is pressed
     std::function<void(const QString &reason)> onWarn;
 
     /// What is offered: the reason given @a last first, then @a presets -
     /// one per line - each once, without the empty ones
-    static QStringList choices(const QString &presets, const QString &last);
+    static QStringList choices(const QString &presets, const QString &last,
+                               const QString &suggestion = {});
 
     /// The most Twitch takes for a reason
     static constexpr int MOST_CHARACTERS = 500;

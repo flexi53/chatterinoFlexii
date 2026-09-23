@@ -1148,6 +1148,9 @@ public:
     /// Buttons -> Usercard: warning a user as twitch.tv does - they only
     /// write again once they have read it
     BoolSetting showWarnButton = {"/ui/usercard/warn", true};
+    /// The same in the alert windows of the moderation assistant, as the
+    /// gentle step before a timeout
+    BoolSetting modAlertWarnButton = {"/moderation/alerts/warnButton", true};
     /// The reasons offered when warning someone, one per line
     QStringSetting warnReasons = {
         "/moderation/warn/reasons",

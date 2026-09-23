@@ -379,6 +379,13 @@ ModAssistantPage::ModAssistantPage()
 
     addHeading(general, "Verhalten");
     general->addWidget(this->createCheckBox(
+        "Knopf „Verwarnen“ im Alarm-Fenster", getSettings()->modAlertWarnButton,
+        "Die sanfte Stufe vor dem Timeout: verwarnt wie auf twitch.tv, mit "
+        "einem Grund, den der User bestätigen muss, bevor er weiterschreiben "
+        "kann. Das Fenster schlägt einen passenden Grund vor; die Liste der "
+        "Gründe steht unter Buttons. Eine Verwarnung zählt als erledigt, beim "
+        "nächsten Mal wird die nächste Stufe vorgeschlagen."));
+    general->addWidget(this->createCheckBox(
         "Immer im Vordergrund, auch über anderen Programmen",
         getSettings()->modAlertAlwaysOnTop,
         "Das Fenster liegt über jedem Programm, auch wenn gerade der Browser "

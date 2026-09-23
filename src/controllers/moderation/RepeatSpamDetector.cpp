@@ -316,6 +316,23 @@ void RepeatSpamDetector::onTimeout(const QString &channelName,
     ModAlertPopup::closeFor(channel, loginName);
 }
 
+void RepeatSpamDetector::onWarning(const QString &channelName,
+                                   const QString &loginName)
+{
+    const auto channel = channelName.toLower();
+    if (!this->isEnabled(channel))
+    {
+        return;
+    }
+
+    auto it = this->users_.find(keyOf(channel, loginName.toLower()));
+    if (it != this->users_.end() && !it->flaggedText.isEmpty())
+    {
+        it->escalation.actedOn();
+        it->lastActivity = QDateTime::currentDateTime();
+    }
+}
+
 void RepeatSpamDetector::showAlert(const QString &channel, const QString &login,
                                    const QString &displayName,
                                    const StepEscalation &escalation)

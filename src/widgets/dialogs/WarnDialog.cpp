@@ -15,7 +15,8 @@
 
 namespace chatterino {
 
-WarnDialog::WarnDialog(const QString &userName, QWidget *parent)
+WarnDialog::WarnDialog(const QString &userName, QWidget *parent,
+                       const QString &suggestion)
     : QDialog(parent)
 {
     this->setAttribute(Qt::WA_DeleteOnClose);
@@ -40,7 +41,8 @@ WarnDialog::WarnDialog(const QString &userName, QWidget *parent)
     reason->setEditable(true);
     reason->setInsertPolicy(QComboBox::NoInsert);
     reason->addItems(choices(getSettings()->warnReasons.getValue(),
-                             getSettings()->warnLastReason.getValue()));
+                             getSettings()->warnLastReason.getValue(),
+                             suggestion));
     reason->lineEdit()->setMaxLength(MOST_CHARACTERS);
     reason->lineEdit()->setPlaceholderText(QStringLiteral("Grund"));
     reason->lineEdit()->selectAll();
@@ -89,7 +91,8 @@ WarnDialog::WarnDialog(const QString &userName, QWidget *parent)
     reason->setFocus();
 }
 
-QStringList WarnDialog::choices(const QString &presets, const QString &last)
+QStringList WarnDialog::choices(const QString &presets, const QString &last,
+                                const QString &suggestion)
 {
     QStringList offered;
     const auto add = [&offered](const QString &text) {
@@ -99,6 +102,7 @@ QStringList WarnDialog::choices(const QString &presets, const QString &last)
             offered.append(trimmed);
         }
     };
+    add(suggestion);
     add(last);
     for (const auto &line : presets.split('\n'))
     {

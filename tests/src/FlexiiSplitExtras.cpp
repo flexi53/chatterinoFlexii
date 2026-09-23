@@ -991,11 +991,24 @@ TEST(FlexiiWarn, TheReasonGivenLastComesFirst)
     EXPECT_EQ(WarnDialog::choices("A\nB\nA", {}), QStringList({"A", "B"}));
 }
 
+TEST(FlexiiWarn, WhatTheAlertIsAboutIsOfferedFirst)
+{
+    const auto offered = WarnDialog::choices("Bitte kein Spam\nKeine "
+                                             "Beleidigungen",
+                                             "Keine Beleidigungen",
+                                             "Bitte flute den Chat nicht");
+    ASSERT_GE(offered.size(), 3);
+    EXPECT_EQ(offered.at(0), "Bitte flute den Chat nicht");
+    EXPECT_EQ(offered.at(1), "Keine Beleidigungen");
+    EXPECT_EQ(offered.at(2), "Bitte kein Spam");
+}
+
 TEST(FlexiiWarn, TheButtonIsThereWithReasonsToPick)
 {
     MockApplication app;
     const auto *s = getSettings();
     EXPECT_TRUE(s->showWarnButton.getDefaultValue());
+    EXPECT_TRUE(s->modAlertWarnButton.getDefaultValue());
     EXPECT_GE(WarnDialog::choices(s->warnReasons.getDefaultValue(), {}).size(),
               3);
 }

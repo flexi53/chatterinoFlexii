@@ -11,6 +11,7 @@
 
 #include "controllers/moderation/AlertMute.hpp"
 #include "widgets/dialogs/AlertLevelBar.hpp"
+#include "widgets/dialogs/WarnDialog.hpp"
 
 #ifdef Q_OS_MACOS
 #    include "util/MacOsHelpers.h"
@@ -1285,6 +1286,27 @@ void ModAlertPopup::setActions(int recommended)
     });
 
     const auto color = reasonColor(this->kind_);
+
+    // The gentle step first: a warning as twitch.tv has it, which they have
+    // to read before they can write again
+    if (getSettings()->modAlertWarnButton)
+    {
+        auto *warn = new QPushButton(QStringLiteral("Verwarnen"));
+        warn->setCursor(Qt::PointingHandCursor);
+        warn->setStyleSheet(this->quietButtonStyle());
+        warn->setToolTip(
+            QStringLiteral("%1 verwarnen - die Warnung muss gelesen und "
+                           "bestätigt werden, bevor wieder geschrieben "
+                           "werden kann. Zählt als erledigt, beim nächsten "
+                           "Mal schlägt das Fenster die nächste Stufe vor.")
+                .arg(this->login_));
+        QObject::connect(warn, &QPushButton::clicked, this, [this] {
+            this->warn();
+        });
+        this->actions_->addWidget(warn);
+        this->actions_->addSpacing(10);
+    }
+
     bool timeoutsLabelled = false;
     for (const auto value : choices)
     {
@@ -1367,6 +1389,57 @@ void ModAlertPopup::setActions(int recommended)
 
     // Wider than the smallest window only when there are that many choices
     this->setMinimumWidth(std::max(480, this->layout()->minimumSize().width()));
+}
+
+void ModAlertPopup::warn()
+{
+    // What this alert is about, as a first offer - changed or replaced in
+    // the window that opens
+    QString suggestion;
+    switch (this->kind_)
+    {
+        case Kind::RepeatedMessage:
+            suggestion = QStringLiteral(
+                "Bitte schreib nicht immer wieder dasselbe");
+            break;
+        case Kind::EmoteSpam:
+            suggestion = QStringLiteral("Bitte flute den Chat nicht mit "
+                                        "Emotes");
+            break;
+        case Kind::Word:
+            suggestion = QStringLiteral("Bitte achte auf deine Wortwahl");
+            break;
+        case Kind::Suggestion:
+            suggestion = QStringLiteral("Bitte halte dich an die Chatregeln");
+            break;
+    }
+
+    auto *dialog = new WarnDialog(this->login_, this, suggestion);
+    const auto channel = this->channel_;
+    const auto login = this->login_;
+    const bool test = this->test_;
+    dialog->onWarn = [channel, login, test](const QString &reason) {
+        if (!test)
+        {
+            auto target = getApp()->getTwitch()->getChannelOrEmpty(channel);
+            if (!target->isEmpty())
+            {
+                auto command =
+                    QStringLiteral("/warn %1 %2").arg(login, reason);
+                command = getApp()->getCommands()->execCommand(command, target,
+                                                              false);
+                target->sendMessage(command);
+            }
+            // Warned is dealt with: the next alert offers the next step
+            RepeatSpamDetector::instance().onWarning(channel, login);
+            EmoteSpamDetector::instance().onAction(channel, login);
+            WordAlertDetector::instance().onAction(channel, login);
+        }
+    };
+    QObject::connect(dialog, &QDialog::accepted, this, [this] {
+        this->close();
+    });
+    dialog->show();
 }
 
 void ModAlertPopup::act(int action)

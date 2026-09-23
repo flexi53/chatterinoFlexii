@@ -151,6 +151,9 @@ private:
     void setActions(int recommended);
     /// Carries out @a action and closes the window
     void act(int action);
+    /// Warns as twitch.tv does, with a reason that fits the alert - and
+    /// counts it as having been dealt with
+    void warn();
     /// Headline, why line and button for a suggestion
     void applySuggestion(const ModSuggestion &suggestion);
     void applyEmoteSpam(int emotes, int messages, int window, int action,

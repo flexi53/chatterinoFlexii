@@ -40,6 +40,12 @@ public:
     /// (0 seconds)
     void onTimeout(const QString &channel, const QString &login, int seconds);
 
+    /// A moderator warned @a login, as twitch.tv's own warning does - it
+    /// counts as having been dealt with, so the next time the step goes up.
+    /// What they wrote still counts as said; only a timeout starts the
+    /// repeats over.
+    void onWarning(const QString &channel, const QString &login);
+
     /// The timeouts offered at each step, in seconds - 0 for a ban. Never
     /// empty.
     static std::vector<int> steps();
