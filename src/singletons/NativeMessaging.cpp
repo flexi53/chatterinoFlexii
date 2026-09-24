@@ -26,6 +26,8 @@
 #include <QSettings>
 #include <QStringBuilder>
 
+#include <array>
+
 #ifdef Q_OS_WIN
 #    include "widgets/AttachedWindow.hpp"
 #endif
@@ -63,18 +65,76 @@ const Config FIREFOX{
 #endif
 };
 
-const Config CHROME{
+/// Chrome and everything built on it - they all read the same kind of
+/// manifest and take the extension by the same id, they only keep it in a
+/// place of their own. A browser that is not installed is skipped.
+const std::array CHROMIUM_BROWSERS{
+    Config{
 #ifdef Q_OS_WIN
-    .fileName = u"native-messaging-manifest-chrome.json"_s,
-    .registryKey =
-        u"HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts\\com.chatterino.chatterino"_s,
+        .fileName = u"native-messaging-manifest-chrome.json"_s,
+        .registryKey =
+            u"HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts\\com.chatterino.chatterino"_s,
 #elif defined(Q_OS_MACOS)
-    .browserDirectory = u"~/Library/Application Support/Google/Chrome/"_s,
-    .nmDirectory = u"NativeMessagingHosts"_s,
+        .browserDirectory = u"~/Library/Application Support/Google/Chrome/"_s,
+        .nmDirectory = u"NativeMessagingHosts"_s,
 #else
-    .browserDirectory = u"~/.config/google-chrome"_s,
-    .nmDirectory = u"NativeMessagingHosts"_s,
+        .browserDirectory = u"~/.config/google-chrome"_s,
+        .nmDirectory = u"NativeMessagingHosts"_s,
 #endif
+    },
+    Config{
+#ifdef Q_OS_WIN
+        .fileName = u"native-messaging-manifest-brave.json"_s,
+        .registryKey =
+            u"HKCU\\Software\\BraveSoftware\\Brave-Browser\\NativeMessagingHosts\\com.chatterino.chatterino"_s,
+#elif defined(Q_OS_MACOS)
+        .browserDirectory =
+            u"~/Library/Application Support/BraveSoftware/Brave-Browser"_s,
+        .nmDirectory = u"NativeMessagingHosts"_s,
+#else
+        .browserDirectory = u"~/.config/BraveSoftware/Brave-Browser"_s,
+        .nmDirectory = u"NativeMessagingHosts"_s,
+#endif
+    },
+    Config{
+#ifdef Q_OS_WIN
+        .fileName = u"native-messaging-manifest-edge.json"_s,
+        .registryKey =
+            u"HKCU\\Software\\Microsoft\\Edge\\NativeMessagingHosts\\com.chatterino.chatterino"_s,
+#elif defined(Q_OS_MACOS)
+        .browserDirectory = u"~/Library/Application Support/Microsoft Edge"_s,
+        .nmDirectory = u"NativeMessagingHosts"_s,
+#else
+        .browserDirectory = u"~/.config/microsoft-edge"_s,
+        .nmDirectory = u"NativeMessagingHosts"_s,
+#endif
+    },
+    Config{
+#ifdef Q_OS_WIN
+        .fileName = u"native-messaging-manifest-vivaldi.json"_s,
+        .registryKey =
+            u"HKCU\\Software\\Vivaldi\\NativeMessagingHosts\\com.chatterino.chatterino"_s,
+#elif defined(Q_OS_MACOS)
+        .browserDirectory = u"~/Library/Application Support/Vivaldi"_s,
+        .nmDirectory = u"NativeMessagingHosts"_s,
+#else
+        .browserDirectory = u"~/.config/vivaldi"_s,
+        .nmDirectory = u"NativeMessagingHosts"_s,
+#endif
+    },
+    Config{
+#ifdef Q_OS_WIN
+        .fileName = u"native-messaging-manifest-chromium.json"_s,
+        .registryKey =
+            u"HKCU\\Software\\Chromium\\NativeMessagingHosts\\com.chatterino.chatterino"_s,
+#elif defined(Q_OS_MACOS)
+        .browserDirectory = u"~/Library/Application Support/Chromium"_s,
+        .nmDirectory = u"NativeMessagingHosts"_s,
+#else
+        .browserDirectory = u"~/.config/chromium"_s,
+        .nmDirectory = u"NativeMessagingHosts"_s,
+#endif
+    },
 };
 
 void registerNmManifest([[maybe_unused]] const Paths &paths,
@@ -88,6 +148,18 @@ void registerNmManifest([[maybe_unused]] const Paths &paths,
     registry.setValue("Default",
                       QString(paths.miscDirectory % u'/' % config.fileName));
 #else
+    // A browser that is not installed has no folder of its own - nothing is
+    // created there, so no empty leftovers for browsers nobody uses
+    auto directory = config.browserDirectory;
+    if (directory.startsWith('~'))
+    {
+        directory = QDir::homePath() % QStringView{directory}.sliced(1);
+    }
+    if (!QDir(directory).exists())
+    {
+        return;
+    }
+
     std::ignore =
         writeManifestTo(config.browserDirectory, config.nmDirectory,
                         u"com.chatterino.chatterino.json"_s, document);
@@ -156,7 +228,7 @@ void registerNmHost(const Paths &paths)
         getSettings()->additionalExtensionIDs.getValue().split(
             ';', Qt::SkipEmptyParts);
 
-    // chrome
+    // chrome and the browsers built on it - Brave, Edge, Vivaldi, Chromium
     {
         auto obj = getBaseDocument();
         QJsonArray allowedOriginsArr = {
@@ -174,7 +246,11 @@ void registerNmHost(const Paths &paths)
 
         obj.insert("allowed_origins", allowedOriginsArr);
 
-        registerNmManifest(paths, CHROME, QJsonDocument{obj});
+        const QJsonDocument document{obj};
+        for (const auto &browser : CHROMIUM_BROWSERS)
+        {
+            registerNmManifest(paths, browser, document);
+        }
     }
 
     // firefox
