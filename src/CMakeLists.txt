@@ -1031,6 +1031,9 @@ set(SOURCE_FILES
         widgets/splits/SplitHeaderExtras.hpp
         widgets/splits/HeaderParts.cpp
         widgets/splits/HeaderParts.hpp
+        widgets/splits/InputButtons.cpp
+        widgets/splits/InputButtons.hpp
+
         widgets/splits/SplitInput.cpp
         widgets/splits/SplitInput.hpp
         widgets/splits/SplitOverlay.cpp

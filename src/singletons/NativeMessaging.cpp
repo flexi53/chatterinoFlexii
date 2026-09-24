@@ -22,11 +22,14 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QDateTime>
+#include <QFileInfo>
 #include <QJsonValue>
 #include <QSettings>
 #include <QStringBuilder>
 
 #include <array>
+#include <chrono>
 
 #ifdef Q_OS_WIN
 #    include "widgets/AttachedWindow.hpp"
@@ -351,26 +354,70 @@ NativeMessagingServer::ReceiverThread::ReceiverThread(
 
 void NativeMessagingServer::ReceiverThread::run()
 {
-    auto [messageQueue, error] =
-        ipc::IpcQueue::tryReplaceOrCreate("chatterino_gui", 100, MESSAGE_SIZE);
+    // ChattiFlexii: every start of the program replaces this queue, and
+    // every end removes it. A second start - even one that is gone again
+    // right away - would otherwise leave this one waiting at a queue nobody
+    // writes to any more, and nothing from the browser would arrive until
+    // the next restart. So the file is watched and the queue built anew
+    // when it is not ours any longer.
+    constexpr auto LOOK_AGAIN = std::chrono::seconds(5);
 
-    if (!error.isEmpty())
+    const auto queuePath = ipc::IpcQueue::path("chatterino_gui");
+    const auto stamp = [&queuePath]() -> QDateTime {
+        const QFileInfo file(queuePath);
+        if (!file.exists())
+        {
+            return {};
+        }
+        const auto born = file.birthTime();
+        return born.isValid() ? born : file.lastModified();
+    };
+
+    auto build = [&]() -> std::unique_ptr<ipc::IpcQueue> {
+        auto [queue, error] = ipc::IpcQueue::tryReplaceOrCreate(
+            "chatterino_gui", 100, MESSAGE_SIZE);
+        if (!error.isEmpty())
+        {
+            qCDebug(chatterinoNativeMessage)
+                << "Failed to create message queue:" << error;
+            nmIpcError().set(error);
+            return nullptr;
+        }
+        return std::move(queue);
+    };
+
+    auto messageQueue = build();
+    if (!messageQueue)
     {
-        qCDebug(chatterinoNativeMessage)
-            << "Failed to create message queue:" << error;
-
-        nmIpcError().set(error);
         return;
     }
+    auto ours = stamp();
 
     while (!this->isInterruptionRequested())
     {
-        auto buf = messageQueue->receive();
-        if (buf.isEmpty())
+        auto buf = messageQueue->receiveFor(LOOK_AGAIN);
+        if (!buf)
+        {
+            // Nothing came - is the queue still the one we made?
+            const auto now = stamp();
+            if (now != ours)
+            {
+                qCDebug(chatterinoNativeMessage)
+                    << "The message queue was replaced, building it anew";
+                auto fresh = build();
+                if (fresh)
+                {
+                    messageQueue = std::move(fresh);
+                    ours = stamp();
+                }
+            }
+            continue;
+        }
+        if (buf->isEmpty())
         {
             continue;
         }
-        auto document = QJsonDocument::fromJson(buf);
+        auto document = QJsonDocument::fromJson(*buf);
 
         this->handleMessage(document.object());
     }

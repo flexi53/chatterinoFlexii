@@ -7,7 +7,10 @@
 #include "common/QLogging.hpp"
 #include "singletons/Paths.hpp"
 
+#include <QStringBuilder>
+
 #define BOOST_INTERPROCESS_SHARED_DIR_FUNC
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <QByteArray>
 #include <QString>
@@ -134,6 +137,48 @@ QByteArray IpcQueue::receive()
             << "Failed to receive message:" << ex.what();
     }
     return {};
+}
+
+std::optional<QByteArray> IpcQueue::receiveFor(
+    std::chrono::milliseconds timeout)
+{
+    try
+    {
+        auto *d = this->private_.get();
+
+        QByteArray buf;
+        // The new storage is uninitialized
+        buf.resize(static_cast<qsizetype>(d->queue.get_max_msg_size()));
+
+        size_t messageSize = 0;
+        unsigned int priority = 0;
+        const auto until = boost::posix_time::microsec_clock::universal_time() +
+                           boost::posix_time::milliseconds(timeout.count());
+        if (!d->queue.timed_receive(buf.data(), buf.size(), messageSize,
+                                    priority, until))
+        {
+            return std::nullopt;
+        }
+
+        // truncate to the initialized storage
+        buf.truncate(static_cast<qsizetype>(messageSize));
+        return buf;
+    }
+    catch (boost_ipc::interprocess_exception &ex)
+    {
+        qCDebug(chatterinoNativeMessage)
+            << "Failed to receive message:" << ex.what();
+    }
+    return std::nullopt;
+}
+
+QString IpcQueue::path(const char *name)
+{
+    if (!PATHS)
+    {
+        return {};
+    }
+    return PATHS->ipcDirectory % u'/' % QString::fromLatin1(name);
 }
 
 }  // namespace chatterino::ipc

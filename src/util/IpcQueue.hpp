@@ -4,7 +4,9 @@
 
 #pragma once
 
+#include <chrono>
 #include <memory>
+#include <optional>
 #include <utility>
 
 class QByteArray;
@@ -33,10 +35,19 @@ public:
 
     static bool remove(const char *name);
 
+    /// Where the queue of that name lies - a file another start of the
+    /// program replaces, which is worth noticing
+    static QString path(const char *name);
+
     // TODO: use std::expected
     /// Try to receive a message.
     /// In the case of an error, the buffer is empty.
     QByteArray receive();
+
+    /// Waits at most @a timeout for a message. Nothing means the time was
+    /// up or something went wrong - the caller can then look whether the
+    /// queue on disk is still the one in hand.
+    std::optional<QByteArray> receiveFor(std::chrono::milliseconds timeout);
 
 private:
     IpcQueue(IpcQueuePrivate *priv);

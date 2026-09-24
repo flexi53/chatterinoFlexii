@@ -43,6 +43,7 @@
 #include "util/UiStyle.hpp"
 #include "widgets/helper/NotebookTab.hpp"
 #include "widgets/splits/HeaderParts.hpp"
+#include "widgets/splits/InputButtons.hpp"
 #include "widgets/splits/SplitHeaderExtras.hpp"
 
 using namespace chatterino;
@@ -1287,6 +1288,53 @@ TEST(FlexiiBadgeAlerts, ThoseThatCostSomethingOnlyWhenAskedFor)
                                   {}, now, options)
                   .size(),
               4);
+}
+
+TEST(FlexiiInputButtons, TheyKeepTheOrderYouGiveThem)
+{
+    MockApplication app;
+    auto *s = getSettings();
+    s->inputButtonOrder.setValue("");
+
+    const auto standard = inputbuttons::defaults();
+    EXPECT_EQ(inputbuttons::order(), standard);
+    EXPECT_EQ(standard.front(), inputbuttons::MOD_ASSIST);
+    EXPECT_EQ(standard.back(), inputbuttons::EMOTE);
+
+    // One step towards the front, and back again
+    EXPECT_TRUE(inputbuttons::move(inputbuttons::EMOTE, true));
+    auto moved = inputbuttons::order();
+    EXPECT_EQ(moved.back(), inputbuttons::CLIP);
+    EXPECT_EQ(moved.at(moved.size() - 2), inputbuttons::EMOTE);
+    EXPECT_TRUE(inputbuttons::move(inputbuttons::EMOTE, false));
+    EXPECT_EQ(inputbuttons::order(), standard);
+
+    // Nowhere to go
+    EXPECT_FALSE(inputbuttons::move(inputbuttons::MOD_ASSIST, true));
+    EXPECT_FALSE(inputbuttons::move(inputbuttons::EMOTE, false));
+    EXPECT_FALSE(inputbuttons::move("gibtsnicht", true));
+
+    // A saved order that names only some keeps those in that order, and
+    // the rest lands where it stood by default
+    inputbuttons::setOrder({inputbuttons::EMOTE, inputbuttons::CLEAR});
+    const auto mixed = inputbuttons::order();
+    EXPECT_EQ(mixed.size(), standard.size());
+    EXPECT_TRUE(mixed.contains(inputbuttons::BADGE));
+    EXPECT_LT(mixed.indexOf(inputbuttons::EMOTE),
+              mixed.indexOf(inputbuttons::CLEAR));
+
+    s->inputButtonOrder.setValue("");
+}
+
+TEST(FlexiiInputButtons, EveryButtonHasAName)
+{
+    for (const auto &key : inputbuttons::defaults())
+    {
+        const auto name = inputbuttons::nameOf(key);
+        EXPECT_FALSE(name.isEmpty());
+        // Not just the key handed back
+        EXPECT_NE(name, key);
+    }
 }
 
 TEST(FlexiiWatchedPeople, ANameIsReadHoweverItIsWritten)

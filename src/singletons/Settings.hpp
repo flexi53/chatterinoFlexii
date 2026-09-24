@@ -1177,6 +1177,9 @@ public:
     /// Notizen: a mark in front of the name of everyone you noted something
     /// about, the note itself on hover - off until asked for
     BoolSetting userNotesMark = {"/notes/mark", false};
+    /// Which order the buttons in the input bar stand in - their keys,
+    /// separated by semicolons; what is missing keeps its usual place
+    QStringSetting inputButtonOrder = {"/ui/buttons/order", ""};
     /// Switching "dem Browser folgen" from the input bar - off until asked
     /// for, like every button that is new here
     BoolSetting showFollowBrowserButton = {"/ui/buttons/followBrowser", false};

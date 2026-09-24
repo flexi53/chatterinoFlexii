@@ -30,6 +30,7 @@
 #include "widgets/buttons/ClearChatButton.hpp"
 #include "widgets/buttons/FocusButton.hpp"
 #include "widgets/buttons/FollowBrowserButton.hpp"
+#include "widgets/splits/InputButtons.hpp"
 #include "widgets/buttons/LabelButton.hpp"
 #include "widgets/buttons/SvgButton.hpp"
 #include "widgets/dialogs/EmotePopup.hpp"
@@ -325,19 +326,19 @@ void SplitInput::initLayout()
                              this->split_->clear();
                          });
 
-        auto *buttonRow = new QHBoxLayout;
-        buttonRow->setContentsMargins(0, 0, 0, 0);
-        buttonRow->setSpacing(0);
-        buttonRow->addStretch(1);
-        buttonRow->addWidget(this->ui_.modAssistButton);
-        buttonRow->addWidget(this->ui_.alertMuteButton);
-        buttonRow->addWidget(this->ui_.clearButton);
-        buttonRow->addWidget(this->ui_.focusButton);
-        buttonRow->addWidget(this->ui_.followButton);
-        buttonRow->addWidget(this->ui_.badgeButton);
-        buttonRow->addWidget(this->ui_.clipButton);
-        buttonRow->addWidget(this->ui_.emoteButton);
-        box->addLayout(buttonRow);
+        this->ui_.buttonRow = new QHBoxLayout;
+        this->ui_.buttonRow->setContentsMargins(0, 0, 0, 0);
+        this->ui_.buttonRow->setSpacing(0);
+        this->ui_.buttonRow->addStretch(1);
+        this->arrangeButtons();
+        box->addLayout(this->ui_.buttonRow);
+
+        // Buttons: dragged into another order on the settings page
+        getSettings()->inputButtonOrder.connect(
+            [this](const QString &, auto) {
+                this->arrangeButtons();
+            },
+            this->managedConnections_, false);
     }
 
     // ---- misc
@@ -526,6 +527,64 @@ void SplitInput::updateCancelReplyButton()
 
     this->ui_.cancelReplyButton->setFixedHeight(int(12 * scale));
     this->ui_.cancelReplyButton->setFixedWidth(int(20 * scale));
+}
+
+void SplitInput::arrangeButtons()
+{
+    if (this->ui_.buttonRow == nullptr)
+    {
+        return;
+    }
+
+    // Everything but the stretch at the front comes out and goes back in,
+    // in the order the settings hold
+    while (this->ui_.buttonRow->count() > 1)
+    {
+        auto *item = this->ui_.buttonRow->takeAt(1);
+        delete item;
+    }
+
+    for (const auto &key : inputbuttons::order())
+    {
+        QWidget *button = nullptr;
+        if (key == inputbuttons::MOD_ASSIST)
+        {
+            button = this->ui_.modAssistButton;
+        }
+        else if (key == inputbuttons::ALERT_MUTE)
+        {
+            button = this->ui_.alertMuteButton;
+        }
+        else if (key == inputbuttons::CLEAR)
+        {
+            button = this->ui_.clearButton;
+        }
+        else if (key == inputbuttons::FOCUS)
+        {
+            button = this->ui_.focusButton;
+        }
+        else if (key == inputbuttons::FOLLOW)
+        {
+            button = this->ui_.followButton;
+        }
+        else if (key == inputbuttons::BADGE)
+        {
+            button = this->ui_.badgeButton;
+        }
+        else if (key == inputbuttons::CLIP)
+        {
+            button = this->ui_.clipButton;
+        }
+        else if (key == inputbuttons::EMOTE)
+        {
+            button = this->ui_.emoteButton;
+        }
+
+        if (button != nullptr)
+        {
+            this->ui_.buttonRow->addWidget(button);
+        }
+    }
 }
 
 void SplitInput::updateInputButtons()

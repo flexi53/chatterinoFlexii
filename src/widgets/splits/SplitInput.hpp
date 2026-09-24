@@ -155,6 +155,8 @@ protected:
     /// ChattiFlexii: which buttons the input bar shows - see the Buttons
     /// page in the settings
     void updateInputButtons();
+    /// ChattiFlexii: puts the buttons in the row in the saved order
+    void arrangeButtons();
     void updateModAssistButton();
     void clearReplyTarget();
 
@@ -213,6 +215,9 @@ protected:
         /// ChattiFlexii: switches "dem Browser folgen" for everything
         FollowBrowserButton *followButton;
         ClearChatButton *clearButton;
+        /// ChattiFlexii: the row they stand in, rearranged when their order
+        /// changes
+        QHBoxLayout *buttonRow = nullptr;
     } ui_;
 
     MessagePtr replyTarget_ = nullptr;
