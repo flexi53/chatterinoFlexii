@@ -7,6 +7,7 @@
 #include "Application.hpp"
 #include "controllers/accounts/AccountController.hpp"
 #include "controllers/badgealerts/BadgeAlerts.hpp"
+#include "common/Credentials.hpp"
 #include "providers/badgebase/BadgeBase.hpp"
 #include "providers/twitch/TwitchAccount.hpp"
 #include "providers/twitch/TwitchWebBadges.hpp"
@@ -292,9 +293,10 @@ void BadgesPage::initAlerts(GeneralPageView &layout)
         };
         showWhere();
 
-        // Moved over as they are, so nichts neu eingegeben werden muss: erst
-        // lesen, dann am alten Ort löschen, dann umschalten und am neuen Ort
-        // ablegen
+        // Moved over as they are, so nothing has to be entered again:
+        // first read, then put in the new place, and only then take out of
+        // the old one - and never take out what could not be read, or it
+        // would be gone for good
         QObject::connect(
             without, &QCheckBox::toggled, this,
             [this, where, showWhere](const bool local) {
@@ -304,24 +306,81 @@ void BadgesPage::initAlerts(GeneralPageView &layout)
                 }
                 where->setText("Wird verschoben …");
 
-                webbadges::load(this, [this, local, showWhere](
+                webbadges::load(this, [this, local, where, showWhere](
                                           const QString &token) {
                     badgebase::loadKey(
-                        this, [local, token, showWhere](const QString &key) {
-                            webbadges::erase();
-                            badgebase::eraseKey();
-
+                        this, [local, token, where,
+                               showWhere](const QString &key) {
                             getSettings()->keepSecretsLocally.setValue(local);
 
-                            if (!token.isEmpty())
+                            QStringList moved;
+                            QStringList missing;
+                            if (token.isEmpty())
                             {
-                                webbadges::store(token);
+                                missing.append("Browser-Login");
                             }
-                            if (!key.isEmpty())
+                            else if (webbadges::store(token))
                             {
-                                badgebase::storeKey(key);
+                                moved.append("Browser-Login");
                             }
+                            if (key.isEmpty())
+                            {
+                                missing.append("BadgeBase-Schlüssel");
+                            }
+                            else if (badgebase::storeKey(key))
+                            {
+                                moved.append("BadgeBase-Schlüssel");
+                            }
+
+                            // Only now out of the old place, and only what
+                            // really arrived in the new one
+                            for (const auto &what : moved)
+                            {
+                                if (what == "Browser-Login")
+                                {
+                                    if (local)
+                                    {
+                                        Credentials::eraseFromKeychain(
+                                            "twitchweb", "browser");
+                                    }
+                                    else
+                                    {
+                                        Credentials::eraseFromLocal(
+                                            "twitchweb", "browser");
+                                    }
+                                }
+                                else
+                                {
+                                    if (local)
+                                    {
+                                        Credentials::eraseFromKeychain(
+                                            "badgebase", "key");
+                                    }
+                                    else
+                                    {
+                                        Credentials::eraseFromLocal(
+                                            "badgebase", "key");
+                                    }
+                                }
+                            }
+
                             showWhere();
+                            if (!moved.isEmpty() || !missing.isEmpty())
+                            {
+                                auto text = where->text();
+                                if (!moved.isEmpty())
+                                {
+                                    text += " Verschoben: " +
+                                            moved.join(", ") + ".";
+                                }
+                                if (!missing.isEmpty())
+                                {
+                                    text += " Nicht gefunden und daher nicht "
+                                            "angerührt: " +
+                                            missing.join(", ") + ".";
+                                }
+                                where->setText(text);
+                            }
                         });
                 });
             });

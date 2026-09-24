@@ -39,7 +39,13 @@ void CachedCredential::get(QObject *receiver,
     Credentials::instance().get(
         this->provider_, this->name_, QCoreApplication::instance(),
         [this](const QString &value) {
-            this->value_ = value;
+            // An empty answer can also mean the read did not work - the
+            // keychain gives nothing back when it was denied. Kept only
+            // when there is something, so a later try can still find it.
+            if (!value.isEmpty())
+            {
+                this->value_ = value;
+            }
             this->reading_ = false;
             auto waiting = std::move(this->waiting_);
             this->waiting_.clear();

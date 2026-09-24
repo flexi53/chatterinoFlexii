@@ -304,6 +304,35 @@ void Credentials::set(const QString &provider, const QString &name_,
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+void Credentials::eraseFromKeychain(const QString &provider,
+                                    const QString &name_)
+{
+    assertInGuiThread();
+
+#ifndef NO_QTKEYCHAIN
+    queueJob(EraseJob{formatName(provider, name_)});
+#else
+    (void)provider;
+    (void)name_;
+#endif
+}
+
+void Credentials::eraseFromLocal(const QString &provider,
+                                 const QString &name_)
+{
+    assertInGuiThread();
+
+    const auto name = formatName(provider, name_);
+    auto &instance = insecureInstance();
+    auto object = instance.object();
+    if (object.contains(name))
+    {
+        object.remove(name);
+        instance.setObject(object);
+        queueInsecureSave();
+    }
+}
+
 void Credentials::erase(const QString &provider, const QString &name_)
 {
     assertInGuiThread();

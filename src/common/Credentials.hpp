@@ -30,6 +30,14 @@ public:
     /// file locked to this computer when that was asked for
     static bool canKeep();
 
+    /// Takes @a name out of the system's keychain, whatever the settings
+    /// say - used when the secrets are moved over to the local store
+    static void eraseFromKeychain(const QString &provider,
+                                  const QString &name);
+
+    /// The same for the store beside the settings
+    static void eraseFromLocal(const QString &provider, const QString &name);
+
 private:
     Credentials() = default;
 };
