@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "ChattiFlexii Tab-Folger",
+  "version": "1.0",
+  "description": "Sagt ChattiFlexii, welchen Twitch-Kanal du gerade anschaust, damit der passende Tab nach vorne kommt.",
+  "permissions": [
+    "tabs",
+    "nativeMessaging"
+  ],
+  "host_permissions": [
+    "*://*.twitch.tv/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "tab-folger@chattiflexii"
+    }
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxJmis8/NUKftN3bB9gLqF1S6flVJDj+gCs/Zw1RbEhSgT8TRplagghqg0toOeWaIBQT2aBs4cSyhTRpiItm3Cbu/7muywedadvqkJCQ/XG1m5F5Ox6keXQ0a2X09x8nLjqHyjtf/KU6ux9gEQU6jyqImbaj2mJNXOKPdPn3C3LrTz1qPN+UCPJgmQ93cPRMsnT13NeyFc4pENzHqFmvBSvY3kzow8Y/fyohX8/pbUHI0I7mGLDwVX2pIVWYkNDw+VBWxTbQi3u9b9Uu199hHo6xj740E7Z1iUynleKj/ooVQc0RMmaBdRwmqkivN1hYK8yysq53vEPbEgFlpbeCgRQIDAQAB"
+}

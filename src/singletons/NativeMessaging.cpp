@@ -39,6 +39,11 @@ using namespace chatterino;
 using namespace chatterino::literals;
 
 const QString EXTENSION_ID = u"glknmaideaikkmemifbfkhnomoknepka"_s;
+/// ChattiFlexii: the little extension in browser-extension/ - it only says
+/// which channel is on screen, which the official one does not manage
+/// outside Windows. Its id is fixed by the key in its manifest.
+const QString FLEXII_EXTENSION_ID = u"ienhobdhggbbfejemmienhdflcoleihp"_s;
+const QString FLEXII_FIREFOX_ID = u"tab-folger@chattiflexii"_s;
 constexpr const size_t MESSAGE_SIZE = 1024;
 
 struct Config {
@@ -232,7 +237,8 @@ void registerNmHost(const Paths &paths)
     {
         auto obj = getBaseDocument();
         QJsonArray allowedOriginsArr = {
-            u"chrome-extension://%1/"_s.arg(EXTENSION_ID)};
+            u"chrome-extension://%1/"_s.arg(EXTENSION_ID),
+            u"chrome-extension://%1/"_s.arg(FLEXII_EXTENSION_ID)};
 
         for (const auto &id : extensionIDs)
         {
@@ -256,7 +262,8 @@ void registerNmHost(const Paths &paths)
     // firefox
     {
         auto obj = getBaseDocument();
-        QJsonArray allowedExtensions = {"chatterino_native@chatterino.com"};
+        QJsonArray allowedExtensions = {"chatterino_native@chatterino.com",
+                                        FLEXII_FIREFOX_ID};
 
         for (const auto &id : extensionIDs)
         {
