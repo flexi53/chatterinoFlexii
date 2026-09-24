@@ -321,6 +321,9 @@ set(SOURCE_FILES
         controllers/moderation/SharedChatActions.cpp
         controllers/moderation/SharedChatActions.hpp
 
+        controllers/people/WatchedPeople.cpp
+        controllers/people/WatchedPeople.hpp
+
         controllers/saved/SavedMessages.cpp
         controllers/saved/SavedMessages.hpp
 

@@ -11,6 +11,7 @@
 #include "controllers/commands/Command.hpp"
 #include "controllers/commands/CommandController.hpp"
 #include "controllers/filters/FilterSet.hpp"
+#include "controllers/people/WatchedPeople.hpp"
 #include "controllers/saved/SavedMessages.hpp"
 #include "debug/Benchmark.hpp"
 #include "messages/Emote.hpp"
@@ -1505,7 +1506,10 @@ MessageElementFlags ChannelView::getFlags() const
             this->underlyingChannel_ ==
                 getApp()->getTwitch()->getLiveChannel() ||
             this->underlyingChannel_ ==
-                getApp()->getTwitch()->getAutomodChannel())
+                getApp()->getTwitch()->getAutomodChannel() ||
+            // ChattiFlexii: the tab that collects the people you watch -
+            // there the channel is the whole point
+            this->underlyingChannel_ == WatchedPeople::instance().channel())
         {
             flags.set(MessageElementFlag::ChannelName);
             flags.unset(MessageElementFlag::ChannelPointReward);
@@ -2804,6 +2808,28 @@ void ChannelView::addMessageContextMenuItems(QMenu *menu,
             SavedMessages::instance().remember(
                 this->underlyingChannel_->getName(), layout->getMessagePtr());
         });
+    }
+
+    // ChattiFlexii: keeps an eye on whoever wrote it, in every channel
+    if (getSettings()->watchedPeopleMenu)
+    {
+        const auto login = layout->getMessage()->loginName;
+        if (!login.isEmpty())
+        {
+            const bool watched = WatchedPeople::watches(login);
+            const auto name = layout->getMessage()->displayName.isEmpty()
+                                  ? login
+                                  : layout->getMessage()->displayName;
+            menu->addAction(
+                watched ? QStringLiteral("%1 nicht mehr im Blick").arg(name)
+                        : QStringLiteral("%1 im Blick behalten").arg(name),
+                [login] {
+                    if (WatchedPeople::toggle(login))
+                    {
+                        WatchedPeople::openTab();
+                    }
+                });
+        }
     }
 
     // Only display reply option where it makes sense

@@ -11,6 +11,7 @@
 
 class QLabel;
 class QLineEdit;
+class QPlainTextEdit;
 class QListWidget;
 class QPushButton;
 class QTabWidget;
@@ -34,6 +35,10 @@ private:
     void buildSavedTab(QVBoxLayout *layout);
     /// How many are kept, under the buttons of the saved tab
     void showKept();
+    /// The people whose messages land in their own tab
+    void buildPeopleTab(QVBoxLayout *layout);
+    /// How many people are watched, under the list
+    void showPeople();
     /// Fills the list from what is noted, narrowed by what is typed
     void showNotes();
     /// Looks up the names of the ids not known yet, in one request
@@ -46,6 +51,8 @@ private:
     QListWidget *notes_{};
     QLabel *status_{};
     QLabel *keptStatus_{};
+    QLabel *peopleStatus_{};
+    QPlainTextEdit *peopleList_{};
     QPushButton *editButton_{};
     QPushButton *deleteButton_{};
     /// Twitch id -> the name to show, as far as it is known

@@ -29,6 +29,7 @@
 #include "controllers/moderation/ModHighlights.hpp"
 #include "controllers/moderation/ModerationAssistant.hpp"
 #include "controllers/moderation/SharedChatActions.hpp"
+#include "controllers/people/WatchedPeople.hpp"
 #include "controllers/saved/SavedMessages.hpp"
 #include "controllers/userdata/UserNotes.hpp"
 #include "widgets/helper/ActiveBorder.hpp"
@@ -1286,6 +1287,45 @@ TEST(FlexiiBadgeAlerts, ThoseThatCostSomethingOnlyWhenAskedFor)
                                   {}, now, options)
                   .size(),
               4);
+}
+
+TEST(FlexiiWatchedPeople, ANameIsReadHoweverItIsWritten)
+{
+    // Lines, commas, spaces - and the @ people put in front of a name
+    EXPECT_EQ(WatchedPeople::read("sonkertd\n@Zarbex, PapaPlatte"),
+              (QStringList{"sonkertd", "zarbex", "papaplatte"}));
+    // Nothing twice, nothing empty
+    EXPECT_EQ(WatchedPeople::read("zarbex\n\nzarbex\n  "),
+              QStringList{"zarbex"});
+    EXPECT_TRUE(WatchedPeople::read("").isEmpty());
+    EXPECT_EQ(WatchedPeople::write({"a", "b"}), "a\nb");
+}
+
+TEST(FlexiiWatchedPeople, OnlyTheOnesPicked)
+{
+    const QStringList picked{"sonkertd", "zarbex"};
+    EXPECT_TRUE(WatchedPeople::watches("sonkertd", picked));
+    // However Twitch writes the name
+    EXPECT_TRUE(WatchedPeople::watches("SonkerTD", picked));
+    EXPECT_FALSE(WatchedPeople::watches("fremder", picked));
+    EXPECT_FALSE(WatchedPeople::watches("", picked));
+    EXPECT_FALSE(WatchedPeople::watches("sonkertd", {}));
+}
+
+TEST(FlexiiWatchedPeople, TheListTakesAndGivesBack)
+{
+    MockApplication app;
+    auto *s = getSettings();
+    EXPECT_FALSE(s->watchedPeopleEnabled.getDefaultValue());
+    s->watchedPeople.setValue("");
+
+    EXPECT_TRUE(WatchedPeople::toggle("@SonkerTD"));
+    EXPECT_TRUE(WatchedPeople::watches("sonkertd"));
+    EXPECT_FALSE(WatchedPeople::toggle("sonkertd"));
+    EXPECT_FALSE(WatchedPeople::watches("sonkertd"));
+    EXPECT_FALSE(WatchedPeople::toggle("  "));
+
+    s->watchedPeople.setValue("");
 }
 
 TEST(FlexiiSharedChat, OnlyTheOtherChannelsYouModerate)

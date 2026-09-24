@@ -5,6 +5,7 @@
 #include "widgets/settingspages/NotesPage.hpp"
 
 #include "Application.hpp"
+#include "controllers/people/WatchedPeople.hpp"
 #include "controllers/saved/SavedMessages.hpp"
 #include "controllers/userdata/UserDataController.hpp"
 #include "controllers/userdata/UserNotes.hpp"
@@ -21,6 +22,8 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QMessageBox>
+#include <QPlainTextEdit>
+#include <QSignalBlocker>
 #include <QPushButton>
 #include <QTabWidget>
 #include <QTimer>
@@ -48,6 +51,7 @@ NotesPage::NotesPage()
     outer->addWidget(this->tabs_, 1);
     this->buildUsersTab(addPageTab(this->tabs_, "Zu Usern"));
     this->buildSavedTab(addPageTab(this->tabs_, "Gemerkte Nachrichten"));
+    this->buildPeopleTab(addPageTab(this->tabs_, "Leute im Blick"));
 
     // Once the page is up, rather than while the dialog is still being built
     QTimer::singleShot(0, this, [this] {
@@ -288,6 +292,100 @@ void NotesPage::buildSavedTab(QVBoxLayout *layout)
     layout->addStretch(1);
 }
 
+void NotesPage::buildPeopleTab(QVBoxLayout *layout)
+{
+    auto &s = *getSettings();
+
+    addText(layout,
+            "Ein eigener Tab, in dem steht, was ausgewählte Leute schreiben - "
+            "aus jedem Kanal, den du gerade offen hast, mit dem Kanal neben "
+            "jeder Zeile. So siehst du, wo sie sich herumtreiben, ohne jeden "
+            "Tab im Auge zu behalten.");
+    addText(layout,
+            "Gesammelt wird nur, was hereinkommt, solange ChattiFlexii läuft "
+            "und der Kanal offen ist - nichts aus der Vergangenheit, und "
+            "nach einem Neustart fängt der Tab wieder leer an.",
+            true);
+
+    addHeading(layout, "Einschalten");
+    layout->addWidget(this->createCheckBox(
+        "Leute im Blick behalten", s.watchedPeopleEnabled,
+        "Ohne den Haken bleibt der Tab leer und es wird nichts gesammelt."));
+    layout->addWidget(this->createCheckBox(
+        "Eintrag im Rechtsklick-Menü einer Nachricht", s.watchedPeopleMenu,
+        "Damit nimmst du jemanden direkt aus dem Chat in die Liste auf - oder "
+        "wieder heraus."));
+    {
+        auto *open = new QPushButton("Tab öffnen");
+        QObject::connect(open, &QPushButton::clicked, [] {
+            WatchedPeople::openTab();
+        });
+        addButtonRow(layout, open);
+    }
+
+    addHeading(layout, "Wer");
+    addText(layout, "Ein Name pro Zeile, Kommas gehen auch.", true);
+    {
+        this->peopleList_ =
+            new QPlainTextEdit(WatchedPeople::write(WatchedPeople::people()));
+        this->peopleList_->setPlaceholderText("sonkertd\nzarbex\n…");
+        this->peopleList_->setFixedHeight(
+            this->peopleList_->fontMetrics().lineSpacing() * 8 + 16);
+
+        // Saved once typing pauses, not on every key
+        auto *save = new QTimer(this->peopleList_);
+        save->setSingleShot(true);
+        save->setInterval(500);
+        QObject::connect(save, &QTimer::timeout, this->peopleList_, [this] {
+            getSettings()->watchedPeople.setValue(
+                this->peopleList_->toPlainText().trimmed());
+            this->showPeople();
+        });
+        QObject::connect(this->peopleList_, &QPlainTextEdit::textChanged, save,
+                         qOverload<>(&QTimer::start));
+        layout->addWidget(this->peopleList_);
+    }
+    this->peopleStatus_ = addText(layout, QString(), true);
+
+    // Someone added from the chat while this page is open
+    s.watchedPeople.connect(
+        [this](const QString &written, auto) {
+            if (this->peopleList_ == nullptr ||
+                this->peopleList_->hasFocus())
+            {
+                return;
+            }
+            const QSignalBlocker blocker(this->peopleList_);
+            this->peopleList_->setPlainText(
+                WatchedPeople::write(WatchedPeople::read(written)));
+            this->showPeople();
+        },
+        this->managedConnections_, false);
+
+    auto *standard = new QPushButton("Standard");
+    standard->setToolTip("Wieder aus, Liste bleibt");
+    QObject::connect(standard, &QPushButton::clicked, [&s] {
+        s.watchedPeopleEnabled.setValue(
+            s.watchedPeopleEnabled.getDefaultValue());
+        s.watchedPeopleMenu.setValue(s.watchedPeopleMenu.getDefaultValue());
+    });
+    addButtonRow(layout, standard);
+    layout->addStretch(1);
+}
+
+void NotesPage::showPeople()
+{
+    if (this->peopleStatus_ == nullptr)
+    {
+        return;
+    }
+    const auto count = WatchedPeople::people().size();
+    this->peopleStatus_->setText(
+        count == 0   ? QStringLiteral("Noch niemand ausgewählt.")
+        : count == 1 ? QStringLiteral("1 Person im Blick.")
+                     : QStringLiteral("%1 Leute im Blick.").arg(count));
+}
+
 void NotesPage::showKept()
 {
     if (this->keptStatus_ == nullptr)
@@ -440,6 +538,7 @@ void NotesPage::onShow()
 {
     this->showNotes();
     this->showKept();
+    this->showPeople();
 }
 
 bool NotesPage::filterElements(const QString &query)

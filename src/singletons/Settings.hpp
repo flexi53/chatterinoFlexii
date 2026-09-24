@@ -1154,6 +1154,13 @@ public:
     /// asked for, as it acts in a channel other than the one in front of you
     BoolSetting sharedChatCarryOver = {"/moderation/sharedChat/carryOver",
                                        false};
+    /// Notizen -> Leute im Blick: a tab collecting what the chosen people
+    /// write, wherever you have their channel open
+    BoolSetting watchedPeopleEnabled = {"/notes/people/enabled", false};
+    QStringSetting watchedPeople = {"/notes/people/list", ""};
+    /// The entry in the right-click menu of a message that puts its writer
+    /// in the list, or takes them out again
+    BoolSetting watchedPeopleMenu = {"/notes/people/menuEntry", true};
     /// Notizen -> Gemerkte Nachrichten: the entry in the right-click menu
     /// of a message, and how the tab shows what is kept
     BoolSetting savedMessagesMenu = {"/notes/saved/menuEntry", true};
