@@ -1323,6 +1323,60 @@ TEST(FlexiiSavedMessages, TheSameMessageIsKeptUnderTheSameName)
     EXPECT_NE(SavedMessages::idFor("zarbex", other), systemId);
 }
 
+TEST(FlexiiSavedMessages, TwoClipsAreTwoEntriesThoughTheyReadTheSame)
+{
+    MockApplication app;
+    // The note about a fresh clip: the same words every time, the address
+    // only behind one of them
+    const auto note = [](const QString &id) {
+        MessageBuilder builder;
+        builder->messageText = "Clip created! Link copied - or edit it in "
+                               "browser.";
+        builder
+            .emplace<TextElement>("Link copied", MessageElementFlag::Text,
+                                  MessageColor::Link)
+            ->setLink(Link(Link::CopyToClipboard,
+                           "https://clips.twitch.tv/" + id));
+        return builder.release();
+    };
+
+    const auto first = note("AbcDef");
+    const auto second = note("GhiJkl");
+    EXPECT_NE(SavedMessages::idFor("zarbex", first),
+              SavedMessages::idFor("zarbex", second));
+    EXPECT_EQ(SavedMessages::linksOf(first),
+              QStringList{"https://clips.twitch.tv/AbcDef"});
+}
+
+TEST(FlexiiSavedMessages, AKeptLinkStaysAWayThere)
+{
+    MockApplication app;
+    // Written out in the text
+    const SavedMessages::Entry written{
+        .id = "1",
+        .when = QDateTime::currentDateTimeUtc(),
+        .channel = "zarbex",
+        .displayName = "SonkerTD",
+        .login = "sonkertd",
+        .text = "guck mal https://clips.twitch.tv/AbcDef",
+    };
+    EXPECT_EQ(SavedMessages::messageFor(written)->messageText,
+              "#zarbex SonkerTD: guck mal https://clips.twitch.tv/AbcDef");
+
+    // Only pointed at - the address joins the line, so the tab keeps it
+    auto hidden = written;
+    hidden.id = "2";
+    hidden.text = "Clip created!";
+    hidden.links = {"https://clips.twitch.tv/AbcDef"};
+    EXPECT_EQ(SavedMessages::messageFor(hidden)->messageText,
+              "#zarbex SonkerTD: Clip created! "
+              "https://clips.twitch.tv/AbcDef");
+
+    // What the file keeps
+    const auto back = SavedMessages::Entry::fromJson(hidden.toJson());
+    EXPECT_EQ(back.links, hidden.links);
+}
+
 TEST(FlexiiSavedMessages, WhatIsKeptSurvivesTheFile)
 {
     const SavedMessages::Entry entry{

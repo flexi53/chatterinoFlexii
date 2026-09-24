@@ -6,6 +6,7 @@
 
 #include "Application.hpp"
 #include "common/Channel.hpp"
+#include "common/LinkParser.hpp"
 #include "messages/Link.hpp"
 #include "messages/Message.hpp"
 #include "messages/MessageBuilder.hpp"
@@ -16,6 +17,7 @@
 #include "util/OpenOwnTab.hpp"
 
 #include <QCryptographicHash>
+#include <QUrl>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -80,6 +82,38 @@ void SavedMessages::openTab()
     openOwnTab(instance().channel());
 }
 
+QStringList SavedMessages::linksOf(const MessagePtr &message)
+{
+    QStringList links;
+    if (message == nullptr)
+    {
+        return links;
+    }
+
+    const auto add = [&links](const QString &url) {
+        if (!url.isEmpty() && !links.contains(url))
+        {
+            links.append(url);
+        }
+    };
+
+    // What the message points at, even where no address is written out: the
+    // note about a fresh clip carries it behind "Link copied"
+    for (const auto &element : message->elements)
+    {
+        const auto link = element->getLink();
+        if (link.type == Link::Url || link.type == Link::CopyToClipboard)
+        {
+            const QUrl url(link.value);
+            if (url.isValid() && !url.scheme().isEmpty())
+            {
+                add(link.value);
+            }
+        }
+    }
+    return links;
+}
+
 QString SavedMessages::idFor(const QString &channelName,
                              const MessagePtr &message)
 {
@@ -89,11 +123,14 @@ QString SavedMessages::idFor(const QString &channelName,
     }
 
     // Twitch gives every message an id of its own; where there is none - a
-    // system message, say - the channel, the writer and the text stand for it
+    // system message, say - the channel, the writer, the text and what it
+    // points at stand for it. The note about a fresh clip reads the same
+    // every time; only its address tells two of them apart.
     QString source = channelName + u'\n' + message->id;
     if (message->id.isEmpty())
     {
-        source += message->loginName + u'\n' + message->messageText;
+        source += message->loginName + u'\n' + message->messageText + u'\n' +
+                  linksOf(message).join(u'\n');
     }
     return QString::fromLatin1(
         QCryptographicHash::hash(source.toUtf8(), QCryptographicHash::Sha1)
@@ -110,6 +147,7 @@ QJsonObject SavedMessages::Entry::toJson() const
         {"displayName", this->displayName},
         {"login", this->login},
         {"text", this->text},
+        {"links", QJsonArray::fromStringList(this->links)},
     };
 }
 
@@ -123,6 +161,19 @@ SavedMessages::Entry SavedMessages::Entry::fromJson(const QJsonObject &object)
         .displayName = object.value("displayName").toString(),
         .login = object.value("login").toString(),
         .text = object.value("text").toString(),
+        .links =
+            [&object] {
+                QStringList links;
+                for (const auto &value : object.value("links").toArray())
+                {
+                    const auto url = value.toString();
+                    if (!url.isEmpty())
+                    {
+                        links.append(url);
+                    }
+                }
+                return links;
+            }(),
     };
 }
 
@@ -176,8 +227,57 @@ MessagePtr SavedMessages::messageFor(const Entry &entry,
                                                : entry.login));
     }
 
-    builder.emplace<TextElement>(entry.text, MessageElementFlag::Text,
-                                 MessageColor::Text);
+    // The text word by word, so an address in it stays a way there. Kept
+    // plain on purpose: no page title is fetched for a message that is only
+    // lying here.
+    for (const auto &word : entry.text.split(u' ', Qt::SkipEmptyParts))
+    {
+        const auto parsed = linkparser::parse(word);
+        if (!parsed)
+        {
+            builder.emplace<TextElement>(word, MessageElementFlag::Text,
+                                         MessageColor::Text);
+            continue;
+        }
+
+        const auto address = parsed->link.toString();
+        const auto full = parsed->protocol.isNull()
+                              ? QStringLiteral("http://") + address
+                              : address;
+        if (parsed->hasPrefix(word))
+        {
+            builder
+                .emplace<TextElement>(parsed->prefix(word).toString(),
+                                      MessageElementFlag::Text,
+                                      MessageColor::Text)
+                ->setTrailingSpace(false);
+        }
+        auto *element =
+            builder.emplace<TextElement>(address, MessageElementFlag::Text,
+                                         MessageColor::Link);
+        element->setLink(Link(Link::Url, full));
+        if (parsed->hasSuffix(word))
+        {
+            element->setTrailingSpace(false);
+            builder.emplace<TextElement>(parsed->suffix(word).toString(),
+                                         MessageElementFlag::Text,
+                                         MessageColor::Text);
+        }
+    }
+
+    // Addresses the message only pointed at - a clip's, say - written out,
+    // so the tab keeps the way there
+    for (const auto &url : entry.links)
+    {
+        if (entry.text.contains(url))
+        {
+            continue;
+        }
+        builder
+            .emplace<TextElement>(url, MessageElementFlag::Text,
+                                  MessageColor::Link)
+            ->setLink(Link(Link::Url, url));
+    }
 
     // The way back out of the tab
     builder
@@ -187,9 +287,16 @@ MessagePtr SavedMessages::messageFor(const Entry &entry,
         ->setLink(Link(Link::ForgetSaved, entry.id))
         ->setTooltip("Diese Nachricht nicht mehr merken");
 
-    const auto text = (entry.channel.isEmpty() ? QString()
-                                               : '#' + entry.channel + ' ') +
-                      (name.isEmpty() ? QString() : name + ": ") + entry.text;
+    auto text = (entry.channel.isEmpty() ? QString()
+                                         : '#' + entry.channel + ' ') +
+                (name.isEmpty() ? QString() : name + ": ") + entry.text;
+    for (const auto &url : entry.links)
+    {
+        if (!text.contains(url))
+        {
+            text += u' ' + url;
+        }
+    }
     builder->messageText = text;
     builder->searchText = text;
     return builder.release();
@@ -212,6 +319,7 @@ void SavedMessages::remember(const QString &channelName,
         .displayName = message->displayName,
         .login = message->loginName,
         .text = message->messageText,
+        .links = linksOf(message),
     };
 
     const auto already =

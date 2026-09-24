@@ -9,6 +9,7 @@
 #include <QJsonObject>
 #include <QObject>
 #include <QString>
+#include <QStringList>
 
 #include <memory>
 #include <vector>
@@ -44,6 +45,10 @@ public:
         QString displayName;
         QString login;
         QString text;
+        /// Addresses the message carried - those written in it, and those
+        /// hidden behind a word like "Link copied", as the message about a
+        /// fresh clip has them
+        QStringList links;
 
         QJsonObject toJson() const;
         static Entry fromJson(const QJsonObject &object);
@@ -71,6 +76,11 @@ public:
     /// message always gives the same one, so nothing is kept twice
     static QString idFor(const QString &channelName,
                          const MessagePtr &message);
+
+    /// Every address @a message points at: those its text spells out and
+    /// those that only sit behind one of its words - a clip's address, say.
+    /// In the order they stand, none of them twice.
+    static QStringList linksOf(const MessagePtr &message);
 
     /// How many are kept at most; the oldest goes when it is full
     static constexpr int MOST_KEPT = 500;
