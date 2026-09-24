@@ -12,6 +12,7 @@
 #include "providers/twitch/TwitchIrcServer.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/WindowManager.hpp"
+#include "widgets/helper/NotebookTab.hpp"
 #include "widgets/Notebook.hpp"
 #include "widgets/splits/Split.hpp"
 #include "widgets/splits/SplitContainer.hpp"
@@ -28,6 +29,10 @@ namespace {
 
 /// What the filter the tab uses is called on the filters page
 const QString FILTER_NAME = QStringLiteral("Leute im Blick");
+
+/// What the tab itself is called - a mentions split would otherwise read
+/// "/mentions"
+const QString TAB_NAME = QStringLiteral("User");
 
 /// Clear, so a watched message looks in the chat as it always did - the
 /// highlight is only there to get it into the mentions channel
@@ -284,15 +289,26 @@ void WatchedPeople::openTab()
             if (split->getChannel() == mentions &&
                 split->getFilters().contains(id))
             {
+                // Named once; a name of your own stays
+                if (page->getTab() != nullptr &&
+                    !page->getTab()->hasCustomTitle())
+                {
+                    page->getTab()->setCustomTitle(TAB_NAME);
+                }
                 notebook.select(page);
                 return;
             }
         }
     }
 
-    auto *split = notebook.addPage(true)->appendNewSplit(false);
+    auto *page = notebook.addPage(true);
+    auto *split = page->appendNewSplit(false);
     split->setChannel(mentions);
     split->setFilters({id});
+    if (page->getTab() != nullptr)
+    {
+        page->getTab()->setCustomTitle(TAB_NAME);
+    }
 }
 
 void WatchedPeople::start()
