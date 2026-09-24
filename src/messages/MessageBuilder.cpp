@@ -15,6 +15,7 @@
 #include "controllers/ignores/IgnoreController.hpp"
 #include "controllers/ignores/IgnorePhrase.hpp"
 #include "controllers/userdata/UserDataController.hpp"
+#include "controllers/userdata/UserNotes.hpp"
 #include "messages/Emote.hpp"
 #include "messages/Image.hpp"
 #include "messages/Message.hpp"
@@ -2456,6 +2457,25 @@ void MessageBuilder::appendUsername(const QVariantMap &tags,
         if (getSettings()->chatAvatars && !this->message().loginName.isEmpty())
         {
             this->emplace<ChatterAvatarElement>(this->message().loginName);
+        }
+
+        // ChattiFlexii: a mark for someone you noted something about, so you
+        // see it without opening the card. The note itself shows on hover.
+        // Written into the message as it is built, so it stands by every
+        // message from here on, not by those already in the chat.
+        if (getSettings()->userNotesMark)
+        {
+            const auto notes = usernotes::noteFor(
+                tags.value(QStringLiteral("user-id")).toString());
+            if (!notes.isEmpty())
+            {
+                this->emplace<TextElement>(usernotes::MARK,
+                                           MessageElementFlag::Username,
+                                           this->usernameColor_,
+                                           FontStyle::ChatMediumBold)
+                    ->setLink({Link::UserInfo, this->message().displayName})
+                    ->setTooltip(notes);
+            }
         }
 
         this->emplace<TextElement>(usernameText, MessageElementFlag::Username,

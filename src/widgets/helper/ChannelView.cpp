@@ -11,6 +11,7 @@
 #include "controllers/commands/Command.hpp"
 #include "controllers/commands/CommandController.hpp"
 #include "controllers/filters/FilterSet.hpp"
+#include "controllers/saved/SavedMessages.hpp"
 #include "debug/Benchmark.hpp"
 #include "messages/Emote.hpp"
 #include "messages/Image.hpp"
@@ -2794,6 +2795,17 @@ void ChannelView::addMessageContextMenuItems(QMenu *menu,
         crossPlatformCopy(copyString);
     });
 
+    // ChattiFlexii: keeps the message in the tab "Gemerkt", to come back to
+    if (getSettings()->savedMessagesMenu &&
+        this->channel()->getName() !=
+            SavedMessages::instance().channel()->getName())
+    {
+        menu->addAction("&Merken", [this, layout] {
+            SavedMessages::instance().remember(
+                this->underlyingChannel_->getName(), layout->getMessagePtr());
+        });
+    }
+
     // Only display reply option where it makes sense
     if (this->canReplyToMessages())
     {
@@ -3395,6 +3407,12 @@ void ChannelView::handleLinkClick(QMouseEvent *event, const Link &link,
             this->showReplyThreadPopup(layout->getMessagePtr());
         }
         break;
+        case Link::ForgetSaved: {
+            // ChattiFlexii: the way out of the tab "Gemerkt"
+            SavedMessages::instance().forget(link.value);
+        }
+        break;
+
         case Link::JumpToMessage: {
             if (this->context_ == Context::Search)
             {

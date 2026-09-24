@@ -26,6 +26,9 @@ public:
         ReplyToMessage,
         ViewThread,
         JumpToMessage,
+        /// ChattiFlexii: throws away a message kept under Notizen ->
+        /// Gemerkte Nachrichten, by the id it is kept under
+        ForgetSaved,
     };
 
     Link();

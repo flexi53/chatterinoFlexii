@@ -206,6 +206,8 @@ protected:
         /// ChattiFlexii: silences the alert windows
         AlertMuteButton *alertMuteButton;
         BadgeButton *badgeButton;
+        /// ChattiFlexii: clips the stream from the chat window
+        SvgButton *clipButton;
         FocusButton *focusButton;
         ClearChatButton *clearButton;
     } ui_;

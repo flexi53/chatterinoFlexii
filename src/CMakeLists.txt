@@ -318,9 +318,14 @@ set(SOURCE_FILES
         controllers/twitch/LiveController.cpp
         controllers/twitch/LiveController.hpp
 
+        controllers/saved/SavedMessages.cpp
+        controllers/saved/SavedMessages.hpp
+
         controllers/userdata/UserDataController.cpp
         controllers/userdata/UserDataController.hpp
         controllers/userdata/UserData.hpp
+        controllers/userdata/UserNotes.cpp
+        controllers/userdata/UserNotes.hpp
 
         debug/Benchmark.cpp
         debug/Benchmark.hpp
@@ -975,6 +980,8 @@ set(SOURCE_FILES
         widgets/settingspages/ModAssistantPage.hpp
         widgets/settingspages/ModHighlightsPage.cpp
         widgets/settingspages/ModHighlightsPage.hpp
+        widgets/settingspages/NotesPage.cpp
+        widgets/settingspages/NotesPage.hpp
         widgets/settingspages/PageSections.cpp
         widgets/settingspages/PageSections.hpp
         widgets/settingspages/TransferPage.cpp

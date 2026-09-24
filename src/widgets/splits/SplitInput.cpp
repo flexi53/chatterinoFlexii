@@ -237,7 +237,8 @@ void SplitInput::initLayout()
                           &getSettings()->showFocusButton,
                           &getSettings()->showModAssistButton,
                           &getSettings()->showAlertMuteButton,
-                          &getSettings()->showBadgeButton})
+                          &getSettings()->showBadgeButton,
+                          &getSettings()->showClipButton})
     {
         setting->connect(
             [this](const bool, auto) {
@@ -286,6 +287,26 @@ void SplitInput::initLayout()
         this->ui_.badgeButton = new BadgeButton;
         this->ui_.badgeButton->hide();
 
+        // Clips the last half minute of the stream, as Alt+X does
+        this->ui_.clipButton = new SvgButton(
+            {
+                .dark = ":/buttons/clip.svg",
+                .light = ":/buttons/clipDark.svg",
+            },
+            nullptr, QSize{6, 3});
+        this->ui_.clipButton->setToolTip(
+            "Clip erstellen - geht nur, solange der Kanal live ist");
+        this->ui_.clipButton->hide();
+        QObject::connect(this->ui_.clipButton, &Button::leftClicked, this,
+                         [this] {
+                             auto *twitch = dynamic_cast<TwitchChannel *>(
+                                 this->split_->getChannel().get());
+                             if (twitch != nullptr)
+                             {
+                                 twitch->createClip({}, {});
+                             }
+                         });
+
         // In and out of the focus view, here as the input bar stays when
         // the tabs and split headers go
         this->ui_.focusButton = new FocusButton;
@@ -306,6 +327,7 @@ void SplitInput::initLayout()
         buttonRow->addWidget(this->ui_.clearButton);
         buttonRow->addWidget(this->ui_.focusButton);
         buttonRow->addWidget(this->ui_.badgeButton);
+        buttonRow->addWidget(this->ui_.clipButton);
         buttonRow->addWidget(this->ui_.emoteButton);
         box->addLayout(buttonRow);
     }
@@ -473,6 +495,8 @@ void SplitInput::updateEmoteButton()
     this->ui_.alertMuteButton->setFixedWidth(width);
     this->ui_.badgeButton->setFixedHeight(height);
     this->ui_.badgeButton->setFixedWidth(width);
+    this->ui_.clipButton->setFixedHeight(height);
+    this->ui_.clipButton->setFixedWidth(width);
 
     this->ui_.focusButton->setFixedHeight(height);
     this->ui_.focusButton->setFixedWidth(width);
@@ -530,6 +554,10 @@ void SplitInput::updateModAssistButton()
         canWrite ? this->split_->getChannel() : nullptr);
     this->ui_.badgeButton->setVisible(canWrite &&
                                       getSettings()->showBadgeButton);
+
+    // Clips are Twitch's, so the button only stands in a Twitch channel
+    this->ui_.clipButton->setVisible(twitch != nullptr &&
+                                     getSettings()->showClipButton);
 }
 
 void SplitInput::openEmotePopup()

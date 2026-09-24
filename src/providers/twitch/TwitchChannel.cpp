@@ -47,6 +47,7 @@
 #include "singletons/StreamerMode.hpp"
 #include "singletons/Toasts.hpp"
 #include "singletons/WindowManager.hpp"
+#include "util/Clipboard.hpp"
 #include "util/FormatTime.hpp"
 #include "util/Helpers.hpp"
 #include "util/PostToThread.hpp"
@@ -55,6 +56,7 @@
 #include "widgets/Window.hpp"
 
 #include <IrcConnection>
+#include <QDesktopServices>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -2030,9 +2032,25 @@ void TwitchChannel::createClip(const QString &title,
         this->roomId(), title, duration,
         // successCallback
         [this](const HelixClip &clip) {
+            const auto link = CLIPS_LINK.arg(clip.id);
+
+            // Buttons -> Clip: what happens once the clip is there, however
+            // it was started - the button, the split menu or the hotkey
+            const bool copied = getSettings()->clipCopyLink;
+            if (copied)
+            {
+                crossPlatformCopy(link);
+            }
+            if (getSettings()->clipOpenEditor)
+            {
+                QDesktopServices::openUrl(QUrl(clip.editUrl));
+            }
+
             MessageBuilder builder;
-            QString text(
-                "Clip created! Copy link to clipboard or edit it in browser.");
+            QString text(copied ? "Clip created! Link copied - or edit it in "
+                                  "browser."
+                                : "Clip created! Copy link to clipboard or "
+                                  "edit it in browser.");
             builder.message().messageText = text;
             builder.message().searchText = text;
             builder.message().flags.set(MessageFlag::System);
@@ -2044,10 +2062,10 @@ void TwitchChannel::createClip(const QString &title,
                                          MessageColor::System);
             // clip link
             builder
-                .emplace<TextElement>("Copy link to clipboard",
-                                      MessageElementFlag::Text,
-                                      MessageColor::Link)
-                ->setLink(Link(Link::CopyToClipboard, CLIPS_LINK.arg(clip.id)));
+                .emplace<TextElement>(
+                    copied ? "Link copied" : "Copy link to clipboard",
+                    MessageElementFlag::Text, MessageColor::Link)
+                ->setLink(Link(Link::CopyToClipboard, link));
             // separator text
             builder.emplace<TextElement>("or", MessageElementFlag::Text,
                                          MessageColor::System);

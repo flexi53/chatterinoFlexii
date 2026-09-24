@@ -30,6 +30,9 @@ public:
 
     virtual std::optional<UserData> getUser(const QString &userID) const = 0;
 
+    /// Everyone with something set - a colour, a note, or both
+    virtual std::unordered_map<QString, UserData> getUsers() const = 0;
+
     virtual void setUserColor(const QString &userID,
                               const QString &colorString) = 0;
     virtual void setUserNotes(const QString &userID, const QString &notes) = 0;
@@ -46,6 +49,8 @@ public:
     // If the user does not have any extra data, return none
     std::optional<UserData> getUser(const QString &userID) const override;
 
+    std::unordered_map<QString, UserData> getUsers() const override;
+
     // Update or insert extra data for the user's color override
     void setUserColor(const QString &userID,
                       const QString &colorString) override;
@@ -58,8 +63,6 @@ public:
 private:
     void update(std::unordered_map<QString, UserData> &&newUsers,
                 std::unique_lock<std::shared_mutex> usersLock);
-
-    std::unordered_map<QString, UserData> getUsers() const;
 
     // Stores a real-time list of users & their customizations
     std::unordered_map<QString, UserData> users;

@@ -23,6 +23,11 @@ public:
         return std::nullopt;
     }
 
+    std::unordered_map<QString, UserData> getUsers() const override
+    {
+        return this->userMap;
+    }
+
     // Update or insert extra data for the user's color override
     void setUserColor(const QString &userID,
                       const QString &colorString) override

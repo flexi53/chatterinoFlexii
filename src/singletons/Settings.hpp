@@ -1145,6 +1145,21 @@ public:
     /// Choosing the badge you wear - needs the browser login, so off until
     /// asked for
     BoolSetting showBadgeButton = {"/ui/buttons/badge", false};
+    /// Notizen -> Gemerkte Nachrichten: the entry in the right-click menu
+    /// of a message, and how the tab shows what is kept
+    BoolSetting savedMessagesMenu = {"/notes/saved/menuEntry", true};
+    BoolSetting savedMessagesColored = {"/notes/saved/colored", false};
+    QStringSetting savedMessagesColor = {"/notes/saved/color",
+                                        "#5ad9a440"};
+    /// Notizen: a mark in front of the name of everyone you noted something
+    /// about, the note itself on hover - off until asked for
+    BoolSetting userNotesMark = {"/notes/mark", false};
+    /// Clipping the stream from the chat window - off until asked for
+    BoolSetting showClipButton = {"/ui/buttons/clip", false};
+    /// What happens once a clip is made, however it was started - the button,
+    /// the split menu or the hotkey
+    BoolSetting clipCopyLink = {"/ui/clips/copyLink", true};
+    BoolSetting clipOpenEditor = {"/ui/clips/openEditor", false};
     /// Which parts of the chat identity window are open - both folded to
     /// start, so it opens small
     BoolSetting badgePickerChannelOpen = {"/ui/badgePicker/channelOpen",

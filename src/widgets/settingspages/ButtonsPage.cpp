@@ -269,6 +269,26 @@ void ButtonsPage::initLayout(GeneralPageView &layout)
                      "nur, wo du eingeloggt schreiben kannst.")
         ->addKeywords({"badge", "abzeichen", "identität", "sub"})
         ->addTo(layout);
+    SettingWidget::checkbox("Clip erstellen", s.showClipButton)
+        ->setTooltip("Schneidet die letzte halbe Minute des Streams mit - "
+                     "dasselbe wie Alt+X oder „Create a clip“ im Menü des "
+                     "Splits. Geht nur, solange der Kanal live ist.")
+        ->addKeywords({"clip", "clippen", "mitschnitt"})
+        ->addTo(layout);
+    SettingWidget::checkbox("Link gleich kopieren", s.clipCopyLink)
+        ->setTooltip("Sobald der Clip da ist, liegt sein Link in der "
+                     "Zwischenablage - du musst ihn nicht erst anklicken. "
+                     "Gilt für jeden Clip, auch über Alt+X.")
+        ->addKeywords({"clip", "kopieren", "link", "zwischenablage"})
+        ->addTo(layout);
+    SettingWidget::checkbox("Zum Bearbeiten im Browser öffnen",
+                            s.clipOpenEditor)
+        ->setTooltip("Öffnet den Clip gleich auf twitch.tv, wo du ihn "
+                     "zuschneiden und benennen kannst. Gilt für jeden Clip, "
+                     "auch über Alt+X.")
+        ->addKeywords({"clip", "browser", "bearbeiten"})
+        ->addTo(layout);
+
     layout.addDescription(
         "Die nächsten beiden erscheinen ohnehin nur in Kanälen, in denen du "
         "Mod oder Streamer bist - sonst könnten sie nichts ausrichten.");
@@ -301,6 +321,12 @@ void ButtonsPage::initLayout(GeneralPageView &layout)
                               s.showAlertMuteButton.getDefaultValue());
                           s.showBadgeButton.setValue(
                               s.showBadgeButton.getDefaultValue());
+                          s.showClipButton.setValue(
+                              s.showClipButton.getDefaultValue());
+                          s.clipCopyLink.setValue(
+                              s.clipCopyLink.getDefaultValue());
+                          s.clipOpenEditor.setValue(
+                              s.clipOpenEditor.getDefaultValue());
                       });
 
     layout.addTitle("Oben in der Tab-Leiste");

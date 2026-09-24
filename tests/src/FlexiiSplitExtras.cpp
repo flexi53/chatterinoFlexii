@@ -28,6 +28,8 @@
 #include "controllers/moderation/ModChanges.hpp"
 #include "controllers/moderation/ModHighlights.hpp"
 #include "controllers/moderation/ModerationAssistant.hpp"
+#include "controllers/saved/SavedMessages.hpp"
+#include "controllers/userdata/UserNotes.hpp"
 #include "widgets/helper/ActiveBorder.hpp"
 #include "widgets/splits/SendWaitBar.hpp"
 #include "providers/badgebase/BadgeBase.hpp"
@@ -1283,6 +1285,91 @@ TEST(FlexiiBadgeAlerts, ThoseThatCostSomethingOnlyWhenAskedFor)
                                   {}, now, options)
                   .size(),
               4);
+}
+
+TEST(FlexiiUserNotes, ANoteBecomesOneLineForTheList)
+{
+    EXPECT_EQ(usernotes::oneLine("  kennt sich mit OBS aus  "),
+              "kennt sich mit OBS aus");
+    // Only the first line, and it says that there is more
+    EXPECT_EQ(usernotes::oneLine("Bruder von zarbex\nschreibt viel"),
+              "Bruder von zarbex…");
+    EXPECT_EQ(usernotes::oneLine("abcdefghij", 4), "abcd…");
+    EXPECT_EQ(usernotes::oneLine(""), "");
+}
+
+TEST(FlexiiSavedMessages, TheSameMessageIsKeptUnderTheSameName)
+{
+    auto message = std::make_shared<Message>();
+    message->id = "abc-123";
+    message->loginName = "sonkertd";
+    message->messageText = "hallo";
+
+    const auto id = SavedMessages::idFor("zarbex", message);
+    EXPECT_FALSE(id.isEmpty());
+    EXPECT_EQ(SavedMessages::idFor("zarbex", message), id);
+    // The same message in another channel is another entry
+    EXPECT_NE(SavedMessages::idFor("fx_flexii", message), id);
+    EXPECT_EQ(SavedMessages::idFor("zarbex", nullptr), "");
+
+    // Without an id of its own - a system message - the text stands for it
+    auto system = std::make_shared<Message>();
+    system->loginName = "sonkertd";
+    system->messageText = "hallo";
+    const auto systemId = SavedMessages::idFor("zarbex", system);
+    auto other = std::make_shared<Message>();
+    other->loginName = "sonkertd";
+    other->messageText = "tschüss";
+    EXPECT_NE(SavedMessages::idFor("zarbex", other), systemId);
+}
+
+TEST(FlexiiSavedMessages, WhatIsKeptSurvivesTheFile)
+{
+    const SavedMessages::Entry entry{
+        .id = "deadbeef",
+        // Whole seconds, as the file keeps them
+        .when = QDateTime::fromString("2026-09-24T11:30:00Z", Qt::ISODate),
+        .channel = "zarbex",
+        .displayName = "SonkerTD",
+        .login = "sonkertd",
+        .text = "das merk ich mir",
+    };
+    const auto back = SavedMessages::Entry::fromJson(entry.toJson());
+    EXPECT_EQ(back.id, "deadbeef");
+    EXPECT_EQ(back.when, entry.when);
+    EXPECT_EQ(back.channel, "zarbex");
+    EXPECT_EQ(back.displayName, "SonkerTD");
+    EXPECT_EQ(back.login, "sonkertd");
+    EXPECT_EQ(back.text, "das merk ich mir");
+}
+
+TEST(FlexiiSavedMessages, TheEntrySaysWhereItCameFrom)
+{
+    MockApplication app;
+    const SavedMessages::Entry entry{
+        .id = "deadbeef",
+        .when = QDateTime::currentDateTimeUtc(),
+        .channel = "zarbex",
+        .displayName = "SonkerTD",
+        .login = "sonkertd",
+        .text = "das merk ich mir",
+    };
+    const auto message = SavedMessages::messageFor(entry, QColor(0, 0, 255, 90));
+    EXPECT_EQ(message->messageText, "#zarbex SonkerTD: das merk ich mir");
+    EXPECT_TRUE(message->flags.has(MessageFlag::Highlighted));
+    EXPECT_TRUE(message->flags.has(MessageFlag::DoNotLog));
+}
+
+TEST(FlexiiSavedMessages, TheColourOnlyCountsWhileItIsSwitchedOn)
+{
+    MockApplication app;
+    auto *s = getSettings();
+    EXPECT_FALSE(s->savedMessagesColored.getDefaultValue());
+    EXPECT_FALSE(SavedMessages::color().isValid());
+
+    s->savedMessagesColored.setValue(true);
+    EXPECT_TRUE(SavedMessages::color().isValid());
+    s->savedMessagesColored.setValue(false);
 }
 
 TEST(FlexiiBadgeAlerts, OneSoundForABatchTheMostPressingKind)

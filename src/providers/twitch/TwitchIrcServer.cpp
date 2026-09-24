@@ -13,6 +13,7 @@
 #include "controllers/accounts/AccountController.hpp"
 #include "controllers/badgealerts/BadgeAlerts.hpp"
 #include "controllers/moderation/ModChanges.hpp"
+#include "controllers/saved/SavedMessages.hpp"
 #include "messages/Message.hpp"
 #include "messages/MessageBuilder.hpp"
 #include "providers/bttv/BttvEmotes.hpp"
@@ -566,6 +567,12 @@ std::shared_ptr<Channel> TwitchIrcServer::getCustomChannel(
     if (channelName == "/modchanges")
     {
         return ModChanges::instance().channel();
+    }
+
+    // ChattiFlexii: Notizen -> Gemerkte Nachrichten
+    if (channelName == "/gemerkt")
+    {
+        return SavedMessages::instance().channel();
     }
 
     static auto getTimer = [this](ChannelPtr channel, int msBetweenMessages,
