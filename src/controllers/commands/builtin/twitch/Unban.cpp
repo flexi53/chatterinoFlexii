@@ -11,6 +11,7 @@
 #include "controllers/commands/builtin/kick/ModerationActions.hpp"
 #include "controllers/commands/CommandContext.hpp"
 #include "controllers/commands/common/ChannelAction.hpp"
+#include "controllers/moderation/SharedChatActions.hpp"
 #include "providers/twitch/api/Helix.hpp"
 #include "providers/twitch/TwitchAccount.hpp"
 
@@ -24,8 +25,11 @@ void unbanUserByID(const ChannelPtr &channel, const QString &channelID,
 {
     getHelix()->unbanUser(
         channelID, sourceUserID, targetUserID,
-        [] {
+        [channel, channelID, sourceUserID, targetUserID] {
             // No response for unbans, they're emitted over pubsub/IRC instead
+            // ChattiFlexii: and on to the other channels of a shared chat
+            sharedchat::carryOver(channel, channelID, sourceUserID,
+                                  targetUserID, {.lifted = true});
         },
         [channel, displayName](auto error, auto message) {
             using Error = HelixUnbanUserError;

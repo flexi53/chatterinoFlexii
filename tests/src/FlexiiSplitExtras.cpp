@@ -28,6 +28,7 @@
 #include "controllers/moderation/ModChanges.hpp"
 #include "controllers/moderation/ModHighlights.hpp"
 #include "controllers/moderation/ModerationAssistant.hpp"
+#include "controllers/moderation/SharedChatActions.hpp"
 #include "controllers/saved/SavedMessages.hpp"
 #include "controllers/userdata/UserNotes.hpp"
 #include "widgets/helper/ActiveBorder.hpp"
@@ -1285,6 +1286,37 @@ TEST(FlexiiBadgeAlerts, ThoseThatCostSomethingOnlyWhenAskedFor)
                                   {}, now, options)
                   .size(),
               4);
+}
+
+TEST(FlexiiSharedChat, OnlyTheOtherChannelsYouModerate)
+{
+    const QStringList session{"11", "22", "33", "44"};
+    const auto moderates = [](const QString &id) {
+        return id == "22" || id == "33";
+    };
+    // Not the one just acted in, not those without rights
+    EXPECT_EQ(sharedchat::alsoIn("22", session, moderates),
+              QStringList{"33"});
+    EXPECT_EQ(sharedchat::alsoIn("11", session, moderates),
+              (QStringList{"22", "33"}));
+    // Alone in the session, or none to act in
+    EXPECT_TRUE(sharedchat::alsoIn("11", {"11"}, moderates).isEmpty());
+    EXPECT_TRUE(sharedchat::alsoIn("11", session, [](const QString &) {
+                    return false;
+                }).isEmpty());
+    // A channel named twice stays one
+    EXPECT_EQ(sharedchat::alsoIn("11", {"22", "22"}, moderates),
+              QStringList{"22"});
+}
+
+TEST(FlexiiSharedChat, TheChatSaysWhatWasCarriedOver)
+{
+    EXPECT_EQ(sharedchat::noteFor("zarbex", {.duration = 600}),
+              "Shared Chat: in #zarbex ebenfalls für 10m getimeoutet.");
+    EXPECT_EQ(sharedchat::noteFor("zarbex", {}),
+              "Shared Chat: in #zarbex ebenfalls gebannt.");
+    EXPECT_EQ(sharedchat::noteFor("zarbex", {.lifted = true}),
+              "Shared Chat: in #zarbex ebenfalls aufgehoben.");
 }
 
 TEST(FlexiiUserNotes, ANoteBecomesOneLineForTheList)

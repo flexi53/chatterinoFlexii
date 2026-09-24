@@ -1145,6 +1145,11 @@ public:
     /// Choosing the badge you wear - needs the browser login, so off until
     /// asked for
     BoolSetting showBadgeButton = {"/ui/buttons/badge", false};
+    /// Mod-Assistent -> Shared Chat: a timeout, ban or lifting also goes to
+    /// the other channels of the session the user moderates - off until
+    /// asked for, as it acts in a channel other than the one in front of you
+    BoolSetting sharedChatCarryOver = {"/moderation/sharedChat/carryOver",
+                                       false};
     /// Notizen -> Gemerkte Nachrichten: the entry in the right-click menu
     /// of a message, and how the tab shows what is kept
     BoolSetting savedMessagesMenu = {"/notes/saved/menuEntry", true};

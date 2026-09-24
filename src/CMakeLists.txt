@@ -318,6 +318,9 @@ set(SOURCE_FILES
         controllers/twitch/LiveController.cpp
         controllers/twitch/LiveController.hpp
 
+        controllers/moderation/SharedChatActions.cpp
+        controllers/moderation/SharedChatActions.hpp
+
         controllers/saved/SavedMessages.cpp
         controllers/saved/SavedMessages.hpp
 

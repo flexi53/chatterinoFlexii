@@ -362,6 +362,7 @@ ModAssistantPage::ModAssistantPage()
     auto *repeats = addPageTab(tabs, "Wiederholte Nachrichten");
     auto *emotes = addPageTab(tabs, "Emote-Spam");
     auto *words = addPageTab(tabs, "Wörter");
+    auto *shared = addPageTab(tabs, "Shared Chat");
 
     // ----- Allgemein -----
     addText(general,
@@ -964,6 +965,34 @@ ModAssistantPage::ModAssistantPage()
         addButtonRow(words, test);
     }
     words->addStretch(1);
+
+    // ----- Shared Chat -----
+    addText(shared,
+            "Bei Shared Chat zeigt Twitch die Chats mehrerer Kanäle als "
+            "einen, moderiert wird aber weiter jeder für sich: Ein Timeout, "
+            "den du in einem Kanal gibst, gilt nur dort. In den anderen "
+            "Kanälen der Runde schreibt die Person weiter.");
+    addText(shared,
+            "Mit dem Haken gibt ChattiFlexii denselben Timeout, Bann oder "
+            "das Aufheben gleich noch einmal - in jedem weiteren Kanal der "
+            "Runde, den du hier offen hast und in dem du Mod oder Streamer "
+            "bist. Was dabei herauskommt, steht danach im Chat.");
+
+    addHeading(shared, "Verhalten");
+    shared->addWidget(this->createCheckBox(
+        "Timeouts und Banns auf die ganze Shared-Chat-Runde anwenden",
+        getSettings()->sharedChatCarryOver,
+        "Gilt für jeden Weg: den Knopf im Alarm-Fenster, die Usercard und "
+        "/timeout, /ban und /untimeout von Hand. Kanäle, die du hier nicht "
+        "offen hast, bleiben außen vor - dorthin würde sonst etwas gehen, "
+        "das du nicht siehst."));
+    addText(shared,
+            "Twitch selbst bietet das nicht an: Jede Strafe geht einzeln an "
+            "einen Kanal. ChattiFlexii schickt sie also nacheinander an jeden "
+            "Kanal der Runde - was ein anderer Mod schon gemacht hat, siehst "
+            "du ohnehin im Chat, dort steht dann der Kanal dabei.",
+            true);
+    shared->addStretch(1);
 }
 
 bool ModAssistantPage::filterElements(const QString &query)
@@ -972,6 +1001,7 @@ bool ModAssistantPage::filterElements(const QString &query)
         "mod",        "assistent", "assistant", "moderation", "spam",
         "emote",      "alarm",     "alert",     "vorschlag",  "timeout",
         "wiederholt", "fenster",   "reason",    "farbe",      "position",
+        "shared",     "chat",      "runde",
     };
 
     return matchesPageText(this, query) ||

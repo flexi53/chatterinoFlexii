@@ -9,6 +9,7 @@
 #include "controllers/accounts/AccountController.hpp"
 #include "controllers/commands/builtin/kick/ModerationActions.hpp"
 #include "controllers/commands/CommandContext.hpp"
+#include "controllers/moderation/SharedChatActions.hpp"
 #include "controllers/commands/common/ChannelAction.hpp"
 #include "providers/twitch/api/Helix.hpp"
 #include "providers/twitch/TwitchAccount.hpp"
@@ -91,8 +92,11 @@ void banUserByID(const ChannelPtr &channel, const QString &channelID,
 {
     getHelix()->banUser(
         channelID, sourceUserID, targetUserID, std::nullopt, reason,
-        [] {
+        [channel, channelID, sourceUserID, targetUserID, reason] {
             // No response for bans, they're emitted over pubsub/IRC instead
+            // ChattiFlexii: and on to the other channels of a shared chat
+            sharedchat::carryOver(channel, channelID, sourceUserID,
+                                  targetUserID, {.reason = reason});
         },
         [channel, displayName](auto error, auto message) {
             auto errorMessage =
@@ -108,8 +112,12 @@ void timeoutUserByID(const ChannelPtr &channel, const QString &channelID,
 {
     getHelix()->banUser(
         channelID, sourceUserID, targetUserID, duration, reason,
-        [] {
+        [channel, channelID, sourceUserID, targetUserID, duration, reason] {
             // No response for timeouts, they're emitted over pubsub/IRC instead
+            // ChattiFlexii: and on to the other channels of a shared chat
+            sharedchat::carryOver(channel, channelID, sourceUserID,
+                                  targetUserID,
+                                  {.duration = duration, .reason = reason});
         },
         [channel, displayName](auto error, auto message) {
             auto errorMessage =
