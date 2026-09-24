@@ -23,6 +23,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QFile>
+#include "common/SecretBox.hpp"
 #include "controllers/badgealerts/BadgeAlerts.hpp"
 #include "controllers/moderation/AlertMute.hpp"
 #include "controllers/moderation/ModChanges.hpp"
@@ -1288,6 +1289,42 @@ TEST(FlexiiBadgeAlerts, ThoseThatCostSomethingOnlyWhenAskedFor)
                                   {}, now, options)
                   .size(),
               4);
+}
+
+TEST(FlexiiSecretBox, WhatIsLockedComesBackOnlyHere)
+{
+    const auto salt = secretbox::freshSalt();
+    const auto key = secretbox::machineKey();
+    EXPECT_FALSE(salt.isEmpty());
+    EXPECT_FALSE(key.isEmpty());
+
+    const QString secret = "oauth:abcdefghijklmnopqrstuvwxyz";
+    const auto hidden = secretbox::hide(secret, salt, key);
+    EXPECT_FALSE(hidden.isEmpty());
+    // Nothing of it is readable
+    EXPECT_FALSE(hidden.contains("oauth"));
+    EXPECT_FALSE(hidden.contains(secret));
+    EXPECT_EQ(secretbox::reveal(hidden, salt, key), secret);
+
+    // Another computer, another salt: nothing
+    EXPECT_TRUE(secretbox::reveal(hidden, secretbox::freshSalt(), key)
+                    .isEmpty());
+    EXPECT_TRUE(
+        secretbox::reveal(hidden, salt, QByteArrayLiteral("anderer rechner"))
+            .isEmpty());
+
+    // Meddled with
+    auto broken = hidden;
+    broken[broken.size() - 2] = broken[broken.size() - 2] == u'A' ? u'B'
+                                                                  : u'A';
+    EXPECT_TRUE(secretbox::reveal(broken, salt, key).isEmpty());
+
+    // Nothing in, nothing out - and what was written before it was locked
+    // is handed back as it stands
+    EXPECT_EQ(secretbox::hide("", salt, key), "");
+    EXPECT_EQ(secretbox::reveal("", salt, key), "");
+    EXPECT_EQ(secretbox::reveal("blankes geheimnis", salt, key),
+              "blankes geheimnis");
 }
 
 TEST(FlexiiInputButtons, TheyKeepTheOrderYouGiveThem)

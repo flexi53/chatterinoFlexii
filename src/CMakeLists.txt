@@ -28,6 +28,9 @@ set(SOURCE_FILES
         common/ChatterSet.hpp
         common/CachedCredential.cpp
         common/CachedCredential.hpp
+        common/SecretBox.cpp
+        common/SecretBox.hpp
+
         common/Credentials.cpp
         common/Credentials.hpp
         common/Env.cpp

@@ -16,6 +16,7 @@
 #include "widgets/settingspages/PageSections.hpp"
 #include "widgets/settingspages/SettingWidget.hpp"
 
+#include <QCheckBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -261,13 +262,79 @@ void BadgesPage::initAlerts(GeneralPageView &layout)
         colorRow("Neu bei Twitch", s.badgeColorTwitch);
     }
 
+    layout.addSubtitle("Wo die Schlüssel liegen");
+    layout.addDescription(
+        "Der Browser-Login und der BadgeBase-Schlüssel liegen normalerweise "
+        "im Schlüsselbund des Systems. Dort fragt macOS bei jeder neuen "
+        "Version einmal nach deinem Passwort, weil sich die Signatur des "
+        "Programms ändert - bei zwei Schlüsseln also zweimal.");
+    {
+        auto *without = new QCheckBox("Ohne Schlüsselbund speichern");
+        without->setToolTip(
+            "Legt beide neben die Einstellungen, verschlüsselt und nur für "
+            "dein Benutzerkonto lesbar. Dann fragt macOS nie wieder. Die "
+            "Datei ist an diesen Mac gebunden - auf einem anderen Rechner "
+            "oder in einem Backup ist sie wertlos. Gegen Programme, die "
+            "unter deinem Konto laufen, schützt sie nicht; dein "
+            "Twitch-Login liegt ohnehin so in den Einstellungen.");
+        without->setChecked(s.keepSecretsLocally);
+        layout.addWidget(without,
+                         {"schlüsselbund", "keychain", "passwort", "lokal"});
+
+        auto *where = new QLabel;
+        where->setWordWrap(true);
+        layout.addWidget(where, {"schlüsselbund"});
+        const auto showWhere = [where] {
+            where->setText(getSettings()->keepSecretsLocally
+                               ? "Liegen neben den Einstellungen, an diesen "
+                                 "Mac gebunden."
+                               : "Liegen im Schlüsselbund des Systems.");
+        };
+        showWhere();
+
+        // Moved over as they are, so nichts neu eingegeben werden muss: erst
+        // lesen, dann am alten Ort löschen, dann umschalten und am neuen Ort
+        // ablegen
+        QObject::connect(
+            without, &QCheckBox::toggled, this,
+            [this, where, showWhere](const bool local) {
+                if (local == getSettings()->keepSecretsLocally)
+                {
+                    return;
+                }
+                where->setText("Wird verschoben …");
+
+                webbadges::load(this, [this, local, showWhere](
+                                          const QString &token) {
+                    badgebase::loadKey(
+                        this, [local, token, showWhere](const QString &key) {
+                            webbadges::erase();
+                            badgebase::eraseKey();
+
+                            getSettings()->keepSecretsLocally.setValue(local);
+
+                            if (!token.isEmpty())
+                            {
+                                webbadges::store(token);
+                            }
+                            if (!key.isEmpty())
+                            {
+                                badgebase::storeKey(key);
+                            }
+                            showWhere();
+                        });
+                });
+            });
+    }
+
     layout.addSubtitle("BadgeBase-Schlüssel");
     layout.addDescription(
         "Für Termine, „kommt bald“ und „fehlt dir noch“. Jeder braucht einen "
         "eigenen - kostenlos unter "
         "<a href=\"https://badgebase.de/login/\">badgebase.de/login</a>. "
-        "Er kommt nur in den Schlüsselbund dieses "
-        "Computers, nie in die Einstellungen, einen Export, ein Backup oder "
+        "Er bleibt auf diesem Computer - im Schlüsselbund oder, wenn du es "
+        "oben umstellst, verschlüsselt daneben - nie in die Einstellungen, "
+        "einen Export, ein Backup oder "
         "den Abgleich - und gehört nicht in einen Chat.");
     const auto key =
         addSecretRow(layout, "Schlüssel hier einfügen", "Schlüssel löschen",
@@ -414,8 +481,9 @@ void BadgesPage::initSwitching(GeneralPageView &layout)
     layout.addDescription(
         "Der Wert ist wie ein Passwort: Füge ihn nur hier ein - nie in einen "
         "Chat, auf einer Webseite oder bei jemandem, der danach fragt. Er "
-        "kommt nur in den Schlüsselbund dieses Computers, nie in die "
-        "Einstellungen, einen Export, ein Backup oder den Abgleich.");
+        "bleibt auf diesem Computer - im Schlüsselbund oder, wenn du es oben "
+        "umstellst, verschlüsselt daneben - nie in den Einstellungen, einem "
+        "Export, einem Backup oder dem Abgleich.");
 
     auto *field = new QLineEdit;
     field->setEchoMode(QLineEdit::Password);

@@ -323,7 +323,7 @@ void picture(const QString &url, QObject *caller,
 
 bool canStore()
 {
-    return Credentials::isSecure();
+    return Credentials::canKeep();
 }
 
 QString normalize(const QString &pasted)

@@ -1177,6 +1177,10 @@ public:
     /// Notizen: a mark in front of the name of everyone you noted something
     /// about, the note itself on hover - off until asked for
     BoolSetting userNotesMark = {"/notes/mark", false};
+    /// Badges: keep the Twitch browser login and the BadgeBase key beside
+    /// the settings instead of in the system's keychain - locked to this
+    /// computer, and macOS stops asking for the password at every start
+    BoolSetting keepSecretsLocally = {"/secrets/withoutKeychain", false};
     /// Which order the buttons in the input bar stand in - their keys,
     /// separated by semicolons; what is missing keeps its usual place
     QStringSetting inputButtonOrder = {"/ui/buttons/order", ""};

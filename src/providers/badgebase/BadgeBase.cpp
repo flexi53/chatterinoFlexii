@@ -117,7 +117,7 @@ std::vector<Badge> badgesIn(const QJsonObject &answer)
 
 bool canStore()
 {
-    return Credentials::isSecure();
+    return Credentials::canKeep();
 }
 
 bool looksLikeKey(const QString &key)

@@ -26,6 +26,10 @@ public:
     /// false in the portable version, which keeps it in a file instead
     static bool isSecure();
 
+    /// Whether there is anywhere to keep a secret - the keychain, or the
+    /// file locked to this computer when that was asked for
+    static bool canKeep();
+
 private:
     Credentials() = default;
 };

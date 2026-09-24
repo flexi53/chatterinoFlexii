@@ -10,6 +10,7 @@
 #include "singletons/Paths.hpp"
 #include "singletons/Settings.hpp"
 #include "util/CombinePath.hpp"
+#include "common/SecretBox.hpp"
 #include "util/Variant.hpp"
 
 #include <QApplication>
@@ -51,6 +52,13 @@ bool useKeyring()
     {
         return false;
     }
+    // ChattiFlexii: Badges -> "ohne Schlüsselbund". Then the secrets lie
+    // beside the settings, locked to this computer, and macOS never asks
+    // for the password again.
+    if (getSettings()->keepSecretsLocally)
+    {
+        return false;
+    }
 
 #ifdef Q_OS_LINUX
     return getSettings()->useKeyring;
@@ -66,6 +74,15 @@ namespace chatterino {
 bool Credentials::isSecure()
 {
     return useKeyring();
+}
+
+bool Credentials::canKeep()
+{
+    // Either the system's keychain, or the file beside the settings that is
+    // locked to this computer - but never a portable copy, which may well
+    // sit on a stick
+    return useKeyring() || (getSettings()->keepSecretsLocally &&
+                            !Modes::instance().isPortable);
 }
 
 }  // namespace chatterino
@@ -97,8 +114,28 @@ void storeInsecure(const QJsonDocument &doc)
     {
         return;
     }
+    // ChattiFlexii: nobody else on this computer gets to read it
+    file.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
     file.write(doc.toJson());
     file.commit();
+}
+
+/// ChattiFlexii: the salt this file's secrets are locked with - made once
+/// and kept in the file itself
+QByteArray saltOf(QJsonDocument &doc)
+{
+    auto object = doc.object();
+    const auto kept =
+        QByteArray::fromBase64(object.value("salt").toString().toLatin1());
+    if (kept.size() >= 8)
+    {
+        return kept;
+    }
+
+    const auto salt = secretbox::freshSalt();
+    object["salt"] = QString::fromLatin1(salt.toBase64());
+    doc.setObject(object);
+    return salt;
 }
 
 QJsonDocument &insecureInstance()
@@ -230,9 +267,10 @@ void Credentials::get(const QString &provider, const QString &name_,
     }
     else
     {
-        const auto &instance = insecureInstance();
+        auto &instance = insecureInstance();
 
-        onLoaded(instance[name].toString());
+        onLoaded(secretbox::reveal(instance[name].toString(),
+                                   saltOf(instance), secretbox::machineKey()));
     }
 }
 
@@ -254,9 +292,11 @@ void Credentials::set(const QString &provider, const QString &name_,
     else
     {
         auto &instance = insecureInstance();
+        const auto salt = saltOf(instance);
 
         auto obj = instance.object();
-        obj[name] = credential;
+        obj[name] =
+            secretbox::hide(credential, salt, secretbox::machineKey());
         instance.setObject(obj);
 
         queueInsecureSave();
