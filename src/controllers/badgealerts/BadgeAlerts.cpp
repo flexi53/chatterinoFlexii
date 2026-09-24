@@ -17,6 +17,7 @@
 #include "providers/twitch/TwitchAccount.hpp"
 #include "singletons/Paths.hpp"
 #include "singletons/Settings.hpp"
+#include "widgets/dialogs/ModAlertPopup.hpp"
 #include "util/CombinePath.hpp"
 #include "util/OpenOwnTab.hpp"
 
@@ -210,6 +211,41 @@ QColor BadgeAlerts::colorFor(Kind kind)
             return QColor(s->badgeColorTwitch.getValue());
     }
     return {};
+}
+
+QString BadgeAlerts::soundFor(Kind kind)
+{
+    const auto *s = getSettings();
+    switch (kind)
+    {
+        case Kind::Available:
+            return s->badgeSoundAvailable.getValue();
+        case Kind::Upcoming:
+            return s->badgeSoundUpcoming.getValue();
+        case Kind::Ending:
+            return s->badgeSoundEnding.getValue();
+        case Kind::NewOnTwitch:
+            return s->badgeSoundTwitch.getValue();
+    }
+    return {};
+}
+
+std::optional<BadgeAlerts::Kind> BadgeAlerts::soundKind(
+    const std::vector<Event> &events)
+{
+    // One sound for a batch, the most pressing kind in it
+    for (const auto kind : {Kind::Ending, Kind::Available, Kind::Upcoming,
+                            Kind::NewOnTwitch})
+    {
+        for (const auto &event : events)
+        {
+            if (event.kind == kind)
+            {
+                return kind;
+            }
+        }
+    }
+    return std::nullopt;
 }
 
 MessagePtr BadgeAlerts::messageFor(const Event &event, const QString &picture,
@@ -550,10 +586,13 @@ void BadgeAlerts::say(const std::vector<Event> &events, bool sound)
             MessageContext::Original);
         this->reported_.insert(event.key());
     }
-    if (sound && !events.empty() && getSettings()->badgeAlertsSound)
+    if (sound && getSettings()->badgeAlertsSound)
     {
-        getApp()->getSound()->play(
-            QUrl(QStringLiteral("qrc:/sounds/ping2.wav")));
+        if (const auto kind = soundKind(events))
+        {
+            getApp()->getSound()->play(
+                ModAlertPopup::soundUrl(soundFor(*kind)));
+        }
     }
 }
 

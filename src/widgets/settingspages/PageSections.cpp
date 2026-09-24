@@ -4,13 +4,23 @@
 
 #include "widgets/settingspages/PageSections.hpp"
 
+#include "Application.hpp"
+#include "controllers/sound/ISoundController.hpp"
+#include "util/RapidJsonSerializeQString.hpp"
+#include "widgets/dialogs/ModAlertPopup.hpp"
+
 #include <QAbstractButton>
+#include <QComboBox>
+#include <QFileDialog>
+#include <QFileInfo>
 #include <QFrame>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QListWidget>
+#include <QPushButton>
 #include <QScrollArea>
+#include <QSignalBlocker>
 #include <QString>
 #include <QStringList>
 #include <QTabWidget>
@@ -65,6 +75,71 @@ QLabel *addText(QVBoxLayout *layout, const QString &text, bool dimmed)
     }
     layout->addWidget(label);
     return label;
+}
+
+QWidget *soundChooser(QWidget *parent,
+                      pajlada::Settings::Setting<QString> &setting,
+                      pajlada::Signals::SignalHolder &holder)
+{
+    auto *row = new QWidget(parent);
+    auto *layout = new QHBoxLayout(row);
+    layout->setContentsMargins(0, 0, 0, 0);
+
+    auto *choice = new QComboBox;
+    auto *listen = new QPushButton("Anhören");
+    layout->addWidget(choice);
+    layout->addWidget(listen);
+    layout->addStretch(1);
+
+    const auto fill = [choice, &setting] {
+        const QSignalBlocker blocker(choice);
+        choice->clear();
+        choice->addItem("Standard-Ping (wie Highlights und Live)", QString());
+        for (const auto &[value, name] : ModAlertPopup::builtInSounds())
+        {
+            choice->addItem(name, value);
+        }
+        const auto current = setting.getValue();
+        if (!current.isEmpty() &&
+            !current.startsWith(QStringLiteral("builtin:")))
+        {
+            choice->addItem(
+                QStringLiteral("Eigene: %1").arg(QFileInfo(current).fileName()),
+                current);
+        }
+        choice->addItem("Eigene Datei …", QStringLiteral("__choose__"));
+        const auto index = choice->findData(current);
+        choice->setCurrentIndex(index >= 0 ? index : 0);
+    };
+    fill();
+    setting.connect(
+        [fill](const auto &, auto) {
+            fill();
+        },
+        holder, false);
+
+    QObject::connect(choice, &QComboBox::activated, row,
+                     [row, choice, &setting, fill](int index) {
+                         const auto value = choice->itemData(index).toString();
+                         if (value != QStringLiteral("__choose__"))
+                         {
+                             setting.setValue(value);
+                             return;
+                         }
+                         const auto file = QFileDialog::getOpenFileName(
+                             row, "Ton auswählen", QString(),
+                             "Töne (*.wav *.mp3 *.ogg *.flac)");
+                         if (file.isEmpty())
+                         {
+                             fill();
+                             return;
+                         }
+                         setting.setValue(file);
+                     });
+    QObject::connect(listen, &QPushButton::clicked, row, [&setting] {
+        getApp()->getSound()->play(ModAlertPopup::soundUrl(setting.getValue()));
+    });
+    return row;
 }
 
 bool matchesKeywords(const QString &query, const QStringList &keywords)

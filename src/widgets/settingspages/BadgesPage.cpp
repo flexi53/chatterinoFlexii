@@ -13,6 +13,7 @@
 #include "singletons/Settings.hpp"
 #include "widgets/dialogs/ColorPickerDialog.hpp"
 #include "widgets/helper/color/ColorButton.hpp"
+#include "widgets/settingspages/PageSections.hpp"
 #include "widgets/settingspages/SettingWidget.hpp"
 
 #include <QHBoxLayout>
@@ -176,8 +177,36 @@ void BadgesPage::initAlerts(GeneralPageView &layout)
         ->addKeywords({"twitch", "global"})
         ->addTo(layout);
     SettingWidget::checkbox("Ton bei einer Meldung", s.badgeAlertsSound)
+        ->setTooltip("Kommen mehrere Meldungen zusammen, spielt der Ton der "
+                     "dringendsten: erst „Endet bald“, dann „Jetzt "
+                     "verfügbar“, dann „Kommt bald“, dann „Neu bei Twitch“.")
         ->addKeywords({"ton", "sound"})
         ->addTo(layout);
+    {
+        // A sound of its own per kind, so it is clear without looking
+        const auto soundRow = [this, &layout, &s](const QString &name,
+                                                  QStringSetting &setting) {
+            auto *row = new QWidget;
+            auto *rowLayout = new QHBoxLayout(row);
+            rowLayout->setContentsMargins(20, 0, 0, 0);
+            auto *label = new QLabel(name + ":");
+            label->setMinimumWidth(130);
+            rowLayout->addWidget(label);
+            rowLayout->addWidget(pagesections::soundChooser(
+                row, setting, this->managedConnections_));
+            layout.addWidget(row, {"ton", "sound", name});
+
+            s.badgeAlertsSound.connect(
+                [row](const bool on, auto) {
+                    row->setEnabled(on);
+                },
+                this->managedConnections_);
+        };
+        soundRow("Jetzt verfügbar", s.badgeSoundAvailable);
+        soundRow("Kommt bald", s.badgeSoundUpcoming);
+        soundRow("Endet bald", s.badgeSoundEnding);
+        soundRow("Neu bei Twitch", s.badgeSoundTwitch);
+    }
 
     layout.addSubtitle("Farben");
     SettingWidget::checkbox("Meldungen farbig hinterlegen",
@@ -352,6 +381,12 @@ void BadgesPage::initAlerts(GeneralPageView &layout)
                   &s.badgeAlertsColored, &s.badgeAlertsPaid})
             {
                 setting->setValue(setting->getDefaultValue());
+            }
+            for (auto *sound :
+                 {&s.badgeSoundAvailable, &s.badgeSoundUpcoming,
+                  &s.badgeSoundEnding, &s.badgeSoundTwitch})
+            {
+                sound->setValue(sound->getDefaultValue());
             }
             for (auto *color : {&s.badgeColorAvailable, &s.badgeColorUpcoming,
                                 &s.badgeColorEnding, &s.badgeColorTwitch})

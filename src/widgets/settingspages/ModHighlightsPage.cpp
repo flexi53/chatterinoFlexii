@@ -201,8 +201,32 @@ void ModHighlightsPage::buildChangesTab(QVBoxLayout *layout)
         "Bots weglassen", s.modChangesHideBots,
         "Wie unter „Bots ausschließen“: die Namen dort und, wenn angehakt, "
         "alle, die auf „bot“ enden."));
-    layout->addWidget(this->createCheckBox("Ton bei einer Meldung",
-                                           s.modChangesSound));
+    layout->addWidget(this->createCheckBox(
+        "Ton bei einer Meldung", s.modChangesSound,
+        "Kommen mehrere zusammen, spielt der Ton für „neu Mod“, sonst der "
+        "für „nicht mehr Mod“."));
+    {
+        const auto soundRow = [this, layout, &s](const QString &name,
+                                                 QStringSetting &setting) {
+            auto *row = new QWidget;
+            auto *rowLayout = new QHBoxLayout(row);
+            rowLayout->setContentsMargins(20, 0, 0, 0);
+            auto *label = new QLabel(name + ":");
+            label->setMinimumWidth(130);
+            rowLayout->addWidget(label);
+            rowLayout->addWidget(
+                soundChooser(row, setting, this->managedConnections_));
+            layout->addWidget(row);
+
+            s.modChangesSound.connect(
+                [row](const bool on, auto) {
+                    row->setEnabled(on);
+                },
+                this->managedConnections_);
+        };
+        soundRow("Neu Mod", s.modChangesSoundAdded);
+        soundRow("Nicht mehr Mod", s.modChangesSoundRemoved);
+    }
 
     addHeading(layout, "Farben");
     layout->addWidget(this->createCheckBox(
@@ -255,6 +279,10 @@ void ModHighlightsPage::buildChangesTab(QVBoxLayout *layout)
              {&s.modChangesHideBots, &s.modChangesSound, &s.modChangesColored})
         {
             setting->setValue(setting->getDefaultValue());
+        }
+        for (auto *sound : {&s.modChangesSoundAdded, &s.modChangesSoundRemoved})
+        {
+            sound->setValue(sound->getDefaultValue());
         }
         s.modChangesColorAdded.setValue(s.modChangesColorAdded.getDefaultValue());
         s.modChangesColorRemoved.setValue(

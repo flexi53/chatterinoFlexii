@@ -14,6 +14,7 @@
 #include "messages/MessageElement.hpp"
 #include "singletons/Paths.hpp"
 #include "singletons/Settings.hpp"
+#include "widgets/dialogs/ModAlertPopup.hpp"
 #include "util/CombinePath.hpp"
 #include "util/OpenOwnTab.hpp"
 
@@ -155,6 +156,13 @@ QColor ModChanges::colorFor(bool added)
                         : s->modChangesColorRemoved.getValue());
 }
 
+QString ModChanges::soundFor(bool added)
+{
+    const auto *s = getSettings();
+    return added ? s->modChangesSoundAdded.getValue()
+                 : s->modChangesSoundRemoved.getValue();
+}
+
 MessagePtr ModChanges::messageFor(const Change &change,
                                   const QColor &background)
 {
@@ -201,6 +209,7 @@ void ModChanges::changed(const QString &channel, const QStringList &came,
     const auto now = QDateTime::currentDateTimeUtc();
 
     bool any = false;
+    bool anyAdded = false;
     const auto add = [&](const QString &login, bool added) {
         // Bots come and go with every setup - left out as under Mod
         // highlights, when that is asked for
@@ -211,6 +220,7 @@ void ModChanges::changed(const QString &channel, const QStringList &came,
         }
         this->show({now, channel, login, added});
         any = true;
+        anyAdded = anyAdded || added;
     };
     for (const auto &login : came)
     {
@@ -228,8 +238,9 @@ void ModChanges::changed(const QString &channel, const QStringList &came,
     this->save();
     if (s->modChangesSound)
     {
+        // One sound for what came in together - a new mod before one gone
         getApp()->getSound()->play(
-            QUrl(QStringLiteral("qrc:/sounds/ping2.wav")));
+            ModAlertPopup::soundUrl(soundFor(anyAdded)));
     }
 }
 

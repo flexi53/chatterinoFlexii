@@ -544,6 +544,11 @@ public:
     BoolSetting modChangesHideBots = {"/moderation/modChanges/hideBots",
                                       true};
     BoolSetting modChangesSound = {"/moderation/modChanges/sound", false};
+    /// A sound of its own for a mod who came and one who went
+    QStringSetting modChangesSoundAdded = {
+        "/moderation/modChanges/soundAdded", ""};
+    QStringSetting modChangesSoundRemoved = {
+        "/moderation/modChanges/soundRemoved", ""};
     BoolSetting modChangesColored = {"/moderation/modChanges/colored", true};
     QStringSetting modChangesColorAdded = {
         "/moderation/modChanges/colorAdded", "#5a2fa84f"};
@@ -1169,6 +1174,11 @@ public:
     /// Also every new global badge Twitch itself brings out
     BoolSetting badgeAlertsTwitch = {"/badges/alerts/twitch", true};
     BoolSetting badgeAlertsSound = {"/badges/alerts/sound", false};
+    /// A sound of its own per kind of message - empty for the usual ping
+    QStringSetting badgeSoundAvailable = {"/badges/alerts/soundAvailable", ""};
+    QStringSetting badgeSoundUpcoming = {"/badges/alerts/soundUpcoming", ""};
+    QStringSetting badgeSoundEnding = {"/badges/alerts/soundEnding", ""};
+    QStringSetting badgeSoundTwitch = {"/badges/alerts/soundTwitch", ""};
     /// Also those that cost something - a sub, a purchase
     BoolSetting badgeAlertsPaid = {"/badges/alerts/paid", true};
     /// Each kind of message on a colour of its own, as picked on the page

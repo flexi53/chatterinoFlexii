@@ -559,66 +559,9 @@ ModAssistantPage::ModAssistantPage()
     // plays, so an alert is told from a live notification by ear
     const auto addSound = [this](QVBoxLayout *layout, QStringSetting &setting) {
         addHeading(layout, "Ton");
-
-        auto *choice = new QComboBox;
-        auto *listen = new QPushButton("Anhören");
-        const auto fill = [choice, &setting] {
-            const QSignalBlocker blocker(choice);
-            choice->clear();
-            choice->addItem("Standard-Ping (wie Highlights und Live)", QString());
-            for (const auto &[value, name] : ModAlertPopup::builtInSounds())
-            {
-                choice->addItem(name, value);
-            }
-            const auto current = setting.getValue();
-            if (!current.isEmpty() &&
-                !current.startsWith(QStringLiteral("builtin:")))
-            {
-                choice->addItem(QStringLiteral("Eigene: %1")
-                                    .arg(QFileInfo(current).fileName()),
-                                current);
-            }
-            choice->addItem("Eigene Datei …", QStringLiteral("__choose__"));
-            const auto index = choice->findData(current);
-            choice->setCurrentIndex(index >= 0 ? index : 0);
-        };
-        fill();
-        setting.connect(
-            [fill](const auto &, auto) {
-                fill();
-            },
-            this->managedConnections_, false);
-
-        QObject::connect(
-            choice, &QComboBox::activated, this,
-            [this, choice, &setting, fill](int index) {
-                const auto value = choice->itemData(index).toString();
-                if (value != QStringLiteral("__choose__"))
-                {
-                    setting.setValue(value);
-                    return;
-                }
-                const auto file = QFileDialog::getOpenFileName(
-                    this, "Ton auswählen", QString(),
-                    "Töne (*.wav *.mp3 *.ogg *.flac)");
-                if (file.isEmpty())
-                {
-                    fill();
-                    return;
-                }
-                setting.setValue(file);
-            });
-        QObject::connect(listen, &QPushButton::clicked, this, [&setting] {
-            getApp()->getSound()->play(
-                ModAlertPopup::soundUrl(setting.getValue()));
-        });
-
-        auto *row = new QHBoxLayout;
-        row->addWidget(choice);
-        row->addWidget(listen);
-        row->addStretch(1);
         auto *form = new QFormLayout;
-        form->addRow("Ton", row);
+        form->addRow("Ton",
+                     soundChooser(this, setting, this->managedConnections_));
         layout->addLayout(form);
         addText(layout,
                 "Spielt nur, wenn unter „Allgemein“ der Ton eingeschaltet ist.",

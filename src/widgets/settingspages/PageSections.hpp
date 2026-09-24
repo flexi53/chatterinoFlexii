@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <pajlada/settings/setting.hpp>
+#include <pajlada/signals/signalholder.hpp>
 #include <QStringList>
 
 class QLabel;
@@ -28,6 +30,14 @@ QLabel *addText(QVBoxLayout *layout, const QString &text, bool dimmed = false);
 
 /// @a widget on a row of its own, kept to its natural width
 void addButtonRow(QVBoxLayout *layout, QWidget *widget);
+
+/// A row to pick a sound with: the built-in ones, a file of your own, and a
+/// button to hear it. An empty setting stands for the ping Chatterino plays
+/// for highlights. @a holder keeps the row in step when the setting changes
+/// elsewhere.
+QWidget *soundChooser(QWidget *parent,
+                      pajlada::Settings::Setting<QString> &setting,
+                      pajlada::Signals::SignalHolder &holder);
 
 /// Whether a search in the settings for @a query should show a page these
 /// @a keywords describe - always for an empty search

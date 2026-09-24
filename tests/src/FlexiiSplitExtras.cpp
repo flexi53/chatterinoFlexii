@@ -1285,6 +1285,47 @@ TEST(FlexiiBadgeAlerts, ThoseThatCostSomethingOnlyWhenAskedFor)
               4);
 }
 
+TEST(FlexiiBadgeAlerts, OneSoundForABatchTheMostPressingKind)
+{
+    using Kind = BadgeAlerts::Kind;
+    EXPECT_FALSE(BadgeAlerts::soundKind({}).has_value());
+    EXPECT_EQ(BadgeAlerts::soundKind({{Kind::NewOnTwitch, bbBadge("1")},
+                                      {Kind::Upcoming, bbBadge("2")}}),
+              Kind::Upcoming);
+    EXPECT_EQ(BadgeAlerts::soundKind({{Kind::Upcoming, bbBadge("1")},
+                                      {Kind::Available, bbBadge("2")}}),
+              Kind::Available);
+    EXPECT_EQ(BadgeAlerts::soundKind({{Kind::Available, bbBadge("1")},
+                                      {Kind::Ending, bbBadge("2")}}),
+              Kind::Ending);
+}
+
+TEST(FlexiiBadgeAlerts, EveryKindKeepsItsOwnSound)
+{
+    MockApplication app;
+    auto *s = getSettings();
+    // Nothing picked is the ping Chatterino plays anyway
+    EXPECT_EQ(BadgeAlerts::soundFor(BadgeAlerts::Kind::Available), "");
+
+    s->badgeSoundEnding.setValue("qrc:/sounds/ding.wav");
+    EXPECT_EQ(BadgeAlerts::soundFor(BadgeAlerts::Kind::Ending),
+              "qrc:/sounds/ding.wav");
+    EXPECT_EQ(BadgeAlerts::soundFor(BadgeAlerts::Kind::Upcoming), "");
+    s->badgeSoundEnding.setValue("");
+}
+
+TEST(FlexiiModChanges, ComingAndGoingKeepTheirOwnSounds)
+{
+    MockApplication app;
+    auto *s = getSettings();
+    EXPECT_EQ(ModChanges::soundFor(true), "");
+
+    s->modChangesSoundAdded.setValue("qrc:/sounds/ding.wav");
+    EXPECT_EQ(ModChanges::soundFor(true), "qrc:/sounds/ding.wav");
+    EXPECT_EQ(ModChanges::soundFor(false), "");
+    s->modChangesSoundAdded.setValue("");
+}
+
 TEST(FlexiiBadgeBase, APriceNotSaidIsNotKnown)
 {
     EXPECT_FALSE(badgebase::normalize(QJsonObject{{"id", 1}}).paid.has_value());

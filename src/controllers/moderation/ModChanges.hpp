@@ -60,6 +60,9 @@ public:
     /// off
     static QColor colorFor(bool added);
 
+    /// The sound picked for a mod who came or went - empty for the usual ping
+    static QString soundFor(bool added);
+
     /// How many changes are kept to show again after a restart
     static constexpr int MOST_KEPT = 300;
 

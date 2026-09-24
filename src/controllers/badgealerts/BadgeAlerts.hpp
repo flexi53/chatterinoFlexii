@@ -90,6 +90,12 @@ public:
     /// The colour picked for @a kind, or none when colours are off
     static QColor colorFor(Kind kind);
 
+    /// The sound picked for @a kind - empty for the usual ping
+    static QString soundFor(Kind kind);
+    /// Which of @a events is worth a sound: what ends soon before what can
+    /// be had, then what is coming, then what is new on Twitch
+    static std::optional<Kind> soundKind(const std::vector<Event> &events);
+
 private:
     BadgeAlerts();
 
