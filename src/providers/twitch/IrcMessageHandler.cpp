@@ -8,7 +8,6 @@
 #include "controllers/moderation/ModerationAssistant.hpp"
 #include "controllers/moderation/RepeatSpamDetector.hpp"
 #include "controllers/moderation/WordAlertDetector.hpp"
-#include "controllers/people/WatchedPeople.hpp"
 
 #include "Application.hpp"
 #include "common/Channel.hpp"
@@ -1295,13 +1294,6 @@ void IrcMessageHandler::addMessage(Communi::IrcMessage *message,
         sink.addMessage(msg, MessageContext::Original);
         chan->addRecentChatter(msg->displayName);
 
-        // ChattiFlexii: Notizen -> Leute im Blick. What was loaded as
-        // history is left out, or joining a channel would fill the tab with
-        // everything said before.
-        if (!tags.contains("historical"))
-        {
-            WatchedPeople::instance().onMessage(chan, msg);
-        }
 
         // The repeated message alert, the emote alert and the moderation
         // assistant, where they are on - in that order, so a chatter one of

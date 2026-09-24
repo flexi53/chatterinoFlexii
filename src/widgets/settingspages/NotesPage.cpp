@@ -306,6 +306,14 @@ void NotesPage::buildPeopleTab(QVBoxLayout *layout)
             "und der Kanal offen ist - nichts aus der Vergangenheit, und "
             "nach einem Neustart fängt der Tab wieder leer an.",
             true);
+    addText(layout,
+            "Dahinter steckt Chatterinos eigene Technik: Jeder Name hier "
+            "bekommt unter Highlights → Users einen stillen Eintrag (ohne "
+            "Farbe, ohne Ton), damit seine Nachrichten in den "
+            "Erwähnungen-Kanal wandern, und der Tab ist ein "
+            "Erwähnungen-Tab mit dem Filter unten darauf. Schaltest du das "
+            "hier ab, verschwinden diese Einträge wieder.",
+            true);
 
     addHeading(layout, "Einschalten");
     layout->addWidget(this->createCheckBox(

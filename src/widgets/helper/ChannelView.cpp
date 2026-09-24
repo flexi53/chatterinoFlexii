@@ -1506,10 +1506,7 @@ MessageElementFlags ChannelView::getFlags() const
             this->underlyingChannel_ ==
                 getApp()->getTwitch()->getLiveChannel() ||
             this->underlyingChannel_ ==
-                getApp()->getTwitch()->getAutomodChannel() ||
-            // ChattiFlexii: the tab that collects the people you watch -
-            // there the channel is the whole point
-            this->underlyingChannel_ == WatchedPeople::instance().channel())
+                getApp()->getTwitch()->getAutomodChannel())
         {
             flags.set(MessageElementFlag::ChannelName);
             flags.unset(MessageElementFlag::ChannelPointReward);

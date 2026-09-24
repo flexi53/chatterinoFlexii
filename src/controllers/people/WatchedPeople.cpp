@@ -6,10 +6,19 @@
 
 #include "Application.hpp"
 #include "common/Channel.hpp"
+#include "controllers/filters/FilterRecord.hpp"
 #include "controllers/filters/lang/Filter.hpp"
-#include "messages/Message.hpp"
+#include "controllers/highlights/HighlightPhrase.hpp"
+#include "providers/twitch/TwitchIrcServer.hpp"
 #include "singletons/Settings.hpp"
-#include "util/OpenOwnTab.hpp"
+#include "singletons/WindowManager.hpp"
+#include "widgets/Notebook.hpp"
+#include "widgets/splits/Split.hpp"
+#include "widgets/splits/SplitContainer.hpp"
+#include "widgets/Window.hpp"
+
+#include <QRegularExpression>
+#include <QUuid>
 
 #include <algorithm>
 
@@ -17,67 +26,21 @@ namespace chatterino {
 
 namespace {
 
-/// The tab's channel: nothing to write in, and called what it is
-class WatchedChannel : public Channel
-{
-public:
-    WatchedChannel()
-        : Channel(QStringLiteral("/leute"), Type::Misc)
-    {
-    }
+/// What the filter the tab uses is called on the filters page
+const QString FILTER_NAME = QStringLiteral("Leute im Blick");
 
-    bool isWritable() const override
-    {
-        return false;
-    }
-
-    const QString &getLocalizedName() const override
-    {
-        static const QString name = QStringLiteral("Leute im Blick");
-        return name;
-    }
-};
+/// Clear, so a watched message looks in the chat as it always did - the
+/// highlight is only there to get it into the mentions channel
+const QColor QUIET_COLOR{0, 0, 0, 0};
 
 }  // namespace
 
-WatchedPeople &WatchedPeople::instance()
-{
-    static WatchedPeople watched;
-    return watched;
-}
-
-WatchedPeople::WatchedPeople()
-    : channel_(std::make_shared<WatchedChannel>())
-{
-    this->rebuildFilter();
-    // Typed on the settings page, it counts from the next message on
-    getSettings()->watchedPeopleFilter.connect(
-        [this](const auto &, auto) {
-            this->rebuildFilter();
-        },
-        false);
-
-    this->channel_->addSystemMessage(
-        "Hier steht, was die Leute schreiben, die du unter Notizen → Leute "
-        "im Blick ausgewählt hast - aus jedem Kanal, den du offen hast.");
-}
-
-ChannelPtr WatchedPeople::channel() const
-{
-    return this->channel_;
-}
-
-void WatchedPeople::openTab()
-{
-    openOwnTab(instance().channel());
-}
-
 QStringList WatchedPeople::read(const QString &written)
 {
+    static const QRegularExpression SEPARATORS{QStringLiteral(R"([,\n\r;\s]+)")};
+
     QStringList people;
-    for (const auto &part :
-         written.split(QRegularExpression(uR"([,\n\r;\s]+)"_qs),
-                       Qt::SkipEmptyParts))
+    for (const auto &part : written.split(SEPARATORS, Qt::SkipEmptyParts))
     {
         auto name = part.trimmed().toLower();
         while (name.startsWith(u'@') || name.startsWith(u'#'))
@@ -171,62 +134,180 @@ QString WatchedPeople::problemWith(const QString &expression)
     }
     if (std::get<filters::Filter>(result).returnType() != filters::Type::Bool)
     {
-        return QStringLiteral(
-            "Der Filter muss ja oder nein ergeben, etwa "
-            R"(author.name == "name".)");
+        return QStringLiteral("Der Filter muss ja oder nein ergeben, etwa "
+                              R"(author.name == "name".)");
     }
     return {};
 }
 
-void WatchedPeople::rebuildFilter()
+namespace {
+
+/// The expression the tab filters by: one written by hand where there is
+/// one, the names otherwise
+QString wantedExpression()
 {
-    this->filter_.reset();
-
-    const auto written = getSettings()->watchedPeopleFilter.getValue().trimmed();
-    if (written.isEmpty())
+    const auto own = getSettings()->watchedPeopleFilter.getValue().trimmed();
+    if (!own.isEmpty() && WatchedPeople::problemWith(own).isEmpty())
     {
-        return;
+        return own;
     }
-
-    auto result = filters::Filter::fromString(written);
-    if (!std::holds_alternative<filters::Filter>(result))
-    {
-        return;
-    }
-    auto filter =
-        std::make_unique<filters::Filter>(std::move(std::get<filters::Filter>(result)));
-    if (filter->returnType() != filters::Type::Bool)
-    {
-        return;
-    }
-    this->filter_ = std::move(filter);
+    return WatchedPeople::expressionFor(WatchedPeople::people());
 }
 
-void WatchedPeople::onMessage(Channel *channel, const MessagePtr &message)
+/// Puts @a expression on the filters page under its name, and gives the id
+/// it is kept under - the same one from then on, so a tab keeps working
+QUuid keepFilter(const QString &expression)
 {
-    if (message == nullptr || !getSettings()->watchedPeopleEnabled)
+    auto &records = getSettings()->filterRecords;
+    const auto kept = QUuid::fromString(
+        getSettings()->watchedPeopleFilterId.getValue());
+
+    for (int i = 0; i < records.raw().size(); i++)
     {
-        return;
+        const auto &record = records.raw()[i];
+        if (record->getId() != kept)
+        {
+            continue;
+        }
+        if (record->getFilter() != expression ||
+            record->getName() != FILTER_NAME)
+        {
+            // A record holds its filter for good, so it is replaced
+            records.removeAt(i);
+            records.insert(std::make_shared<FilterRecord>(
+                               FILTER_NAME, expression, kept),
+                           i);
+        }
+        return kept;
     }
 
-    if (this->filter_)
+    auto record = std::make_shared<FilterRecord>(FILTER_NAME, expression);
+    records.append(record);
+    getSettings()->watchedPeopleFilterId.setValue(
+        record->getId().toString(QUuid::WithoutBraces));
+    return record->getId();
+}
+
+/// A highlight that does nothing but let the message through to the
+/// mentions channel
+HighlightPhrase quietHighlight(const QString &name)
+{
+    return HighlightPhrase{
+        name,          true,  false, false, false,
+        false,         "",    QUIET_COLOR,
+    };
+}
+
+/// Makes sure everyone in @a wanted has such a highlight, and takes away
+/// those this page added earlier and nobody asks for any more
+void keepHighlights(const QStringList &wanted)
+{
+    auto &highlights = getSettings()->highlightedUsers;
+    const auto ours =
+        WatchedPeople::read(getSettings()->watchedPeopleHighlights.getValue());
+
+    // Away with ours that are no longer wanted - never with one the user
+    // wrote themselves
+    for (const auto &name : ours)
     {
-        // A filter of your own decides on its own - the list stays where it
-        // is, for when the filter is taken out again
-        const auto context = filters::buildContextMap(message, channel);
-        if (!this->filter_->execute(context).toBool())
+        if (wanted.contains(name))
         {
-            return;
+            continue;
+        }
+        for (int i = highlights.raw().size() - 1; i >= 0; i--)
+        {
+            if (highlights.raw()[i].getPattern().compare(
+                    name, Qt::CaseInsensitive) == 0)
+            {
+                highlights.removeAt(i);
+            }
         }
     }
-    else if (!watches(message->loginName))
+
+    QStringList kept;
+    for (const auto &name : wanted)
+    {
+        const auto &raw = highlights.raw();
+        const bool there =
+            std::any_of(raw.begin(), raw.end(), [&name](const auto &phrase) {
+                return phrase.getPattern().compare(name, Qt::CaseInsensitive) ==
+                       0;
+            });
+        if (!there)
+        {
+            highlights.append(quietHighlight(name));
+        }
+        kept.append(name);
+    }
+    getSettings()->watchedPeopleHighlights.setValue(
+        WatchedPeople::write(kept));
+}
+
+}  // namespace
+
+void WatchedPeople::sync()
+{
+    const bool on = getSettings()->watchedPeopleEnabled;
+    // Switched off, nothing of ours stays in the way: no highlight, no
+    // message reaching the mentions channel because of us
+    keepHighlights(on ? people() : QStringList{});
+
+    const auto expression = wantedExpression();
+    if (!expression.isEmpty())
+    {
+        keepFilter(expression);
+    }
+}
+
+void WatchedPeople::openTab()
+{
+    sync();
+
+    const auto expression = wantedExpression();
+    if (expression.isEmpty())
     {
         return;
     }
+    const auto id = keepFilter(expression);
+    auto mentions = getApp()->getTwitch()->getMentionsChannel();
 
-    // The message as it is, so it keeps its badges, emotes and colours - the
-    // channel stands beside it, as in the mentions tab
-    this->channel_->addMessage(message, MessageContext::Original);
+    auto &notebook = getApp()->getWindows()->getMainWindow().getNotebook();
+    for (int i = 0; i < notebook.getPageCount(); i++)
+    {
+        auto *page = dynamic_cast<SplitContainer *>(notebook.getPageAt(i));
+        if (page == nullptr)
+        {
+            continue;
+        }
+        for (auto *split : page->getSplits())
+        {
+            if (split->getChannel() == mentions &&
+                split->getFilters().contains(id))
+            {
+                notebook.select(page);
+                return;
+            }
+        }
+    }
+
+    auto *split = notebook.addPage(true)->appendNewSplit(false);
+    split->setChannel(mentions);
+    split->setFilters({id});
+}
+
+void WatchedPeople::start()
+{
+    auto &settings = *getSettings();
+    // Kept in step from here on; the settings page changes these
+    settings.watchedPeopleEnabled.connect([](auto, auto) {
+        sync();
+    });
+    settings.watchedPeople.connect([](const auto &, auto) {
+        sync();
+    });
+    settings.watchedPeopleFilter.connect([](const auto &, auto) {
+        sync();
+    });
 }
 
 }  // namespace chatterino

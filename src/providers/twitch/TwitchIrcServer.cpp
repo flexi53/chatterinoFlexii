@@ -13,7 +13,6 @@
 #include "controllers/accounts/AccountController.hpp"
 #include "controllers/badgealerts/BadgeAlerts.hpp"
 #include "controllers/moderation/ModChanges.hpp"
-#include "controllers/people/WatchedPeople.hpp"
 #include "controllers/saved/SavedMessages.hpp"
 #include "messages/Message.hpp"
 #include "messages/MessageBuilder.hpp"
@@ -574,12 +573,6 @@ std::shared_ptr<Channel> TwitchIrcServer::getCustomChannel(
     if (channelName == "/gemerkt")
     {
         return SavedMessages::instance().channel();
-    }
-
-    // ChattiFlexii: Notizen -> Leute im Blick
-    if (channelName == "/leute")
-    {
-        return WatchedPeople::instance().channel();
     }
 
     static auto getTimer = [this](ChannelPtr channel, int msBetweenMessages,

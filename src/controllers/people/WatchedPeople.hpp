@@ -8,34 +8,17 @@
 #include <QStringList>
 
 #include <memory>
-#include <optional>
 
 namespace chatterino {
 
-namespace filters {
-class Filter;
-}  // namespace filters
-
-class Channel;
-using ChannelPtr = std::shared_ptr<Channel>;
-struct Message;
-using MessagePtr = std::shared_ptr<const Message>;
-
-/// Notizen -> Leute im Blick: a tab of its own that collects what the people
-/// you picked write - in every channel you have open, with the channel
-/// beside each line. So you see where they are about without watching every
-/// tab yourself.
+/// Notizen -> Leute im Blick: the people you pick are kept with Chatterino's
+/// own machinery - each of them becomes a quiet entry under Highlights that
+/// only says "show in mentions", and the tab is a mentions split with a
+/// filter of their names on it. So what lands there is what Chatterino
+/// itself collects, and the filter is one you can read and change.
 class WatchedPeople
 {
 public:
-    static WatchedPeople &instance();
-
-    /// The channel its tab shows, "/leute"
-    ChannelPtr channel() const;
-
-    /// Opens the tab in the main window, or shows it when it is there
-    static void openTab();
-
     /// The logins picked, as they are kept: one per line, lowercase, without
     /// a leading @
     static QStringList people();
@@ -61,19 +44,18 @@ public:
     /// expression is fine as well - then the list counts.
     static QString problemWith(const QString &expression);
 
-    /// Puts @a message from @a channel in the tab, when it is one to keep -
-    /// what the filter says, or, without a filter, who wrote it
-    void onMessage(Channel *channel, const MessagePtr &message);
+    /// Brings Chatterino's own settings in line with the list: the filter
+    /// the tab uses, and a quiet highlight per person so their messages
+    /// reach the mentions channel at all. Called whenever something here
+    /// changes; a start of its own is not needed.
+    static void sync();
 
-private:
-    WatchedPeople();
+    /// Opens the tab - a mentions split with the filter on it - or shows the
+    /// one that is there
+    static void openTab();
 
-    /// Builds the filter afresh from the setting; none when it is empty or
-    /// does not hold up
-    void rebuildFilter();
-
-    ChannelPtr channel_;
-    std::unique_ptr<filters::Filter> filter_;
+    /// Keeps the settings in step from the moment the app is up
+    static void start();
 };
 
 }  // namespace chatterino

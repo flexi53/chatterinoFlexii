@@ -16,6 +16,7 @@
 #include "controllers/hotkeys/HotkeyController.hpp"
 #include "controllers/ignores/IgnoreController.hpp"
 #include "controllers/moderation/ModChanges.hpp"
+#include "controllers/people/WatchedPeople.hpp"
 #include "controllers/notifications/NotificationController.hpp"
 #include "controllers/sound/ISoundController.hpp"
 #include "controllers/spellcheck/SpellChecker.hpp"
@@ -294,6 +295,10 @@ void Application::initialize(Settings &settings, const Paths &paths)
         {
             ModChanges::instance();
         }
+        // Notizen -> Leute im Blick keeps Chatterino's own highlights and
+        // its filter in step with the list
+        WatchedPeople::start();
+        WatchedPeople::sync();
     }
 
     // Show crash message.

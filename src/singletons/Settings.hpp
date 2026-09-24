@@ -1161,6 +1161,10 @@ public:
     /// Instead of the list: a filter in the language of the filters page,
     /// say (author.name == "a") || (author.name == "b")
     QStringSetting watchedPeopleFilter = {"/notes/people/filter", ""};
+    /// The filter on the filters page this tab uses, and the highlights
+    /// added for the list - so ours can be taken away again
+    QStringSetting watchedPeopleFilterId = {"/notes/people/filterId", ""};
+    QStringSetting watchedPeopleHighlights = {"/notes/people/highlights", ""};
     /// The entry in the right-click menu of a message that puts its writer
     /// in the list, or takes them out again
     BoolSetting watchedPeopleMenu = {"/notes/people/menuEntry", true};
