@@ -51,7 +51,7 @@ NotesPage::NotesPage()
     outer->addWidget(this->tabs_, 1);
     this->buildUsersTab(addPageTab(this->tabs_, "Zu Usern"));
     this->buildSavedTab(addPageTab(this->tabs_, "Gemerkte Nachrichten"));
-    this->buildPeopleTab(addPageTab(this->tabs_, "Leute im Blick"));
+    this->buildPeopleTab(addPageTab(this->tabs_, "User"));
 
     // Once the page is up, rather than while the dialog is still being built
     QTimer::singleShot(0, this, [this] {
