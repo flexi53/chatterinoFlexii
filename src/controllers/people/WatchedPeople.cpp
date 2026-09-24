@@ -6,6 +6,7 @@
 
 #include "Application.hpp"
 #include "common/Channel.hpp"
+#include "controllers/filters/lang/Filter.hpp"
 #include "messages/Message.hpp"
 #include "singletons/Settings.hpp"
 #include "util/OpenOwnTab.hpp"
@@ -48,6 +49,14 @@ WatchedPeople &WatchedPeople::instance()
 WatchedPeople::WatchedPeople()
     : channel_(std::make_shared<WatchedChannel>())
 {
+    this->rebuildFilter();
+    // Typed on the settings page, it counts from the next message on
+    getSettings()->watchedPeopleFilter.connect(
+        [this](const auto &, auto) {
+            this->rebuildFilter();
+        },
+        false);
+
     this->channel_->addSystemMessage(
         "Hier steht, was die Leute schreiben, die du unter Notizen → Leute "
         "im Blick ausgewählt hast - aus jedem Kanal, den du offen hast.");
@@ -137,16 +146,80 @@ bool WatchedPeople::toggle(const QString &login)
     return !watched;
 }
 
-void WatchedPeople::onMessage(const QString &channelName,
-                              const MessagePtr &message)
+QString WatchedPeople::expressionFor(const QStringList &people)
 {
-    (void)channelName;  // the message knows where it came from
+    QStringList parts;
+    for (const auto &name : people)
+    {
+        parts.append(QStringLiteral(R"((author.name == "%1"))").arg(name));
+    }
+    return parts.join(QStringLiteral(" || "));
+}
 
+QString WatchedPeople::problemWith(const QString &expression)
+{
+    const auto written = expression.trimmed();
+    if (written.isEmpty())
+    {
+        return {};
+    }
+
+    auto result = filters::Filter::fromString(written);
+    if (std::holds_alternative<filters::FilterError>(result))
+    {
+        return std::get<filters::FilterError>(result).message;
+    }
+    if (std::get<filters::Filter>(result).returnType() != filters::Type::Bool)
+    {
+        return QStringLiteral(
+            "Der Filter muss ja oder nein ergeben, etwa "
+            R"(author.name == "name".)");
+    }
+    return {};
+}
+
+void WatchedPeople::rebuildFilter()
+{
+    this->filter_.reset();
+
+    const auto written = getSettings()->watchedPeopleFilter.getValue().trimmed();
+    if (written.isEmpty())
+    {
+        return;
+    }
+
+    auto result = filters::Filter::fromString(written);
+    if (!std::holds_alternative<filters::Filter>(result))
+    {
+        return;
+    }
+    auto filter =
+        std::make_unique<filters::Filter>(std::move(std::get<filters::Filter>(result)));
+    if (filter->returnType() != filters::Type::Bool)
+    {
+        return;
+    }
+    this->filter_ = std::move(filter);
+}
+
+void WatchedPeople::onMessage(Channel *channel, const MessagePtr &message)
+{
     if (message == nullptr || !getSettings()->watchedPeopleEnabled)
     {
         return;
     }
-    if (!watches(message->loginName))
+
+    if (this->filter_)
+    {
+        // A filter of your own decides on its own - the list stays where it
+        // is, for when the filter is taken out again
+        const auto context = filters::buildContextMap(message, channel);
+        if (!this->filter_->execute(context).toBool())
+        {
+            return;
+        }
+    }
+    else if (!watches(message->loginName))
     {
         return;
     }

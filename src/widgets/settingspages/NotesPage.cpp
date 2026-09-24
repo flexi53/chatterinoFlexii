@@ -347,6 +347,79 @@ void NotesPage::buildPeopleTab(QVBoxLayout *layout)
     }
     this->peopleStatus_ = addText(layout, QString(), true);
 
+    addHeading(layout, "Oder ein Filter");
+    addText(layout,
+            "Wer mehr will als Namen, schreibt hier einen Filter in "
+            "derselben Sprache wie unter Einstellungen → Filters. Steht hier "
+            "etwas, gilt nur der Filter und die Liste oben bleibt "
+            "unberührt.",
+            true);
+    {
+        this->peopleFilter_ = new QLineEdit(
+            getSettings()->watchedPeopleFilter.getValue());
+        this->peopleFilter_->setPlaceholderText(
+            R"((author.name == "fx_flexii") || (author.name == "ardaslegacy"))");
+        this->peopleFilter_->setClearButtonEnabled(true);
+        layout->addWidget(this->peopleFilter_);
+
+        this->filterStatus_ = addText(layout, QString(), true);
+
+        const auto pruefe = [this] {
+            const auto written = this->peopleFilter_->text().trimmed();
+            if (written.isEmpty())
+            {
+                this->filterStatus_->setText(
+                    "Kein Filter - es gilt die Liste oben.");
+                return;
+            }
+            const auto problem = WatchedPeople::problemWith(written);
+            this->filterStatus_->setText(
+                problem.isEmpty()
+                    ? QStringLiteral("Filter sitzt.")
+                    : QStringLiteral(
+                          "<span style=\"color:#ffaa00\">%1</span>")
+                          .arg(problem.toHtmlEscaped()));
+        };
+
+        // Gespeichert wird erst, wenn er hält - sonst stünde beim Tippen
+        // ständig ein halber Ausdruck in den Einstellungen
+        auto *save = new QTimer(this->peopleFilter_);
+        save->setSingleShot(true);
+        save->setInterval(500);
+        QObject::connect(save, &QTimer::timeout, this->peopleFilter_,
+                         [this, pruefe] {
+                             const auto written =
+                                 this->peopleFilter_->text().trimmed();
+                             if (written.isEmpty() ||
+                                 WatchedPeople::problemWith(written).isEmpty())
+                             {
+                                 getSettings()->watchedPeopleFilter.setValue(
+                                     written);
+                             }
+                             pruefe();
+                         });
+        QObject::connect(this->peopleFilter_, &QLineEdit::textChanged, save,
+                         qOverload<>(&QTimer::start));
+
+        auto *fromList = new QPushButton("Aus der Liste erzeugen");
+        fromList->setToolTip("Schreibt die Namen von oben als Filter hin - "
+                             "als Anfang zum Weiterbauen");
+        QObject::connect(fromList, &QPushButton::clicked, this,
+                         [this, pruefe] {
+                             const auto people = WatchedPeople::read(
+                                 this->peopleList_->toPlainText());
+                             if (people.isEmpty())
+                             {
+                                 return;
+                             }
+                             this->peopleFilter_->setText(
+                                 WatchedPeople::expressionFor(people));
+                             pruefe();
+                         });
+        addButtonRow(layout, fromList);
+        pruefe();
+    }
+
     // Someone added from the chat while this page is open
     s.watchedPeople.connect(
         [this](const QString &written, auto) {
@@ -364,10 +437,16 @@ void NotesPage::buildPeopleTab(QVBoxLayout *layout)
 
     auto *standard = new QPushButton("Standard");
     standard->setToolTip("Wieder aus, Liste bleibt");
-    QObject::connect(standard, &QPushButton::clicked, [&s] {
+    QObject::connect(standard, &QPushButton::clicked, [this, &s] {
         s.watchedPeopleEnabled.setValue(
             s.watchedPeopleEnabled.getDefaultValue());
         s.watchedPeopleMenu.setValue(s.watchedPeopleMenu.getDefaultValue());
+        s.watchedPeopleFilter.setValue(
+            s.watchedPeopleFilter.getDefaultValue());
+        if (this->peopleFilter_ != nullptr)
+        {
+            this->peopleFilter_->clear();
+        }
     });
     addButtonRow(layout, standard);
     layout->addStretch(1);

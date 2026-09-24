@@ -8,8 +8,13 @@
 #include <QStringList>
 
 #include <memory>
+#include <optional>
 
 namespace chatterino {
+
+namespace filters {
+class Filter;
+}  // namespace filters
 
 class Channel;
 using ChannelPtr = std::shared_ptr<Channel>;
@@ -48,14 +53,27 @@ public:
     /// afterwards.
     static bool toggle(const QString &login);
 
-    /// Puts @a message from the channel @a channelName in the tab, when its
-    /// writer is watched
-    void onMessage(const QString &channelName, const MessagePtr &message);
+    /// The filter that says the same as @a people, in the language of the
+    /// filters page: (author.name == "a") || (author.name == "b")
+    static QString expressionFor(const QStringList &people);
+
+    /// What is wrong with @a expression, empty when it is fine. An empty
+    /// expression is fine as well - then the list counts.
+    static QString problemWith(const QString &expression);
+
+    /// Puts @a message from @a channel in the tab, when it is one to keep -
+    /// what the filter says, or, without a filter, who wrote it
+    void onMessage(Channel *channel, const MessagePtr &message);
 
 private:
     WatchedPeople();
 
+    /// Builds the filter afresh from the setting; none when it is empty or
+    /// does not hold up
+    void rebuildFilter();
+
     ChannelPtr channel_;
+    std::unique_ptr<filters::Filter> filter_;
 };
 
 }  // namespace chatterino

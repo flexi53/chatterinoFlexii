@@ -1312,6 +1312,28 @@ TEST(FlexiiWatchedPeople, OnlyTheOnesPicked)
     EXPECT_FALSE(WatchedPeople::watches("sonkertd", {}));
 }
 
+TEST(FlexiiWatchedPeople, TheListBecomesAFilter)
+{
+    EXPECT_EQ(WatchedPeople::expressionFor({"fx_flexii", "ardaslegacy"}),
+              R"((author.name == "fx_flexii") || (author.name == "ardaslegacy"))");
+    EXPECT_EQ(WatchedPeople::expressionFor({"zarbex"}),
+              R"((author.name == "zarbex"))");
+    EXPECT_EQ(WatchedPeople::expressionFor({}), "");
+}
+
+TEST(FlexiiWatchedPeople, AFilterIsCheckedBeforeItCounts)
+{
+    // Nothing written is fine - then the list counts
+    EXPECT_EQ(WatchedPeople::problemWith(""), "");
+    EXPECT_EQ(WatchedPeople::problemWith(
+                  R"((author.name == "a") || (author.name == "b"))"),
+              "");
+    // Says nothing about yes or no
+    EXPECT_FALSE(WatchedPeople::problemWith("author.name").isEmpty());
+    // Not a filter at all
+    EXPECT_FALSE(WatchedPeople::problemWith("author.name ==").isEmpty());
+}
+
 TEST(FlexiiWatchedPeople, TheListTakesAndGivesBack)
 {
     MockApplication app;

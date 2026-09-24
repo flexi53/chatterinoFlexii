@@ -53,6 +53,8 @@ private:
     QLabel *keptStatus_{};
     QLabel *peopleStatus_{};
     QPlainTextEdit *peopleList_{};
+    QLineEdit *peopleFilter_{};
+    QLabel *filterStatus_{};
     QPushButton *editButton_{};
     QPushButton *deleteButton_{};
     /// Twitch id -> the name to show, as far as it is known

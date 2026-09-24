@@ -1300,7 +1300,7 @@ void IrcMessageHandler::addMessage(Communi::IrcMessage *message,
         // everything said before.
         if (!tags.contains("historical"))
         {
-            WatchedPeople::instance().onMessage(chan->getName(), msg);
+            WatchedPeople::instance().onMessage(chan, msg);
         }
 
         // The repeated message alert, the emote alert and the moderation
