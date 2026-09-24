@@ -29,6 +29,7 @@
 #include "widgets/buttons/BadgeButton.hpp"
 #include "widgets/buttons/ClearChatButton.hpp"
 #include "widgets/buttons/FocusButton.hpp"
+#include "widgets/buttons/FollowBrowserButton.hpp"
 #include "widgets/buttons/LabelButton.hpp"
 #include "widgets/buttons/SvgButton.hpp"
 #include "widgets/dialogs/EmotePopup.hpp"
@@ -238,7 +239,8 @@ void SplitInput::initLayout()
                           &getSettings()->showModAssistButton,
                           &getSettings()->showAlertMuteButton,
                           &getSettings()->showBadgeButton,
-                          &getSettings()->showClipButton})
+                          &getSettings()->showClipButton,
+                          &getSettings()->showFollowBrowserButton})
     {
         setting->connect(
             [this](const bool, auto) {
@@ -307,6 +309,11 @@ void SplitInput::initLayout()
                              }
                          });
 
+        // Whether the tab follows the streamer watched in the browser -
+        // one switch for the whole program
+        this->ui_.followButton = new FollowBrowserButton;
+        this->ui_.followButton->hide();
+
         // In and out of the focus view, here as the input bar stays when
         // the tabs and split headers go
         this->ui_.focusButton = new FocusButton;
@@ -326,6 +333,7 @@ void SplitInput::initLayout()
         buttonRow->addWidget(this->ui_.alertMuteButton);
         buttonRow->addWidget(this->ui_.clearButton);
         buttonRow->addWidget(this->ui_.focusButton);
+        buttonRow->addWidget(this->ui_.followButton);
         buttonRow->addWidget(this->ui_.badgeButton);
         buttonRow->addWidget(this->ui_.clipButton);
         buttonRow->addWidget(this->ui_.emoteButton);
@@ -500,6 +508,8 @@ void SplitInput::updateEmoteButton()
 
     this->ui_.focusButton->setFixedHeight(height);
     this->ui_.focusButton->setFixedWidth(width);
+    this->ui_.followButton->setFixedHeight(height);
+    this->ui_.followButton->setFixedWidth(width);
 
     this->ui_.clearButton->setFixedHeight(height);
     this->ui_.clearButton->setFixedWidth(width);
@@ -523,6 +533,9 @@ void SplitInput::updateInputButtons()
     this->ui_.emoteButton->setVisible(getSettings()->showEmoteButton);
     this->ui_.clearButton->setVisible(getSettings()->showClearChatButton);
     this->ui_.focusButton->setVisible(getSettings()->showFocusButton);
+    // Holds for every split, so it stands wherever it is switched on
+    this->ui_.followButton->setVisible(
+        getSettings()->showFollowBrowserButton);
     // These two also depend on moderating the channel
     this->updateModAssistButton();
 }

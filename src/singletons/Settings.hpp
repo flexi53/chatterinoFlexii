@@ -1177,6 +1177,9 @@ public:
     /// Notizen: a mark in front of the name of everyone you noted something
     /// about, the note itself on hover - off until asked for
     BoolSetting userNotesMark = {"/notes/mark", false};
+    /// Switching "dem Browser folgen" from the input bar - off until asked
+    /// for, like every button that is new here
+    BoolSetting showFollowBrowserButton = {"/ui/buttons/followBrowser", false};
     /// Clipping the stream from the chat window - off until asked for
     BoolSetting showClipButton = {"/ui/buttons/clip", false};
     /// What happens once a clip is made, however it was started - the button,

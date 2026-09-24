@@ -36,6 +36,7 @@ class InputHighlighter;
 class MessageView;
 class LabelButton;
 class FocusButton;
+class FollowBrowserButton;
 class ClearChatButton;
 class ResizingTextEdit;
 class ChannelView;
@@ -209,6 +210,8 @@ protected:
         /// ChattiFlexii: clips the stream from the chat window
         SvgButton *clipButton;
         FocusButton *focusButton;
+        /// ChattiFlexii: switches "dem Browser folgen" for everything
+        FollowBrowserButton *followButton;
         ClearChatButton *clearButton;
     } ui_;
 

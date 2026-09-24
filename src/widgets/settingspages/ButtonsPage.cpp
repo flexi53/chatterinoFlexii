@@ -269,6 +269,15 @@ void ButtonsPage::initLayout(GeneralPageView &layout)
                      "nur, wo du eingeloggt schreiben kannst.")
         ->addKeywords({"badge", "abzeichen", "identität", "sub"})
         ->addTo(layout);
+    SettingWidget::checkbox("Dem Browser folgen (Kette)",
+                            s.showFollowBrowserButton)
+        ->setTooltip("Schaltet „Aussehen → Tabs → Dem Browser folgen“ an und "
+                     "aus, ohne in die Einstellungen zu gehen. Der Schalter "
+                     "gilt für das ganze Programm, wie die Fokus-Ansicht - "
+                     "einmal drücken reicht, egal in welchem Split. "
+                     "Geschlossene Kette heißt: der Tab folgt.")
+        ->addKeywords({"browser", "folgen", "kette", "tab", "wechseln"})
+        ->addTo(layout);
     SettingWidget::checkbox("Clip erstellen", s.showClipButton)
         ->setTooltip("Schneidet die letzte halbe Minute des Streams mit - "
                      "dasselbe wie Alt+X oder „Create a clip“ im Menü des "
@@ -323,6 +332,8 @@ void ButtonsPage::initLayout(GeneralPageView &layout)
                               s.showBadgeButton.getDefaultValue());
                           s.showClipButton.setValue(
                               s.showClipButton.getDefaultValue());
+                          s.showFollowBrowserButton.setValue(
+                              s.showFollowBrowserButton.getDefaultValue());
                           s.clipCopyLink.setValue(
                               s.clipCopyLink.getDefaultValue());
                           s.clipOpenEditor.setValue(

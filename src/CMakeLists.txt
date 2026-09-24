@@ -777,6 +777,9 @@ set(SOURCE_FILES
         widgets/buttons/DimButton.hpp
         widgets/buttons/DrawnButton.cpp
         widgets/buttons/DrawnButton.hpp
+        widgets/buttons/FollowBrowserButton.cpp
+        widgets/buttons/FollowBrowserButton.hpp
+
         widgets/buttons/FocusButton.cpp
         widgets/buttons/FocusButton.hpp
         widgets/buttons/InitUpdateButton.cpp
