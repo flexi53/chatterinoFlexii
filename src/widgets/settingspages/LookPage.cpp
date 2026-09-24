@@ -525,6 +525,35 @@ void LookPage::buildTabsTab(GeneralPageView &layout)
             s.activeSplitBorderColor.getDefaultValue());
     });
 
+    layout.addTitle("Dem Browser folgen");
+    layout.addDescription(
+        "Wechselst du auf twitch.tv den Streamer, wechselt ChattiFlexii den "
+        "Tab gleich mit. Dafür muss die Chatterino-Erweiterung im Browser "
+        "installiert sein - sie sagt, welchen Kanal du gerade anschaust. Das "
+        "Fenster kommt dabei nicht nach vorne, der Browser behält die "
+        "Tastatur.");
+    SettingWidget::checkbox("Tab dem Browser folgen lassen",
+                            s.tabFollowsBrowser)
+        ->setTooltip("Sucht den Tab des Kanals, den du im Browser anschaust, "
+                     "und stellt ihn nach vorne. Ist der Kanal nirgends "
+                     "offen, passiert nichts - außer du setzt den Haken "
+                     "darunter.")
+        ->addKeywords({"browser", "erweiterung", "extension", "folgen",
+                       "wechseln"})
+        ->addTo(layout);
+    SettingWidget::checkbox("Kanal öffnen, wenn er nicht offen ist",
+                            s.tabFollowsBrowserOpens)
+        ->setTooltip("Legt einen neuen Tab an, sobald du einen Kanal "
+                     "anschaust, den du hier nicht offen hast. Ohne den "
+                     "Haken bleibt es beim Tab, der gerade vorne ist.")
+        ->conditionallyEnabledBy(s.tabFollowsBrowser)
+        ->addTo(layout);
+    addStandardButton(layout, "Dem Browser nicht folgen", [&s] {
+        s.tabFollowsBrowser.setValue(s.tabFollowsBrowser.getDefaultValue());
+        s.tabFollowsBrowserOpens.setValue(
+            s.tabFollowsBrowserOpens.getDefaultValue());
+    });
+
     layout.addStretch();
 }
 

@@ -1145,6 +1145,10 @@ public:
     /// Choosing the badge you wear - needs the browser login, so off until
     /// asked for
     BoolSetting showBadgeButton = {"/ui/buttons/badge", false};
+    /// Aussehen -> Tabs: the tab follows the channel watched in the browser,
+    /// as the Chatterino browser extension says which one that is
+    BoolSetting tabFollowsBrowser = {"/ui/tabs/followBrowser", false};
+    BoolSetting tabFollowsBrowserOpens = {"/ui/tabs/followBrowserOpens", false};
     /// Mod-Assistent -> Shared Chat: a timeout, ban or lifting also goes to
     /// the other channels of the session the user moderates - off until
     /// asked for, as it acts in a channel other than the one in front of you

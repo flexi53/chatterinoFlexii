@@ -12,6 +12,7 @@
 #include "providers/twitch/TwitchIrcServer.hpp"
 #include "singletons/Paths.hpp"
 #include "singletons/Settings.hpp"
+#include "util/OpenOwnTab.hpp"
 #include "util/IpcQueue.hpp"
 #include "util/PostToThread.hpp"
 
@@ -360,6 +361,12 @@ void NativeMessagingServer::ReceiverThread::handleSelect(
             if (getApp()->getTwitch()->getWatchingChannel().get() != channel)
             {
                 getApp()->getTwitch()->setWatchingChannel(channel);
+            }
+
+            // ChattiFlexii: and the tab follows along with the browser
+            if (getSettings()->tabFollowsBrowser)
+            {
+                showChannelTab(name, getSettings()->tabFollowsBrowserOpens);
             }
         }
 
