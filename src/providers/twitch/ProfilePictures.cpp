@@ -90,10 +90,13 @@ std::mutex &knownMutex()
     return mutex;
 }
 
+/// Everyone we know about. Made once and deliberately never taken down: it
+/// holds pictures, and a picture wants the program's main thread to still be
+/// there as it goes. At the very end of the program it no longer is.
 QHash<QString, Known> &known()
 {
-    static QHash<QString, Known> names;
-    return names;
+    static auto *names = new QHash<QString, Known>();
+    return *names;
 }
 
 /// Names waiting to be asked about together. The lock guards it.
@@ -111,10 +114,11 @@ QHash<QString, std::vector<Waiter>> &waiters()
 }
 
 /// Pictures already loaded, by address. GUI thread only.
+/// Kept in the same way as known(), and for the same reason
 QHash<QString, QPixmap> &loadedPictures()
 {
-    static QHash<QString, QPixmap> pictures;
-    return pictures;
+    static auto *pictures = new QHash<QString, QPixmap>();
+    return *pictures;
 }
 
 /// How big Chatterino draws the badge of a shared message - the size it
