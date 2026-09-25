@@ -496,7 +496,8 @@ void NativeMessagingServer::ReceiverThread::handleSelect(
             // ChattiFlexii: and the tab follows along with the browser
             if (getSettings()->tabFollowsBrowser)
             {
-                showChannelTab(name, getSettings()->tabFollowsBrowserOpens);
+                showChannelTab(name, getSettings()->tabFollowsBrowserOpens,
+                               getSettings()->tabFollowsBrowserCloses);
             }
         }
 

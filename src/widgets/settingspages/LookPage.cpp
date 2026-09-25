@@ -625,10 +625,21 @@ void LookPage::buildTabsTab(GeneralPageView &layout)
                      "Haken bleibt es beim Tab, der gerade vorne ist.")
         ->conditionallyEnabledBy(s.tabFollowsBrowser)
         ->addTo(layout);
+    SettingWidget::checkbox("So geöffnete Tabs wieder schließen",
+                            s.tabFollowsBrowserCloses)
+        ->setTooltip("Wechselst du im Browser weiter, geht der Tab wieder zu, "
+                     "den ChattiFlexii eben selbst aufgemacht hat. Tabs, die "
+                     "du schon offen hattest, bleiben - und wenn du in den "
+                     "aufgemachten Tab noch einen Chat dazulegst, bleibt er "
+                     "auch.")
+        ->conditionallyEnabledBy(s.tabFollowsBrowserOpens)
+        ->addTo(layout);
     addStandardButton(layout, "Dem Browser nicht folgen", [&s] {
         s.tabFollowsBrowser.setValue(s.tabFollowsBrowser.getDefaultValue());
         s.tabFollowsBrowserOpens.setValue(
             s.tabFollowsBrowserOpens.getDefaultValue());
+        s.tabFollowsBrowserCloses.setValue(
+            s.tabFollowsBrowserCloses.getDefaultValue());
     });
 
     layout.addStretch();

@@ -1149,6 +1149,10 @@ public:
     /// as the Chatterino browser extension says which one that is
     BoolSetting tabFollowsBrowser = {"/ui/tabs/followBrowser", false};
     BoolSetting tabFollowsBrowserOpens = {"/ui/tabs/followBrowserOpens", false};
+    /// A tab opened that way goes again as soon as the browser moves on -
+    /// one that was already there stays
+    BoolSetting tabFollowsBrowserCloses = {"/ui/tabs/followBrowserCloses",
+                                           false};
     /// Mod-Assistent -> Shared Chat: a timeout, ban or lifting also goes to
     /// the other channels of the session the user moderates - off until
     /// asked for, as it acts in a channel other than the one in front of you

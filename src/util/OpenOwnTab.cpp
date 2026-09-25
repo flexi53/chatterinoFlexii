@@ -13,6 +13,8 @@
 #include "widgets/splits/SplitContainer.hpp"
 #include "widgets/Window.hpp"
 
+#include <QPointer>
+
 namespace chatterino {
 
 void openOwnTab(const std::shared_ptr<Channel> &channel)
@@ -38,7 +40,35 @@ void openOwnTab(const std::shared_ptr<Channel> &channel)
     notebook.addPage(true)->appendNewSplit(false)->setChannel(channel);
 }
 
-bool showChannelTab(const QString &name, const bool openWhenMissing)
+namespace {
+
+/// The tab this opened by itself while following the browser, so it can be
+/// taken away again once the browser is elsewhere. Nothing the user opened
+/// is ever remembered here.
+QPointer<SplitContainer> openedByFollowing;
+
+/// Takes that tab away, as long as it is still the one and only thing that
+/// was put there
+void closeWhatWasOpened(Notebook &notebook, SplitContainer *keep)
+{
+    auto *page = openedByFollowing.data();
+    openedByFollowing = nullptr;
+    if (page == nullptr || page == keep)
+    {
+        return;
+    }
+    // Someone added a chat to it in the meantime - then it is theirs now
+    if (page->getSplits().size() != 1)
+    {
+        return;
+    }
+    notebook.removePage(page);
+}
+
+}  // namespace
+
+bool showChannelTab(const QString &name, const bool openWhenMissing,
+                    const bool closeOpened)
 {
     if (name.isEmpty())
     {
@@ -70,17 +100,32 @@ bool showChannelTab(const QString &name, const bool openWhenMissing)
             // is, so the browser keeps the focus
             notebook.select(page, false);
             page->setSelected(split);
+            if (closeOpened)
+            {
+                closeWhatWasOpened(notebook, page);
+            }
             return true;
         }
     }
 
     if (!openWhenMissing)
     {
+        if (closeOpened)
+        {
+            closeWhatWasOpened(notebook, nullptr);
+        }
         return false;
     }
 
     auto channel = getApp()->getTwitch()->getOrAddChannel(name);
-    notebook.addPage(true)->appendNewSplit(false)->setChannel(channel);
+    auto *page = notebook.addPage(true);
+    page->appendNewSplit(false)->setChannel(channel);
+    if (closeOpened)
+    {
+        // The one before it goes, this one takes its place
+        closeWhatWasOpened(notebook, page);
+        openedByFollowing = page;
+    }
     return true;
 }
 
