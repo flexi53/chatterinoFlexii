@@ -10,6 +10,7 @@
 #include "mocks/BaseApplication.hpp"
 #include "mocks/Helix.hpp"
 #include "providers/twitch/api/Helix.hpp"
+#include "messages/Image.hpp"
 #include "providers/twitch/ProfilePictures.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/WindowManager.hpp"
@@ -163,6 +164,56 @@ TEST_F(FlexiiProfilePictures, NoAnswerAtFirstIsAskedAgainAndTheWaitingGetIt)
         8s));
     EXPECT_EQ(got->displayName, "Tester");
     EXPECT_EQ(profilepictures::displayName(login), "Tester");
+    waitFor(
+        [] {
+            return false;
+        },
+        300ms);
+}
+
+TEST_F(FlexiiProfilePictures, ASharedMessageBadgeStaysSmall)
+{
+    // Chatterino keeps one picture per address: the badge of a shared
+    // message is built from the same 70x70 address our avatars use, and
+    // whoever asks first says how big it is drawn. Ours therefore asks for
+    // it the way the badge needs it - 18 px - or the badge came out as a
+    // 70 px block in the middle of the chat.
+    const auto login = freshLogin("d");
+    const HelixUser user(QJsonObject{
+        {"login", login},
+        {"display_name", "Tester"},
+        {"profile_image_url",
+         "https://static-cdn.jtvnw.net/jtv_user_pictures/" + login +
+             "-profile_image-300x300.png"},
+    });
+
+    EXPECT_CALL(*this->helix, fetchUsers)
+        .WillOnce([user](auto, auto, auto ok, auto) {
+            ok({user});
+        });
+
+    QObject context;
+    bool known = false;
+    profilepictures::whenKnown(login, &context, [&](const auto &) {
+        known = true;
+    });
+    ASSERT_TRUE(waitFor(
+        [&] {
+            return known;
+        },
+        8s));
+
+    auto ours = profilepictures::image(login);
+    ASSERT_TRUE(ours);
+    EXPECT_EQ(ours->size(), QSizeF(18, 18));
+
+    // The address the badge would take - the very same picture
+    const auto badgeUrl =
+        Url{"https://static-cdn.jtvnw.net/jtv_user_pictures/" + login +
+            "-profile_image-70x70.png"};
+    EXPECT_EQ(Image::fromUrl(badgeUrl).get(), ours.get());
+    EXPECT_EQ(Image::fromUrl(badgeUrl)->size(), QSizeF(18, 18));
+
     waitFor(
         [] {
             return false;

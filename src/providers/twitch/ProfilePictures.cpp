@@ -117,6 +117,10 @@ QHash<QString, QPixmap> &loadedPictures()
     return pictures;
 }
 
+/// How big Chatterino draws the badge of a shared message - the size it
+/// expects from the 70x70 picture
+constexpr qreal SHARED_BADGE_SIDE = 18.0;
+
 /// Twitch links profile pictures at 300x300 and serves them at 70x70 as
 /// well - plenty for anything shown smaller
 QString sizedPicture(QString url, int side)
@@ -542,8 +546,17 @@ std::shared_ptr<Image> image(const QString &login)
         {
             if (!it->image && !it->profile.pictureUrl.isEmpty())
             {
+                // Chatterino keeps one picture per address, and whoever
+                // asks for it first decides how big it is drawn where no
+                // size is given. Its own badge for a shared message is
+                // built from this very address and wants it at 18 px, so
+                // ours is made the same way - our own avatars say their
+                // size themselves and do not care either way. Without this
+                // the badge came out at 70 px as soon as the channel had
+                // been looked up here before.
                 it->image = Image::fromUrl(
-                    Url{sizedPicture(it->profile.pictureUrl, 70)});
+                    Url{sizedPicture(it->profile.pictureUrl, 70)},
+                    SHARED_BADGE_SIDE / 70.0, QSize(70, 70));
             }
             result = it->image;
         }
