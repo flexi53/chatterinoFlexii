@@ -25,8 +25,10 @@ QStringList keys()
     return {
         // Die Kachel bleibt hell, Bogen und Körper wechseln
         "violett", "blau", "gruen", "orange", "rosa",
-        // Ganz durchgefärbt
+        // Ganz durchgemustert
         "camouflage", "mitternacht", "sonnenuntergang", "neon", "regenbogen",
+        // Was gerade überall zu sehen ist
+        "chrom", "holo", "feuer", "eis", "aurora",
     };
 }
 
@@ -43,6 +45,11 @@ QString nameOf(const QString &key)
         {"sonnenuntergang", QStringLiteral("Sonnenuntergang")},
         {"neon", QStringLiteral("Neon")},
         {"regenbogen", QStringLiteral("Regenbogen")},
+        {"chrom", QStringLiteral("Chrom")},
+        {"holo", QStringLiteral("Holo")},
+        {"feuer", QStringLiteral("Feuer")},
+        {"eis", QStringLiteral("Eis")},
+        {"aurora", QStringLiteral("Aurora")},
     };
     return NAMEN.value(key, key);
 }

@@ -1297,7 +1297,7 @@ TEST(FlexiiAppIcon, FiveColoursAndEachOneIsThere)
 {
     MockApplication app;
     const auto all = appicon::keys();
-    EXPECT_EQ(all.size(), 10);
+    EXPECT_EQ(all.size(), 15);
     // The one the program is built with comes first
     EXPECT_EQ(all.front(), "violett");
 

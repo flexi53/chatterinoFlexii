@@ -82,6 +82,25 @@ def verlauf(oben, unten, schraeg: bool = True) -> np.ndarray:
             np.array(unten, dtype=np.float64) * teil)
 
 
+def verlauf_mehr(farben, schraeg: bool = True, von: float = 0.0,
+                 bis: float = 1.0) -> np.ndarray:
+    """Ein Verlauf über mehrere Farben, ohne harte Kanten.
+
+    @a von und @a bis sagen, über welchen Teil des Bildes er läuft - so
+    liegen alle Farben in der Fläche, die sie tragen soll, statt zur Hälfte
+    daneben.
+    """
+    y, x = np.mgrid[0:SEITE, 0:SEITE]
+    teil = ((x + y) / (2 * SEITE)) if schraeg else (y / SEITE)
+    teil = np.clip((teil - von) / max(bis - von, 1e-6), 0.0, 1.0)
+    stellen = np.linspace(0.0, 1.0, len(farben))
+    kanal = []
+    for i in range(3):
+        werte = [float(f[i]) for f in farben]
+        kanal.append(np.interp(teil, stellen, werte))
+    return np.stack(kanal, axis=-1)
+
+
 def streifen(farben) -> np.ndarray:
     """Waagerechte Streifen, wie eine Flagge."""
     bild = np.zeros((SEITE, SEITE, 3), dtype=np.float64)
@@ -127,15 +146,34 @@ def sterne(grund, zahl: int = 90, streuung: int = 1) -> np.ndarray:
     return np.clip(bild, 0, 255)
 
 
-def variante(name: str, kachel, koerper, bogen, w, alpha) -> None:
-    """Schreibt eine Variante; jede Fläche ist eine Farbe oder ein Muster."""
+def bereich(w, teil: int) -> tuple[float, float]:
+    """Von wo bis wo die Fläche @a teil senkrecht reicht, als Anteil."""
+    zeilen = np.nonzero((w[..., teil] > 0.5).any(axis=1))[0]
+    if zeilen.size == 0:
+        return 0.0, 1.0
+    return float(zeilen.min()) / SEITE, float(zeilen.max()) / SEITE
+
+
+def variante(name: str, koerper, bogen, w, alpha) -> None:
+    """Schreibt eine Variante - nur die Marke, ohne die Kachel dahinter.
+
+    Die weiße Fläche der Vorlage wird durchsichtig; was von ihr übrig
+    bleibt, ist der weiche Rand der Marke.
+    """
     flaechen = []
-    for wunsch in (kachel, koerper, bogen):
+    for wunsch in (koerper, bogen):
         flaechen.append(flaeche(wunsch) if isinstance(wunsch, tuple) else wunsch)
 
-    neu = sum(w[..., i:i + 1] * flaechen[i] for i in range(3))
-    bild = np.concatenate([np.clip(neu, 0, 255), alpha * 255.0], axis=-1)
-    Image.fromarray(bild.astype(np.uint8), "RGBA").save(
+    marke = w[..., 1:2] + w[..., 2:3]
+    anteil = np.clip(marke, 1e-6, None)
+    neu = (w[..., 1:2] * flaechen[0] + w[..., 2:3] * flaechen[1]) / anteil
+    # Was zur Kachel gehörte, verschwindet - auch das Loch im C. Der
+    # Schlagschatten der Kachel ist halbdurchsichtig und fliegt damit
+    # ebenfalls raus; nur was ganz deckend war, bleibt.
+    fest = np.clip((alpha - 0.85) / 0.1, 0.0, 1.0)
+    durch = fest * marke
+    bild = np.concatenate([np.clip(neu, 0, 255), durch * 255.0], axis=-1)
+    Image.fromarray(bild.astype(np.uint8)).save(
         ZIEL / f"chattiflexii-{name}.png")
     print(f"  {name}")
 
@@ -145,42 +183,66 @@ def main() -> int:
     w, alpha = gewichte(vorlage())
     print("Varianten:")
 
-    # Schlicht: Kachel bleibt hell, Bogen und Körper wechseln zusammen
-    variante("violett", KACHEL, KOERPER, BOGEN, w, alpha)
-    variante("blau", KACHEL, (138, 152, 168), (91, 200, 255), w, alpha)
-    variante("gruen", KACHEL, (140, 164, 148), (98, 224, 138), w, alpha)
-    variante("orange", KACHEL, (168, 152, 136), (255, 162, 75), w, alpha)
-    variante("rosa", KACHEL, (172, 146, 158), (255, 119, 180), w, alpha)
+    # Schlicht: Körper gedeckt, Bogen in der Farbe
+    variante("violett", KOERPER, BOGEN, w, alpha)
+    variante("blau", (126, 142, 160), (91, 200, 255), w, alpha)
+    variante("gruen", (124, 150, 132), (98, 224, 138), w, alpha)
+    variante("orange", (162, 142, 124), (255, 162, 75), w, alpha)
+    variante("rosa", (168, 138, 152), (255, 119, 180), w, alpha)
 
-    # Ganz durchgefärbt, wie die Nitro-Symbole bei Discord
+    # Ganz durchgemustert
     variante("camouflage",
-             (226, 222, 196),
-             flecken((58, 68, 42), [(38, 46, 28), (86, 98, 56), (62, 54, 36),
-                                    (112, 122, 74)], zahl=70, streuung=7),
-             flecken((124, 142, 78), [(84, 102, 54), (168, 176, 112),
-                                      (98, 84, 54), (196, 198, 148)],
+             flecken((78, 92, 56), [(52, 64, 38), (104, 118, 68), (78, 68, 46),
+                                    (130, 140, 88)], zahl=70, streuung=7),
+             flecken((138, 156, 88), [(96, 114, 60), (178, 186, 120),
+                                      (110, 96, 62), (206, 208, 158)],
                      zahl=60, streuung=3),
              w, alpha)
     variante("mitternacht",
-             (10, 12, 26),
-             sterne((34, 40, 82), zahl=70, streuung=9),
-             sterne((62, 72, 142), zahl=150, streuung=5),
+             sterne((46, 54, 104), zahl=70, streuung=9),
+             sterne((84, 96, 178), zahl=150, streuung=5),
              w, alpha)
     variante("sonnenuntergang",
-             (38, 22, 48),
-             verlauf((122, 60, 110), (60, 34, 78)),
+             verlauf((150, 76, 132), (84, 48, 104)),
              verlauf((255, 176, 84), (255, 92, 152)),
              w, alpha)
     variante("neon",
-             (14, 14, 22),
-             (44, 44, 66),
+             (72, 76, 108),
              verlauf((80, 240, 255), (255, 80, 220)),
              w, alpha)
+    # Über die ganze Marke, damit alle Farben darin liegen
+    oben, unten = bereich(w, 2)[0], bereich(w, 1)[1]
+    bogenfarben = [(232, 66, 66), (246, 156, 56), (248, 224, 76),
+                   (88, 204, 100), (72, 144, 240), (154, 96, 224)]
     variante("regenbogen",
-             KACHEL,
-             (150, 150, 150),
-             streifen([(228, 60, 60), (240, 148, 52), (246, 220, 70),
-                       (86, 200, 96), (72, 140, 236), (150, 92, 220)]),
+             verlauf_mehr(bogenfarben, schraeg=False, von=oben, bis=unten),
+             verlauf_mehr(bogenfarben, schraeg=False, von=oben, bis=unten),
+             w, alpha)
+
+    # Was gerade überall zu sehen ist
+    variante("chrom",
+             verlauf_mehr([(186, 194, 206), (96, 108, 126), (212, 218, 228),
+                           (80, 92, 112)]),
+             verlauf_mehr([(246, 248, 252), (130, 146, 170), (252, 252, 255),
+                           (104, 120, 146), (206, 216, 230)]),
+             w, alpha)
+    variante("holo",
+             verlauf_mehr([(160, 226, 232), (206, 176, 236), (238, 186, 214)]),
+             verlauf_mehr([(122, 238, 226), (150, 188, 255), (236, 160, 246),
+                           (255, 214, 150), (150, 246, 220)]),
+             w, alpha)
+    variante("feuer",
+             verlauf((188, 62, 30), (96, 28, 22)),
+             verlauf_mehr([(255, 226, 92), (255, 150, 40), (226, 58, 40)]),
+             w, alpha)
+    variante("eis",
+             verlauf((118, 156, 190), (72, 108, 146)),
+             verlauf_mehr([(228, 248, 255), (140, 208, 246), (78, 160, 220)]),
+             w, alpha)
+    variante("aurora",
+             verlauf((54, 82, 104), (40, 54, 86)),
+             verlauf_mehr([(120, 248, 196), (86, 214, 232), (140, 150, 246),
+                           (206, 132, 238)]),
              w, alpha)
     return 0
 
