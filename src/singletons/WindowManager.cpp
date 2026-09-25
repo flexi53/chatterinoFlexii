@@ -558,6 +558,14 @@ void WindowManager::save()
                 window->getNotebook().getPageAt(tabIndex));
             assert(tab != nullptr);
 
+            // ChattiFlexii: a tab that only opened because the browser went
+            // there is nothing to keep - it would come back as a tab of its
+            // own after a restart
+            if (tab->isTemporary())
+            {
+                continue;
+            }
+
             bool isSelected = window->getNotebook().getSelectedPage() == tab;
             WindowManager::encodeTab(tab, isSelected, tabObj);
             tabsArr.append(tabObj);

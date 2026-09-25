@@ -188,6 +188,12 @@ public:
 
     Split *appendNewSplit(bool openChannelNameDialog);
 
+    /// ChattiFlexii: whether this tab only opened because the browser went
+    /// to that channel. Such a tab goes again as soon as the browser moves
+    /// on, and it is never written into the saved layout.
+    bool isTemporary() const;
+    void setTemporary(bool temporary);
+
     struct InsertOptions {
         /// Position must be set alone, as if it's set it will override direction & relativeNode with its underlying values
         std::optional<Position> position{};
@@ -267,6 +273,8 @@ private:
     std::vector<DropRect> dropRects_;
     DropOverlay overlay_;
     std::vector<std::unique_ptr<ResizeHandle>> resizeHandles_;
+    /// ChattiFlexii: only there while the browser is on that channel
+    bool temporary_ = false;
     QPoint mouseOverPoint_;
 
     std::shared_ptr<Node> baseNode_;

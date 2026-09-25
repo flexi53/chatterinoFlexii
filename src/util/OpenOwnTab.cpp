@@ -13,7 +13,7 @@
 #include "widgets/splits/SplitContainer.hpp"
 #include "widgets/Window.hpp"
 
-#include <QPointer>
+#include <vector>
 
 namespace chatterino {
 
@@ -42,27 +42,32 @@ void openOwnTab(const std::shared_ptr<Channel> &channel)
 
 namespace {
 
-/// The tab this opened by itself while following the browser, so it can be
-/// taken away again once the browser is elsewhere. Nothing the user opened
-/// is ever remembered here.
-QPointer<SplitContainer> openedByFollowing;
-
-/// Takes that tab away, as long as it is still the one and only thing that
-/// was put there
-void closeWhatWasOpened(Notebook &notebook, SplitContainer *keep)
+/// Takes away every tab that only opened because the browser went there -
+/// all but @a keep, which is the one being shown right now. Tabs the user
+/// opened are never touched, and neither is one they added a second chat to.
+void closeTemporaryTabs(Notebook &notebook, SplitContainer *keep)
 {
-    auto *page = openedByFollowing.data();
-    openedByFollowing = nullptr;
-    if (page == nullptr || page == keep)
+    std::vector<SplitContainer *> going;
+    for (int i = 0; i < notebook.getPageCount(); i++)
     {
-        return;
+        auto *page = dynamic_cast<SplitContainer *>(notebook.getPageAt(i));
+        if (page == nullptr || page == keep || !page->isTemporary())
+        {
+            continue;
+        }
+        if (page->getSplits().size() != 1)
+        {
+            // Someone made it their own in the meantime
+            page->setTemporary(false);
+            continue;
+        }
+        going.push_back(page);
     }
-    // Someone added a chat to it in the meantime - then it is theirs now
-    if (page->getSplits().size() != 1)
+
+    for (auto *page : going)
     {
-        return;
+        notebook.removePage(page);
     }
-    notebook.removePage(page);
 }
 
 }  // namespace
@@ -102,7 +107,7 @@ bool showChannelTab(const QString &name, const bool openWhenMissing,
             page->setSelected(split);
             if (closeOpened)
             {
-                closeWhatWasOpened(notebook, page);
+                closeTemporaryTabs(notebook, page);
             }
             return true;
         }
@@ -112,7 +117,7 @@ bool showChannelTab(const QString &name, const bool openWhenMissing,
     {
         if (closeOpened)
         {
-            closeWhatWasOpened(notebook, nullptr);
+            closeTemporaryTabs(notebook, nullptr);
         }
         return false;
     }
@@ -122,9 +127,9 @@ bool showChannelTab(const QString &name, const bool openWhenMissing,
     page->appendNewSplit(false)->setChannel(channel);
     if (closeOpened)
     {
-        // The one before it goes, this one takes its place
-        closeWhatWasOpened(notebook, page);
-        openedByFollowing = page;
+        // Only there while the browser is on this channel, and never saved
+        page->setTemporary(true);
+        closeTemporaryTabs(notebook, page);
     }
     return true;
 }

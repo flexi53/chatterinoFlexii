@@ -109,6 +109,16 @@ void SplitContainer::setTab(NotebookTab *tab)
     this->refreshTab();
 }
 
+bool SplitContainer::isTemporary() const
+{
+    return this->temporary_;
+}
+
+void SplitContainer::setTemporary(const bool temporary)
+{
+    this->temporary_ = temporary;
+}
+
 void SplitContainer::hideResizeHandles()
 {
     this->overlay_.hide();
