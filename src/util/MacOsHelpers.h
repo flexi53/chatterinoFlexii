@@ -19,3 +19,7 @@ void chatterinoOrderFrontWithoutActivating(std::uintptr_t nativeView);
 
 /// Brings the app to the front, switching to its space
 void chatterinoActivateApp();
+
+/// Puts the picture at @a path in the Dock in place of the one the program
+/// was built with. An empty path brings the built-in one back.
+void chatterinoSetMacOsDockIcon(const char *path);

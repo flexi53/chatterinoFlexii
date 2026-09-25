@@ -610,6 +610,9 @@ set(SOURCE_FILES
         singletons/helper/LoggingChannel.hpp
 
         util/AbandonObject.hpp
+        util/AppIcon.cpp
+        util/AppIcon.hpp
+
         util/AttachToConsole.cpp
         util/AttachToConsole.hpp
         util/Backup.cpp

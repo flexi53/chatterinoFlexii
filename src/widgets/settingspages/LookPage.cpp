@@ -14,6 +14,7 @@
 #include "providers/twitch/TwitchBadge.hpp"
 #include "widgets/helper/ChannelView.hpp"
 #include "singletons/Settings.hpp"
+#include "util/AppIcon.hpp"
 #include "singletons/Theme.hpp"
 #include "util/FuzzyConvert.hpp"
 #include "widgets/dialogs/ColorPickerDialog.hpp"
@@ -24,9 +25,11 @@
 
 #include <QComboBox>
 #include <QGraphicsOpacityEffect>
+#include <QButtonGroup>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
+#include <QToolButton>
 #include <QTabWidget>
 #include <QVBoxLayout>
 
@@ -288,6 +291,62 @@ void LookPage::buildStyleTab(GeneralPageView &layout)
         "Tab-Leiste. Das gilt nur für das Fenster, in dem du ihn drückst; "
         "jedes Fenster merkt sich das für sich, und jeder Computer auch.");
 
+    layout.addTitle("Logo");
+    layout.addDescription(
+        "In welcher Farbe ChattiFlexii im Dock und im Fenster-Umschalter "
+        "steht. Die Form bleibt, nur die Farbe wechselt - sofort, ohne "
+        "Neustart. Das Symbol der Programmdatei im Finder bleibt, wie es "
+        "ist; das gehört zum signierten Programm und wird nicht angefasst.");
+    {
+        auto *row = new QHBoxLayout;
+        row->setContentsMargins(0, 0, 0, 0);
+        row->setSpacing(10);
+        auto *group = new QButtonGroup(this);
+        group->setExclusive(true);
+
+        for (const auto &key : appicon::keys())
+        {
+            auto *button = new QToolButton;
+            button->setCheckable(true);
+            button->setAutoRaise(true);
+            button->setIcon(QIcon(appicon::pathOf(key)));
+            button->setIconSize(QSize(52, 52));
+            button->setText(appicon::nameOf(key));
+            button->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+            button->setToolTip(
+                QStringLiteral("Das Logo in %1").arg(appicon::nameOf(key)));
+            button->setChecked(key == appicon::picked());
+            group->addButton(button);
+            row->addWidget(button);
+
+            QObject::connect(button, &QToolButton::clicked, this, [key] {
+                getSettings()->appIcon.setValue(key);
+                appicon::apply();
+            });
+        }
+        row->addStretch(1);
+
+        auto *rowWidget = new QWidget;
+        rowWidget->setLayout(row);
+        layout.addWidget(rowWidget, {"logo", "icon", "symbol", "farbe",
+                                     "dock"});
+
+        // Picked elsewhere - another window, the Standard button
+        s.appIcon.connect(
+            [group](const QString &picked, auto) {
+                for (auto *button : group->buttons())
+                {
+                    button->setChecked(
+                        button->text() == appicon::nameOf(picked));
+                }
+            },
+            this->managedConnections_, false);
+    }
+    addStandardButton(layout, "Wieder das Logo vom Anfang", [&s] {
+        s.appIcon.setValue(s.appIcon.getDefaultValue());
+        appicon::apply();
+    });
+
     layout.addTitle("Einstellungsfenster");
     layout.addDescription(
         "Die Seiten links in diesem Fenster kannst du anders anordnen: einen "
@@ -506,6 +565,20 @@ void LookPage::buildTabsTab(GeneralPageView &layout)
                           s.tabMarkMuted.setValue(false);
                           s.tabDimOfflinePinned.setValue(false);
                       });
+
+    layout.addTitle("Grenzen zwischen Splits");
+    layout.addDescription(
+        "Liegen mehrere Chats in einem Tab, kannst du die Grenze dazwischen "
+        "greifen und verschieben - egal ob sie neben- oder übereinander "
+        "liegen. Der Griff zeigt sich erst, wenn die Maus darauf ist; ein "
+        "Rechtsklick darauf setzt die Aufteilung wieder gleichmäßig.");
+    SettingWidget::checkbox("Grenze jederzeit ziehen",
+                            s.splitBordersDraggable)
+        ->setTooltip("Ohne den Haken geht es weiterhin, aber nur solange du "
+                     "⌘ gedrückt hältst - so macht es Chatterino von Haus "
+                     "aus.")
+        ->addKeywords({"split", "grenze", "ziehen", "größe", "teilen"})
+        ->addTo(layout);
 
     layout.addTitle("Aktiver Split");
     layout.addDescription(

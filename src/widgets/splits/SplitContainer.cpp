@@ -10,6 +10,7 @@
 #include "common/WindowDescriptors.hpp"
 #include "debug/AssertInGuiThread.hpp"
 #include "singletons/Fonts.hpp"
+#include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
 #include "singletons/WindowManager.hpp"
 #include "util/QMagicEnum.hpp"
@@ -57,7 +58,12 @@ SplitContainer::SplitContainer(Notebook *parent)
             {
                 for (auto &handle : this->resizeHandles_)
                 {
-                    handle->hide();
+                    // ChattiFlexii: stays where it is when the borders may
+                    // be dragged anyway
+                    if (!getSettings()->splitBordersDraggable)
+                    {
+                        handle->hide();
+                    }
 
                     // Resize split modifier was released, ensure no resize handle has
                     // isMouseDown_ set to true
@@ -575,7 +581,10 @@ void SplitContainer::layout()
             handle->setVertical(resizeRect.vertical);
             handle->node = resizeRect.node;
 
-            if (Split::modifierStatus == SHOW_RESIZE_HANDLES_MODIFIERS)
+            // ChattiFlexii: the border is there to be dragged at any
+            // time - the handle only draws itself under the mouse
+            if (Split::modifierStatus == SHOW_RESIZE_HANDLES_MODIFIERS ||
+                getSettings()->splitBordersDraggable)
             {
                 handle->show();
                 handle->raise();
@@ -1630,6 +1639,15 @@ SplitContainer::ResizeHandle::ResizeHandle(SplitContainer *_parent)
 
 void SplitContainer::ResizeHandle::paintEvent(QPaintEvent * /*event*/)
 {
+    // ChattiFlexii: without a key held, the handle keeps out of the way
+    // until the mouse is on it
+    if (getSettings()->splitBordersDraggable &&
+        Split::modifierStatus != SHOW_RESIZE_HANDLES_MODIFIERS &&
+        !this->mouseOver_ && !this->isMouseDown_)
+    {
+        return;
+    }
+
     QPainter painter(this);
     painter.setPen(QPen(getApp()->getThemes()->splits.resizeHandle, 2));
 
@@ -1722,6 +1740,20 @@ void SplitContainer::ResizeHandle::mouseMoveEvent(QMouseEvent *event)
         // move handle
         this->move(int(before->geometry_.right() - 4), this->y());
     }
+}
+
+void SplitContainer::ResizeHandle::enterEvent(QEnterEvent *event)
+{
+    this->mouseOver_ = true;
+    this->update();
+    QWidget::enterEvent(event);
+}
+
+void SplitContainer::ResizeHandle::leaveEvent(QEvent *event)
+{
+    this->mouseOver_ = false;
+    this->update();
+    QWidget::leaveEvent(event);
 }
 
 void SplitContainer::ResizeHandle::mouseDoubleClickEvent(QMouseEvent *event)

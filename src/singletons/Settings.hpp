@@ -1181,6 +1181,11 @@ public:
     /// the settings instead of in the system's keychain - locked to this
     /// computer, and macOS stops asking for the password at every start
     BoolSetting keepSecretsLocally = {"/secrets/withoutKeychain", false};
+    /// Aussehen -> Stil: which colour the logo in the Dock has
+    QStringSetting appIcon = {"/appearance/icon", "blau"};
+    /// Aussehen -> Tabs: the border between two splits can be dragged at
+    /// any time, without holding a key
+    BoolSetting splitBordersDraggable = {"/ui/splits/dragBorders", true};
     /// Which order the buttons in the input bar stand in - their keys,
     /// separated by semicolons; what is missing keeps its usual place
     QStringSetting inputButtonOrder = {"/ui/buttons/order", ""};

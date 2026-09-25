@@ -168,6 +168,8 @@ private:
         void mouseReleaseEvent(QMouseEvent *event) override;
         void mouseMoveEvent(QMouseEvent *event) override;
         void mouseDoubleClickEvent(QMouseEvent *event) override;
+        void enterEvent(QEnterEvent *event) override;
+        void leaveEvent(QEvent *event) override;
 
         friend class SplitContainer;
 
@@ -176,6 +178,9 @@ private:
 
         bool vertical_{};
         bool isMouseDown_ = false;
+        /// ChattiFlexii: while the border may be dragged without a key, the
+        /// handle only shows itself under the mouse
+        bool mouseOver_ = false;
     };
 
 public:

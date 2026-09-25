@@ -23,6 +23,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QFile>
+#include <QStandardPaths>
 #include "common/SecretBox.hpp"
 #include "controllers/badgealerts/BadgeAlerts.hpp"
 #include "controllers/moderation/AlertMute.hpp"
@@ -38,6 +39,7 @@
 #include "providers/badgebase/BadgeBase.hpp"
 #include "providers/twitch/TwitchWebBadges.hpp"
 #include "util/QMagicEnumTagged.hpp"
+#include "util/AppIcon.hpp"
 #include "util/SavedOrder.hpp"
 #include "widgets/buttons/BadgeButton.hpp"
 #include "widgets/dialogs/WarnDialog.hpp"
@@ -1289,6 +1291,43 @@ TEST(FlexiiBadgeAlerts, ThoseThatCostSomethingOnlyWhenAskedFor)
                                   {}, now, options)
                   .size(),
               4);
+}
+
+TEST(FlexiiAppIcon, FiveColoursAndEachOneIsThere)
+{
+    MockApplication app;
+    const auto all = appicon::keys();
+    EXPECT_EQ(all.size(), 5);
+    EXPECT_EQ(all.front(), "blau");
+
+    for (const auto &key : all)
+    {
+        EXPECT_FALSE(appicon::nameOf(key).isEmpty());
+        EXPECT_NE(appicon::nameOf(key), key);
+        // The file is really there
+        EXPECT_TRUE(QFile::exists(appicon::pathOf(key))) << key.toStdString();
+    }
+
+    // Nonsense falls back to the one it starts with
+    EXPECT_EQ(appicon::pathOf("mauve"), appicon::pathOf("blau"));
+
+    auto *s = getSettings();
+    s->appIcon.setValue("rosa");
+    EXPECT_EQ(appicon::picked(), "rosa");
+
+    // Handing it over draws the picture the Dock needs
+    appicon::apply();
+    EXPECT_FALSE(QApplication::windowIcon().isNull());
+#ifdef Q_OS_MACOS
+    const auto drawn =
+        QStandardPaths::writableLocation(QStandardPaths::TempLocation) +
+        "/chattiflexii-dock-rosa.png";
+    EXPECT_TRUE(QFile::exists(drawn)) << drawn.toStdString();
+#endif
+
+    s->appIcon.setValue("gibtsnicht");
+    EXPECT_EQ(appicon::picked(), "blau");
+    s->appIcon.setValue(s->appIcon.getDefaultValue());
 }
 
 TEST(FlexiiSecretBox, WhatIsLockedComesBackOnlyHere)

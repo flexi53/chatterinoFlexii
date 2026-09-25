@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "RunGui.hpp"
+#include "util/AppIcon.hpp"
 #include "util/AutoBackup.hpp"
 #include "util/ProfileSync.hpp"
 #include "util/UpdateCheck.hpp"
@@ -102,9 +103,9 @@ void initQt()
 
     QApplication::setStyle(QStyleFactory::create("Fusion"));
 
-#ifndef Q_OS_MAC
-    QApplication::setWindowIcon(QIcon(":/icon.ico"));
-#endif
+    // ChattiFlexii: the logo in the colour picked under Aussehen -> Stil -
+    // on macOS only when it is not the one the program was built with
+    chatterino::appicon::apply();
 
 #ifdef Q_OS_MAC
     // On the Mac/Cocoa platform this attribute is enabled by default
