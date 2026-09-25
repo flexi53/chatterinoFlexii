@@ -477,15 +477,14 @@ ModAlertPopup::ModAlertPopup(QString channel, QString login, QWidget *parent)
     this->countdownBar_ = new CountdownBar(this);
     layout->addWidget(this->countdownBar_);
 
-    // Ignore on the left, then a button for each action there is - the one
-    // recommended lit up in the alert's colour
+    // A button for each action there is - the one recommended lit up in the
+    // alert's colour - and the way out at the right end
     auto *buttons = new QHBoxLayout;
     this->ignore_ = new QPushButton(QStringLiteral("Ignorieren"));
     // The way out, in the same shape as the rest but quieter - it is the
     // one button that changes nothing
     this->ignore_->setCursor(Qt::PointingHandCursor);
     this->ignore_->setStyleSheet(this->quietButtonStyle());
-    buttons->addWidget(this->ignore_);
 
     // Only a suggestion can be wrong about this channel; the rule alerts
     // go by numbers you set yourself
@@ -502,6 +501,10 @@ ModAlertPopup::ModAlertPopup(QString channel, QString login, QWidget *parent)
     this->actions_ = new QHBoxLayout;
     this->actions_->setSpacing(4);
     buttons->addLayout(this->actions_);
+    // Set apart from the actions, so nobody hits it while reaching for a
+    // timeout
+    buttons->addSpacing(16);
+    buttons->addWidget(this->ignore_);
     // Something to grab, since the window's size is meant to be changed
     buttons->addWidget(new QSizeGrip(this), 0,
                        Qt::AlignBottom | Qt::AlignRight);
