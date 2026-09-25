@@ -1182,7 +1182,7 @@ public:
     /// computer, and macOS stops asking for the password at every start
     BoolSetting keepSecretsLocally = {"/secrets/withoutKeychain", false};
     /// Aussehen -> Stil: which colour the logo in the Dock has
-    QStringSetting appIcon = {"/appearance/icon", "blau"};
+    QStringSetting appIcon = {"/appearance/icon", "violett"};
     /// Aussehen -> Tabs: the border between two splits can be dragged at
     /// any time, without holding a key
     BoolSetting splitBordersDraggable = {"/ui/splits/dragBorders", true};

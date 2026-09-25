@@ -26,6 +26,7 @@
 #include <QComboBox>
 #include <QGraphicsOpacityEffect>
 #include <QButtonGroup>
+#include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
@@ -298,12 +299,13 @@ void LookPage::buildStyleTab(GeneralPageView &layout)
         "Neustart. Das Symbol der Programmdatei im Finder bleibt, wie es "
         "ist; das gehört zum signierten Programm und wird nicht angefasst.");
     {
-        auto *row = new QHBoxLayout;
-        row->setContentsMargins(0, 0, 0, 0);
-        row->setSpacing(10);
+        auto *grid = new QGridLayout;
+        grid->setContentsMargins(0, 0, 0, 0);
+        grid->setSpacing(10);
         auto *group = new QButtonGroup(this);
         group->setExclusive(true);
 
+        int place = 0;
         for (const auto &key : appicon::keys())
         {
             auto *button = new QToolButton;
@@ -317,17 +319,19 @@ void LookPage::buildStyleTab(GeneralPageView &layout)
                 QStringLiteral("Das Logo in %1").arg(appicon::nameOf(key)));
             button->setChecked(key == appicon::picked());
             group->addButton(button);
-            row->addWidget(button);
+            // Fünf in einer Reihe, damit zehn nicht aus dem Fenster laufen
+            grid->addWidget(button, place / 5, place % 5);
+            place++;
 
             QObject::connect(button, &QToolButton::clicked, this, [key] {
                 getSettings()->appIcon.setValue(key);
                 appicon::apply();
             });
         }
-        row->addStretch(1);
+        grid->setColumnStretch(5, 1);
 
         auto *rowWidget = new QWidget;
-        rowWidget->setLayout(row);
+        rowWidget->setLayout(grid);
         layout.addWidget(rowWidget, {"logo", "icon", "symbol", "farbe",
                                      "dock"});
 

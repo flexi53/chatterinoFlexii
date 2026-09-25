@@ -7,6 +7,7 @@
 #include "singletons/Settings.hpp"
 
 #include <QApplication>
+#include <QHash>
 #include <QDir>
 #include <QIcon>
 #include <QPixmap>
@@ -21,38 +22,35 @@ namespace chatterino::appicon {
 
 QStringList keys()
 {
-    return {"blau", "violett", "gruen", "orange", "rosa"};
+    return {
+        // Die Kachel bleibt hell, Bogen und Körper wechseln
+        "violett", "blau", "gruen", "orange", "rosa",
+        // Ganz durchgefärbt
+        "camouflage", "mitternacht", "sonnenuntergang", "neon", "regenbogen",
+    };
 }
 
 QString nameOf(const QString &key)
 {
-    if (key == "blau")
-    {
-        return QStringLiteral("Blau");
-    }
-    if (key == "violett")
-    {
-        return QStringLiteral("Violett");
-    }
-    if (key == "gruen")
-    {
-        return QStringLiteral("Grün");
-    }
-    if (key == "orange")
-    {
-        return QStringLiteral("Orange");
-    }
-    if (key == "rosa")
-    {
-        return QStringLiteral("Rosa");
-    }
-    return key;
+    static const QHash<QString, QString> NAMEN{
+        {"violett", QStringLiteral("Violett")},
+        {"blau", QStringLiteral("Blau")},
+        {"gruen", QStringLiteral("Grün")},
+        {"orange", QStringLiteral("Orange")},
+        {"rosa", QStringLiteral("Rosa")},
+        {"camouflage", QStringLiteral("Camouflage")},
+        {"mitternacht", QStringLiteral("Mitternacht")},
+        {"sonnenuntergang", QStringLiteral("Sonnenuntergang")},
+        {"neon", QStringLiteral("Neon")},
+        {"regenbogen", QStringLiteral("Regenbogen")},
+    };
+    return NAMEN.value(key, key);
 }
 
 QString pathOf(const QString &key)
 {
     const auto wanted = keys().contains(key) ? key : keys().front();
-    return QStringLiteral(":/icons/chattiflexii-%1.svg").arg(wanted);
+    return QStringLiteral(":/icons/chattiflexii-%1.png").arg(wanted);
 }
 
 QString picked()
