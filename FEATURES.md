@@ -142,8 +142,10 @@ mentions that have been dealt with.
 - **Ereignisse markieren**: subs ⭐, gifts 🎁, raids 🚀, announcements 📣,
   timeouts ⏱️, bans 🔨, bits 💎, redeemed points 🎟️ and watch streaks 🔥
   get their symbol in front and a stripe in their colour
-- **Erwähnungen aufleuchten lassen**: a message mentioning you lights up
-  once as it comes in - not history, not your own
+- **Erwähnungen aufblinken lassen**: a message that calls you by name - or a
+  whisper - flashes three times as it comes in, so it is caught even in a
+  fast chat. Only a real ping does that; a highlight on a word or on someone
+  watched stays quiet, and history read in does too
 - **Rollen-Streifen**: a narrow stripe at the left edge of every message shows
   who wrote it. A role with a badge highlight (Highlights -> Badges) takes
   that highlight's colour, made solid - for a lead moderator their own

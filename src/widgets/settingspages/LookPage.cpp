@@ -841,13 +841,15 @@ void LookPage::buildChatTab(GeneralPageView &layout)
                      "einen Streifen in ihrer Farbe.")
         ->addKeywords({"sub", "raid", "bann", "ban", "timeout", "symbol"})
         ->addTo(layout);
-    SettingWidget::checkbox("Erwähnungen kurz aufleuchten lassen",
+    SettingWidget::checkbox("Erwähnungen kurz aufblinken lassen",
                             s.pulseMentions)
-        ->setTooltip("Erwähnt dich jemand, leuchtet die Nachricht einmal "
-                     "sanft auf, wenn sie reinkommt.")
-        ->addKeywords({"mention", "erwähnung", "leuchten"})
+        ->setTooltip("Fällt dein Name - oder kommt ein Whisper - blinkt die "
+                     "Nachricht dreimal kurz auf, wenn sie reinkommt. Nur "
+                     "dann: Highlights auf ein Wort oder auf Leute im Blick "
+                     "lassen den Chat in Ruhe.")
+        ->addKeywords({"mention", "erwähnung", "leuchten", "blinken", "ping"})
         ->addTo(layout);
-    addStandardButton(layout, "Keine Symbole, kein Aufleuchten", [&s] {
+    addStandardButton(layout, "Keine Symbole, kein Blinken", [&s] {
         s.eventSymbols.setValue(false);
         s.pulseMentions.setValue(false);
     });

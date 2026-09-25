@@ -25,6 +25,7 @@
 #include "messages/MessageElement.hpp"
 #include "messages/MessageThread.hpp"
 #include "providers/colors/ColorProvider.hpp"
+#include "providers/kick/KickAccount.hpp"
 #include "providers/kick/KickApi.hpp"
 #include "providers/kick/KickChannel.hpp"
 #include "providers/kick/KickChatServer.hpp"
@@ -42,6 +43,7 @@
 #include "util/DistanceBetweenPoints.hpp"
 #include "util/Helpers.hpp"
 #include "util/IncognitoBrowser.hpp"
+#include "util/MentionFlash.hpp"
 #include "util/QMagicEnum.hpp"
 #include "util/Twitch.hpp"
 #include "widgets/buttons/LabelButton.hpp"
@@ -298,6 +300,32 @@ qreal highlightEasingFunction(qreal progress)
     return 1.0 + pow((20.0 / 9.0) * (0.5 * progress - 0.5), 3.0);
 }
 
+/// How long the glow lasts that marks a message jumped to
+constexpr int HIGHLIGHT_GLOW_MS = 1500;
+
+/// Whether @a message calls you by name. That, and a whisper, is what being
+/// pinged means - a highlight on a word or on someone you keep an eye on is
+/// not, and must not set the chat blinking.
+bool callsYouByName(const Message &message)
+{
+    if (message.flags.has(MessageFlag::Whisper))
+    {
+        return true;
+    }
+
+    auto *accounts = getApp()->getAccounts();
+    auto twitch = accounts->twitch.getCurrent();
+    if (!twitch->isAnon() &&
+        mentionflash::namedIn(message.messageText, twitch->getUserName()))
+    {
+        return true;
+    }
+
+    auto kick = accounts->kick.current();
+    return !kick->isAnonymous() &&
+           mentionflash::namedIn(message.messageText, kick->username());
+}
+
 float getTooltipScale(EmoteTooltipScale emoteTooltipScale)
 {
     switch (emoteTooltipScale)
@@ -392,7 +420,7 @@ ChannelView::ChannelView(InternalCtor /*tag*/, QWidget *parent, Split *split,
     this->setFocusPolicy(Qt::FocusPolicy::ClickFocus);
 
     this->setupHighlightAnimationColors();
-    this->highlightAnimation_.setDuration(1500);
+    this->highlightAnimation_.setDuration(HIGHLIGHT_GLOW_MS);
     auto curve = QEasingCurve();
     curve.setCustomType(highlightEasingFunction);
     this->highlightAnimation_.setEasingCurve(curve);
@@ -675,10 +703,30 @@ void ChannelView::setIsOverlay(bool isOverlay)
 
 void ChannelView::setupHighlightAnimationColors()
 {
-    this->highlightAnimation_.setStartValue(
-        this->theme->messages.highlightAnimationStart);
+    auto start = this->theme->messages.highlightAnimationStart;
+    if (this->highlightPulses_)
+    {
+        start.setAlpha(mentionflash::ALPHA);
+    }
+    this->highlightAnimation_.setStartValue(start);
     this->highlightAnimation_.setEndValue(
         this->theme->messages.highlightAnimationEnd);
+}
+
+void ChannelView::lightUpMessage(MessageLayout *layout, bool pulsing)
+{
+    this->highlightPulses_ = pulsing;
+    this->setupHighlightAnimationColors();
+    this->highlightAnimation_.setDuration(pulsing ? mentionflash::LENGTH_MS
+                                                  : HIGHLIGHT_GLOW_MS);
+    auto curve = QEasingCurve();
+    curve.setCustomType(pulsing ? mentionflash::shapeAt
+                                : highlightEasingFunction);
+    this->highlightAnimation_.setEasingCurve(curve);
+
+    this->highlightedMessage_ = layout;
+    this->highlightAnimation_.setCurrentTime(0);
+    this->highlightAnimation_.start(QAbstractAnimation::KeepWhenStopped);
 }
 
 void ChannelView::scaleChangedEvent(float scale)
@@ -1237,18 +1285,13 @@ void ChannelView::messageAppended(MessagePtr &message,
 
     setBackgroundNextTo(*messageRef, raw(this->messages_.last()),
                         this->context_);
-    // Look -> Chat: a message mentioning you lights up as it comes in - not
-    // history loaded in, and not what you wrote yourself
+    // Look -> Chat: a message that calls you by name flashes as it comes in -
+    // history read in stays quiet
     if (getSettings()->pulseMentions &&
-        message->flags.has(MessageFlag::ShowInMentions) &&
         !message->flags.has(MessageFlag::RecentMessage) &&
-        message->loginName.compare(
-            getApp()->getAccounts()->twitch.getCurrent()->getUserName(),
-            Qt::CaseInsensitive) != 0)
+        callsYouByName(*message))
     {
-        this->highlightedMessage_ = messageRef.get();
-        this->highlightAnimation_.setCurrentTime(0);
-        this->highlightAnimation_.start(QAbstractAnimation::KeepWhenStopped);
+        this->lightUpMessage(messageRef.get(), true);
     }
     if (getSettings()->fadeInMessages)
     {
@@ -1611,9 +1654,7 @@ bool ChannelView::scrollToMessageId(const QString &messageId)
 void ChannelView::scrollToMessageLayout(MessageLayout *layout,
                                         size_t messageIdx)
 {
-    this->highlightedMessage_ = layout;
-    this->highlightAnimation_.setCurrentTime(0);
-    this->highlightAnimation_.start(QAbstractAnimation::KeepWhenStopped);
+    this->lightUpMessage(layout, false);
 
     if (this->showScrollBar_)
     {

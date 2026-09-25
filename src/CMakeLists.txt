@@ -658,6 +658,8 @@ set(SOURCE_FILES
         util/LayoutHelper.hpp
         util/LoadPixmap.cpp
         util/LoadPixmap.hpp
+        util/MentionFlash.cpp
+        util/MentionFlash.hpp
         util/OnceFlag.cpp
         util/OnceFlag.hpp
         controllers/moderation/ModerationAssistant.cpp

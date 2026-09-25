@@ -34,6 +34,7 @@
 #include "controllers/people/WatchedPeople.hpp"
 #include "controllers/saved/SavedMessages.hpp"
 #include "controllers/userdata/UserNotes.hpp"
+#include "util/MentionFlash.hpp"
 #include "widgets/helper/ActiveBorder.hpp"
 #include "widgets/splits/SendWaitBar.hpp"
 #include "providers/badgebase/BadgeBase.hpp"
@@ -1710,4 +1711,42 @@ TEST(FlexiiBadgeBase, APriceNotSaidIsNotKnown)
     EXPECT_EQ(badgebase::normalize(QJsonObject{{"id", 1}, {"price", "FREE"}})
                   .paid,
               false);
+}
+
+TEST(FlexiiMentionFlash, ItBlinksThreeTimesAndEndsClean)
+{
+    using namespace chatterino::mentionflash;
+
+    // Nothing at the start and nothing at the end - the message has to be
+    // left as it was
+    EXPECT_NEAR(shapeAt(0.0), 1.0, 0.001);
+    EXPECT_NEAR(shapeAt(1.0), 1.0, 0.001);
+
+    // Three turns on, each a little weaker than the one before
+    const auto first = shapeAt(1.0 / 6.0);
+    const auto second = shapeAt(3.0 / 6.0);
+    const auto third = shapeAt(5.0 / 6.0);
+    EXPECT_LT(first, 0.1);
+    EXPECT_LT(second, 0.3);
+    EXPECT_LT(third, 0.5);
+    EXPECT_LT(first, second);
+    EXPECT_LT(second, third);
+
+    // and in between it is off again
+    EXPECT_NEAR(shapeAt(2.0 / 6.0), 1.0, 0.001);
+    EXPECT_NEAR(shapeAt(4.0 / 6.0), 1.0, 0.001);
+}
+
+TEST(FlexiiMentionFlash, OnlyYourNameCounts)
+{
+    using namespace chatterino::mentionflash;
+
+    EXPECT_TRUE(namedIn("@fx_flexii schau mal", "fx_flexii"));
+    EXPECT_TRUE(namedIn("hey FX_Flexii, kurz?", "fx_flexii"));
+    EXPECT_TRUE(namedIn("moin fx_flexii", "FX_Flexii"));
+
+    // A highlight on a word or on someone watched is not a ping
+    EXPECT_FALSE(namedIn("die mods sind schon da", "fx_flexii"));
+    EXPECT_FALSE(namedIn("", "fx_flexii"));
+    EXPECT_FALSE(namedIn("@fx_flexii schau mal", ""));
 }

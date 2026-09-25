@@ -436,7 +436,13 @@ private:
     // We're only interested in the pointer, not the contents
     MessageLayout *highlightedMessage_ = nullptr;
     QVariantAnimation highlightAnimation_;
+    /// Whether what runs now is a mention's flashing rather than the gentle
+    /// glow of a message jumped to - the two look different
+    bool highlightPulses_ = false;
     void setupHighlightAnimationColors();
+    /// Lets @a layout light up: @a pulsing flashes it a few times, the way a
+    /// mention announces itself, otherwise it glows once and settles
+    void lightUpMessage(MessageLayout *layout, bool pulsing);
 
     struct {
         QCursor neutral;
