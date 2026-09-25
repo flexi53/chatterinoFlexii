@@ -23,7 +23,9 @@ namespace chatterino::appicon {
 QStringList keys()
 {
     return {
-        // Die Kachel bleibt hell, Bogen und Körper wechseln
+        // So, wie das Programm ausgeliefert wird
+        "klassisch",
+        // Eine Farbe, die das ganze Symbol trägt
         "violett", "blau", "gruen", "orange", "rosa",
         // Ganz durchgemustert
         "camouflage", "mitternacht", "sonnenuntergang", "neon", "regenbogen",
@@ -35,6 +37,7 @@ QStringList keys()
 QString nameOf(const QString &key)
 {
     static const QHash<QString, QString> NAMEN{
+        {"klassisch", QStringLiteral("Klassisch")},
         {"violett", QStringLiteral("Violett")},
         {"blau", QStringLiteral("Blau")},
         {"gruen", QStringLiteral("Grün")},
@@ -72,15 +75,11 @@ void apply()
     QApplication::setWindowIcon(QIcon(pathOf(key)));
 
 #ifdef Q_OS_MACOS
-    // The Dock shows the icon of the bundle, which is signed and not to be
-    // touched. A picture handed to the running program does the job for as
-    // long as it runs - and for the colour it was built with there is
-    // nothing to hand over.
-    if (key == keys().front())
-    {
-        chatterinoSetMacOsDockIcon("");
-        return;
-    }
+    // The Dock shows the icon of the bundle unless the running program
+    // hands one over. It is handed over for every colour, also for the one
+    // the program is built with: the icon in the bundle may itself have
+    // been swapped (scripts/set-app-icon.sh), and the Dock should show what
+    // is picked here, not what lies in the bundle.
 
     // NSImage reads a file, not a resource, so the picture is drawn once
     // into the program's own folder

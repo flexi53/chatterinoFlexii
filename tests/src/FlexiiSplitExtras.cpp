@@ -1297,9 +1297,9 @@ TEST(FlexiiAppIcon, FiveColoursAndEachOneIsThere)
 {
     MockApplication app;
     const auto all = appicon::keys();
-    EXPECT_EQ(all.size(), 15);
+    EXPECT_EQ(all.size(), 16);
     // The one the program is built with comes first
-    EXPECT_EQ(all.front(), "violett");
+    EXPECT_EQ(all.front(), "klassisch");
 
     for (const auto &key : all)
     {
@@ -1310,7 +1310,7 @@ TEST(FlexiiAppIcon, FiveColoursAndEachOneIsThere)
     }
 
     // Nonsense falls back to the one it starts with
-    EXPECT_EQ(appicon::pathOf("mauve"), appicon::pathOf("violett"));
+    EXPECT_EQ(appicon::pathOf("mauve"), appicon::pathOf("klassisch"));
 
     auto *s = getSettings();
     s->appIcon.setValue("rosa");
@@ -1327,7 +1327,7 @@ TEST(FlexiiAppIcon, FiveColoursAndEachOneIsThere)
 #endif
 
     s->appIcon.setValue("gibtsnicht");
-    EXPECT_EQ(appicon::picked(), "violett");
+    EXPECT_EQ(appicon::picked(), "klassisch");
     s->appIcon.setValue(s->appIcon.getDefaultValue());
 }
 
