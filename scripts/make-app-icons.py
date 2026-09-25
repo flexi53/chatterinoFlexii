@@ -159,6 +159,27 @@ def helligkeit(flaeche_: np.ndarray) -> float:
     return float((flaeche_ @ np.array([0.299, 0.587, 0.114])).mean()) / 255.0
 
 
+def freigestellt(name: str, koerper, bogen, w, alpha) -> None:
+    """Dieselbe Marke ohne Fläche dahinter - für das laufende Programm.
+
+    Die weiße Kachel der Vorlage und ihr Schatten fallen weg; übrig bleibt
+    das „C“, das in jedem Dock sitzt.
+    """
+    flaechen = []
+    for wunsch in (koerper, bogen):
+        flaechen.append(flaeche(wunsch) if isinstance(wunsch, tuple) else wunsch)
+
+    marke = w[..., 1:2] + w[..., 2:3]
+    anteil = np.clip(marke, 1e-6, None)
+    neu = (w[..., 1:2] * flaechen[0] + w[..., 2:3] * flaechen[1]) / anteil
+    fest = np.clip((alpha - 0.85) / 0.1, 0.0, 1.0)
+    bild = np.concatenate([np.clip(neu, 0, 255), fest * marke * 255.0],
+                          axis=-1)
+    Image.fromarray(bild.astype(np.uint8)).save(
+        ZIEL / f"chattiflexii-{name}-frei.png")
+    print(f"  {name} (frei)")
+
+
 def variante(name: str, kachel, w, alpha, marke=None) -> None:
     """Schreibt eine Variante.
 
@@ -240,6 +261,65 @@ def main() -> int:
              verlauf_mehr([(46, 60, 96), (86, 226, 182), (94, 156, 244),
                            (168, 108, 232)]),
              w, alpha)
+    # Und dieselben noch einmal freigestellt, ohne Fläche dahinter
+    print("Freigestellt:")
+    bogenfarben = [(232, 66, 66), (246, 156, 56), (248, 224, 76),
+                   (88, 204, 100), (72, 144, 240), (154, 96, 224)]
+    quer = verlauf_mehr(bogenfarben, schraeg=False,
+                        von=bereich(w, 2)[0], bis=bereich(w, 1)[1])
+    freigestellt("klassisch", KOERPER, BOGEN, w, alpha)
+    freigestellt("violett", KOERPER, BOGEN, w, alpha)
+    freigestellt("blau", (126, 142, 160), (91, 200, 255), w, alpha)
+    freigestellt("gruen", (124, 150, 132), (98, 224, 138), w, alpha)
+    freigestellt("orange", (162, 142, 124), (255, 162, 75), w, alpha)
+    freigestellt("rosa", (168, 138, 152), (255, 119, 180), w, alpha)
+    freigestellt("camouflage",
+                 flecken((78, 92, 56), [(52, 64, 38), (104, 118, 68),
+                                        (78, 68, 46), (130, 140, 88)],
+                         zahl=70, streuung=7),
+                 flecken((138, 156, 88), [(96, 114, 60), (178, 186, 120),
+                                          (110, 96, 62), (206, 208, 158)],
+                         zahl=60, streuung=3),
+                 w, alpha)
+    freigestellt("mitternacht",
+                 sterne((46, 54, 104), zahl=70, streuung=9),
+                 sterne((84, 96, 178), zahl=150, streuung=5),
+                 w, alpha)
+    freigestellt("sonnenuntergang",
+                 verlauf((150, 76, 132), (84, 48, 104)),
+                 verlauf((255, 176, 84), (255, 92, 152)),
+                 w, alpha)
+    freigestellt("neon", (72, 76, 108),
+                 verlauf((80, 240, 255), (255, 80, 220)), w, alpha)
+    freigestellt("regenbogen", quer, quer, w, alpha)
+    freigestellt("chrom",
+                 verlauf_mehr([(186, 194, 206), (96, 108, 126),
+                               (212, 218, 228), (80, 92, 112)]),
+                 verlauf_mehr([(246, 248, 252), (130, 146, 170),
+                               (252, 252, 255), (104, 120, 146),
+                               (206, 216, 230)]),
+                 w, alpha)
+    freigestellt("holo",
+                 verlauf_mehr([(160, 226, 232), (206, 176, 236),
+                               (238, 186, 214)]),
+                 verlauf_mehr([(122, 238, 226), (150, 188, 255),
+                               (236, 160, 246), (255, 214, 150),
+                               (150, 246, 220)]),
+                 w, alpha)
+    freigestellt("feuer",
+                 verlauf((188, 62, 30), (96, 28, 22)),
+                 verlauf_mehr([(255, 226, 92), (255, 150, 40), (226, 58, 40)]),
+                 w, alpha)
+    freigestellt("eis",
+                 verlauf((118, 156, 190), (72, 108, 146)),
+                 verlauf_mehr([(228, 248, 255), (140, 208, 246),
+                               (78, 160, 220)]),
+                 w, alpha)
+    freigestellt("aurora",
+                 verlauf((54, 82, 104), (40, 54, 86)),
+                 verlauf_mehr([(120, 248, 196), (86, 214, 232),
+                               (140, 150, 246), (206, 132, 238)]),
+                 w, alpha)
     return 0
 
 

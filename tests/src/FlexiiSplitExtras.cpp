@@ -1312,6 +1312,24 @@ TEST(FlexiiAppIcon, FiveColoursAndEachOneIsThere)
     // Nonsense falls back to the one it starts with
     EXPECT_EQ(appicon::pathOf("mauve"), appicon::pathOf("klassisch"));
 
+    // With and without the square behind it - the file always keeps the
+    // filled one, so a closed program looks like a running one
+    auto *einstellungen = getSettings();
+    einstellungen->appIconBare.setValue(false);
+    EXPECT_EQ(appicon::shownPathOf("mitternacht"),
+              appicon::pathOf("mitternacht"));
+    einstellungen->appIconBare.setValue(true);
+    EXPECT_NE(appicon::shownPathOf("mitternacht"),
+              appicon::pathOf("mitternacht"));
+    EXPECT_TRUE(appicon::shownPathOf("mitternacht").endsWith("-frei.png"));
+    EXPECT_TRUE(QFile::exists(appicon::shownPathOf("mitternacht")));
+    for (const auto &key : all)
+    {
+        EXPECT_TRUE(QFile::exists(appicon::shownPathOf(key)))
+            << key.toStdString();
+    }
+    einstellungen->appIconBare.setValue(false);
+
     auto *s = getSettings();
     s->appIcon.setValue("rosa");
     EXPECT_EQ(appicon::picked(), "rosa");

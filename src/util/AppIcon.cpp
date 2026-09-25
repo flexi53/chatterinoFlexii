@@ -63,6 +63,21 @@ QString pathOf(const QString &key)
     return QStringLiteral(":/icons/chattiflexii-%1.png").arg(wanted);
 }
 
+QString shownPathOf(const QString &key)
+{
+    if (!bare())
+    {
+        return pathOf(key);
+    }
+    const auto wanted = keys().contains(key) ? key : keys().front();
+    return QStringLiteral(":/icons/chattiflexii-%1-frei.png").arg(wanted);
+}
+
+bool bare()
+{
+    return getSettings()->appIconBare;
+}
+
 QString picked()
 {
     const auto kept = getSettings()->appIcon.getValue();
@@ -72,7 +87,7 @@ QString picked()
 void apply()
 {
     const auto key = picked();
-    QApplication::setWindowIcon(QIcon(pathOf(key)));
+    QApplication::setWindowIcon(QIcon(shownPathOf(key)));
 
 #ifdef Q_OS_MACOS
     // The Dock shows the icon of the bundle unless the running program
@@ -86,10 +101,12 @@ void apply()
     static QString drawn;
     const auto folder =
         QStandardPaths::writableLocation(QStandardPaths::TempLocation);
-    const auto file = folder + QStringLiteral("/chattiflexii-dock-%1.png").arg(key);
+    const auto file =
+        folder + QStringLiteral("/chattiflexii-dock-%1%2.png")
+                     .arg(key, bare() ? QStringLiteral("-frei") : QString());
     if (drawn != file)
     {
-        const QPixmap picture = QIcon(pathOf(key)).pixmap(1024, 1024);
+        const QPixmap picture = QIcon(shownPathOf(key)).pixmap(1024, 1024);
         if (!picture.isNull() && picture.save(file, "PNG"))
         {
             drawn = file;

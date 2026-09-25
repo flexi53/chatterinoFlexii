@@ -295,9 +295,11 @@ void LookPage::buildStyleTab(GeneralPageView &layout)
     layout.addTitle("Logo");
     layout.addDescription(
         "In welcher Farbe ChattiFlexii im Dock und im Fenster-Umschalter "
-        "steht. Die Form bleibt, nur die Farbe wechselt - sofort, ohne "
-        "Neustart. Das Symbol der Programmdatei im Finder bleibt, wie es "
-        "ist; das gehört zum signierten Programm und wird nicht angefasst.");
+        "steht - sofort, ohne Neustart. Das Symbol der Programmdatei "
+        "(Finder, Launchpad, Dock bei geschlossenem Programm) tauscht das "
+        "Skript scripts/set-app-icon.sh; dort zählt immer die Fassung mit "
+        "Fläche, weil macOS ein durchsichtiges Symbol sonst auf eine eigene "
+        "blasse Platte legt.");
     {
         auto *grid = new QGridLayout;
         grid->setContentsMargins(0, 0, 0, 0);
@@ -311,7 +313,7 @@ void LookPage::buildStyleTab(GeneralPageView &layout)
             auto *button = new QToolButton;
             button->setCheckable(true);
             button->setAutoRaise(true);
-            button->setIcon(QIcon(appicon::pathOf(key)));
+            button->setIcon(QIcon(appicon::shownPathOf(key)));
             button->setIconSize(QSize(52, 52));
             button->setText(appicon::nameOf(key));
             button->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
@@ -335,6 +337,24 @@ void LookPage::buildStyleTab(GeneralPageView &layout)
         layout.addWidget(rowWidget, {"logo", "icon", "symbol", "farbe",
                                      "dock"});
 
+        // Mit und ohne Fläche - die Vorschau zeigt, was dabei herauskommt
+        s.appIconBare.connect(
+            [group](const bool, auto) {
+                for (auto *button : group->buttons())
+                {
+                    for (const auto &key : appicon::keys())
+                    {
+                        if (button->text() == appicon::nameOf(key))
+                        {
+                            static_cast<QToolButton *>(button)->setIcon(
+                                QIcon(appicon::shownPathOf(key)));
+                        }
+                    }
+                }
+                appicon::apply();
+            },
+            this->managedConnections_, false);
+
         // Picked elsewhere - another window, the Standard button
         s.appIcon.connect(
             [group](const QString &picked, auto) {
@@ -346,8 +366,17 @@ void LookPage::buildStyleTab(GeneralPageView &layout)
             },
             this->managedConnections_, false);
     }
+    SettingWidget::checkbox("Ohne Fläche, nur das Zeichen", s.appIconBare)
+        ->setTooltip("Im laufenden Programm steht dann das nackte „C“ im "
+                     "Dock, ohne das farbige Quadrat. Die Programmdatei "
+                     "behält die Fläche - macOS legt ein durchsichtiges "
+                     "Symbol sonst auf eine eigene blasse Platte, und dann "
+                     "sähe es geschlossen schlechter aus als jetzt.")
+        ->addKeywords({"logo", "freigestellt", "fläche", "hintergrund"})
+        ->addTo(layout);
     addStandardButton(layout, "Wieder das Logo vom Anfang", [&s] {
         s.appIcon.setValue(s.appIcon.getDefaultValue());
+        s.appIconBare.setValue(s.appIconBare.getDefaultValue());
         appicon::apply();
     });
 

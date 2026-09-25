@@ -1187,6 +1187,10 @@ public:
     BoolSetting keepSecretsLocally = {"/secrets/withoutKeychain", false};
     /// Aussehen -> Stil: which colour the logo in the Dock has
     QStringSetting appIcon = {"/appearance/icon", "klassisch"};
+    /// The same logo without the square behind it, while the program runs -
+    /// the file keeps the filled one, as macOS would put it on a pale plate
+    /// of its own anyway
+    BoolSetting appIconBare = {"/appearance/iconBare", false};
     /// Aussehen -> Tabs: the border between two splits can be dragged at
     /// any time, without holding a key
     BoolSetting splitBordersDraggable = {"/ui/splits/dragBorders", true};

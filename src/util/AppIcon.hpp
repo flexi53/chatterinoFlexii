@@ -19,8 +19,17 @@ QStringList keys();
 /// What the colour @a key is called
 QString nameOf(const QString &key);
 
-/// Where the logo of @a key lies
+/// Where the logo of @a key lies - the one that fills the whole square,
+/// which is what the program file carries
 QString pathOf(const QString &key);
+
+/// Where the logo lies in the form that is shown while the program runs:
+/// free-standing when that was asked for, otherwise the same as pathOf()
+QString shownPathOf(const QString &key);
+
+/// Whether the logo is shown without a background behind it while the program
+/// runs
+bool bare();
 
 /// The colour picked, or the one it starts with when none holds
 QString picked();
