@@ -64,6 +64,12 @@ void HeaderTitle::paintEvent(QPaintEvent *event)
         x += (rect.width() - width) / 2;
     }
 
+    // Where the letters sit on their line, the text in the middle of the
+    // room it has
+    const auto baseline =
+        rect.top() + ((rect.height() - metrics.height()) / 2) +
+        metrics.ascent();
+
     const auto plain = this->palette().windowText().color();
     qsizetype at = 0;
     while (at < text.size())
@@ -87,8 +93,10 @@ void HeaderTitle::paintEvent(QPaintEvent *event)
 
         const auto piece = text.mid(at, until - at);
         painter.setPen(color);
-        painter.drawText(QRectF(x, rect.top(), rect.width(), rect.height()),
-                         Qt::AlignLeft | Qt::AlignVCenter, piece);
+        // On the line, letter by letter: handed a rectangle instead, Qt
+        // lays every piece out on its own and pushes the spaces around the
+        // dashes apart
+        painter.drawText(QPointF(x, baseline), piece);
         x += metrics.horizontalAdvance(piece);
         at = until;
     }
