@@ -58,47 +58,40 @@ void HeaderTitle::paintEvent(QPaintEvent *event)
     // Laid out the way Label does it - from the left, or in the middle
     // where the whole line fits
     const auto width = metrics.horizontalAdvance(text);
-    auto x = rect.left();
+    auto left = rect.left();
     if (this->centered_ && width <= rect.width())
     {
-        x += (rect.width() - width) / 2;
+        left += (rect.width() - width) / 2;
     }
+    const auto baseline = rect.top() +
+                          ((rect.height() - metrics.height()) / 2) +
+                          metrics.ascent();
 
-    // Where the letters sit on their line, the text in the middle of the
-    // room it has
-    const auto baseline =
-        rect.top() + ((rect.height() - metrics.height()) / 2) +
-        metrics.ascent();
+    // The whole line at once, as it has always been drawn - drawing it in
+    // pieces moves the letters about. The colours come by drawing the very
+    // same line again through a window cut over the stretch they belong to,
+    // so every letter stands exactly where it stood.
+    painter.setPen(this->palette().windowText().color());
+    painter.drawText(QPointF(left, baseline), text);
 
-    const auto plain = this->palette().windowText().color();
-    qsizetype at = 0;
-    while (at < text.size())
+    for (const auto &run : this->runs_)
     {
-        // The colour this letter carries, and how far it reaches
-        QColor color = plain;
-        qsizetype until = text.size();
-        for (const auto &run : this->runs_)
+        const auto from = std::clamp<qsizetype>(run.from, 0, text.size());
+        const auto to =
+            std::clamp<qsizetype>(run.from + run.length, from, text.size());
+        if (from == to)
         {
-            if (at >= run.from && at < run.from + run.length)
-            {
-                color = run.color;
-                until = std::min<qsizetype>(until, run.from + run.length);
-                break;
-            }
-            if (run.from > at)
-            {
-                until = std::min<qsizetype>(until, run.from);
-            }
+            continue;
         }
 
-        const auto piece = text.mid(at, until - at);
-        painter.setPen(color);
-        // On the line, letter by letter: handed a rectangle instead, Qt
-        // lays every piece out on its own and pushes the spaces around the
-        // dashes apart
-        painter.drawText(QPointF(x, baseline), piece);
-        x += metrics.horizontalAdvance(piece);
-        at = until;
+        const auto x = left + metrics.horizontalAdvance(text.left(from));
+        const auto until = left + metrics.horizontalAdvance(text.left(to));
+        painter.save();
+        painter.setClipRect(
+            QRectF(x, rect.top(), until - x, rect.height()).toAlignedRect());
+        painter.setPen(run.color);
+        painter.drawText(QPointF(left, baseline), text);
+        painter.restore();
     }
 }
 
