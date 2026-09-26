@@ -4,8 +4,11 @@
 
 #include "util/ProfileSetup.hpp"
 
+#include <algorithm>
+
 #include "common/QLogging.hpp"
 #include "singletons/Paths.hpp"
+#include "singletons/Settings.hpp"
 
 #include <QCoreApplication>
 #include <QDateTime>
@@ -240,12 +243,47 @@ QString askForExportFolder()
 
 namespace chatterino {
 
-void installBundledPlugins(const Paths &paths)
+
+void enableBundledPlugins(const QStringList &folders)
 {
+    auto *settings = getSettings();
+    if (settings == nullptr)
+    {
+        return;
+    }
+
+    for (const auto &folder : folders)
+    {
+        // WhosTheMod is what Mod-Highlights and the user card's list of
+        // channels are built on, and it only asks Twitch and
+        // whosthemod.xyz. Crossbanned wants to read and write files and
+        // stays off until it is asked for.
+        if (folder.compare(QStringLiteral("WhoseTheMod"),
+                           Qt::CaseInsensitive) != 0)
+        {
+            continue;
+        }
+
+        auto enabled = settings->enabledPlugins.getValue();
+        if (std::find(enabled.begin(), enabled.end(), folder) != enabled.end())
+        {
+            continue;
+        }
+        enabled.push_back(folder);
+        settings->enabledPlugins.setValue(enabled);
+        // Without this one nothing is loaded at all
+        settings->pluginsEnabled.setValue(true);
+        qCInfo(chatterinoApp) << "Switched on bundled plugin" << folder;
+    }
+}
+
+QStringList installBundledPlugins(const Paths &paths)
+{
+    QStringList installed;
     QDir bundled(QStringLiteral(":/plugins"));
     if (!bundled.exists())
     {
-        return;
+        return installed;
     }
 
     for (const auto &entry :
@@ -263,6 +301,7 @@ void installBundledPlugins(const Paths &paths)
         {
             qCInfo(chatterinoApp)
                 << "Installed bundled plugin" << entry.fileName();
+            installed.append(entry.fileName());
         }
         else
         {
@@ -270,6 +309,7 @@ void installBundledPlugins(const Paths &paths)
                 << "Failed to install bundled plugin" << entry.fileName();
         }
     }
+    return installed;
 }
 
 void importExistingProfile(const Paths &paths)

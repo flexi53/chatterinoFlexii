@@ -146,9 +146,13 @@ int main(int argc, char **argv)
         applyPendingImport(*paths);
         snapshots::applyPending(paths->settingsDirectory);
         importExistingProfile(*paths);
-        installBundledPlugins(*paths);
+        const auto freshPlugins = installBundledPlugins(*paths);
 
         Settings settings(args, paths->settingsDirectory);
+
+        // Switched on once the settings are there to say it in - a plugin
+        // that comes with the program should work from the first start
+        enableBundledPlugins(freshPlugins);
 
         Updates updates(*paths, settings);
 

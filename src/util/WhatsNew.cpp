@@ -269,8 +269,9 @@ const std::array<Release, 18> RELEASES{{
          "Kanals laden statt erst, wenn der User schreibt.",
          "Die gemeinsame Zuschauerzahl eines Stream Together im Split-Header.",
          "Chat-Logs älter als vierzehn Tage werden beim Start aufgeräumt.",
-         "crossbanned und WhoseTheMod sind dabei. Einschalten unter "
-         "Einstellungen → Plugins.",
+         "crossbanned und WhoseTheMod sind dabei. WhoseTheMod läuft ab dem "
+         "ersten Start, crossbanned schaltest du unter Einstellungen → "
+         "Plugins ein.",
      }},
 }};
 

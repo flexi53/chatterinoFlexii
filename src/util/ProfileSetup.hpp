@@ -5,6 +5,7 @@
 #pragma once
 
 #include <QString>
+#include <QStringList>
 
 namespace chatterino {
 
@@ -15,7 +16,15 @@ class Paths;
 /// update. Installed plugins still have to be switched on by hand.
 ///
 /// Must run before the plugin controller scans the directory.
-void installBundledPlugins(const Paths &paths);
+/// Puts the plugins that come with the program on disk, and says which of
+/// them were put there just now
+QStringList installBundledPlugins(const Paths &paths);
+
+/// Switches those of @a folders on that are meant to work from the first
+/// start, and with them Chatterino's plugin support - both are off to begin
+/// with, so such a plugin would otherwise need two clicks in the settings
+/// before it does anything. Has to be called once the settings are loaded.
+void enableBundledPlugins(const QStringList &folders);
 
 /// On a fresh profile, offers to start out configured rather than empty: by
 /// copying an existing Chatterino installation's settings over, or by

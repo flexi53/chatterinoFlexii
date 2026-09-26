@@ -414,10 +414,14 @@ settings keeps up with it.
 
 ## Getting started
 
-- Two plugins ship with the app - **crossbanned** and **WhoseTheMod**. They are
-  unpacked into your plugin folder on first start but stay switched off, since
-  both want network access and one wants the filesystem. Enable them under
-  Settings -> Plugins.
+- Two plugins ship with the app - **crossbanned** and **WhoseTheMod**. Both are
+  unpacked into your plugin folder on first start. **WhoseTheMod** is switched
+  on as it is put there, together with Chatterino's plugin support, since
+  Mod-Highlights and the user card's list of channels are built on it and it
+  only ever asks Twitch and whosthemod.xyz. **crossbanned** wants to read and
+  write files and stays off until you ask for it, under Settings -> Plugins.
+  Switching either of them off there is final: what is already on disk is never
+  switched back on.
 - On a fresh profile with Chatterino already installed, ChattiFlexii offers to
   **copy that setup across** - tabs, highlights, commands, themes, plugins.
   Chat logs are left behind. Chatterino itself is only read from; nothing is

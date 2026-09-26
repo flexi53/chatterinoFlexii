@@ -35,6 +35,7 @@
 #include "controllers/saved/SavedMessages.hpp"
 #include "controllers/userdata/UserNotes.hpp"
 #include "util/Advanced.hpp"
+#include "util/ProfileSetup.hpp"
 #include "util/Helpers.hpp"
 #include "util/MentionFlash.hpp"
 #include "controllers/twitch/ChannelNumbers.hpp"
@@ -2373,4 +2374,30 @@ TEST(FlexiiAdvanced, LockedNothingIsPutInPlaceForTheWatchedPeople)
     s->watchedPeopleEnabled.setValue(false);
     s->watchedPeople.setValue("");
     WatchedPeople::sync();
+}
+
+TEST(FlexiiBundledPlugins, TheOneThatIsNeededComesOn)
+{
+    MockApplication app;
+    auto *s = getSettings();
+    s->pluginsEnabled.setValue(false);
+    s->enabledPlugins.setValue({});
+
+    // Only the one the rest is built on, and with it the plugin support
+    enableBundledPlugins({"crossbanned", "WhoseTheMod"});
+    EXPECT_TRUE(s->pluginsEnabled.getValue());
+    const auto on = s->enabledPlugins.getValue();
+    EXPECT_EQ(on.size(), 1u);
+    EXPECT_EQ(on.front(), "WhoseTheMod");
+
+    // Nothing lands in the list twice
+    enableBundledPlugins({"WhoseTheMod"});
+    EXPECT_EQ(s->enabledPlugins.getValue().size(), 1u);
+
+    // and nothing at all happens for a plugin that was not just installed
+    s->enabledPlugins.setValue({});
+    s->pluginsEnabled.setValue(false);
+    enableBundledPlugins({});
+    EXPECT_FALSE(s->pluginsEnabled.getValue());
+    EXPECT_TRUE(s->enabledPlugins.getValue().empty());
 }
