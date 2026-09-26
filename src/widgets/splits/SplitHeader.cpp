@@ -309,6 +309,27 @@ SplitHeader::SplitHeader(Split *split)
             this->fitActivity();
         },
         this->managedConnections_, false);
+    // Buttons -> Titelleiste: dragged wider or further apart in the preview
+    const auto again = [this] {
+        this->scaleChangedEvent(this->scale());
+        this->fitActivity();
+        this->update();
+    };
+    getSettings()->splitHeaderSpacing.connect(
+        [again](auto, auto) {
+            again();
+        },
+        this->managedConnections_, false);
+    getSettings()->splitHeaderWidths.connect(
+        [again](const auto &, auto) {
+            again();
+        },
+        this->managedConnections_, false);
+    getSettings()->headerColors.connect(
+        [this](const auto &, auto) {
+            this->updateChannelText();
+        },
+        this->managedConnections_, false);
     // Look -> Style: Compact is lower, Flat has no frame
     getSettings()->uiStyle.connect(
         [this] {
@@ -392,7 +413,7 @@ void SplitHeader::initializeLayout()
     this->activity_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
 
     // title
-    this->titleLabel_ = makeWidget<Label>([](auto w) {
+    this->titleLabel_ = makeWidget<HeaderTitle>([](auto w) {
         w->setSizePolicy(QSizePolicy::MinimumExpanding,
                          QSizePolicy::Preferred);
         w->setCentered(true);
@@ -963,12 +984,33 @@ void SplitHeader::scaleChangedEvent(float scale)
             scale);
 
     this->setFixedHeight(w);
-    this->dropdownButton_->setFixedWidth(w);
-    this->moderationButton_->setFixedWidth(w);
-    this->chattersButton_->setFixedWidth(w);
-    this->trackerButton_->setFixedWidth(w);
+    this->applyPartWidths(w, addSplitWidth, scale);
+}
 
-    this->addButton_->setFixedWidth(addSplitWidth);
+void SplitHeader::applyPartWidths(int button, int addButton, float scale)
+{
+    using headerparts::Part;
+
+    // Buttons -> Titelleiste: each part can be dragged wider or narrower in
+    // the preview, and the room between them is set there too
+    const auto width = [&](Part part, int usual) {
+        return std::max(int(headerparts::LEAST_WIDTH * scale),
+                        usual + int(headerparts::widthDelta(part) * scale));
+    };
+
+    this->dropdownButton_->setFixedWidth(width(Part::Menu, button));
+    this->moderationButton_->setFixedWidth(width(Part::Moderation, button));
+    this->chattersButton_->setFixedWidth(width(Part::Chatters, button));
+    this->trackerButton_->setFixedWidth(width(Part::Tracker, button));
+    this->addButton_->setFixedWidth(width(Part::Add, addButton));
+
+    this->channelPicture_->setExtraWidth(headerparts::widthDelta(Part::Picture));
+    this->coverPicture_->setExtraWidth(headerparts::widthDelta(Part::Cover));
+
+    if (this->partsLayout_ != nullptr)
+    {
+        this->partsLayout_->setSpacing(int(headerparts::spacing() * scale));
+    }
 }
 
 void SplitHeader::setAddButtonVisible(bool value)
@@ -1104,6 +1146,8 @@ void SplitHeader::updateChannelText()
     auto title = channel->getLocalizedName();
     // ChattiFlexii: what follows the name, kept apart so the name can go
     QString afterName;
+    // ChattiFlexii: which stretches of it were given a colour
+    std::vector<headerparts::Run> runs;
     // Only once the picture is really there - until it has loaded, or if
     // it never does, the name says whose chat it is
     bool nameCanGo = dynamic_cast<TwitchChannel *>(channel.get()) != nullptr &&
@@ -1171,13 +1215,13 @@ void SplitHeader::updateChannelText()
             channelnumbers::noteViewers(twitchChannel->roomId(),
                                         int(streamStatus->viewerCount));
             afterName = headerparts::titleAfterName(
-                *streamStatus, this->channelNumbers(twitchChannel));
+                *streamStatus, this->channelNumbers(twitchChannel), &runs);
         }
         else
         {
             this->tooltipText_ = formatOfflineTooltip(*streamStatus);
-            afterName =
-                headerparts::extrasAfterName(this->channelNumbers(twitchChannel));
+            afterName = headerparts::extrasAfterName(
+                this->channelNumbers(twitchChannel), &runs);
         }
     }
     else if (auto *kickChannel = dynamic_cast<KickChannel *>(channel.get()))
@@ -1205,7 +1249,7 @@ void SplitHeader::updateChannelText()
                 this->lastThumbnail_.restart();
             }
             this->tooltipText_ = formatTooltip(twitch, this->thumbnail_, true);
-            afterName = headerparts::titleAfterName(twitch);
+            afterName = headerparts::titleAfterName(twitch, {}, &runs);
         }
         else
         {
@@ -1213,15 +1257,17 @@ void SplitHeader::updateChannelText()
         }
     }
 
-    // Buttons -> Title bar: the name goes only where its picture stands
+    // Buttons -> Title bar: the name goes only where its picture stands,
+    // and every part can carry a colour of its own
     const bool hadName = !title.isEmpty();
-    title = headerparts::composeTitle(title, afterName, nameCanGo);
+    title = headerparts::composeTitle(title, afterName, nameCanGo, &runs);
 
     if (hadName && !this->split_->getFilters().empty())
     {
         title += title.isEmpty() ? "filtered" : " - filtered";
     }
 
+    this->titleLabel_->setRuns(runs);
     this->titleLabel_->setText(title.isEmpty() && !(hadName && nameCanGo)
                                    ? "<empty>"
                                    : title);

@@ -20,6 +20,7 @@ namespace chatterino {
 class ActivityGraph;
 class DrawnButton;
 class HeaderPicture;
+class HeaderTitle;
 class Label;
 class LabelButton;
 class SvgButton;
@@ -69,6 +70,22 @@ private:
     QRect headerRect() const;
     std::optional<headerparts::Part> partAt(QPoint pos) const;
     bool onGrip(QPoint pos) const;
+
+    /// An edge a part can be taken hold of by: its right one makes the part
+    /// wider or narrower, its left one the room before it
+    struct Edge {
+        headerparts::Part part;
+        bool right;
+
+        bool operator==(const Edge &other) const = default;
+    };
+    /// The edge under @a pos, if there is one
+    std::optional<Edge> edgeAt(QPoint pos) const;
+    /// Where that edge stands, for the handle drawn on it
+    QRect edgeRect(Edge edge) const;
+    /// How much wider @a part is drawn than usual, while being dragged the
+    /// value the mouse is at
+    int deltaOf(headerparts::Part part) const;
     /// The share the curve has while its edge is at @a x
     int shareAt(int x) const;
     QWidget *widgetFor(headerparts::Part part) const;
@@ -96,9 +113,18 @@ private:
     bool movingGrip_{false};
     bool hoverGrip_{false};
 
+    /// The edge under the mouse, and the one being dragged with what it
+    /// started at - while dragging these say what is drawn, the settings
+    /// only hear about it once the mouse is let go
+    std::optional<Edge> hoverEdge_;
+    std::optional<Edge> movingEdge_;
+    int edgeStart_{};
+    int spacing_{};
+    std::map<headerparts::Part, int> deltas_;
+
     HeaderPicture *picture_{};
     HeaderPicture *cover_{};
-    Label *title_{};
+    HeaderTitle *title_{};
     ActivityGraph *activity_{};
     LabelButton *mode_{};
     SvgButton *moderation_{};

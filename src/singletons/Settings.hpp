@@ -588,6 +588,12 @@ public:
                                      false};
     BoolSetting headerViewerTrend = {"/appearance/splitheader/showViewerTrend",
                                      false};
+    /// What parts of the title were given a colour: "uptime:#ffcc00,..."
+    QStringSetting headerColors = {"/appearance/splitheader/colors", ""};
+    /// Room between the parts of the title bar, in unscaled pixels
+    IntSetting splitHeaderSpacing = {"/appearance/splitheader/spacing", 0};
+    /// Parts made wider or narrower than they are: "picture:6,menu:-4"
+    QStringSetting splitHeaderWidths = {"/appearance/splitheader/widths", ""};
     FloatSetting customThemeMultiplier = {"/appearance/customThemeMultiplier",
                                           -0.5f};
     // BoolSetting useCustomWindowFrame = {"/appearance/useCustomWindowFrame",

@@ -8,6 +8,7 @@
 #include "singletons/Settings.hpp"
 #include "util/Helpers.hpp"
 
+#include <QHash>
 #include <QStringList>
 
 #include <algorithm>
@@ -273,6 +274,94 @@ QString trackerUrl(const QString &channel)
     return QStringLiteral("https://twitchtracker.com/") + name;
 }
 
+int spacing()
+{
+    return std::clamp(getSettings()->splitHeaderSpacing.getValue(), 0,
+                      MOST_SPACING);
+}
+
+void setSpacing(int pixels)
+{
+    getSettings()->splitHeaderSpacing.setValue(
+        std::clamp(pixels, 0, MOST_SPACING));
+}
+
+bool canResize(Part part)
+{
+    // The title and the curve take whatever the others leave - the curve
+    // has its own edge to drag - and the chat mode is as wide as its word
+    return part != Part::Title && part != Part::Activity &&
+           part != Part::Mode;
+}
+
+namespace {
+
+/// The widths as they stand in the settings, by the part's id
+QHash<QString, int> readWidths()
+{
+    QHash<QString, int> widths;
+    const auto text = getSettings()->splitHeaderWidths.getValue();
+    for (const auto &piece : text.split(',', Qt::SkipEmptyParts))
+    {
+        const auto at = piece.indexOf(':');
+        if (at <= 0)
+        {
+            continue;
+        }
+        bool ok = false;
+        const auto pixels = piece.mid(at + 1).trimmed().toInt(&ok);
+        if (ok)
+        {
+            widths.insert(piece.left(at).trimmed(),
+                          std::clamp(pixels, -MOST_DELTA, MOST_DELTA));
+        }
+    }
+    return widths;
+}
+
+}  // namespace
+
+int widthDelta(Part part)
+{
+    if (!canResize(part))
+    {
+        return 0;
+    }
+    return readWidths().value(info(part).id, 0);
+}
+
+void setWidthDelta(Part part, int pixels)
+{
+    if (!canResize(part))
+    {
+        return;
+    }
+
+    auto widths = readWidths();
+    pixels = std::clamp(pixels, -MOST_DELTA, MOST_DELTA);
+    if (pixels == 0)
+    {
+        widths.remove(info(part).id);
+    }
+    else
+    {
+        widths.insert(info(part).id, pixels);
+    }
+
+    // In the order the parts stand, so the setting reads the same however
+    // it was changed
+    QStringList pieces;
+    for (const auto &one : all())
+    {
+        const auto found = widths.find(one.id);
+        if (found != widths.end())
+        {
+            pieces.append(one.id + ':' + QString::number(*found));
+        }
+    }
+    getSettings()->splitHeaderWidths.setValue(pieces.join(','));
+}
+
 void reset()
 {
     auto *s = getSettings();
@@ -292,47 +381,214 @@ void reset()
     s->headerChatters.setValue(s->headerChatters.getDefaultValue());
     s->headerMessageRate.setValue(s->headerMessageRate.getDefaultValue());
     s->headerViewerTrend.setValue(s->headerViewerTrend.getDefaultValue());
+    s->headerColors.setValue(s->headerColors.getDefaultValue());
+    s->splitHeaderSpacing.setValue(s->splitHeaderSpacing.getDefaultValue());
+    s->splitHeaderWidths.setValue(s->splitHeaderWidths.getDefaultValue());
+}
+
+const std::vector<ItemInfo> &items()
+{
+    static const std::vector<ItemInfo> all{
+        {.item = Item::Name, .id = "name", .name = "Name des Kanals"},
+        {.item = Item::Live, .id = "live", .name = "(live)"},
+        {.item = Item::Uptime, .id = "uptime", .name = "Laufzeit"},
+        {.item = Item::Viewers, .id = "viewers", .name = "Zuschauer"},
+        {.item = Item::Trend, .id = "trend", .name = "Zuschauer-Trend"},
+        {.item = Item::Followers, .id = "followers", .name = "Follows"},
+        {.item = Item::Chatters, .id = "chatters", .name = "Leute im Chat"},
+        {.item = Item::Rate, .id = "rate", .name = "Nachrichten pro Minute"},
+        {.item = Item::Game, .id = "game", .name = "Kategorie"},
+        {.item = Item::StreamTitle, .id = "title", .name = "Streamtitel"},
+    };
+    return all;
+}
+
+namespace {
+
+const ItemInfo &infoOf(Item item)
+{
+    return *std::find_if(items().begin(), items().end(),
+                         [item](const ItemInfo &i) {
+                             return i.item == item;
+                         });
+}
+
+/// The colours as they stand in the settings, by their id
+QHash<QString, QColor> readColors()
+{
+    QHash<QString, QColor> colors;
+    const auto text = getSettings()->headerColors.getValue();
+    for (const auto &piece : text.split(',', Qt::SkipEmptyParts))
+    {
+        const auto at = piece.indexOf(':');
+        if (at <= 0)
+        {
+            continue;
+        }
+        const QColor color(piece.mid(at + 1).trimmed());
+        if (color.isValid())
+        {
+            colors.insert(piece.left(at).trimmed(), color);
+        }
+    }
+    return colors;
+}
+
+}  // namespace
+
+QColor colorOf(Item item)
+{
+    return readColors().value(infoOf(item).id, QColor());
+}
+
+void setColorOf(Item item, const QColor &color)
+{
+    auto colors = readColors();
+    if (color.isValid())
+    {
+        colors.insert(infoOf(item).id, color);
+    }
+    else
+    {
+        colors.remove(infoOf(item).id);
+    }
+
+    // Written in the order the parts stand, so the setting reads the same
+    // whatever was changed last
+    QStringList pieces;
+    for (const auto &info : items())
+    {
+        const auto found = colors.find(info.id);
+        if (found != colors.end())
+        {
+            pieces.append(info.id + ':' + found->name(QColor::HexArgb));
+        }
+    }
+    getSettings()->headerColors.setValue(pieces.join(','));
+}
+
+bool anyColor()
+{
+    return !readColors().isEmpty();
+}
+
+/// Adds what @a text says about @a item to @a title, and notes its colour
+/// where it has one
+void appendItem(QString &title, std::vector<Run> *runs, Item item,
+                const QString &text, int at = 0)
+{
+    const auto start = title.size();
+    title += text;
+    if (runs == nullptr)
+    {
+        return;
+    }
+    const auto color = colorOf(item);
+    if (!color.isValid())
+    {
+        return;
+    }
+
+    // The separator before it keeps the title's own colour - only what the
+    // part says is painted
+    auto from = start;
+    auto length = text.size();
+    if (text.startsWith(QStringLiteral(" - ")))
+    {
+        from += 3;
+        length -= 3;
+    }
+    else if (text.startsWith(' '))
+    {
+        from += 1;
+        length -= 1;
+    }
+    if (length > 0)
+    {
+        runs->push_back({.from = at + int(from),
+                         .length = int(length),
+                         .color = color});
+    }
 }
 
 QString composeTitle(const QString &name, const QString &afterName,
-                     bool pictureShown)
+                     bool pictureShown, std::vector<Run> *runs)
 {
+    const auto shift = [runs](int by) {
+        if (runs == nullptr || by == 0)
+        {
+            return;
+        }
+        for (auto &run : *runs)
+        {
+            run.from += by;
+        }
+    };
+
     if (getSettings()->headerChannelName || !pictureShown)
     {
+        shift(name.size());
+        if (runs != nullptr && !name.isEmpty())
+        {
+            const auto color = colorOf(Item::Name);
+            if (color.isValid())
+            {
+                runs->insert(
+                    runs->begin(),
+                    {.from = 0, .length = int(name.size()), .color = color});
+            }
+        }
         return name + afterName;
     }
 
-    // What followed the name, without the dash it was joined on with
-    auto rest = afterName.trimmed();
+    // What followed the name, without the dash it was joined on with.
+    // Whatever falls away at the front moves the coloured stretches along.
+    auto rest = afterName;
+    qsizetype cut = 0;
+    while (cut < rest.size() && rest.at(cut).isSpace())
+    {
+        cut++;
+    }
+    rest = rest.mid(cut);
+    while (!rest.isEmpty() && rest.back().isSpace())
+    {
+        rest.chop(1);
+    }
     if (rest.startsWith(QStringLiteral("- ")))
     {
         rest = rest.mid(2);
+        cut += 2;
     }
+    shift(int(-cut));
     return rest;
 }
 
-QString extrasAfterName(const Extras &extras)
+QString extrasAfterName(const Extras &extras, std::vector<Run> *runs, int at)
 {
     const auto &settings = *getSettings();
     QString title;
 
     if (settings.headerFollowers && extras.followers)
     {
-        title += " - " + localizeNumbers(*extras.followers) + " Follower";
+        appendItem(title, runs, Item::Followers,
+                   " - " + localizeNumbers(*extras.followers) + " Follows", at);
     }
     if (settings.headerChatters && extras.chatters)
     {
-        title += " - " + localizeNumbers(*extras.chatters) + " im Chat";
+        appendItem(title, runs, Item::Chatters,
+                   " - " + localizeNumbers(*extras.chatters) + " im Chat", at);
     }
     if (settings.headerMessageRate && extras.messagesPerMinute)
     {
-        title += " - " + QString::number(*extras.messagesPerMinute) + "/min";
+        appendItem(title, runs, Item::Rate,
+                   " - " + QString::number(*extras.messagesPerMinute) + "/min",
+                   at);
     }
     return title;
 }
 
 QString titleAfterName(const TwitchChannel::StreamStatus &s,
-                       const Extras &extras)
+                       const Extras &extras, std::vector<Run> *runs)
 {
     const auto &settings = *getSettings();
     auto title = QString();
@@ -342,57 +598,61 @@ QString titleAfterName(const TwitchChannel::StreamStatus &s,
     {
         if (s.rerun)
         {
-            title += " (rerun)";
+            appendItem(title, runs, Item::Live, " (rerun)");
         }
         else if (s.streamType.isEmpty())
         {
-            title += " (" + s.streamType + ")";
+            appendItem(title, runs, Item::Live, " (" + s.streamType + ")");
         }
         else
         {
-            title += " (live)";
+            appendItem(title, runs, Item::Live, " (live)");
         }
     }
 
     // description
     if (settings.headerUptime)
     {
-        title += " - " + s.uptime;
+        appendItem(title, runs, Item::Uptime, " - " + s.uptime);
     }
     if (settings.headerViewerCount)
     {
-        title += " - " + localizeNumbers(s.viewerCount);
+        QString viewers = localizeNumbers(s.viewerCount);
+
+        // In a Stream Together session the channel's own count is only part of
+        // the audience, so show the combined one next to it.
+        if (s.sharedParticipantCount > 1 && s.sharedViewerCount > s.viewerCount)
+        {
+            viewers += " (" + localizeNumbers(s.sharedViewerCount) + " total)";
+        }
+        appendItem(title, runs, Item::Viewers, " - " + viewers);
 
         // ChattiFlexii: which way the audience is going, where it is worth
         // saying - a channel holding steady says nothing
         if (settings.headerViewerTrend && extras.viewerTrend &&
             std::abs(*extras.viewerTrend) >= channelnumbers::TREND_WORTH_SAYING)
         {
-            title += QStringLiteral(" %1%2 %")
-                         .arg(*extras.viewerTrend > 0 ? "↑" : "↓")
-                         .arg(int(std::round(std::abs(*extras.viewerTrend) *
-                                             100.0)));
-        }
-
-        // In a Stream Together session the channel's own count is only part of
-        // the audience, so show the combined one next to it.
-        if (s.sharedParticipantCount > 1 && s.sharedViewerCount > s.viewerCount)
-        {
-            title += " (" + localizeNumbers(s.sharedViewerCount) + " total)";
+            appendItem(
+                title, runs, Item::Trend,
+                QStringLiteral(" %1%2 %")
+                    .arg(*extras.viewerTrend > 0 ? "↑" : "↓")
+                    .arg(int(std::round(std::abs(*extras.viewerTrend) *
+                                        100.0))));
         }
     }
     // The numbers stay with the viewer count, before what is streamed: the
     // stream's own title can run long and is cut with "...", and whatever
     // stands behind it is never seen
-    title += extrasAfterName(extras);
+    title += extrasAfterName(extras, runs, int(title.size()));
 
     if (settings.headerGame && !s.game.isEmpty())
     {
-        title += " - " + s.game;
+        appendItem(title, runs, Item::Game, " - " + s.game);
     }
     if (settings.headerStreamTitle && !s.title.isEmpty())
     {
-        title += " - " + s.title.simplified();
+        appendItem(title, runs, Item::StreamTitle,
+                   " - " + s.title.simplified());
     }
 
     return title;

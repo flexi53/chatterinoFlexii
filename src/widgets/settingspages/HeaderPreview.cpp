@@ -55,7 +55,8 @@ QString sampleName()
 }
 
 /// The title as a live stream would have it, with what is switched on
-QString sampleTitle()
+/// The title of the preview, and which stretches of it carry a colour
+QString sampleTitle(std::vector<headerparts::Run> *runs = nullptr)
 {
     TwitchChannel::StreamStatus status;
     status.live = true;
@@ -72,8 +73,8 @@ QString sampleTitle()
         .viewerTrend = 0.18,
     };
     return headerparts::composeTitle(
-        sampleName(), headerparts::titleAfterName(status, extras),
-        headerparts::isShown(Part::Picture));
+        sampleName(), headerparts::titleAfterName(status, extras, runs),
+        headerparts::isShown(Part::Picture), runs);
 }
 
 /// Stands in for a picture until the real one is there
@@ -104,7 +105,7 @@ HeaderPreview::HeaderPreview(QWidget *parent)
     this->cover_->setPicture(
         placeholder({52, 72}, QColor(90, 90, 110), QColor(50, 50, 60)));
 
-    this->title_ = new Label(this, sampleTitle());
+    this->title_ = new HeaderTitle(this, sampleTitle());
     this->title_->setCentered(true);
     this->title_->setPadding(QMargins{});
     this->title_->setShouldElide(true);
@@ -199,6 +200,9 @@ HeaderPreview::HeaderPreview(QWidget *parent)
     s->headerFollowers.connect(reload, this->connections_, false);
     s->headerChatters.connect(reload, this->connections_, false);
     s->headerMessageRate.connect(reload, this->connections_, false);
+    s->headerColors.connect(reload, this->connections_, false);
+    s->splitHeaderSpacing.connect(reload, this->connections_, false);
+    s->splitHeaderWidths.connect(reload, this->connections_, false);
     s->headerGame.connect(reload, this->connections_, false);
     s->headerStreamTitle.connect(reload, this->connections_, false);
 
@@ -269,7 +273,12 @@ void HeaderPreview::reload()
     }
     this->order_ = headerparts::order();
     this->share_ = getSettings()->splitHeaderActivityShare;
-    this->title_->setText(sampleTitle());
+    this->spacing_ = headerparts::spacing();
+    this->deltas_.clear();
+    std::vector<headerparts::Run> runs;
+    const auto text = sampleTitle(&runs);
+    this->title_->setRuns(runs);
+    this->title_->setText(text);
     this->relayout();
     this->update();
 }
@@ -297,6 +306,14 @@ void HeaderPreview::relayout()
 
     // Everything but the title and the curve keeps its own width, as in
     // the header itself
+    // Buttons -> Titelleiste: each part can be dragged wider or narrower
+    const auto widened = [&](Part part, int usual) {
+        return std::max(int(headerparts::LEAST_WIDTH * scale),
+                        usual + int(this->deltaOf(part) * scale));
+    };
+    this->picture_->setExtraWidth(this->deltaOf(Part::Picture));
+    this->cover_->setExtraWidth(this->deltaOf(Part::Cover));
+
     const auto fixedWidth = [&](Part part) {
         switch (part)
         {
@@ -314,9 +331,10 @@ void HeaderPreview::relayout()
             case Part::Chatters:
             case Part::Tracker:
             case Part::Menu:
-                return button;
+                return widened(part, button);
             case Part::Add:
-                return int((uistyle::compact() ? 13 : 16) * scale);
+                return widened(part,
+                               int((uistyle::compact() ? 13 : 16) * scale));
         }
         return 0;
     };
@@ -325,6 +343,12 @@ void HeaderPreview::relayout()
     for (const auto part : shown)
     {
         fixed += fixedWidth(part);
+    }
+    // The room between the parts is taken from what the title and the curve
+    // have to share - otherwise the last parts are pushed off the edge
+    if (shown.size() > 1)
+    {
+        fixed += int(this->spacing_ * scale) * int(shown.size() - 1);
     }
     this->shared_ = std::max(header.width() - fixed, 0);
 
@@ -358,7 +382,8 @@ void HeaderPreview::relayout()
                                                    : fixedWidth(part);
         this->placed_.push_back(
             {part, QRect(x, header.top(), width, header.height())});
-        x += width + (part == Part::Title ? titleSpace : 0);
+        x += width + (part == Part::Title ? titleSpace : 0) +
+             int(this->spacing_ * scale);
 
         // Sized for painting; the pictures keep their own size
         auto *widget = this->widgetFor(part);
@@ -474,6 +499,54 @@ int HeaderPreview::shareAt(int x) const
         headerparts::LEAST_SHARE, headerparts::MOST_SHARE);
 }
 
+int HeaderPreview::deltaOf(Part part) const
+{
+    const auto found = this->deltas_.find(part);
+    if (found != this->deltas_.end())
+    {
+        return found->second;
+    }
+    return headerparts::widthDelta(part);
+}
+
+std::optional<HeaderPreview::Edge> HeaderPreview::edgeAt(QPoint pos) const
+{
+    const int reach = int(4 * this->scale());
+    for (size_t i = 0; i < this->placed_.size(); i++)
+    {
+        const auto &placed = this->placed_.at(i);
+        if (!headerparts::canResize(placed.part))
+        {
+            continue;
+        }
+        if (std::abs(pos.x() - (placed.rect.right() + 1)) <= reach)
+        {
+            return Edge{.part = placed.part, .right = true};
+        }
+        // The room before it - the first part has nothing before it
+        if (i > 0 && std::abs(pos.x() - placed.rect.left()) <= reach)
+        {
+            return Edge{.part = placed.part, .right = false};
+        }
+    }
+    return std::nullopt;
+}
+
+QRect HeaderPreview::edgeRect(Edge edge) const
+{
+    for (const auto &placed : this->placed_)
+    {
+        if (placed.part != edge.part)
+        {
+            continue;
+        }
+        const int x = edge.right ? placed.rect.right() + 1 : placed.rect.left();
+        const int half = int(3 * this->scale());
+        return {x - half, placed.rect.top(), 2 * half, placed.rect.height()};
+    }
+    return {};
+}
+
 std::optional<Part> HeaderPreview::partAt(QPoint pos) const
 {
     for (const auto &placed : this->placed_)
@@ -526,6 +599,33 @@ void HeaderPreview::paintEvent(QPaintEvent * /*event*/)
                                     3, 3);
             painter.setBrush(Qt::NoBrush);
             painter.setRenderHint(QPainter::Antialiasing, false);
+        }
+    }
+
+    // The handle on an edge being taken hold of, or about to be
+    const auto shownEdge = this->movingEdge_ ? this->movingEdge_
+                                             : this->hoverEdge_;
+    if (shownEdge)
+    {
+        const auto rect = this->edgeRect(*shownEdge);
+        if (!rect.isEmpty())
+        {
+            painter.setPen(QPen(accent, 1));
+            const int middle = rect.center().y();
+            const int reach = int(5 * this->scale());
+            const int x = rect.center().x();
+            painter.drawLine(x, middle - reach, x, middle + reach);
+            // Which way it goes: wider, or further apart
+            const int arm = int(3 * this->scale());
+            if (shownEdge->right)
+            {
+                painter.drawLine(x - arm, middle, x + arm, middle);
+            }
+            else
+            {
+                painter.drawLine(x - arm, middle - arm, x - arm, middle + arm);
+                painter.drawLine(x + arm, middle - arm, x + arm, middle + arm);
+            }
         }
     }
 
@@ -590,6 +690,13 @@ void HeaderPreview::mousePressEvent(QMouseEvent *event)
         this->movingGrip_ = true;
         return;
     }
+    if (const auto edge = this->edgeAt(event->pos()))
+    {
+        this->movingEdge_ = edge;
+        this->edgeStart_ =
+            edge->right ? this->deltaOf(edge->part) : this->spacing_;
+        return;
+    }
     this->pressed_ = this->partAt(event->pos());
 }
 
@@ -600,6 +707,28 @@ void HeaderPreview::mouseMoveEvent(QMouseEvent *event)
     if (this->movingGrip_)
     {
         this->share_ = this->shareAt(pos.x());
+        this->relayout();
+        this->update();
+        return;
+    }
+
+    if (this->movingEdge_)
+    {
+        // How far the mouse went, in the pixels the settings keep
+        const auto moved =
+            int(std::lround(double(pos.x() - this->pressedAt_.x()) /
+                            double(this->scale())));
+        if (this->movingEdge_->right)
+        {
+            this->deltas_[this->movingEdge_->part] =
+                std::clamp(this->edgeStart_ + moved, -headerparts::MOST_DELTA,
+                           headerparts::MOST_DELTA);
+        }
+        else
+        {
+            this->spacing_ = std::clamp(this->edgeStart_ + moved, 0,
+                                        headerparts::MOST_SPACING);
+        }
         this->relayout();
         this->update();
         return;
@@ -663,7 +792,13 @@ void HeaderPreview::mouseMoveEvent(QMouseEvent *event)
         this->hoverGrip_ = onGrip;
         this->update();
     }
-    if (onGrip)
+    const auto edge = onGrip ? std::nullopt : this->edgeAt(pos);
+    if (edge != this->hoverEdge_)
+    {
+        this->hoverEdge_ = edge;
+        this->update();
+    }
+    if (onGrip || edge)
     {
         this->setCursor(Qt::SizeHorCursor);
     }
@@ -686,10 +821,24 @@ void HeaderPreview::mouseReleaseEvent(QMouseEvent *event)
 
     const bool grip = this->movingGrip_;
     const bool part = this->movingPart_;
+    const auto edge = this->movingEdge_;
     this->movingGrip_ = false;
     this->movingPart_ = false;
+    this->movingEdge_.reset();
     this->pressed_.reset();
 
+    // Only now do the settings hear of it - one value, not one per pixel
+    if (edge)
+    {
+        if (edge->right)
+        {
+            headerparts::setWidthDelta(edge->part, this->deltaOf(edge->part));
+        }
+        else
+        {
+            headerparts::setSpacing(this->spacing_);
+        }
+    }
     if (grip)
     {
         getSettings()->splitHeaderActivityShare.setValue(this->share_);
@@ -705,11 +854,32 @@ void HeaderPreview::mouseReleaseEvent(QMouseEvent *event)
 
 void HeaderPreview::mouseDoubleClickEvent(QMouseEvent *event)
 {
+    if (event->button() != Qt::LeftButton)
+    {
+        return;
+    }
+
     // Back to half of what the title leaves free
-    if (event->button() == Qt::LeftButton && this->onGrip(event->pos()))
+    if (this->onGrip(event->pos()))
     {
         this->movingGrip_ = false;
         getSettings()->splitHeaderActivityShare.setValue(0);
+        this->reload();
+        return;
+    }
+
+    // An edge back to how wide the part is by itself, or no room at all
+    if (const auto edge = this->edgeAt(event->pos()))
+    {
+        this->movingEdge_.reset();
+        if (edge->right)
+        {
+            headerparts::setWidthDelta(edge->part, 0);
+        }
+        else
+        {
+            headerparts::setSpacing(0);
+        }
         this->reload();
     }
 }
@@ -717,6 +887,7 @@ void HeaderPreview::mouseDoubleClickEvent(QMouseEvent *event)
 void HeaderPreview::leaveEvent(QEvent * /*event*/)
 {
     this->hoverGrip_ = false;
+    this->hoverEdge_.reset();
     this->unsetCursor();
     this->update();
 }

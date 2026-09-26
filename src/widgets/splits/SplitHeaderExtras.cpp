@@ -4,6 +4,8 @@
 
 #include "widgets/splits/SplitHeaderExtras.hpp"
 
+#include "Application.hpp"
+
 #include "common/Channel.hpp"
 #include "messages/Message.hpp"
 #include "providers/twitch/TwitchChannel.hpp"
@@ -24,6 +26,74 @@
 
 namespace chatterino {
 
+void HeaderTitle::setRuns(std::vector<headerparts::Run> runs)
+{
+    if (runs == this->runs_)
+    {
+        return;
+    }
+    this->runs_ = std::move(runs);
+    this->update();
+}
+
+void HeaderTitle::paintEvent(QPaintEvent *event)
+{
+    if (this->runs_.empty())
+    {
+        Label::paintEvent(event);
+        return;
+    }
+
+    QPainter painter(this);
+    const auto font =
+        getApp()->getFonts()->getFont(this->getFontStyle(), this->scale());
+    painter.setFont(font);
+    const QFontMetricsF metrics(font);
+
+    // What is really on screen: a narrow header cuts the title short, and
+    // what was cut away carries no colour any more
+    const auto text = this->shouldElide_ ? this->elidedText_ : this->text_;
+    const auto rect = this->textRect();
+
+    // Laid out the way Label does it - from the left, or in the middle
+    // where the whole line fits
+    const auto width = metrics.horizontalAdvance(text);
+    auto x = rect.left();
+    if (this->centered_ && width <= rect.width())
+    {
+        x += (rect.width() - width) / 2;
+    }
+
+    const auto plain = this->palette().windowText().color();
+    qsizetype at = 0;
+    while (at < text.size())
+    {
+        // The colour this letter carries, and how far it reaches
+        QColor color = plain;
+        qsizetype until = text.size();
+        for (const auto &run : this->runs_)
+        {
+            if (at >= run.from && at < run.from + run.length)
+            {
+                color = run.color;
+                until = std::min<qsizetype>(until, run.from + run.length);
+                break;
+            }
+            if (run.from > at)
+            {
+                until = std::min<qsizetype>(until, run.from);
+            }
+        }
+
+        const auto piece = text.mid(at, until - at);
+        painter.setPen(color);
+        painter.drawText(QRectF(x, rect.top(), rect.width(), rect.height()),
+                         Qt::AlignLeft | Qt::AlignVCenter, piece);
+        x += metrics.horizontalAdvance(piece);
+        at = until;
+    }
+}
+
 HeaderPicture::HeaderPicture(Shape shape, int gap, QWidget *parent)
     : BaseWidget(parent)
     , shape_(shape)
@@ -40,12 +110,24 @@ void HeaderPicture::setPicture(const QPixmap &picture)
     this->update();
 }
 
+void HeaderPicture::setExtraWidth(int pixels)
+{
+    if (pixels == this->extra_)
+    {
+        return;
+    }
+    this->extra_ = pixels;
+    this->scaleChangedEvent(this->scale());
+    this->update();
+}
+
 void HeaderPicture::scaleChangedEvent(float scale)
 {
     // Twitch's covers are 52 by 72
     const auto height = int(16 * scale);
-    const auto width =
+    auto width =
         this->shape_ == Shape::Cover ? int(height * 52 / 72.0) : height;
+    width = std::max(width + int(this->extra_ * scale), int(6 * scale));
     this->setFixedSize(width + int(this->gap_ * scale), height);
 }
 

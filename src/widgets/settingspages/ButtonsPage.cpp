@@ -5,6 +5,9 @@
 #include "widgets/settingspages/ButtonsPage.hpp"
 
 #include "singletons/Settings.hpp"
+#include "singletons/Theme.hpp"
+#include "widgets/dialogs/ColorPickerDialog.hpp"
+#include "widgets/helper/color/ColorButton.hpp"
 #include "widgets/settingspages/HeaderPreview.hpp"
 #include "widgets/settingspages/SettingWidget.hpp"
 #include "widgets/splits/HeaderParts.hpp"
@@ -16,6 +19,7 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPlainTextEdit>
+#include <QGraphicsOpacityEffect>
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QTabWidget>
@@ -39,6 +43,75 @@ void addStandardButton(GeneralPageView &layout, const QString &tooltip,
     layout.addWidget(button);
 }
 
+
+/// A colour for one part of the title. Without one it keeps the colour of
+/// the title itself, which the button then shows greyed out.
+void addTitleColor(GeneralPageView &layout, const headerparts::ItemInfo &info,
+                   pajlada::Signals::SignalHolder &holder)
+{
+    auto *label = new QLabel(info.name + ":");
+    auto *button = new ColorButton(QColor());
+    button->setFixedSize(50, 24);
+    button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    auto *clear = new QPushButton("Standard");
+    clear->setToolTip("Nimmt die Farbe wieder weg - der Teil steht dann in "
+                      "der Farbe des Titels.");
+
+    auto *row = new QHBoxLayout;
+    row->addWidget(label);
+    row->addStretch(1);
+    row->addWidget(button);
+    row->addWidget(clear);
+    layout.addLayout(row);
+
+    const auto item = info.item;
+    const auto refresh = [button, clear, item] {
+        const auto color = headerparts::colorOf(item);
+        clear->setEnabled(color.isValid());
+        if (color.isValid())
+        {
+            button->setColor(color);
+            button->setGraphicsEffect(nullptr);
+            button->setToolTip("Die Farbe, in der dieser Teil im Titel "
+                               "steht.");
+        }
+        else
+        {
+            button->setColor(getTheme()->messages.textColors.regular);
+            auto *faded = new QGraphicsOpacityEffect;
+            faded->setOpacity(0.4);
+            button->setGraphicsEffect(faded);
+            button->setToolTip("Ohne eigene Farbe - der Teil steht in der "
+                               "Farbe des Titels.");
+        }
+    };
+    refresh();
+
+    QObject::connect(button, &ColorButton::clicked, [button, item] {
+        auto start = headerparts::colorOf(item);
+        if (!start.isValid())
+        {
+            start = getTheme()->messages.textColors.regular;
+        }
+        auto *dialog = new ColorPickerDialog(start, button);
+        QObject::connect(dialog, &ColorPickerDialog::colorConfirmed, button,
+                         [item](const QColor &picked) {
+                             if (picked.isValid())
+                             {
+                                 headerparts::setColorOf(item, picked);
+                             }
+                         });
+        dialog->show();
+    });
+    QObject::connect(clear, &QPushButton::clicked, [item] {
+        headerparts::setColorOf(item, QColor());
+    });
+    getSettings()->headerColors.connect(
+        [refresh](const auto &, const auto &) {
+            refresh();
+        },
+        holder, false);
+}
 
 /// The buttons of the input bar: which are shown, and in which order. Ticked
 /// here they appear, and the two arrows move the picked one about.
@@ -340,15 +413,18 @@ void ButtonsPage::initTitleBar(GeneralPageView &layout)
 {
     layout.addTitle("Titelleiste");
     layout.addDescription(
-        "Die Leiste über jedem Chat. Zieh in der Vorschau einen Teil an "
-        "eine andere Stelle, oder den Rand der Kurve zum Titel hin, um sie "
-        "breiter oder schmaler zu machen - ein Doppelklick auf den Rand "
-        "stellt sie wieder auf automatisch. Es gilt für alle Chats, sobald "
-        "du loslässt.");
+        "Die Leiste über jedem Chat. In der Vorschau kannst du ziehen: "
+        "einen Teil an eine andere Stelle, seinen <b>rechten</b> Rand, um "
+        "ihn breiter oder schmaler zu machen, und seinen <b>linken</b>, um "
+        "den Abstand zwischen allen Teilen zu ändern. Der Rand der Kurve "
+        "zum Titel hin teilt beide auf. Ein Doppelklick auf einen Rand "
+        "stellt ihn wieder auf Standard. Es gilt für alle Chats, sobald du "
+        "loslässt.");
 
     auto *preview = new HeaderPreview;
     layout.addWidget(preview, {"titelleiste", "vorschau", "kurve", "breite",
-                               "reihenfolge", "split-kopf", "header"});
+                               "abstand", "reihenfolge", "split-kopf",
+                               "header"});
 
     layout.addSubtitle("Was drin ist");
     layout.addDescription(
@@ -404,7 +480,7 @@ void ButtonsPage::initTitleBar(GeneralPageView &layout)
                      "ist.")
         ->addKeywords({"trend", "zuschauer", "viewer", "pfeil"})
         ->addTo(layout);
-    SettingWidget::checkbox("Follower", s.headerFollowers)
+    SettingWidget::checkbox("Follows", s.headerFollowers)
         ->setTooltip("Wie viele dem Kanal folgen. Dieselbe Zahl, die in der "
                      "User-Card steht; alle paar Minuten neu geholt.")
         ->addKeywords({"follower", "follow"})
@@ -423,9 +499,19 @@ void ButtonsPage::initTitleBar(GeneralPageView &layout)
         ->addKeywords({"nachrichten", "minute", "tempo", "aktivität"})
         ->addTo(layout);
 
+    layout.addTitle("Farben im Titel");
+    layout.addDescription(
+        "Jeder Teil kann seine eigene Farbe bekommen - etwa die Follows in "
+        "Lila oder den Trend in Grün. Ohne eigene Farbe steht ein Teil in "
+        "der Farbe des Titels. Das Trennzeichen davor bleibt immer unbunt.");
+    for (const auto &info : headerparts::items())
+    {
+        addTitleColor(layout, info, this->managedConnections_);
+    }
+
     addStandardButton(layout,
-                      "Reihenfolge, Teile, Breite der Kurve und Titel wieder "
-                      "so, wie Chatterino die Leiste hat",
+                      "Reihenfolge, Teile, Breite der Kurve, Titel und "
+                      "Farben wieder so, wie Chatterino die Leiste hat",
                       [] {
                           headerparts::reset();
                       });

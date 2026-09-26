@@ -5,6 +5,8 @@
 #pragma once
 
 #include "widgets/BaseWidget.hpp"
+#include "widgets/Label.hpp"
+#include "widgets/splits/HeaderParts.hpp"
 
 #include <pajlada/signals/signalholder.hpp>
 #include <QDateTime>
@@ -41,6 +43,9 @@ public:
     /// Shows @a picture; a null one hides it
     void setPicture(const QPixmap &picture);
 
+    /// Buttons -> Titelleiste: how many pixels wider than usual it is drawn
+    void setExtraWidth(int pixels);
+
 protected:
     void paintEvent(QPaintEvent *event) override;
     void scaleChangedEvent(float scale) override;
@@ -51,7 +56,26 @@ private:
 
     Shape shape_;
     int gap_;
+    int extra_{};
     QPixmap picture_;
+};
+
+/// The title in the split header. It is one line of text, but the parts it
+/// is made of - uptime, viewers, follows and the rest - can each carry a
+/// colour of their own, see Buttons -> Titelleiste.
+class HeaderTitle : public Label
+{
+public:
+    using Label::Label;
+
+    /// Which stretches of the text are drawn in a colour of their own
+    void setRuns(std::vector<headerparts::Run> runs);
+
+protected:
+    void paintEvent(QPaintEvent *event) override;
+
+private:
+    std::vector<headerparts::Run> runs_;
 };
 
 /// How lively the chat was, as a small curve in the split header - see

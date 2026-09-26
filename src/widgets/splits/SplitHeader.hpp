@@ -26,6 +26,7 @@ class SvgButton;
 class DrawnButton;
 class HeaderPicture;
 class ActivityGraph;
+class HeaderTitle;
 class LabelButton;
 class Label;
 class Split;
@@ -43,6 +44,9 @@ public:
     /// ChattiFlexii: the numbers the title bar shows beside the stream's
     /// own - only those switched on, and only where they can be had
     headerparts::Extras channelNumbers(TwitchChannel *channel) const;
+    /// Buttons -> Titelleiste: how wide each part is drawn and how much
+    /// room stands between them
+    void applyPartWidths(int button, int addButton, float scale);
     void updateIcons();
     // Invoked when SplitHeader should update anything refering to a TwitchChannel's mode
     // has changed (e.g. sub mode toggled)
@@ -98,7 +102,7 @@ private:
 
     // ui
     DrawnButton *dropdownButton_{};
-    Label *titleLabel_{};
+    HeaderTitle *titleLabel_{};
 
     LabelButton *modeButton_{};
     QAction *modeActionSetEmote{};

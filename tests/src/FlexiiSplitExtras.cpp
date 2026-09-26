@@ -1871,7 +1871,7 @@ TEST(FlexiiHeaderNumbers, EachNumberOnlyWhereItIsSwitchedOn)
     EXPECT_EQ(headerparts::extrasAfterName(extras), "");
 
     s->headerFollowers.setValue(true);
-    EXPECT_TRUE(headerparts::extrasAfterName(extras).contains("Follower"));
+    EXPECT_TRUE(headerparts::extrasAfterName(extras).contains("Follows"));
     EXPECT_FALSE(headerparts::extrasAfterName(extras).contains("im Chat"));
 
     s->headerChatters.setValue(true);
@@ -1976,7 +1976,7 @@ TEST(FlexiiHeaderNumbers, TheNumbersStandBeforeTheStreamTitle)
 
     // The stream's title is cut when the header is narrow - anything behind
     // it would never be seen
-    const auto followersAt = title.indexOf("Follower");
+    const auto followersAt = title.indexOf("Follows");
     const auto rateAt = title.indexOf("42/min");
     const auto titleAt = title.indexOf("Titel");
     ASSERT_NE(followersAt, -1) << title.toStdString();
@@ -1992,4 +1992,96 @@ TEST(FlexiiHeaderNumbers, TheNumbersStandBeforeTheStreamTitle)
     s->headerGame.setValue(false);
     s->headerFollowers.setValue(false);
     s->headerMessageRate.setValue(false);
+}
+
+TEST(FlexiiHeaderParts, PartsCanBeWidenedAndSetApart)
+{
+    MockApplication app;
+    using headerparts::Part;
+
+    // Nothing changed to begin with - the header Chatterino has
+    EXPECT_EQ(headerparts::spacing(), 0);
+    EXPECT_EQ(headerparts::widthDelta(Part::Menu), 0);
+
+    headerparts::setWidthDelta(Part::Menu, 6);
+    headerparts::setSpacing(8);
+    EXPECT_EQ(headerparts::widthDelta(Part::Menu), 6);
+    EXPECT_EQ(headerparts::spacing(), 8);
+
+    // Dragged past what is sensible, it stops
+    headerparts::setWidthDelta(Part::Menu, 500);
+    EXPECT_EQ(headerparts::widthDelta(Part::Menu), headerparts::MOST_DELTA);
+    headerparts::setSpacing(-5);
+    EXPECT_EQ(headerparts::spacing(), 0);
+    headerparts::setSpacing(500);
+    EXPECT_EQ(headerparts::spacing(), headerparts::MOST_SPACING);
+
+    // The title and the curve take what is left, so they are not dragged
+    EXPECT_FALSE(headerparts::canResize(Part::Title));
+    EXPECT_FALSE(headerparts::canResize(Part::Activity));
+    EXPECT_FALSE(headerparts::canResize(Part::Mode));
+    EXPECT_TRUE(headerparts::canResize(Part::Picture));
+    headerparts::setWidthDelta(Part::Title, 10);
+    EXPECT_EQ(headerparts::widthDelta(Part::Title), 0);
+
+    // and everything goes back together
+    headerparts::reset();
+    EXPECT_EQ(headerparts::spacing(), 0);
+    EXPECT_EQ(headerparts::widthDelta(Part::Menu), 0);
+}
+
+TEST(FlexiiHeaderParts, AColourBelongsToOnePartAlone)
+{
+    MockApplication app;
+    using headerparts::Item;
+
+    EXPECT_FALSE(headerparts::anyColor());
+    EXPECT_FALSE(headerparts::colorOf(Item::Followers).isValid());
+
+    headerparts::setColorOf(Item::Followers, QColor("#ffb185ff"));
+    EXPECT_TRUE(headerparts::anyColor());
+    EXPECT_EQ(headerparts::colorOf(Item::Followers).name(QColor::HexArgb),
+              "#ffb185ff");
+    EXPECT_FALSE(headerparts::colorOf(Item::Rate).isValid());
+
+    // An invalid colour takes it back to the title's own
+    headerparts::setColorOf(Item::Followers, QColor());
+    EXPECT_FALSE(headerparts::colorOf(Item::Followers).isValid());
+    EXPECT_FALSE(headerparts::anyColor());
+}
+
+TEST(FlexiiHeaderNumbers, AColouredPartIsMarkedWhereItStands)
+{
+    MockApplication app;
+    auto *s = getSettings();
+    s->headerViewerCount.setValue(true);
+    s->headerFollowers.setValue(true);
+    headerparts::setColorOf(headerparts::Item::Followers, QColor("#ffb185ff"));
+
+    std::vector<headerparts::Run> runs;
+    const auto title =
+        headerparts::titleAfterName(sampleStream(), {.followers = 48250},
+                                    &runs);
+
+    ASSERT_EQ(runs.size(), 1u);
+    // The separator before it keeps the title's colour
+    // The number itself is written the way the system writes numbers
+    EXPECT_TRUE(title.mid(runs.at(0).from, runs.at(0).length)
+                    .endsWith("Follows"))
+        << title.toStdString();
+    EXPECT_TRUE(title.mid(runs.at(0).from, runs.at(0).length).contains("250"))
+        << title.toStdString();
+    EXPECT_EQ(runs.at(0).color.name(QColor::HexArgb), "#ffb185ff");
+
+    // Dropping the name moves the marks along with the text
+    std::vector<headerparts::Run> moved = runs;
+    const auto whole = headerparts::composeTitle("kanal", title, false, &moved);
+    ASSERT_EQ(moved.size(), 1u);
+    EXPECT_TRUE(whole.mid(moved.at(0).from, moved.at(0).length)
+                    .endsWith("Follows"))
+        << whole.toStdString();
+
+    headerparts::setColorOf(headerparts::Item::Followers, QColor());
+    s->headerViewerCount.setValue(false);
+    s->headerFollowers.setValue(false);
 }

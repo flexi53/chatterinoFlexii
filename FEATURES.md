@@ -121,9 +121,18 @@ mouse first, with the times and how long it ran.
 The title can carry four more numbers, each its own checkbox under Buttons ->
 Titelleiste: the **Zuschauer-Trend** behind the viewer count ("↑ 18 %"
 against the last half hour, nothing while the channel holds steady),
-**Follower**, **Leute im Chat** - Twitch tells that to moderators only, so it
+**Follows**, **Leute im Chat** - Twitch tells that to moderators only, so it
 shows in your mod channels - and **Nachrichten pro Minute**, counted from
 what arrives here rather than asked of Twitch, so it works offline too.
+
+Every part of the title can be given a **colour of its own** on the same
+page - the trend in green, the follows in purple - while the dashes between
+them stay as they are. A part without one keeps the colour of the title.
+
+The preview on that page is dragged, not typed: a part moves to another
+place, its **right edge** makes it wider or narrower, its **left edge** sets
+the room between all parts, and the curve's edge to the title divides those
+two. A double click on an edge puts it back to standard.
 
 A **TwitchTracker** button sits next to the chatter list: one click opens the
 channel on twitchtracker.com - viewers, history and the numbers behind the

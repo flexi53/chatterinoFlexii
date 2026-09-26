@@ -6,6 +6,7 @@
 
 #include "providers/twitch/TwitchChannel.hpp"
 
+#include <QColor>
 #include <QString>
 
 #include <optional>
@@ -64,6 +65,23 @@ void setOrder(const std::vector<Part> &order);
 bool isShown(Part part);
 void setShown(Part part, bool shown);
 
+/// Room between the parts, in unscaled pixels - 0 is how Chatterino has it
+int spacing();
+void setSpacing(int pixels);
+constexpr int MOST_SPACING = 24;
+
+/// Whether @a part can be made wider or narrower. The title and the curve
+/// take what is left over, so they are not among them - the curve has its
+/// own edge to drag.
+bool canResize(Part part);
+/// How many pixels wider than usual @a part is drawn, which may be below
+/// zero. Unscaled, as everything the settings keep.
+int widthDelta(Part part);
+void setWidthDelta(Part part, int pixels);
+/// As far as a part may be dragged, either way
+constexpr int MOST_DELTA = 24;
+constexpr int LEAST_WIDTH = 10;
+
 /// Everything back to the header as Chatterino has it
 void reset();
 
@@ -81,22 +99,68 @@ struct Extras {
     std::optional<double> viewerTrend;
 };
 
+/// A stretch of the title drawn in a colour of its own
+struct Run {
+    int from;
+    int length;
+    QColor color;
+
+    bool operator==(const Run &other) const = default;
+};
+
+/// The things the title is made of, each of which can be given a colour
+enum class Item {
+    Name,
+    Live,
+    Uptime,
+    Viewers,
+    Trend,
+    Followers,
+    Chatters,
+    Rate,
+    Game,
+    StreamTitle,
+};
+
+struct ItemInfo {
+    Item item;
+    /// How it is written in the settings
+    QString id;
+    /// What it is called on the settings page
+    QString name;
+};
+
+/// Every part of the title, in the order it stands
+const std::vector<ItemInfo> &items();
+
+/// The colour @a item was given, or an invalid one where it keeps the
+/// colour of the title
+QColor colorOf(Item item);
+/// Gives @a item a colour - an invalid one takes it back to the title's
+void setColorOf(Item item, const QColor &color);
+/// Whether any part was given a colour at all
+bool anyColor();
+
 /// What follows the channel's name in the title while it is live: "(live)"
 /// and, as far as they are switched on, uptime, viewers, category and the
-/// stream's title, followed by @a extras
+/// stream's title, followed by @a extras. @a runs, where one is handed in,
+/// collects the stretches that carry a colour.
 QString titleAfterName(const TwitchChannel::StreamStatus &s,
-                       const Extras &extras = {});
+                       const Extras &extras = {},
+                       std::vector<Run> *runs = nullptr);
 
 /// Only the numbers of @a extras - what a channel that is not live can
-/// still say
-QString extrasAfterName(const Extras &extras);
+/// still say. @a at is where the text it returns will stand, so the runs
+/// it adds point at the right letters.
+QString extrasAfterName(const Extras &extras, std::vector<Run> *runs = nullptr,
+                        int at = 0);
 
 /// The whole title: @a name and @a afterName, or only what comes after it
 /// when the name is switched off. @a pictureShown says whether the
 /// channel's picture stands before the title - without it the name stays,
 /// or nobody would know whose chat it is.
 QString composeTitle(const QString &name, const QString &afterName,
-                     bool pictureShown);
+                     bool pictureShown, std::vector<Run> *runs = nullptr);
 
 /// The least room the title keeps however wide the curve is made, in
 /// unscaled pixels - a narrow split still says whose chat it is
