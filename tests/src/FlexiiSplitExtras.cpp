@@ -34,6 +34,7 @@
 #include "controllers/people/WatchedPeople.hpp"
 #include "controllers/saved/SavedMessages.hpp"
 #include "controllers/userdata/UserNotes.hpp"
+#include "util/Helpers.hpp"
 #include "util/MentionFlash.hpp"
 #include "controllers/twitch/ChannelNumbers.hpp"
 #include "widgets/splits/HeaderParts.hpp"
@@ -2141,6 +2142,180 @@ TEST(FlexiiHeaderNumbers, ColoursLandOnTheirOwnPartInAWholeTitle)
     EXPECT_EQ(covers(QColor("#ff333333")), "119 Follows");
     EXPECT_EQ(covers(QColor("#ff444444")), "1/min");
     EXPECT_EQ(covers(QColor("#ff555555")), "GeoBingo.io");
+
+    headerparts::reset();
+}
+
+namespace {
+
+/// Everything the title can say, switched on together
+void everythingOn(Settings &s)
+{
+    s.headerChannelName.setValue(true);
+    s.headerLiveMarker.setValue(true);
+    s.headerUptime.setValue(true);
+    s.headerViewerCount.setValue(true);
+    s.headerViewerTrend.setValue(true);
+    s.headerFollowers.setValue(true);
+    s.headerChatters.setValue(true);
+    s.headerMessageRate.setValue(true);
+    s.headerGame.setValue(true);
+    s.headerStreamTitle.setValue(true);
+}
+
+/// The stretch @a item was given a colour for, as it stands in @a title
+QString coveredBy(const QString &title,
+                  const std::vector<headerparts::Run> &runs,
+                  headerparts::Item item)
+{
+    const auto color = headerparts::colorOf(item);
+    for (const auto &run : runs)
+    {
+        if (run.color == color)
+        {
+            return title.mid(run.from, run.length);
+        }
+    }
+    return QStringLiteral("<ohne Farbe>");
+}
+
+}  // namespace
+
+TEST(FlexiiHeaderNumbers, EveryPartIsColouredWholeAndOnItsOwn)
+{
+    MockApplication app;
+    auto *s = getSettings();
+    everythingOn(*s);
+
+    using headerparts::Item;
+    // A colour of its own for each, so none can be mistaken for another
+    const std::vector<std::pair<Item, QString>> colors{
+        {Item::Name, "#ff010101"},   {Item::Live, "#ff020202"},
+        {Item::Uptime, "#ff030303"}, {Item::Viewers, "#ff040404"},
+        {Item::Trend, "#ff050505"},  {Item::Followers, "#ff060606"},
+        {Item::Chatters, "#ff070707"}, {Item::Rate, "#ff080808"},
+        {Item::Game, "#ff090909"},   {Item::StreamTitle, "#ff0a0a0a"},
+    };
+    for (const auto &[item, color] : colors)
+    {
+        headerparts::setColorOf(item, QColor(color));
+    }
+
+    TwitchChannel::StreamStatus status;
+    status.live = true;
+    status.streamType = "live";
+    status.uptime = "2h 13m";
+    status.viewerCount = 1234;
+    status.game = "Just Chatting";
+    status.title = "Titel des Streams";
+
+    const headerparts::Extras extras{
+        .followers = 48250,
+        .chatters = 1730,
+        .messagesPerMinute = 42,
+        .viewerTrend = 0.18,
+    };
+
+    // With the channel's name in front of it
+    std::vector<headerparts::Run> runs;
+    auto after = headerparts::titleAfterName(status, extras, &runs);
+    auto title = headerparts::composeTitle("kanal", after, true, &runs);
+
+    EXPECT_EQ(coveredBy(title, runs, Item::Name), "kanal");
+    EXPECT_EQ(coveredBy(title, runs, Item::Live), "(live)");
+    EXPECT_EQ(coveredBy(title, runs, Item::Uptime), "2h 13m");
+    EXPECT_EQ(coveredBy(title, runs, Item::Viewers), localizeNumbers(1234));
+    EXPECT_EQ(coveredBy(title, runs, Item::Trend), "↑18 %");
+    EXPECT_EQ(coveredBy(title, runs, Item::Followers),
+              localizeNumbers(48250) + " Follows");
+    EXPECT_EQ(coveredBy(title, runs, Item::Chatters),
+              localizeNumbers(1730) + " im Chat");
+    EXPECT_EQ(coveredBy(title, runs, Item::Rate), "42/min");
+    EXPECT_EQ(coveredBy(title, runs, Item::Game), "Just Chatting");
+    EXPECT_EQ(coveredBy(title, runs, Item::StreamTitle), "Titel des Streams");
+
+    // and with the picture standing in for the name
+    s->headerChannelName.setValue(false);
+    runs.clear();
+    after = headerparts::titleAfterName(status, extras, &runs);
+    title = headerparts::composeTitle("kanal", after, true, &runs);
+
+    EXPECT_FALSE(title.contains("kanal")) << title.toStdString();
+    EXPECT_EQ(coveredBy(title, runs, Item::Live), "(live)");
+    EXPECT_EQ(coveredBy(title, runs, Item::Uptime), "2h 13m");
+    EXPECT_EQ(coveredBy(title, runs, Item::Viewers), localizeNumbers(1234));
+    EXPECT_EQ(coveredBy(title, runs, Item::Trend), "↑18 %");
+    EXPECT_EQ(coveredBy(title, runs, Item::Followers),
+              localizeNumbers(48250) + " Follows");
+    EXPECT_EQ(coveredBy(title, runs, Item::Chatters),
+              localizeNumbers(1730) + " im Chat");
+    EXPECT_EQ(coveredBy(title, runs, Item::Rate), "42/min");
+    EXPECT_EQ(coveredBy(title, runs, Item::Game), "Just Chatting");
+    EXPECT_EQ(coveredBy(title, runs, Item::StreamTitle), "Titel des Streams");
+
+    // Nothing is marked twice, and no mark points past the end
+    for (const auto &run : runs)
+    {
+        EXPECT_GE(run.from, 0);
+        EXPECT_LE(run.from + run.length, int(title.size()))
+            << title.toStdString();
+    }
+
+    headerparts::reset();
+}
+
+TEST(FlexiiHeaderNumbers, TheViewersKeepTheirTotalAndARerunIsMarkedToo)
+{
+    MockApplication app;
+    auto *s = getSettings();
+    everythingOn(*s);
+    s->headerChannelName.setValue(false);
+
+    using headerparts::Item;
+    headerparts::setColorOf(Item::Viewers, QColor("#ff040404"));
+    headerparts::setColorOf(Item::Live, QColor("#ff020202"));
+
+    TwitchChannel::StreamStatus status;
+    status.live = true;
+    status.rerun = true;
+    status.streamType = "rerun";
+    status.uptime = "1h";
+    status.viewerCount = 900;
+    status.sharedParticipantCount = 2;
+    status.sharedViewerCount = 5000;
+
+    std::vector<headerparts::Run> runs;
+    const auto after = headerparts::titleAfterName(status, {}, &runs);
+    const auto title = headerparts::composeTitle("kanal", after, true, &runs);
+
+    // A Stream Together says both numbers, and they belong together
+    EXPECT_EQ(coveredBy(title, runs, Item::Viewers),
+              localizeNumbers(900) + " (" + localizeNumbers(5000) + " total)");
+    EXPECT_EQ(coveredBy(title, runs, Item::Live), "(rerun)");
+
+    headerparts::reset();
+}
+
+TEST(FlexiiHeaderNumbers, AChannelThatIsNotLiveMarksItsNumbersToo)
+{
+    MockApplication app;
+    auto *s = getSettings();
+    everythingOn(*s);
+
+    using headerparts::Item;
+    headerparts::setColorOf(Item::Followers, QColor("#ff060606"));
+    headerparts::setColorOf(Item::Chatters, QColor("#ff070707"));
+    headerparts::setColorOf(Item::Rate, QColor("#ff080808"));
+
+    std::vector<headerparts::Run> runs;
+    const auto text = headerparts::extrasAfterName(
+        {.followers = 48250, .chatters = 1730, .messagesPerMinute = 42}, &runs);
+
+    EXPECT_EQ(coveredBy(text, runs, Item::Followers),
+              localizeNumbers(48250) + " Follows");
+    EXPECT_EQ(coveredBy(text, runs, Item::Chatters),
+              localizeNumbers(1730) + " im Chat");
+    EXPECT_EQ(coveredBy(text, runs, Item::Rate), "42/min");
 
     headerparts::reset();
 }
