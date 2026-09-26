@@ -5,6 +5,7 @@
 #pragma once
 
 #include "widgets/BaseWidget.hpp"
+#include "widgets/splits/HeaderParts.hpp"
 #include "widgets/TooltipWidget.hpp"
 
 #include <boost/signals2.hpp>
@@ -39,6 +40,9 @@ public:
     void setAddButtonVisible(bool value);
 
     void updateChannelText();
+    /// ChattiFlexii: the numbers the title bar shows beside the stream's
+    /// own - only those switched on, and only where they can be had
+    headerparts::Extras channelNumbers(TwitchChannel *channel) const;
     void updateIcons();
     // Invoked when SplitHeader should update anything refering to a TwitchChannel's mode
     // has changed (e.g. sub mode toggled)

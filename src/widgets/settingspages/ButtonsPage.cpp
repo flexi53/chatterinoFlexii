@@ -396,6 +396,32 @@ void ButtonsPage::initTitleBar(GeneralPageView &layout)
                      "lang, endet er mit „…“.")
         ->addKeywords({"titel", "title"})
         ->addTo(layout);
+    SettingWidget::checkbox("Zuschauer-Trend", s.headerViewerTrend)
+        ->setTooltip("Ein Pfeil hinter der Zuschauerzahl: wie sie sich "
+                     "gegenüber der letzten halben Stunde verändert hat, "
+                     "etwa „↑ 18 %“. Hält sich der Kanal (weniger als 3 %), "
+                     "steht nichts da. Gezählt wird, solange der Tab offen "
+                     "ist.")
+        ->addKeywords({"trend", "zuschauer", "viewer", "pfeil"})
+        ->addTo(layout);
+    SettingWidget::checkbox("Follower", s.headerFollowers)
+        ->setTooltip("Wie viele dem Kanal folgen. Dieselbe Zahl, die in der "
+                     "User-Card steht; alle paar Minuten neu geholt.")
+        ->addKeywords({"follower", "follow"})
+        ->addTo(layout);
+    SettingWidget::checkbox("Leute im Chat", s.headerChatters)
+        ->setTooltip("Wie viele gerade im Chat stehen - Twitch sagt das nur "
+                     "Moderatoren, deshalb steht es nur in deinen "
+                     "Mod-Kanälen.")
+        ->addKeywords({"chatter", "im chat", "leute", "zuschauer"})
+        ->addTo(layout);
+    SettingWidget::checkbox("Nachrichten pro Minute", s.headerMessageRate)
+        ->setTooltip("Wie viel gerade geschrieben wird, etwa „42/min“ - "
+                     "gezählt aus dem, was hier ankommt, ohne Abfrage bei "
+                     "Twitch. Zeigt sich auch, wenn der Kanal nicht live "
+                     "ist.")
+        ->addKeywords({"nachrichten", "minute", "tempo", "aktivität"})
+        ->addTo(layout);
 
     addStandardButton(layout,
                       "Reihenfolge, Teile, Breite der Kurve und Titel wieder "

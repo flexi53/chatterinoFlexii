@@ -64,9 +64,16 @@ QString sampleTitle()
     status.viewerCount = 1234;
     status.game = QStringLiteral("Just Chatting");
     status.title = QStringLiteral("Titel des Streams");
-    return headerparts::composeTitle(sampleName(),
-                                     headerparts::titleAfterName(status),
-                                     headerparts::isShown(Part::Picture));
+    // Made-up numbers, so the checkboxes show what they do
+    const headerparts::Extras extras{
+        .followers = 48250,
+        .chatters = 1730,
+        .messagesPerMinute = 42,
+        .viewerTrend = 0.18,
+    };
+    return headerparts::composeTitle(
+        sampleName(), headerparts::titleAfterName(status, extras),
+        headerparts::isShown(Part::Picture));
 }
 
 /// Stands in for a picture until the real one is there
@@ -188,6 +195,10 @@ HeaderPreview::HeaderPreview(QWidget *parent)
         this->connections_, false);
     s->headerUptime.connect(reload, this->connections_, false);
     s->headerViewerCount.connect(reload, this->connections_, false);
+    s->headerViewerTrend.connect(reload, this->connections_, false);
+    s->headerFollowers.connect(reload, this->connections_, false);
+    s->headerChatters.connect(reload, this->connections_, false);
+    s->headerMessageRate.connect(reload, this->connections_, false);
     s->headerGame.connect(reload, this->connections_, false);
     s->headerStreamTitle.connect(reload, this->connections_, false);
 

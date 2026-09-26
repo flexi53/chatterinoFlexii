@@ -579,6 +579,15 @@ public:
                                      false};
     BoolSetting headerGame = {"/appearance/splitheader/showGame", false};
     BoolSetting headerUptime = {"/appearance/splitheader/showUptime", false};
+    // ChattiFlexii: more numbers for the title bar - Buttons -> Titelleiste
+    BoolSetting headerFollowers = {"/appearance/splitheader/showFollowers",
+                                   false};
+    BoolSetting headerChatters = {"/appearance/splitheader/showChatters",
+                                  false};
+    BoolSetting headerMessageRate = {"/appearance/splitheader/showMessageRate",
+                                     false};
+    BoolSetting headerViewerTrend = {"/appearance/splitheader/showViewerTrend",
+                                     false};
     FloatSetting customThemeMultiplier = {"/appearance/customThemeMultiplier",
                                           -0.5f};
     // BoolSetting useCustomWindowFrame = {"/appearance/useCustomWindowFrame",

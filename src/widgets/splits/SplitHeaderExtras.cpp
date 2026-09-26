@@ -12,6 +12,7 @@
 #include "util/UiStyle.hpp"
 
 #include <QEvent>
+#include <QHelpEvent>
 #include <QPainter>
 #include <QFontMetricsF>
 #include <QPainterPath>
@@ -272,6 +273,9 @@ void ActivityGraph::noteCategory(const QString &category)
     this->category_ = category;
     if (!had)
     {
+        this->firstCategory_ = category;
+        this->firstCategoryAt_ = this->now();
+        this->update();
         return;
     }
 
@@ -327,17 +331,110 @@ bool ActivityGraph::event(QEvent *event)
 {
     if (event->type() == QEvent::ToolTip)
     {
-        this->updateTooltip();
+        const auto *help = static_cast<QHelpEvent *>(event);
+        this->updateTooltip(help->pos().x());
     }
     return BaseWidget::event(event);
 }
 
-void ActivityGraph::updateTooltip()
+void ActivityGraph::updateTooltip(std::optional<int> at)
 {
-    this->setToolTip(this->description());
+    this->setToolTip(this->description(at));
 }
 
-QString ActivityGraph::description() const
+QString ActivityGraph::lengthLabel(qint64 seconds)
+{
+    const auto minutes = std::max<qint64>(0, seconds) / 60;
+    if (minutes < 60)
+    {
+        return QStringLiteral("%1 Min.").arg(minutes);
+    }
+    return QStringLiteral("%1 Std. %2 Min.").arg(minutes / 60).arg(minutes % 60);
+}
+
+std::vector<ActivityGraph::Stretch> ActivityGraph::stretches() const
+{
+    const auto [from, to] = this->window();
+
+    // Every point at which something else began, the first one included -
+    // that one gets no line, but its stretch still has a name
+    std::vector<std::pair<QDateTime, QString>> points;
+    if (!this->firstCategory_.isEmpty())
+    {
+        points.emplace_back(this->firstCategoryAt_, this->firstCategory_);
+    }
+    for (const auto &change : this->changes_)
+    {
+        points.push_back(change);
+    }
+    if (points.empty())
+    {
+        return {};
+    }
+
+    // What ran when the curve begins - the last thing begun before it.
+    // Before that nobody was watching, so that stretch stays nameless.
+    QString running;
+    auto start = from;
+    size_t next = 0;
+    for (; next < points.size() && points.at(next).first <= from; next++)
+    {
+        running = points.at(next).second;
+    }
+
+    std::vector<Stretch> stretches;
+    const auto close = [&](const QDateTime &until, const QString &what) {
+        if (what.isEmpty())
+        {
+            return;
+        }
+        stretches.push_back({.from = start, .to = until, .what = what});
+    };
+
+    for (; next < points.size(); next++)
+    {
+        const auto &[when, what] = points.at(next);
+        if (when > to)
+        {
+            break;
+        }
+        close(when, running);
+        start = when;
+        running = what;
+    }
+    close(to, running);
+
+    // A change this very moment leaves a stretch of no length behind it.
+    // Only the last one stays - that is what runs now.
+    std::vector<Stretch> kept;
+    for (size_t i = 0; i < stretches.size(); i++)
+    {
+        if (stretches.at(i).from == stretches.at(i).to &&
+            i + 1 < stretches.size())
+        {
+            continue;
+        }
+        kept.push_back(stretches.at(i));
+    }
+    return kept;
+}
+
+int ActivityGraph::messagesPerMinute() const
+{
+    if (this->spans_.empty())
+    {
+        return 0;
+    }
+    // The last two half minutes make the minute just gone
+    auto count = this->spans_.back();
+    if (this->spans_.size() > 1)
+    {
+        count += this->spans_.at(this->spans_.size() - 2);
+    }
+    return count;
+}
+
+QString ActivityGraph::description(std::optional<int> at) const
 {
     const auto [from, to] = this->window();
     const auto seconds = std::max<qint64>(1, from.secsTo(to));
@@ -362,13 +459,8 @@ QString ActivityGraph::description() const
     QString text;
     if (this->streamStart_.isValid())
     {
-        const auto hours = seconds / 3600;
-        const auto minutes = (seconds % 3600) / 60;
         text = QStringLiteral("Chat-Aktivität seit Streamstart (vor %1)")
-                   .arg(hours > 0 ? QStringLiteral("%1 Std. %2 Min.")
-                                        .arg(hours)
-                                        .arg(minutes)
-                                  : QStringLiteral("%1 Min.").arg(minutes));
+                   .arg(lengthLabel(seconds));
     }
     else
     {
@@ -392,14 +484,50 @@ QString ActivityGraph::description() const
                                "mit - der Anfang bleibt leer");
     }
 
-    for (const auto &[when, what] : this->changes_)
+    // What was streamed over the stretch, and how long each lasted. The one
+    // the mouse stands on comes first, in full - in a narrow split there is
+    // no room to write them into the curve.
+    const auto stretches = this->stretches();
+    const auto area = this->curveArea();
+    std::optional<size_t> under;
+    if (at && area.width() > 1)
     {
-        if (when < from)
+        const auto share = (double(*at) - area.left()) / area.width();
+        if (share >= 0 && share <= 1)
         {
-            continue;
+            const auto when = from.addSecs(qint64(share * double(seconds)));
+            for (size_t i = 0; i < stretches.size(); i++)
+            {
+                if (when >= stretches.at(i).from && when <= stretches.at(i).to)
+                {
+                    under = i;
+                    break;
+                }
+            }
         }
-        text += QStringLiteral("\n%1 Uhr: %2")
-                    .arg(when.toLocalTime().toString("HH:mm"), what);
+    }
+
+    const auto line = [](const Stretch &stretch) {
+        return QStringLiteral("%1 - %2 Uhr: %3 (%4)")
+            .arg(stretch.from.toLocalTime().toString("HH:mm"),
+                 stretch.to.toLocalTime().toString("HH:mm"), stretch.what,
+                 lengthLabel(stretch.from.secsTo(stretch.to)));
+    };
+
+    if (under)
+    {
+        text += QStringLiteral("\n\nHier: %1").arg(line(stretches.at(*under)));
+    }
+    if (stretches.size() > 1 || (!stretches.empty() && !under))
+    {
+        for (size_t i = 0; i < stretches.size(); i++)
+        {
+            if (under && i == *under)
+            {
+                continue;
+            }
+            text += QStringLiteral("\n%1").arg(line(stretches.at(i)));
+        }
     }
 
     return text;
@@ -455,19 +583,24 @@ QSize ActivityGraph::minimumSizeHint() const
             int(uistyle::headerHeight() * this->scale())};
 }
 
+QRectF ActivityGraph::curveArea() const
+{
+    // Room at the bottom for the line of time under the curve, and under
+    // that for what its marks stand for - Compact's lower header has no
+    // room for those, the tooltip says them
+    const bool labels = !uistyle::compact();
+    return QRectF(this->rect())
+        .adjusted(LEFT_ROOM * this->scale(), 2, -RIGHT_ROOM * this->scale(),
+                  -(6 + (labels ? LABEL_ROOM : 0)) * this->scale());
+}
+
 void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
 {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    // Room at the bottom for the line of time under the curve, and under
-    // that for what its marks stand for - Compact's lower header has no
-    // room for those, the tooltip says them
     const bool labels = !uistyle::compact();
-    const QRectF area =
-        QRectF(this->rect())
-            .adjusted(LEFT_ROOM * this->scale(), 2, -RIGHT_ROOM * this->scale(),
-                      -(6 + (labels ? LABEL_ROOM : 0)) * this->scale());
+    const QRectF area = this->curveArea();
     if (area.width() <= 1)
     {
         return;
@@ -664,6 +797,58 @@ void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
         }
         const auto x = area.left() + (area.width() * offset / double(seconds));
         painter.drawLine(QPointF(x, area.top()), QPointF(x, axisY));
+    }
+
+    // What ran between those lines, written over the curve where the
+    // stretch is wide enough to read it - the tooltip has them all anyway
+    auto over = muted;
+    over.setAlpha(165);
+    painter.setPen(over);
+    for (const auto &stretch : this->stretches())
+    {
+        const auto left =
+            area.left() +
+            (area.width() * double(from.secsTo(stretch.from)) / double(seconds));
+        const auto right =
+            area.left() +
+            (area.width() * double(from.secsTo(stretch.to)) / double(seconds));
+        const QRectF room(left + (2 * this->scale()), area.top(),
+                          right - left - (4 * this->scale()),
+                          metrics.height());
+        // A stump of two letters says nothing and only covers the curve
+        if (room.width() < LABEL_NEEDS * this->scale())
+        {
+            continue;
+        }
+
+        // The length joins the name where both fit whole, said short:
+        // "42 min", "1 h 42", "2 h"
+        const auto minutes = stretch.from.secsTo(stretch.to) / 60;
+        const auto length =
+            minutes < 60 ? QStringLiteral("%1 min").arg(minutes)
+            : minutes % 60 == 0
+                ? QStringLiteral("%1 h").arg(minutes / 60)
+                : QStringLiteral("%1 h %2").arg(minutes / 60).arg(minutes % 60);
+        const auto both = QStringLiteral("%1 · %2").arg(stretch.what, length);
+        const auto text =
+            metrics.horizontalAdvance(both) <= room.width() ? both
+                                                            : stretch.what;
+        const auto shown =
+            metrics.elidedText(text, Qt::ElideRight, room.width());
+
+        // On a plate of the header's own colour - the curve runs behind it,
+        // and red under grey letters reads badly
+        QRectF plate(0, room.top(), metrics.horizontalAdvance(shown) + (6 * this->scale()),
+                     metrics.height());
+        plate.moveCenter(QPointF(room.center().x(), plate.center().y()));
+        auto back = getTheme()->splits.header.background;
+        back.setAlpha(210);
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(back);
+        painter.drawRoundedRect(plate, 3 * this->scale(), 3 * this->scale());
+        painter.setBrush(Qt::NoBrush);
+        painter.setPen(over);
+        painter.drawText(plate, Qt::AlignCenter, shown);
     }
 }
 

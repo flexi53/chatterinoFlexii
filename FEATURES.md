@@ -112,6 +112,19 @@ the cover of what it streams, next to the name - and a small curve of how
 lively the chat was over the last ten minutes, counted from when it is
 switched on; its tooltip tells the numbers.
 
+Over the curve stands what the channel was streaming at the time, centred
+between the lines that mark each change - with how long it lasted where
+there is room for both ("Just Chatting · 1 h 30"). Too narrow a stretch is
+left unwritten; hovering names every one of them in full, the one under the
+mouse first, with the times and how long it ran.
+
+The title can carry four more numbers, each its own checkbox under Buttons ->
+Titelleiste: the **Zuschauer-Trend** behind the viewer count ("↑ 18 %"
+against the last half hour, nothing while the channel holds steady),
+**Follower**, **Leute im Chat** - Twitch tells that to moderators only, so it
+shows in your mod channels - and **Nachrichten pro Minute**, counted from
+what arrives here rather than asked of Twitch, so it works offline too.
+
 A **TwitchTracker** button sits next to the chatter list: one click opens the
 channel on twitchtracker.com - viewers, history and the numbers behind the
 stream. Twitch channels only, as the site knows nothing of Kick. Like every

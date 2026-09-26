@@ -8,6 +8,7 @@
 
 #include <QString>
 
+#include <optional>
 #include <vector>
 
 /// Buttons -> Title bar: which parts the split header has, in what order,
@@ -70,10 +71,25 @@ void reset();
 /// small letters; empty in, empty out.
 QString trackerUrl(const QString &channel);
 
+/// The numbers the title can show beside what the stream itself says.
+/// Each is there only when it is switched on and known.
+struct Extras {
+    std::optional<int> followers;
+    std::optional<int> chatters;
+    std::optional<int> messagesPerMinute;
+    /// Which way the audience went, as a share of what it was
+    std::optional<double> viewerTrend;
+};
+
 /// What follows the channel's name in the title while it is live: "(live)"
 /// and, as far as they are switched on, uptime, viewers, category and the
-/// stream's title
-QString titleAfterName(const TwitchChannel::StreamStatus &s);
+/// stream's title, followed by @a extras
+QString titleAfterName(const TwitchChannel::StreamStatus &s,
+                       const Extras &extras = {});
+
+/// Only the numbers of @a extras - what a channel that is not live can
+/// still say
+QString extrasAfterName(const Extras &extras);
 
 /// The whole title: @a name and @a afterName, or only what comes after it
 /// when the name is switched off. @a pictureShown says whether the

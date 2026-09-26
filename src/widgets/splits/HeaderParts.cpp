@@ -4,12 +4,14 @@
 
 #include "widgets/splits/HeaderParts.hpp"
 
+#include "controllers/twitch/ChannelNumbers.hpp"
 #include "singletons/Settings.hpp"
 #include "util/Helpers.hpp"
 
 #include <QStringList>
 
 #include <algorithm>
+#include <cmath>
 
 namespace chatterino::headerparts {
 
@@ -286,6 +288,10 @@ void reset()
     s->headerViewerCount.setValue(s->headerViewerCount.getDefaultValue());
     s->headerGame.setValue(s->headerGame.getDefaultValue());
     s->headerStreamTitle.setValue(s->headerStreamTitle.getDefaultValue());
+    s->headerFollowers.setValue(s->headerFollowers.getDefaultValue());
+    s->headerChatters.setValue(s->headerChatters.getDefaultValue());
+    s->headerMessageRate.setValue(s->headerMessageRate.getDefaultValue());
+    s->headerViewerTrend.setValue(s->headerViewerTrend.getDefaultValue());
 }
 
 QString composeTitle(const QString &name, const QString &afterName,
@@ -305,7 +311,28 @@ QString composeTitle(const QString &name, const QString &afterName,
     return rest;
 }
 
-QString titleAfterName(const TwitchChannel::StreamStatus &s)
+QString extrasAfterName(const Extras &extras)
+{
+    const auto &settings = *getSettings();
+    QString title;
+
+    if (settings.headerFollowers && extras.followers)
+    {
+        title += " - " + localizeNumbers(*extras.followers) + " Follower";
+    }
+    if (settings.headerChatters && extras.chatters)
+    {
+        title += " - " + localizeNumbers(*extras.chatters) + " im Chat";
+    }
+    if (settings.headerMessageRate && extras.messagesPerMinute)
+    {
+        title += " - " + QString::number(*extras.messagesPerMinute) + "/min";
+    }
+    return title;
+}
+
+QString titleAfterName(const TwitchChannel::StreamStatus &s,
+                       const Extras &extras)
 {
     const auto &settings = *getSettings();
     auto title = QString();
@@ -336,6 +363,17 @@ QString titleAfterName(const TwitchChannel::StreamStatus &s)
     {
         title += " - " + localizeNumbers(s.viewerCount);
 
+        // ChattiFlexii: which way the audience is going, where it is worth
+        // saying - a channel holding steady says nothing
+        if (settings.headerViewerTrend && extras.viewerTrend &&
+            std::abs(*extras.viewerTrend) >= channelnumbers::TREND_WORTH_SAYING)
+        {
+            title += QStringLiteral(" %1%2 %")
+                         .arg(*extras.viewerTrend > 0 ? "↑" : "↓")
+                         .arg(int(std::round(std::abs(*extras.viewerTrend) *
+                                             100.0)));
+        }
+
         // In a Stream Together session the channel's own count is only part of
         // the audience, so show the combined one next to it.
         if (s.sharedParticipantCount > 1 && s.sharedViewerCount > s.viewerCount)
@@ -352,7 +390,8 @@ QString titleAfterName(const TwitchChannel::StreamStatus &s)
         title += " - " + s.title.simplified();
     }
 
-    return title;
+    // The numbers of our own come last - the stream's title can be long
+    return title + extrasAfterName(extras);
 }
 
 int curveWidth(int shared, int needed, int own, int share, int titleKeeps)

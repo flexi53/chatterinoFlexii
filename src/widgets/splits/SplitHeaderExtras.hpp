@@ -15,6 +15,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -83,9 +84,23 @@ public:
     static constexpr int RIGHT_ROOM = 6;
     /// How narrow the curve itself gets in a small split
     static constexpr int NARROWEST = 36;
+    /// How much room a stretch needs before its name is written over the
+    /// curve - below that only the tooltip says what ran
+    static constexpr int LABEL_NEEDS = 55;
 
     /// How a mark on the line of time is labelled: "10 min", "1h", "1h30"
     static QString timeLabel(qint64 seconds);
+
+    /// How long something lasted, said the way the header says it:
+    /// "42 Min.", "1 Std. 42 Min."
+    static QString lengthLabel(qint64 seconds);
+
+    /// A stretch of the stream spent on one thing
+    struct Stretch {
+        QDateTime from;
+        QDateTime to;
+        QString what;
+    };
 
     explicit ActivityGraph(QWidget *parent);
 
@@ -113,8 +128,18 @@ public:
     void unfollowStream();
 
     /// What the tooltip says: how lively the chat was, over what stretch,
-    /// and where the channel changed what it streams
-    QString description() const;
+    /// and where the channel changed what it streams. @a at is where the
+    /// mouse stands - the stretch under it is named first, in full.
+    QString description(std::optional<int> at = {}) const;
+
+    /// How many messages came in over the last minute - what the header
+    /// shows as "42/min"
+    int messagesPerMinute() const;
+
+    /// What the channel streamed over the stretch the curve covers, in
+    /// order. The first one begins where the curve does, whatever was
+    /// running then.
+    std::vector<Stretch> stretches() const;
 
     /// Where the curve gets the time from. Tests hand it their own, so a
     /// stream of hours can pass in a moment.
@@ -142,7 +167,11 @@ protected:
 
 private:
     QDateTime now() const;
-    void updateTooltip();
+    void updateTooltip(std::optional<int> at = {});
+
+    /// Where the curve itself is drawn, without the room for the line of
+    /// time under it - the same rectangle the painting uses
+    QRectF curveArea() const;
 
     /// The span the messages of this moment are counted in, adding the
     /// spans that have passed since the last one
@@ -159,8 +188,13 @@ private:
     std::vector<int> spans_;
     QDateTime spansStart_;
 
-    /// What the channel changed to, and when
+    /// What the channel changed to, and when - a change gets an upright
+    /// line, and the first category of a stream is not one
     std::vector<std::pair<QDateTime, QString>> changes_;
+    /// What the channel streamed when it was first looked at, and when that
+    /// was. No line is drawn for it, but the stretch has to be named.
+    QString firstCategory_;
+    QDateTime firstCategoryAt_;
     /// What it streams now, to notice a change
     QString category_;
     /// When the stream went live, invalid while the channel is not live

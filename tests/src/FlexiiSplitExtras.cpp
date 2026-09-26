@@ -35,6 +35,7 @@
 #include "controllers/saved/SavedMessages.hpp"
 #include "controllers/userdata/UserNotes.hpp"
 #include "util/MentionFlash.hpp"
+#include "controllers/twitch/ChannelNumbers.hpp"
 #include "widgets/splits/HeaderParts.hpp"
 #include "widgets/helper/ActiveBorder.hpp"
 #include "widgets/splits/SendWaitBar.hpp"
@@ -194,9 +195,14 @@ TEST_F(FlexiiActivityGraphFixture, AStreamEndingBringsBackTheQuarterHour)
 
 TEST_F(FlexiiActivityGraphFixture, TheFirstCategoryIsNotAChange)
 {
-    // A stream starting is not a change from something else
+    // A stream starting is not a change from something else - it gets no
+    // upright line, and the curve holds one stretch, not two
     this->graph.noteCategory("Just Chatting");
-    EXPECT_FALSE(this->graph.description().contains("Just Chatting"));
+    const auto stretches = this->graph.stretches();
+    ASSERT_EQ(stretches.size(), 1u);
+    EXPECT_EQ(stretches.at(0).what, "Just Chatting");
+    // but it is said what is running, once
+    EXPECT_EQ(this->graph.description().count("Just Chatting"), 1);
 }
 
 TEST_F(FlexiiActivityGraphFixture, EveryChangeOfCategoryIsKeptWithItsTime)
@@ -210,12 +216,22 @@ TEST_F(FlexiiActivityGraphFixture, EveryChangeOfCategoryIsKeptWithItsTime)
     this->pass(3600);
     this->graph.noteCategory("Fortnite");
     const auto fortniteAt = this->clock.toLocalTime().toString("HH:mm");
+    this->pass(600);
 
     const auto text = this->graph.description();
-    EXPECT_TRUE(text.contains(valorantAt + " Uhr: Valorant"))
+    EXPECT_TRUE(text.contains(valorantAt + " - " + fortniteAt +
+                              " Uhr: Valorant (1 Std. 0 Min.)"))
         << text.toStdString();
-    EXPECT_TRUE(text.contains(fortniteAt + " Uhr: Fortnite"))
-        << text.toStdString();
+    EXPECT_TRUE(text.contains(fortniteAt + " - ")) << text.toStdString();
+    EXPECT_TRUE(text.contains("Uhr: Fortnite")) << text.toStdString();
+
+    // Three stretches, in the order they ran
+    const auto stretches = this->graph.stretches();
+    ASSERT_EQ(stretches.size(), 3u);
+    EXPECT_EQ(stretches.at(0).what, "Just Chatting");
+    EXPECT_EQ(stretches.at(1).what, "Valorant");
+    EXPECT_EQ(stretches.at(2).what, "Fortnite");
+    EXPECT_EQ(stretches.at(1).from.secsTo(stretches.at(1).to), 3600);
 
     // The same category again is no change
     this->graph.noteCategory("Fortnite");
@@ -228,10 +244,15 @@ TEST_F(FlexiiActivityGraphFixture, AChangeBeforeTheCurveStartsIsNotListed)
     this->graph.noteCategory("Valorant");
     ASSERT_TRUE(this->graph.description().contains("Valorant"));
 
-    // Without a stream the curve only covers the last quarter hour
+    // Without a stream the curve only covers the last quarter hour. What
+    // ran before it began is gone; Valorant ran the whole way and is
+    // named once, as one stretch - the change itself is not shown.
     this->pass(20 * 60);
-    EXPECT_FALSE(this->graph.description().contains("Valorant"))
-        << this->graph.description().toStdString();
+    const auto text = this->graph.description();
+    EXPECT_FALSE(text.contains("Just Chatting")) << text.toStdString();
+    const auto stretches = this->graph.stretches();
+    ASSERT_EQ(stretches.size(), 1u);
+    EXPECT_EQ(stretches.at(0).what, "Valorant");
 }
 
 TEST_F(FlexiiActivityGraphFixture, ALongStreamDoesNotKeepEverything)
@@ -1790,4 +1811,152 @@ TEST(FlexiiHeaderParts, TheTrackerButtonIsOneOfTheParts)
     EXPECT_FALSE(headerparts::isShown(Part::Tracker));
     headerparts::setShown(Part::Tracker, true);
     EXPECT_TRUE(headerparts::isShown(Part::Tracker));
+}
+
+TEST_F(FlexiiActivityGraphFixture, TheChatSpeedIsWhatCameInTheLastMinute)
+{
+    EXPECT_EQ(this->graph.messagesPerMinute(), 0);
+
+    this->chat();
+    this->chat();
+    this->pass(30);
+    this->chat();
+    // Both half minutes together make the minute just gone
+    EXPECT_EQ(this->graph.messagesPerMinute(), 3);
+
+    // and what is older than that does not count any more
+    this->pass(60);
+    EXPECT_EQ(this->graph.messagesPerMinute(), 0);
+}
+
+TEST(FlexiiActivityGraphLabels, ALengthIsSaidInHoursAndMinutes)
+{
+    EXPECT_EQ(ActivityGraph::lengthLabel(0), "0 Min.");
+    EXPECT_EQ(ActivityGraph::lengthLabel(59), "0 Min.");
+    EXPECT_EQ(ActivityGraph::lengthLabel(42 * 60), "42 Min.");
+    EXPECT_EQ(ActivityGraph::lengthLabel(3600), "1 Std. 0 Min.");
+    EXPECT_EQ(ActivityGraph::lengthLabel((3600 * 2) + (13 * 60)),
+              "2 Std. 13 Min.");
+}
+
+namespace {
+
+/// A live stream, as the title bar sees one
+TwitchChannel::StreamStatus sampleStream()
+{
+    TwitchChannel::StreamStatus status;
+    status.live = true;
+    status.streamType = "live";
+    status.uptime = "2h 13m";
+    status.viewerCount = 1234;
+    status.game = "Just Chatting";
+    status.title = "Titel";
+    return status;
+}
+
+}  // namespace
+
+TEST(FlexiiHeaderNumbers, EachNumberOnlyWhereItIsSwitchedOn)
+{
+    MockApplication app;
+    auto *s = getSettings();
+    const headerparts::Extras extras{
+        .followers = 48250,
+        .chatters = 1730,
+        .messagesPerMinute = 42,
+        .viewerTrend = 0.18,
+    };
+
+    // Nothing switched on, nothing said
+    EXPECT_EQ(headerparts::extrasAfterName(extras), "");
+
+    s->headerFollowers.setValue(true);
+    EXPECT_TRUE(headerparts::extrasAfterName(extras).contains("Follower"));
+    EXPECT_FALSE(headerparts::extrasAfterName(extras).contains("im Chat"));
+
+    s->headerChatters.setValue(true);
+    s->headerMessageRate.setValue(true);
+    const auto text = headerparts::extrasAfterName(extras);
+    EXPECT_TRUE(text.contains("im Chat")) << text.toStdString();
+    EXPECT_TRUE(text.contains("42/min")) << text.toStdString();
+
+    // A number nobody knows yet is simply left out
+    EXPECT_EQ(headerparts::extrasAfterName({}), "");
+
+    s->headerFollowers.setValue(false);
+    s->headerChatters.setValue(false);
+    s->headerMessageRate.setValue(false);
+}
+
+TEST(FlexiiHeaderNumbers, TheTrendStandsBehindTheViewers)
+{
+    MockApplication app;
+    auto *s = getSettings();
+    s->headerViewerCount.setValue(true);
+    s->headerViewerTrend.setValue(true);
+
+    auto title = headerparts::titleAfterName(sampleStream(),
+                                             {.viewerTrend = 0.18});
+    EXPECT_TRUE(title.contains("↑18 %")) << title.toStdString();
+
+    title = headerparts::titleAfterName(sampleStream(), {.viewerTrend = -0.2});
+    EXPECT_TRUE(title.contains("↓20 %")) << title.toStdString();
+
+    // A channel holding steady says nothing
+    title = headerparts::titleAfterName(sampleStream(), {.viewerTrend = 0.01});
+    EXPECT_FALSE(title.contains("↑")) << title.toStdString();
+    EXPECT_FALSE(title.contains("↓")) << title.toStdString();
+
+    s->headerViewerCount.setValue(false);
+    s->headerViewerTrend.setValue(false);
+}
+
+TEST(FlexiiChannelNumbers, TheTrendNeedsSomethingToCompareWith)
+{
+    using namespace chatterino::channelnumbers;
+    forget();
+
+    const auto start = QDateTime::currentDateTimeUtc();
+
+    // One count on its own says nothing
+    noteViewers("1", 1000, start);
+    EXPECT_FALSE(viewerTrend("1", start).has_value());
+
+    // and neither do two a few minutes apart - that is noise, not a trend
+    noteViewers("1", 1100, start.addSecs(5 * 60));
+    EXPECT_FALSE(viewerTrend("1", start.addSecs(5 * 60)).has_value());
+
+    // Half an hour later it is worth saying: a fifth more
+    noteViewers("1", 1200, start.addSecs(30 * 60));
+    const auto trend = viewerTrend("1", start.addSecs(30 * 60));
+    ASSERT_TRUE(trend.has_value());
+    EXPECT_NEAR(*trend, 0.2, 0.001);
+
+    // Once the newest count is old - the channel went offline - nothing
+    EXPECT_FALSE(viewerTrend("1", start.addSecs(60 * 60)).has_value());
+
+    // and a channel nobody watched has no trend either
+    EXPECT_FALSE(viewerTrend("nobody", start).has_value());
+    forget();
+}
+
+TEST(FlexiiChannelNumbers, OldCountsAreLetGo)
+{
+    using namespace chatterino::channelnumbers;
+    forget();
+
+    const auto start = QDateTime::currentDateTimeUtc();
+    noteViewers("1", 1000, start);
+    noteViewers("1", 1100, start.addSecs(30 * 60));
+    // Three hours on, the first one is long gone - the trend can only
+    // reach back as far as what is kept
+    noteViewers("1", 1200, start.addSecs(3 * 3600));
+    noteViewers("1", 1300, start.addSecs((3 * 3600) + (30 * 60)));
+
+    const auto now = start.addSecs((3 * 3600) + (30 * 60));
+    const auto trend = viewerTrend("1", now);
+    ASSERT_TRUE(trend.has_value());
+    // 1200 -> 1300, not 1000 -> 1300
+    EXPECT_NEAR(*trend, 100.0 / 1200.0, 0.001);
+    forget();
 }

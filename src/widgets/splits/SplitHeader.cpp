@@ -13,6 +13,7 @@
 #include "controllers/hotkeys/Hotkey.hpp"
 #include "controllers/hotkeys/HotkeyCategory.hpp"
 #include "controllers/hotkeys/HotkeyController.hpp"
+#include "controllers/twitch/ChannelNumbers.hpp"
 #include "controllers/notifications/NotificationController.hpp"
 #include "providers/kick/KickChannel.hpp"
 #include "providers/twitch/ProfilePictures.hpp"
@@ -1061,6 +1062,36 @@ void SplitHeader::updatePictures()
     this->activity_->setChannel(activity ? channel : nullptr);
 }
 
+headerparts::Extras SplitHeader::channelNumbers(TwitchChannel *channel) const
+{
+    const auto *settings = getSettings();
+    headerparts::Extras extras;
+    if (channel == nullptr)
+    {
+        return extras;
+    }
+
+    if (settings->headerMessageRate && this->activity_ != nullptr)
+    {
+        extras.messagesPerMinute = this->activity_->messagesPerMinute();
+    }
+    if (settings->headerFollowers)
+    {
+        extras.followers = channelnumbers::followers(channel->roomId());
+    }
+    if (settings->headerChatters && channel->hasModRights())
+    {
+        extras.chatters = channelnumbers::chatters(
+            channel->roomId(),
+            getApp()->getAccounts()->twitch.getCurrent()->getUserId());
+    }
+    if (settings->headerViewerTrend)
+    {
+        extras.viewerTrend = channelnumbers::viewerTrend(channel->roomId());
+    }
+    return extras;
+}
+
 void SplitHeader::updateChannelText()
 {
     this->updatePictures();
@@ -1135,11 +1166,18 @@ void SplitHeader::updateChannelText()
                 this->lastThumbnail_.restart();
             }
             this->tooltipText_ = formatTooltip(*streamStatus, this->thumbnail_);
-            afterName = headerparts::titleAfterName(*streamStatus);
+            // ChattiFlexii: the audience over time, so the title can say
+            // which way it is going
+            channelnumbers::noteViewers(twitchChannel->roomId(),
+                                        int(streamStatus->viewerCount));
+            afterName = headerparts::titleAfterName(
+                *streamStatus, this->channelNumbers(twitchChannel));
         }
         else
         {
             this->tooltipText_ = formatOfflineTooltip(*streamStatus);
+            afterName =
+                headerparts::extrasAfterName(this->channelNumbers(twitchChannel));
         }
     }
     else if (auto *kickChannel = dynamic_cast<KickChannel *>(channel.get()))
