@@ -2085,3 +2085,62 @@ TEST(FlexiiHeaderNumbers, AColouredPartIsMarkedWhereItStands)
     s->headerViewerCount.setValue(false);
     s->headerFollowers.setValue(false);
 }
+
+TEST(FlexiiHeaderNumbers, ColoursLandOnTheirOwnPartInAWholeTitle)
+{
+    MockApplication app;
+    auto *s = getSettings();
+    s->headerChannelName.setValue(false);
+    s->headerLiveMarker.setValue(false);
+    s->headerUptime.setValue(true);
+    s->headerViewerCount.setValue(true);
+    s->headerFollowers.setValue(true);
+    s->headerMessageRate.setValue(true);
+    s->headerGame.setValue(true);
+    s->headerStreamTitle.setValue(true);
+
+    using headerparts::Item;
+    headerparts::setColorOf(Item::Uptime, QColor("#ff111111"));
+    headerparts::setColorOf(Item::Viewers, QColor("#ff222222"));
+    headerparts::setColorOf(Item::Followers, QColor("#ff333333"));
+    headerparts::setColorOf(Item::Rate, QColor("#ff444444"));
+    headerparts::setColorOf(Item::Game, QColor("#ff555555"));
+
+    TwitchChannel::StreamStatus status;
+    status.live = true;
+    status.streamType = "live";
+    status.uptime = "4h 22m";
+    status.viewerCount = 9;
+    status.game = "GeoBingo.io";
+    status.title = "VOLLER LULLE";
+
+    std::vector<headerparts::Run> runs;
+    const auto after = headerparts::titleAfterName(
+        status, {.followers = 119, .messagesPerMinute = 1}, &runs);
+    const auto title = headerparts::composeTitle("kanal", after, true, &runs);
+
+    for (const auto &run : runs)
+    {
+        qInfo() << run.color.name() << "->"
+                << title.mid(run.from, run.length);
+    }
+    qInfo() << "Titel:" << title;
+
+    const auto covers = [&](const QColor &color) {
+        for (const auto &run : runs)
+        {
+            if (run.color == color)
+            {
+                return title.mid(run.from, run.length);
+            }
+        }
+        return QString("<fehlt>");
+    };
+    EXPECT_EQ(covers(QColor("#ff111111")), "4h 22m");
+    EXPECT_EQ(covers(QColor("#ff222222")), "9");
+    EXPECT_EQ(covers(QColor("#ff333333")), "119 Follows");
+    EXPECT_EQ(covers(QColor("#ff444444")), "1/min");
+    EXPECT_EQ(covers(QColor("#ff555555")), "GeoBingo.io");
+
+    headerparts::reset();
+}

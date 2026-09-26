@@ -17,6 +17,7 @@
 #include <QHelpEvent>
 #include <QPainter>
 #include <QRegion>
+#include <QTextLayout>
 #include <QFontMetricsF>
 #include <QPainterPath>
 
@@ -49,68 +50,61 @@ void HeaderTitle::paintEvent(QPaintEvent *event)
     const auto font =
         getApp()->getFonts()->getFont(this->getFontStyle(), this->scale());
     painter.setFont(font);
-    const QFontMetricsF metrics(font);
 
     // What is really on screen: a narrow header cuts the title short, and
     // what was cut away carries no colour any more
     const auto text = this->shouldElide_ ? this->elidedText_ : this->text_;
     const auto rect = this->textRect();
 
-    // Laid out the way Label does it - from the left, or in the middle
-    // where the whole line fits
-    const auto width = metrics.horizontalAdvance(text);
-    auto left = rect.left();
-    if (this->centered_ && width <= rect.width())
-    {
-        left += (rect.width() - width) / 2;
-    }
-    const auto baseline = rect.top() +
-                          ((rect.height() - metrics.height()) / 2) +
-                          metrics.ascent();
+    // One line, laid out once, with a colour hung on the stretches that
+    // have one. Measuring the pieces and painting them apart moved the
+    // letters about - on a screen that draws two pixels for every one, by
+    // a whole word.
+    QTextLayout layout(text, font, painter.device());
+    layout.setCacheEnabled(true);
 
-    // Always the whole line, never pieces of it - drawing it in pieces
-    // moves the letters about. Each colour is the very same line drawn
-    // again through a window cut over the stretch it belongs to, so every
-    // letter stands exactly where it stood.
-    const auto window = [&](qsizetype from, qsizetype to) {
-        const auto x = left + metrics.horizontalAdvance(text.left(from));
-        const auto until = left + metrics.horizontalAdvance(text.left(to));
-        return QRectF(x, rect.top(), until - x, rect.height()).toAlignedRect();
-    };
+    QTextOption option;
+    option.setWrapMode(QTextOption::NoWrap);
+    layout.setTextOption(option);
 
-    // What the colours cover is left out of the plain line: a colour that
-    // is not fully opaque would otherwise be laid over white letters and
-    // come out pale
-    QRegion plain(this->rect());
-    std::vector<std::pair<QRect, QColor>> colored;
+    QList<QTextLayout::FormatRange> formats;
     for (const auto &run : this->runs_)
     {
-        const auto from = std::clamp<qsizetype>(run.from, 0, text.size());
-        const auto to =
-            std::clamp<qsizetype>(run.from + run.length, from, text.size());
-        if (from == to)
+        const auto from = std::clamp(run.from, 0, int(text.size()));
+        const auto to = std::clamp(run.from + run.length, from,
+                                   int(text.size()));
+        if (from == to || !run.color.isValid())
         {
             continue;
         }
-        const auto area = window(from, to);
-        colored.emplace_back(area, run.color);
-        plain -= QRegion(area);
+        QTextCharFormat format;
+        format.setForeground(run.color);
+        formats.append({.start = from, .length = to - from, .format = format});
     }
+    layout.setFormats(formats);
 
-    painter.save();
-    painter.setClipRegion(plain);
-    painter.setPen(this->palette().windowText().color());
-    painter.drawText(QPointF(left, baseline), text);
-    painter.restore();
-
-    for (const auto &[area, color] : colored)
+    layout.beginLayout();
+    auto line = layout.createLine();
+    if (!line.isValid())
     {
-        painter.save();
-        painter.setClipRect(area);
-        painter.setPen(color);
-        painter.drawText(QPointF(left, baseline), text);
-        painter.restore();
+        layout.endLayout();
+        return;
     }
+    line.setLineWidth(std::max(qreal(1), rect.width()));
+    line.setPosition({0, 0});
+    layout.endLayout();
+
+    // From the left, or in the middle where the whole line fits, as Label
+    // lays it out
+    auto left = rect.left();
+    if (this->centered_ && line.naturalTextWidth() <= rect.width())
+    {
+        left += (rect.width() - line.naturalTextWidth()) / 2;
+    }
+    const auto top = rect.top() + ((rect.height() - line.height()) / 2);
+
+    painter.setPen(this->palette().windowText().color());
+    layout.draw(&painter, QPointF(left, top));
 }
 
 HeaderPicture::HeaderPicture(Shape shape, int gap, QWidget *parent)
