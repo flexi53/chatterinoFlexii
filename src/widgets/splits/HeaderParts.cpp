@@ -381,6 +381,11 @@ QString titleAfterName(const TwitchChannel::StreamStatus &s,
             title += " (" + localizeNumbers(s.sharedViewerCount) + " total)";
         }
     }
+    // The numbers stay with the viewer count, before what is streamed: the
+    // stream's own title can run long and is cut with "...", and whatever
+    // stands behind it is never seen
+    title += extrasAfterName(extras);
+
     if (settings.headerGame && !s.game.isEmpty())
     {
         title += " - " + s.game;
@@ -390,8 +395,7 @@ QString titleAfterName(const TwitchChannel::StreamStatus &s,
         title += " - " + s.title.simplified();
     }
 
-    // The numbers of our own come last - the stream's title can be long
-    return title + extrasAfterName(extras);
+    return title;
 }
 
 int curveWidth(int shared, int needed, int own, int share, int titleKeeps)

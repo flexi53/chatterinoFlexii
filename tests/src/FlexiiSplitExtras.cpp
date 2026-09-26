@@ -1960,3 +1960,36 @@ TEST(FlexiiChannelNumbers, OldCountsAreLetGo)
     EXPECT_NEAR(*trend, 100.0 / 1200.0, 0.001);
     forget();
 }
+
+TEST(FlexiiHeaderNumbers, TheNumbersStandBeforeTheStreamTitle)
+{
+    MockApplication app;
+    auto *s = getSettings();
+    s->headerViewerCount.setValue(true);
+    s->headerStreamTitle.setValue(true);
+    s->headerGame.setValue(true);
+    s->headerFollowers.setValue(true);
+    s->headerMessageRate.setValue(true);
+
+    const auto title = headerparts::titleAfterName(
+        sampleStream(), {.followers = 48250, .messagesPerMinute = 42});
+
+    // The stream's title is cut when the header is narrow - anything behind
+    // it would never be seen
+    const auto followersAt = title.indexOf("Follower");
+    const auto rateAt = title.indexOf("42/min");
+    const auto titleAt = title.indexOf("Titel");
+    ASSERT_NE(followersAt, -1) << title.toStdString();
+    ASSERT_NE(rateAt, -1) << title.toStdString();
+    ASSERT_NE(titleAt, -1) << title.toStdString();
+    EXPECT_LT(followersAt, titleAt) << title.toStdString();
+    EXPECT_LT(rateAt, titleAt) << title.toStdString();
+    // and they keep to the viewer count, before the category
+    EXPECT_LT(rateAt, title.indexOf("Just Chatting")) << title.toStdString();
+
+    s->headerViewerCount.setValue(false);
+    s->headerStreamTitle.setValue(false);
+    s->headerGame.setValue(false);
+    s->headerFollowers.setValue(false);
+    s->headerMessageRate.setValue(false);
+}
