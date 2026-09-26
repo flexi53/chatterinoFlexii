@@ -16,6 +16,7 @@
 #include <QEvent>
 #include <QHelpEvent>
 #include <QPainter>
+#include <QRegion>
 #include <QFontMetricsF>
 #include <QPainterPath>
 
@@ -67,13 +68,21 @@ void HeaderTitle::paintEvent(QPaintEvent *event)
                           ((rect.height() - metrics.height()) / 2) +
                           metrics.ascent();
 
-    // The whole line at once, as it has always been drawn - drawing it in
-    // pieces moves the letters about. The colours come by drawing the very
-    // same line again through a window cut over the stretch they belong to,
-    // so every letter stands exactly where it stood.
-    painter.setPen(this->palette().windowText().color());
-    painter.drawText(QPointF(left, baseline), text);
+    // Always the whole line, never pieces of it - drawing it in pieces
+    // moves the letters about. Each colour is the very same line drawn
+    // again through a window cut over the stretch it belongs to, so every
+    // letter stands exactly where it stood.
+    const auto window = [&](qsizetype from, qsizetype to) {
+        const auto x = left + metrics.horizontalAdvance(text.left(from));
+        const auto until = left + metrics.horizontalAdvance(text.left(to));
+        return QRectF(x, rect.top(), until - x, rect.height()).toAlignedRect();
+    };
 
+    // What the colours cover is left out of the plain line: a colour that
+    // is not fully opaque would otherwise be laid over white letters and
+    // come out pale
+    QRegion plain(this->rect());
+    std::vector<std::pair<QRect, QColor>> colored;
     for (const auto &run : this->runs_)
     {
         const auto from = std::clamp<qsizetype>(run.from, 0, text.size());
@@ -83,13 +92,22 @@ void HeaderTitle::paintEvent(QPaintEvent *event)
         {
             continue;
         }
+        const auto area = window(from, to);
+        colored.emplace_back(area, run.color);
+        plain -= QRegion(area);
+    }
 
-        const auto x = left + metrics.horizontalAdvance(text.left(from));
-        const auto until = left + metrics.horizontalAdvance(text.left(to));
+    painter.save();
+    painter.setClipRegion(plain);
+    painter.setPen(this->palette().windowText().color());
+    painter.drawText(QPointF(left, baseline), text);
+    painter.restore();
+
+    for (const auto &[area, color] : colored)
+    {
         painter.save();
-        painter.setClipRect(
-            QRectF(x, rect.top(), until - x, rect.height()).toAlignedRect());
-        painter.setPen(run.color);
+        painter.setClipRect(area);
+        painter.setPen(color);
         painter.drawText(QPointF(left, baseline), text);
         painter.restore();
     }
