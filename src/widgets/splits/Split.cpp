@@ -40,6 +40,7 @@
 #include "widgets/splits/DraggedSplit.hpp"
 #include "widgets/splits/SplitContainer.hpp"
 #include "widgets/splits/SplitHeader.hpp"
+#include "widgets/splits/HeaderParts.hpp"
 #include "widgets/splits/SplitInput.hpp"
 #include "widgets/splits/SplitOverlay.hpp"
 #include "widgets/Window.hpp"
@@ -1274,6 +1275,19 @@ void Split::openInBrowser()
     else if (auto *kc = dynamic_cast<KickChannel *>(channel.get()))
     {
         QDesktopServices::openUrl("https://kick.com/" + kc->slug());
+    }
+}
+
+void Split::openTrackerInBrowser()
+{
+    auto channel = this->getChannel();
+    if (auto *twitchChannel = dynamic_cast<TwitchChannel *>(channel.get()))
+    {
+        const auto url = headerparts::trackerUrl(twitchChannel->getName());
+        if (!url.isEmpty())
+        {
+            QDesktopServices::openUrl(url);
+        }
     }
 }
 

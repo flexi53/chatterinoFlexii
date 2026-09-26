@@ -103,6 +103,7 @@ private:
     LabelButton *mode_{};
     SvgButton *moderation_{};
     SvgButton *chatters_{};
+    SvgButton *tracker_{};
     DrawnButton *menu_{};
     DrawnButton *add_{};
 

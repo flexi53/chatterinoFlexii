@@ -25,6 +25,7 @@ enum class Part {
     Mode,
     Moderation,
     Chatters,
+    Tracker,
     Menu,
     Add,
 };
@@ -64,6 +65,10 @@ void setShown(Part part, bool shown);
 
 /// Everything back to the header as Chatterino has it
 void reset();
+
+/// Where @a channel stands on twitchtracker.com. The site wants the name in
+/// small letters; empty in, empty out.
+QString trackerUrl(const QString &channel);
 
 /// What follows the channel's name in the title while it is live: "(live)"
 /// and, as far as they are switched on, uptime, viewers, category and the

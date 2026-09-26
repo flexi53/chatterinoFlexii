@@ -83,6 +83,14 @@ const std::vector<Info> &all()
             .canHide = true,
         },
         {
+            .part = Part::Tracker,
+            .id = "tracker",
+            .name = "TwitchTracker",
+            .about = "Öffnet den Kanal auf twitchtracker.com - Zuschauer, "
+                     "Verlauf und Zahlen zum Stream. Nur bei Twitch-Kanälen.",
+            .canHide = true,
+        },
+        {
             .part = Part::Menu,
             .id = "menu",
             .name = "Menü",
@@ -251,6 +259,16 @@ void setShown(Part part, bool shown)
     {
         s->splitHeaderPictures.setValue(!bothOff);
     }
+}
+
+QString trackerUrl(const QString &channel)
+{
+    const auto name = channel.trimmed().toLower();
+    if (name.isEmpty())
+    {
+        return {};
+    }
+    return QStringLiteral("https://twitchtracker.com/") + name;
 }
 
 void reset()

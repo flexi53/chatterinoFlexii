@@ -204,6 +204,9 @@ public Q_SLOTS:
     /// SplitNotebook::setFocusMode
     void refreshFocusView();
     void openInBrowser();
+    /// Buttons -> Title bar: the channel on twitchtracker.com. Twitch only -
+    /// the site knows nothing of Kick.
+    void openTrackerInBrowser();
     void openModViewInBrowser();
     void openWhispersInBrowser();
     void openBrowserPlayer();

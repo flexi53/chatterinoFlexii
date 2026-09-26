@@ -35,6 +35,7 @@
 #include "controllers/saved/SavedMessages.hpp"
 #include "controllers/userdata/UserNotes.hpp"
 #include "util/MentionFlash.hpp"
+#include "widgets/splits/HeaderParts.hpp"
 #include "widgets/helper/ActiveBorder.hpp"
 #include "widgets/splits/SendWaitBar.hpp"
 #include "providers/badgebase/BadgeBase.hpp"
@@ -553,12 +554,15 @@ TEST(FlexiiHeaderParts, NothingChangedIsChatterinosOrder)
 
 TEST(FlexiiHeaderParts, AnOrderIsKeptAsWritten)
 {
+    // Written before there was a TwitchTracker button: it joins where it
+    // belongs, everything else stays where it was put
     const auto order = headerparts::parseOrder(
         "picture,cover,activity,title,mode,moderation,chatters,menu,add");
     EXPECT_EQ(order.at(2), Part::Activity);
     EXPECT_EQ(order.at(3), Part::Title);
     EXPECT_EQ(headerparts::writeOrder(order),
-              "picture,cover,activity,title,mode,moderation,chatters,menu,add");
+              "picture,cover,activity,title,mode,moderation,chatters,tracker,"
+              "menu,add");
 }
 
 TEST(FlexiiHeaderParts, WhatIsMissingGoesWhereItBelongs)
@@ -569,9 +573,10 @@ TEST(FlexiiHeaderParts, WhatIsMissingGoesWhereItBelongs)
         "menu, nonsense, title, picture, cover, mode, moderation, chatters, "
         "add, menu");
     const std::vector<Part> expected{
-        Part::Menu,  Part::Title,      Part::Activity,
-        Part::Picture, Part::Cover,    Part::Mode,
-        Part::Moderation, Part::Chatters, Part::Add,
+        Part::Menu,       Part::Title,    Part::Activity,
+        Part::Picture,    Part::Cover,    Part::Mode,
+        Part::Moderation, Part::Chatters, Part::Tracker,
+        Part::Add,
     };
     EXPECT_EQ(order, expected);
 }
@@ -1749,4 +1754,40 @@ TEST(FlexiiMentionFlash, OnlyYourNameCounts)
     EXPECT_FALSE(namedIn("die mods sind schon da", "fx_flexii"));
     EXPECT_FALSE(namedIn("", "fx_flexii"));
     EXPECT_FALSE(namedIn("@fx_flexii schau mal", ""));
+}
+
+TEST(FlexiiHeaderParts, TheTrackerLinkWantsTheNameSmall)
+{
+    EXPECT_EQ(headerparts::trackerUrl("Papaplatte"),
+              "https://twitchtracker.com/papaplatte");
+    EXPECT_EQ(headerparts::trackerUrl(" fx_flexii "),
+              "https://twitchtracker.com/fx_flexii");
+    EXPECT_EQ(headerparts::trackerUrl(""), "");
+    EXPECT_EQ(headerparts::trackerUrl("   "), "");
+}
+
+TEST(FlexiiHeaderParts, TheTrackerButtonIsOneOfTheParts)
+{
+    MockApplication app;
+    using headerparts::Part;
+
+    const auto &info = headerparts::info(Part::Tracker);
+    EXPECT_EQ(info.id, "tracker");
+    EXPECT_TRUE(info.canHide);
+
+    // It stands between the chatter list and the menu, and an order saved
+    // before it existed puts it back in that place
+    const auto order = headerparts::parseOrder(
+        "picture,cover,title,activity,mode,moderation,chatters,menu,add");
+    const auto at = std::find(order.begin(), order.end(), Part::Tracker);
+    ASSERT_NE(at, order.end());
+    EXPECT_EQ(*std::prev(at), Part::Chatters);
+    EXPECT_EQ(*std::next(at), Part::Menu);
+
+    // and it can be switched off and on again like the others
+    EXPECT_TRUE(headerparts::isShown(Part::Tracker));
+    headerparts::setShown(Part::Tracker, false);
+    EXPECT_FALSE(headerparts::isShown(Part::Tracker));
+    headerparts::setShown(Part::Tracker, true);
+    EXPECT_TRUE(headerparts::isShown(Part::Tracker));
 }

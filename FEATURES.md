@@ -112,6 +112,12 @@ the cover of what it streams, next to the name - and a small curve of how
 lively the chat was over the last ten minutes, counted from when it is
 switched on; its tooltip tells the numbers.
 
+A **TwitchTracker** button sits next to the chatter list: one click opens the
+channel on twitchtracker.com - viewers, history and the numbers behind the
+stream. Twitch channels only, as the site knows nothing of Kick. Like every
+other part of the header it can be moved or switched off under Buttons ->
+Titelleiste.
+
 **Fokus-Ansicht** hides a window's tabs, the buttons next to them and the
 split headers, leaving the chats - and the tab groups set to **Always Show
 Group**, so the channels that matter most stay one click away. A button

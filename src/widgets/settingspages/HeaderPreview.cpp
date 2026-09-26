@@ -118,6 +118,12 @@ HeaderPreview::HeaderPreview(QWidget *parent)
             .light = ":/buttons/chatters-lightMode.svg",
         },
         this, {4, 4});
+    this->tracker_ = new SvgButton(
+        {
+            .dark = ":/buttons/tracker-darkMode.svg",
+            .light = ":/buttons/tracker-lightMode.svg",
+        },
+        this, {5, 5});
     this->menu_ = new DrawnButton(DrawnButton::Symbol::Kebab, {}, this);
     this->add_ = new DrawnButton(DrawnButton::Symbol::Plus,
                                  {
@@ -129,8 +135,8 @@ HeaderPreview::HeaderPreview(QWidget *parent)
     // They are only painted from here, never shown on their own
     for (auto *widget : std::initializer_list<QWidget *>{
              this->picture_, this->cover_, this->title_, this->activity_,
-             this->mode_, this->moderation_, this->chatters_, this->menu_,
-             this->add_})
+             this->mode_, this->moderation_, this->chatters_, this->tracker_,
+             this->menu_, this->add_})
     {
         widget->hide();
         widget->setAttribute(Qt::WA_TransparentForMouseEvents);
@@ -234,6 +240,8 @@ QWidget *HeaderPreview::widgetFor(Part part) const
             return this->moderation_;
         case Part::Chatters:
             return this->chatters_;
+        case Part::Tracker:
+            return this->tracker_;
         case Part::Menu:
             return this->menu_;
         case Part::Add:
@@ -293,6 +301,7 @@ void HeaderPreview::relayout()
                 return this->mode_->sizeHint().width();
             case Part::Moderation:
             case Part::Chatters:
+            case Part::Tracker:
             case Part::Menu:
                 return button;
             case Part::Add:

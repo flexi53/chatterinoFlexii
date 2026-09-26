@@ -105,6 +105,7 @@ private:
 
     SvgButton *moderationButton_{};
     SvgButton *chattersButton_{};
+    SvgButton *trackerButton_{};
     DrawnButton *addButton_{};
     /// Whether this split is the one the plus belongs to
     bool addButtonWanted_{false};

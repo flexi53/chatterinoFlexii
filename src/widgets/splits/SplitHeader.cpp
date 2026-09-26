@@ -355,6 +355,14 @@ void SplitHeader::initializeLayout()
         },
         this, {4, 4});
 
+    this->trackerButton_ = new SvgButton(
+        {
+            .dark = ":/buttons/tracker-darkMode.svg",
+            .light = ":/buttons/tracker-lightMode.svg",
+        },
+        this, {5, 5});
+    this->trackerButton_->setToolTip("Kanal auf TwitchTracker öffnen");
+
     this->addButton_ = new DrawnButton(DrawnButton::Symbol::Plus,
                                        {
                                            .padding = 3,
@@ -446,6 +454,10 @@ void SplitHeader::initializeLayout()
                     break;
             }
         });
+
+    QObject::connect(this->trackerButton_, &Button::leftClicked, this, [this] {
+        this->split_->openTrackerInBrowser();
+    });
 
     QObject::connect(this->chattersButton_, &Button::leftClicked, this,
                      [this]() {
@@ -953,6 +965,7 @@ void SplitHeader::scaleChangedEvent(float scale)
     this->dropdownButton_->setFixedWidth(w);
     this->moderationButton_->setFixedWidth(w);
     this->chattersButton_->setFixedWidth(w);
+    this->trackerButton_->setFixedWidth(w);
 
     this->addButton_->setFixedWidth(addSplitWidth);
 }
@@ -1213,6 +1226,9 @@ void SplitHeader::arrangeParts()
             case Part::Chatters:
                 layout->addWidget(this->chattersButton_);
                 break;
+            case Part::Tracker:
+                layout->addWidget(this->trackerButton_);
+                break;
             case Part::Menu:
                 layout->addWidget(this->dropdownButton_);
                 break;
@@ -1305,11 +1321,18 @@ void SplitHeader::updateIcons()
         {
             this->chattersButton_->hide();
         }
+
+        // TwitchTracker knows a Twitch channel alone - not Kick, and not
+        // the tabs that only gather messages, like Erwähnungen or User
+        this->trackerButton_->setVisible(
+            dynamic_cast<TwitchChannel *>(channel.get()) != nullptr &&
+            headerparts::isShown(headerparts::Part::Tracker));
     }
     else
     {
         this->moderationButton_->hide();
         this->chattersButton_->hide();
+        this->trackerButton_->hide();
     }
 }
 
