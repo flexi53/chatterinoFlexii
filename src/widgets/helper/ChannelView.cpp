@@ -42,6 +42,7 @@
 #include "util/Clipboard.hpp"
 #include "util/DistanceBetweenPoints.hpp"
 #include "util/Helpers.hpp"
+#include "util/Advanced.hpp"
 #include "util/IncognitoBrowser.hpp"
 #include "util/MentionFlash.hpp"
 #include "util/QMagicEnum.hpp"
@@ -2848,8 +2849,9 @@ void ChannelView::addMessageContextMenuItems(QMenu *menu,
         });
     }
 
-    // ChattiFlexii: keeps an eye on whoever wrote it, in every channel
-    if (getSettings()->watchedPeopleMenu)
+    // ChattiFlexii: keeps an eye on whoever wrote it, in every channel -
+    // for the account this was built for, see util/Advanced.hpp
+    if (getSettings()->watchedPeopleMenu && advanced::unlocked())
     {
         const auto login = layout->getMessage()->loginName;
         if (!login.isEmpty())

@@ -4,6 +4,10 @@
 
 #pragma once
 
+#include <boost/signals2.hpp>
+
+#include <memory>
+
 #include "widgets/BaseWindow.hpp"
 
 #include <pajlada/settings/setting.hpp>
@@ -56,7 +60,11 @@ protected:
     void showEvent(QShowEvent *) override;
 
 private:
+    std::unique_ptr<boost::signals2::scoped_connection> accountChange_;
     void refresh();
+    /// ChattiFlexii: shows or hides "Erweitert", depending on who is logged
+    /// in - see util/Advanced.hpp
+    void refreshAdvanced();
 
     void initUi();
     SettingsDialogTab *tab(SettingsTabId id);

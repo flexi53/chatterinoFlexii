@@ -610,6 +610,8 @@ set(SOURCE_FILES
         singletons/helper/LoggingChannel.hpp
 
         util/AbandonObject.hpp
+        util/Advanced.cpp
+        util/Advanced.hpp
         util/AppIcon.cpp
         util/AppIcon.hpp
 
@@ -966,6 +968,8 @@ set(SOURCE_FILES
         widgets/listview/GenericListView.cpp
         widgets/listview/GenericListView.hpp
 
+        widgets/settingspages/AdvancedPage.cpp
+        widgets/settingspages/AdvancedPage.hpp
         widgets/settingspages/AboutPage.cpp
         widgets/settingspages/AboutPage.hpp
         widgets/settingspages/AccountsPage.cpp

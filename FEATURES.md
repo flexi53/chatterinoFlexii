@@ -211,6 +211,17 @@ off brings the theme back and keeps your colours for later.
   in the WhoseTheMod plugin does, so it needs that plugin switched on, and it
   can be turned off on the Mod-Highlights page.
 
+## Erweitert
+
+The moderation assistant and the User tab sit together on one settings page
+called **Erweitert**, one tab each. That page is only there while the
+account it was built for is logged in - anyone else gets ChattiFlexii
+without those parts: no page, no shield and bell beside the input, no entry
+in the right-click menu, no User tab and no alert window ever opens. The
+rest of the program is the same for everyone. It is tidying up rather than
+a lock: the code is public, and whoever builds it can put their own name in
+(`src/util/Advanced.hpp`).
+
 ## Moderation assistant
 
 In channels you moderate, a shield button sits next to the emote button. It
@@ -329,6 +340,11 @@ Bots are left out, on a tab of their own: fossabot, nightbot, moobot,
 aecrobot, streamelements and other common ones are listed to begin with, the
 list can be edited, and any name ending in "bot" is left out too unless that
 is switched off.
+
+The **User** tab of that page is where the watched people are kept - the
+list, the filter and the button that opens their tab. What you note about
+people and the messages you kept with "Merken" stay under **Notizen**,
+where everyone has them.
 
 ## Moving to another computer
 

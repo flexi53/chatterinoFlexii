@@ -16,7 +16,10 @@
 #include "util/UiStyle.hpp"
 #include "widgets/BaseWindow.hpp"
 #include "widgets/helper/SettingsDialogTab.hpp"
+#include "controllers/accounts/AccountController.hpp"
+#include "util/Advanced.hpp"
 #include "widgets/settingspages/AboutPage.hpp"
+#include "widgets/settingspages/AdvancedPage.hpp"
 #include "widgets/settingspages/AccountsPage.hpp"
 #include "widgets/settingspages/BadgesPage.hpp"
 #include "widgets/settingspages/ButtonsPage.hpp"
@@ -115,6 +118,15 @@ SettingsDialog::SettingsDialog(QWidget *parent)
 
     this->initUi();
     this->addTabs();
+    this->refreshAdvanced();
+    // A different account, a different answer - while the window is open too
+    this->accountChange_ =
+        std::make_unique<boost::signals2::scoped_connection>(
+            getApp()->getAccounts()->twitch.currentUserChanged.connect([this] {
+                QMetaObject::invokeMethod(this, [this] {
+                    this->refreshAdvanced();
+                });
+            }));
     this->overrideBackgroundColor_ = QColor("#111111");
 
     // ChattiFlexii: the pages in the order they were dragged to - and back
@@ -491,7 +503,7 @@ void SettingsDialog::addTabs()
     this->ownHeading_ = this->addSectionLabel("ChattiFlexii");
     this->addTab([]{return new LookPage;},             "Aussehen",       ":/settings/look.svg");
     this->addTab([]{return new ButtonsPage;},          "Buttons",        ":/settings/buttons.svg");
-    this->addTab([]{return new ModAssistantPage;},     "Mod-Assistent",  ":/settings/modassistant.svg");
+    this->addTab([]{return new AdvancedPage;},         "Erweitert",      ":/settings/modassistant.svg");
     this->addTab([]{return new ModHighlightsPage;},    "Mod-Highlights", ":/settings/modhighlights.svg");
     this->addTab([]{return new BadgesPage;},           "Badges",         ":/settings/badges.svg");
     this->addTab([]{return new NotesPage;},            "Notizen",        ":/settings/notes.svg");
@@ -710,10 +722,48 @@ void SettingsDialog::showDialog(QWidget *parent,
 
 void SettingsDialog::refresh()
 {
+    this->refreshAdvanced();
+
     // Updates tabs.
     for (auto *tab : this->tabs_)
     {
-        tab->page()->onShow();
+        if (tab->isVisible())
+        {
+            tab->page()->onShow();
+        }
+    }
+}
+
+void SettingsDialog::refreshAdvanced()
+{
+    // "Erweitert" belongs to the account this was built for - everyone else
+    // gets the program without it, see util/Advanced.hpp
+    const bool shown = advanced::unlocked();
+    for (auto *tab : this->tabs_)
+    {
+        if (this->tabKeys_.value(tab) != QStringLiteral("Erweitert"))
+        {
+            continue;
+        }
+        if (tab->isVisible() == shown)
+        {
+            return;
+        }
+        tab->setVisible(shown);
+        // Standing on a page that is going away, step to the first one
+        if (!shown && this->selectedTab_ == tab)
+        {
+            for (auto *other : this->tabs_)
+            {
+                if (other != tab && other->isVisible())
+                {
+                    this->selectTab(other);
+                    break;
+                }
+            }
+        }
+        this->refreshHeadings();
+        return;
     }
 }
 

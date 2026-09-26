@@ -34,6 +34,7 @@
 #include "controllers/people/WatchedPeople.hpp"
 #include "controllers/saved/SavedMessages.hpp"
 #include "controllers/userdata/UserNotes.hpp"
+#include "util/Advanced.hpp"
 #include "util/Helpers.hpp"
 #include "util/MentionFlash.hpp"
 #include "controllers/twitch/ChannelNumbers.hpp"
@@ -2318,4 +2319,58 @@ TEST(FlexiiHeaderNumbers, AChannelThatIsNotLiveMarksItsNumbersToo)
     EXPECT_EQ(coveredBy(text, runs, Item::Rate), "42/min");
 
     headerparts::reset();
+}
+
+TEST(FlexiiAdvanced, WithoutTheAccountItStaysShut)
+{
+    MockApplication app;
+
+    // No account at all - nothing of it is there
+    advanced::stopPretending();
+    EXPECT_FALSE(advanced::unlocked());
+    EXPECT_EQ(advanced::owner(), "fx_flexii");
+
+    advanced::pretendUnlocked(true);
+    EXPECT_TRUE(advanced::unlocked());
+    advanced::pretendUnlocked(false);
+    EXPECT_FALSE(advanced::unlocked());
+    advanced::stopPretending();
+}
+
+TEST(FlexiiAdvanced, LockedNothingIsPutInPlaceForTheWatchedPeople)
+{
+    MockApplication app;
+    auto *s = getSettings();
+    s->watchedPeopleEnabled.setValue(true);
+    s->watchedPeople.setValue("zarbex");
+
+    const auto filterCount = [] {
+        return getSettings()->filterRecords.raw().size();
+    };
+    const auto before = filterCount();
+
+    // Shut: no filter, no quiet highlight - the program stays as it was
+    advanced::stopPretending();
+    WatchedPeople::sync();
+    EXPECT_EQ(filterCount(), before);
+
+    // and with the account it belongs to, the filter is put in place
+    advanced::pretendUnlocked(true);
+    WatchedPeople::sync();
+    EXPECT_GT(filterCount(), before);
+
+    bool found = false;
+    for (const auto &record : getSettings()->filterRecords.raw())
+    {
+        if (record->getName() == "Leute im Blick")
+        {
+            found = true;
+        }
+    }
+    EXPECT_TRUE(found);
+
+    advanced::stopPretending();
+    s->watchedPeopleEnabled.setValue(false);
+    s->watchedPeople.setValue("");
+    WatchedPeople::sync();
 }

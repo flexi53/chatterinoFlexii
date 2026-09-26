@@ -6,6 +6,7 @@
 
 #include "controllers/moderation/EmoteSpamDetector.hpp"
 #include "controllers/moderation/ModerationAssistant.hpp"
+#include "util/Advanced.hpp"
 #include "controllers/moderation/RepeatSpamDetector.hpp"
 #include "controllers/moderation/WordAlertDetector.hpp"
 
@@ -1300,7 +1301,8 @@ void IrcMessageHandler::addMessage(Communi::IrcMessage *message,
         // them has already opened a window for does not get another on top. Messages loaded from
         // history are left out, or joining a channel would open a window for
         // everything that happened before.
-        if (!isSub && !tags.contains("historical"))
+        // ChattiFlexii: the alerts belong to the account this was built for
+        if (!isSub && !tags.contains("historical") && advanced::unlocked())
         {
             RepeatSpamDetector::instance().onMessage(
                 chan->getName(), msg->loginName, msg->displayName, content,

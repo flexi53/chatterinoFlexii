@@ -11,6 +11,7 @@
 #include "controllers/highlights/HighlightPhrase.hpp"
 #include "providers/twitch/TwitchIrcServer.hpp"
 #include "singletons/Settings.hpp"
+#include "util/Advanced.hpp"
 #include "singletons/WindowManager.hpp"
 #include "widgets/helper/NotebookTab.hpp"
 #include "widgets/Notebook.hpp"
@@ -252,6 +253,13 @@ void keepHighlights(const QStringList &wanted)
 
 void WatchedPeople::sync()
 {
+    // ChattiFlexii: belongs to the account this was built for - without it
+    // no quiet highlights and no filter are put in place
+    if (!advanced::unlocked())
+    {
+        return;
+    }
+
     const bool on = getSettings()->watchedPeopleEnabled;
     // Switched off, nothing of ours stays in the way: no highlight, no
     // message reaching the mentions channel because of us
@@ -266,6 +274,11 @@ void WatchedPeople::sync()
 
 void WatchedPeople::openTab()
 {
+    if (!advanced::unlocked())
+    {
+        return;
+    }
+
     sync();
 
     const auto expression = wantedExpression();
@@ -313,6 +326,11 @@ void WatchedPeople::openTab()
 
 void WatchedPeople::start()
 {
+    if (!advanced::unlocked())
+    {
+        return;
+    }
+
     auto &settings = *getSettings();
     // Kept in step from here on; the settings page changes these
     settings.watchedPeopleEnabled.connect([](auto, auto) {
