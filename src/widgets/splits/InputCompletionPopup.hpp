@@ -33,6 +33,10 @@ public:
     void updateCompletion(const QString &text, CompletionKind kind,
                           ChannelPtr channel);
 
+    /// ChattiFlexii: whether anything was found at all - without a colon in
+    /// front, an empty box would hang over the input while you type
+    [[nodiscard]] bool hasResults() const;
+
     void setInputAction(ActionCallback callback);
 
     bool eventFilter(QObject *watched, QEvent *event) override;

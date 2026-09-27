@@ -575,7 +575,8 @@ void ButtonsPage::initTitleBar(GeneralPageView &layout)
                      "gegen die halbe Stunde davor steht, etwa „42/min "
                      "↑ 30 %“. Braucht zehn Minuten offenen Kanal, bevor er "
                      "etwas sagt, und schweigt bei weniger als 3 % "
-                     "Unterschied.")
+                     "Unterschied. Er trägt die Farbe von „Zuschauer-Trend“ - "
+                     "beide Pfeile sagen dasselbe.")
         ->addKeywords({"tempo", "trend", "pfeil", "nachrichten"})
         ->addTo(layout);
 
@@ -617,6 +618,15 @@ void ButtonsPage::initLayout(GeneralPageView &layout)
                      "Befehle über der Eingabezeile - dieselbe Liste, die "
                      "die Tabulatortaste durchgeht.")
         ->addKeywords({"befehl", "vorschlag", "command", "slash"})
+        ->addTo(layout);
+    SettingWidget::checkbox("Emotes ohne Doppelpunkt vorschlagen",
+                            s.emoteSuggestionsWithoutColon)
+        ->setTooltip("Schon ab dem dritten Buchstaben eines Wortes stehen "
+                     "die passenden Emotes über der Eingabezeile - ohne "
+                     "dass ein „:“ davor muss. Passt nichts, bleibt das "
+                     "Fenster weg, und solange du nichts auswählst, bleibt "
+                     "dein Wort so stehen, wie du es getippt hast.")
+        ->addKeywords({"emote", "vorschlag", "doppelpunkt", "autocomplete"})
         ->addTo(layout);
     SettingWidget::checkbox("Nur zeigen, was hier geht",
                             s.hideUnavailableCommands)

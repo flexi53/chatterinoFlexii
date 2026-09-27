@@ -58,6 +58,10 @@ using namespace Qt::Literals;
 
 namespace chatterino {
 
+/// ChattiFlexii: how many letters a word needs before emotes are suggested
+/// for it without a colon - fewer and the box would flicker at every word
+constexpr int LETTERS_BEFORE_SUGGESTING = 3;
+
 namespace {
 
 // Current function: https://www.desmos.com/calculator/vdyamchjwh
@@ -1191,6 +1195,18 @@ void SplitInput::updateCompletionPopup()
             return;
         }
 
+        // ChattiFlexii: an emote without a colon in front - the word as it
+        // stands is looked up, and where nothing matches the box stays away
+        if ((i == 0 || text[i - 1].isSpace()) && text[i] != ':' &&
+            text[i] != '@' && text[i] != '/' &&
+            getSettings()->emoteSuggestionsWithoutColon &&
+            position - i + 1 >= LETTERS_BEFORE_SUGGESTING)
+        {
+            this->showCompletionPopup(text.mid(i, position - i + 1),
+                                      CompletionKind::Emote);
+            return;
+        }
+
         if (text[i] == ':' && showEmoteCompletion)
         {
             if (i == 0 || text[i - 1].isSpace())
@@ -1243,6 +1259,13 @@ void SplitInput::showCompletionPopup(const QString &text, CompletionKind kind)
 
     popup->updateCompletion(text, kind, this->split_->getChannel());
 
+    // Nothing to offer - then no box either
+    if (!popup->hasResults())
+    {
+        popup->hide();
+        return;
+    }
+
     auto pos = this->mapToGlobal(QPoint{0, 0}) - QPoint(0, popup->height()) +
                QPoint((this->width() - popup->width()) / 2, 0);
 
@@ -1286,6 +1309,12 @@ void SplitInput::insertCompletionText(const QString &input_) const
         else if (text[i] == '/' && (i == 0 || text[i - 1].isSpace()))
         {
             input = "/" + input_ + " ";
+            done = true;
+        }
+        // ChattiFlexii: an emote picked while no colon was typed - the word
+        // itself is what gives way to it
+        else if (i == 0 || text[i - 1].isSpace())
+        {
             done = true;
         }
 

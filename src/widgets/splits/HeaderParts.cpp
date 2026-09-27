@@ -582,17 +582,22 @@ QString extrasAfterName(const Extras &extras, std::vector<Run> *runs, int at)
     }
     if (settings.headerMessageRate && extras.messagesPerMinute)
     {
-        auto rate = QString::number(*extras.messagesPerMinute) + "/min";
-        // The same arrow the viewers get, against the half hour before
+        appendItem(title, runs, Item::Rate,
+                   " - " + QString::number(*extras.messagesPerMinute) + "/min",
+                   at);
+
+        // The same arrow the viewers get, against the half hour before -
+        // and in the same colour, as it says the same kind of thing
         if (settings.headerMessageRateTrend && extras.rateTrend &&
             std::abs(*extras.rateTrend) >= channelnumbers::TREND_WORTH_SAYING)
         {
-            rate += QStringLiteral(" %1%2 %")
-                        .arg(*extras.rateTrend > 0 ? "↑" : "↓")
-                        .arg(int(std::round(std::abs(*extras.rateTrend) *
-                                            100.0)));
+            appendItem(title, runs, Item::Trend,
+                       QStringLiteral(" %1%2 %")
+                           .arg(*extras.rateTrend > 0 ? "↑" : "↓")
+                           .arg(int(std::round(std::abs(*extras.rateTrend) *
+                                               100.0))),
+                       at);
         }
-        appendItem(title, runs, Item::Rate, " - " + rate, at);
     }
     return title;
 }

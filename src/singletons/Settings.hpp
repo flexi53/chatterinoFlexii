@@ -1192,6 +1192,10 @@ public:
     QStringSetting hiddenUsers = {"/moderation/hiddenUsers", ""};
     /// ChattiFlexii: the commands are suggested as the slash is typed
     BoolSetting commandSuggestions = {"/ui/commandSuggestions", true};
+    /// ...and emotes without a colon in front, as soon as a word could be
+    /// one. Nothing is put in place until one is picked.
+    BoolSetting emoteSuggestionsWithoutColon = {
+        "/ui/emoteSuggestionsWithoutColon", true};
     /// ...and the ones needing a moderator are left out where you are none
     BoolSetting hideUnavailableCommands = {"/ui/hideUnavailableCommands",
                                            true};

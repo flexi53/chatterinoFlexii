@@ -2722,3 +2722,48 @@ TEST(FlexiiCommandSuggestions, WhatNeedsAModStaysAwayWhereYouAreNone)
         EXPECT_NE(item.name, "ban");
     }
 }
+
+TEST(FlexiiHeaderNumbers, BothArrowsShareTheTrendColour)
+{
+    MockApplication app;
+    auto *s = getSettings();
+    s->headerViewerCount.setValue(true);
+    s->headerViewerTrend.setValue(true);
+    s->headerMessageRate.setValue(true);
+    s->headerMessageRateTrend.setValue(true);
+
+    using headerparts::Item;
+    headerparts::setColorOf(Item::Trend, QColor("#ffec0a0a"));
+    headerparts::setColorOf(Item::Rate, QColor("#ff00ff40"));
+
+    std::vector<headerparts::Run> runs;
+    const auto title = headerparts::titleAfterName(
+        sampleStream(), {.messagesPerMinute = 42, .rateTrend = 0.30,
+                         .viewerTrend = 0.18},
+        &runs);
+
+    // Both arrows carry the trend colour, the number keeps its own
+    QStringList inTrend;
+    QStringList inRate;
+    for (const auto &run : runs)
+    {
+        const auto text = title.mid(run.from, run.length);
+        if (run.color.name(QColor::HexArgb) == "#ffec0a0a")
+        {
+            inTrend.append(text);
+        }
+        if (run.color.name(QColor::HexArgb) == "#ff00ff40")
+        {
+            inRate.append(text);
+        }
+    }
+    ASSERT_EQ(inTrend.size(), 2) << title.toStdString();
+    EXPECT_EQ(inTrend.at(0), "↑18 %");
+    EXPECT_EQ(inTrend.at(1), "↑30 %");
+    ASSERT_EQ(inRate.size(), 1) << title.toStdString();
+    EXPECT_EQ(inRate.at(0), "42/min");
+
+    headerparts::reset();
+    s->headerViewerCount.setValue(false);
+    s->headerMessageRate.setValue(false);
+}

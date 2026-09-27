@@ -55,6 +55,11 @@ void InputCompletionPopup::updateCompletion(const QString &text,
     }
 }
 
+bool InputCompletionPopup::hasResults() const
+{
+    return this->model_.rowCount() != 0;
+}
+
 std::unique_ptr<completion::Source> InputCompletionPopup::getSource() const
 {
     assert(this->currentChannel_ != nullptr);

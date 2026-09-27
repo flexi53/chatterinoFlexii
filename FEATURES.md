@@ -142,7 +142,8 @@ against the last half hour, nothing while the channel holds steady),
 shows in your mod channels - and **Nachrichten pro Minute**, counted from
 what arrives here rather than asked of Twitch, so it works offline too -
 with its own **Tempo-Trend** arrow against the half hour before, once the
-channel has been open ten minutes. The pace is counted against the time it
+channel has been open ten minutes - in the colour given to the
+Zuschauer-Trend, as both arrows say the same kind of thing. The pace is counted against the time it
 really covers, so it neither halves as a half minute rolls over nor makes a
 steady chat look as if it fell silent.
 
@@ -446,6 +447,11 @@ buffer is what is searched, not Twitch.
 sent to Twitch: they are neither blocked nor banned, and nobody can tell.
 **/unhide** lets them through again, **/hidden** says who is hidden. What
 already stands in the chat stays; it is the next messages that stop.
+
+Emotes are suggested **without a colon in front**: from the third letter of
+a word the ones that could be meant stand over the input. Where nothing
+matches, no box appears, and as long as you pick nothing your word stays
+exactly as you typed it - picking one puts the emote in its place.
 
 Typing a slash now brings the **commands over the input**, the same list the
 tab key walks through. Where you are no moderator, the commands that need
