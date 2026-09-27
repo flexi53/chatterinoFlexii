@@ -411,6 +411,27 @@ public:
 
     // The extra parenthesis around the failure callback is because its type
     // contains a comma
+    MOCK_METHOD(void, getBlockedTerms,
+                (QString broadcasterID, QString moderatorID,
+                 ResultCallback<std::vector<HelixBlockedTerm>> successCallback,
+                 (FailureCallback<HelixBlockedTermsError, QString>
+                      failureCallback)),
+                (override));
+
+    MOCK_METHOD(void, addBlockedTerm,
+                (QString broadcasterID, QString moderatorID, QString text,
+                 ResultCallback<HelixBlockedTerm> successCallback,
+                 (FailureCallback<HelixBlockedTermsError, QString>
+                      failureCallback)),
+                (override));
+
+    MOCK_METHOD(void, removeBlockedTerm,
+                (QString broadcasterID, QString moderatorID, QString termID,
+                 ResultCallback<> successCallback,
+                 (FailureCallback<HelixBlockedTermsError, QString>
+                      failureCallback)),
+                (override));
+
     MOCK_METHOD(void, updateShieldMode,
                 (QString broadcasterID, QString moderatorID, bool isActive,
                  ResultCallback<HelixShieldModeStatus> successCallback,

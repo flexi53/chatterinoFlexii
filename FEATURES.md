@@ -409,6 +409,21 @@ windows are arranged: taking a setup brings the settings and the tabs, but
 the main window, popups and alert windows keep their places and sizes on
 this computer's screens - and moving a window is not a change to pass on.
 
+## AutoMod's blocked terms
+
+The words AutoMod holds back in a channel are kept on Twitch's side, and
+until now they could only be seen on the website. Three commands bring them
+into the chat, in every channel you moderate:
+
+- **/blockterm <word or phrase>** holds it back from now on - a `*` stands
+  for any characters, as on the website
+- **/unblockterm <word or phrase>** takes it off the list again, however it
+  was written there
+- **/blockterms** says what is on the list
+
+Should Twitch answer that the login may not do this, the token is older than
+the permission - logging in again under Settings -> Accounts is enough.
+
 ## Pinning messages
 
 Moderators can pin messages without the Twitch website: **/pin text** sends

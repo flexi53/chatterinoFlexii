@@ -2975,6 +2975,131 @@ void Helix::getChannelBadges(
 }
 
 // https://dev.twitch.tv/docs/api/reference/#update-shield-mode-status
+namespace {
+
+/// The same handling for all three blocked-term calls
+template <typename Failure>
+void blockedTermError(const NetworkResult &result, Failure failureCallback)
+{
+    using Error = HelixBlockedTermsError;
+
+    if (!result.status())
+    {
+        failureCallback(Error::Unknown, result.formatError());
+        return;
+    }
+
+    const auto obj = result.parseJson();
+    auto message = obj["message"].toString();
+
+    switch (*result.status())
+    {
+        case 400:
+        case 404: {
+            failureCallback(Error::Forwarded, message);
+        }
+        break;
+
+        case 401: {
+            if (message.startsWith("Missing scope",
+                                   Qt::CaseInsensitive))
+            {
+                failureCallback(Error::UserMissingScope, message);
+            }
+            else
+            {
+                failureCallback(Error::Forwarded, message);
+            }
+        }
+        break;
+
+        case 403: {
+            failureCallback(Error::MissingPermission, message);
+        }
+        break;
+
+        default: {
+            qCWarning(chatterinoTwitch)
+                << "Unhandled error with blocked terms:" << result.formatError()
+                << result.getData();
+            failureCallback(Error::Unknown, message);
+        }
+        break;
+    }
+}
+
+}  // namespace
+
+void Helix::getBlockedTerms(
+    QString broadcasterID, QString moderatorID,
+    ResultCallback<std::vector<HelixBlockedTerm>> successCallback,
+    FailureCallback<HelixBlockedTermsError, QString> failureCallback)
+{
+    QUrlQuery urlQuery;
+    urlQuery.addQueryItem("broadcaster_id", broadcasterID);
+    urlQuery.addQueryItem("moderator_id", moderatorID);
+    // As many as Twitch hands out at once - more than anyone writes by hand
+    urlQuery.addQueryItem("first", "100");
+
+    this->makeGet("moderation/blocked_terms", urlQuery)
+        .onSuccess([successCallback](auto result) {
+            std::vector<HelixBlockedTerm> terms;
+            for (const auto &term : result.parseJson()["data"].toArray())
+            {
+                terms.emplace_back(term.toObject());
+            }
+            successCallback(terms);
+        })
+        .onError([failureCallback](const auto &result) {
+            blockedTermError(result, failureCallback);
+        })
+        .execute();
+}
+
+void Helix::addBlockedTerm(
+    QString broadcasterID, QString moderatorID, QString text,
+    ResultCallback<HelixBlockedTerm> successCallback,
+    FailureCallback<HelixBlockedTermsError, QString> failureCallback)
+{
+    QUrlQuery urlQuery;
+    urlQuery.addQueryItem("broadcaster_id", broadcasterID);
+    urlQuery.addQueryItem("moderator_id", moderatorID);
+
+    QJsonObject payload;
+    payload["text"] = text;
+
+    this->makePost("moderation/blocked_terms", urlQuery)
+        .json(payload)
+        .onSuccess([successCallback](auto result) {
+            successCallback(HelixBlockedTerm(
+                result.parseJson()["data"][0].toObject()));
+        })
+        .onError([failureCallback](const auto &result) {
+            blockedTermError(result, failureCallback);
+        })
+        .execute();
+}
+
+void Helix::removeBlockedTerm(
+    QString broadcasterID, QString moderatorID, QString termID,
+    ResultCallback<> successCallback,
+    FailureCallback<HelixBlockedTermsError, QString> failureCallback)
+{
+    QUrlQuery urlQuery;
+    urlQuery.addQueryItem("broadcaster_id", broadcasterID);
+    urlQuery.addQueryItem("moderator_id", moderatorID);
+    urlQuery.addQueryItem("id", termID);
+
+    this->makeDelete("moderation/blocked_terms", urlQuery)
+        .onSuccess([successCallback](auto /*result*/) {
+            successCallback();
+        })
+        .onError([failureCallback](const auto &result) {
+            blockedTermError(result, failureCallback);
+        })
+        .execute();
+}
+
 void Helix::updateShieldMode(
     QString broadcasterID, QString moderatorID, bool isActive,
     ResultCallback<HelixShieldModeStatus> successCallback,

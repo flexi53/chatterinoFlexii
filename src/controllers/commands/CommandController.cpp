@@ -14,6 +14,7 @@
 #include "controllers/commands/builtin/twitch/AddVIP.hpp"
 #include "controllers/commands/builtin/twitch/Announce.hpp"
 #include "controllers/commands/builtin/twitch/Ban.hpp"
+#include "controllers/commands/builtin/twitch/BlockedTerms.hpp"
 #include "controllers/commands/builtin/twitch/Block.hpp"
 #include "controllers/commands/builtin/twitch/ChatSettings.hpp"
 #include "controllers/commands/builtin/twitch/Chatters.hpp"
@@ -451,6 +452,12 @@ CommandController::CommandController(const Paths &paths)
     this->registerCommand("/timeout", &commands::sendTimeout);
 
     this->registerCommand("/ban", &commands::sendBan);
+
+    // ChattiFlexii: AutoMod's blocked terms, without the detour over the
+    // Twitch website
+    this->registerCommand("/blockterm", &commands::blockTerm);
+    this->registerCommand("/unblockterm", &commands::unblockTerm);
+    this->registerCommand("/blockterms", &commands::listBlockedTerms);
     this->registerCommand("/banid", &commands::sendBanById);
 
     this->registerCommand("/warn", &commands::sendWarn);

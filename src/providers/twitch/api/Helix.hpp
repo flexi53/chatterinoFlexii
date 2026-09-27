@@ -924,6 +924,31 @@ struct HelixShieldModeStatus {
     }
 };
 
+/// A word or phrase that AutoMod holds back in a channel
+struct HelixBlockedTerm {
+    /// The id it is kept under, needed to take it away again
+    QString id;
+    /// The word or phrase itself
+    QString text;
+
+    explicit HelixBlockedTerm(const QJsonObject &json)
+        : id(json["id"].toString())
+        , text(json["text"].toString())
+    {
+    }
+};
+
+/// Adding, taking away or asking for the blocked terms of a channel
+enum class HelixBlockedTermsError {
+    Unknown,
+    UserMissingScope,
+    /// Not a moderator of that channel
+    MissingPermission,
+
+    // The error message is forwarded directly from the Twitch API
+    Forwarded,
+};
+
 enum class HelixUpdateShieldModeError {
     Unknown,
     UserMissingScope,
@@ -1441,6 +1466,24 @@ public:
         FailureCallback<HelixUpdateShieldModeError, QString>
             failureCallback) = 0;
 
+    /// https://dev.twitch.tv/docs/api/reference/#get-blocked-terms
+    virtual void getBlockedTerms(
+        QString broadcasterID, QString moderatorID,
+        ResultCallback<std::vector<HelixBlockedTerm>> successCallback,
+        FailureCallback<HelixBlockedTermsError, QString> failureCallback) = 0;
+
+    /// https://dev.twitch.tv/docs/api/reference/#add-blocked-term
+    virtual void addBlockedTerm(
+        QString broadcasterID, QString moderatorID, QString text,
+        ResultCallback<HelixBlockedTerm> successCallback,
+        FailureCallback<HelixBlockedTermsError, QString> failureCallback) = 0;
+
+    /// https://dev.twitch.tv/docs/api/reference/#remove-blocked-term
+    virtual void removeBlockedTerm(
+        QString broadcasterID, QString moderatorID, QString termID,
+        ResultCallback<> successCallback,
+        FailureCallback<HelixBlockedTermsError, QString> failureCallback) = 0;
+
     // https://dev.twitch.tv/docs/api/reference/#send-a-shoutout
     virtual void sendShoutout(
         QString fromBroadcasterID, QString toBroadcasterID, QString moderatorID,
@@ -1877,6 +1920,21 @@ public:
                           ResultCallback<HelixShieldModeStatus> successCallback,
                           FailureCallback<HelixUpdateShieldModeError, QString>
                               failureCallback) final;
+
+    void getBlockedTerms(
+        QString broadcasterID, QString moderatorID,
+        ResultCallback<std::vector<HelixBlockedTerm>> successCallback,
+        FailureCallback<HelixBlockedTermsError, QString> failureCallback) final;
+
+    void addBlockedTerm(
+        QString broadcasterID, QString moderatorID, QString text,
+        ResultCallback<HelixBlockedTerm> successCallback,
+        FailureCallback<HelixBlockedTermsError, QString> failureCallback) final;
+
+    void removeBlockedTerm(
+        QString broadcasterID, QString moderatorID, QString termID,
+        ResultCallback<> successCallback,
+        FailureCallback<HelixBlockedTermsError, QString> failureCallback) final;
 
     // https://dev.twitch.tv/docs/api/reference/#send-a-shoutout
     void sendShoutout(

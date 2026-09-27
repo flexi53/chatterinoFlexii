@@ -97,6 +97,8 @@ set(SOURCE_FILES
         controllers/commands/builtin/twitch/Announce.cpp
         controllers/commands/builtin/twitch/Announce.hpp
         controllers/commands/builtin/twitch/Ban.cpp
+        controllers/commands/builtin/twitch/BlockedTerms.cpp
+        controllers/commands/builtin/twitch/BlockedTerms.hpp
         controllers/commands/builtin/twitch/Ban.hpp
         controllers/commands/builtin/twitch/Block.cpp
         controllers/commands/builtin/twitch/Block.hpp
