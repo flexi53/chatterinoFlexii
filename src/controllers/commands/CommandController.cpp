@@ -464,6 +464,7 @@ CommandController::CommandController(const Paths &paths)
     this->registerCommand("/hide", &commands::hideUser);
     this->registerCommand("/unhide", &commands::unhideUser);
     this->registerCommand("/hidden", &commands::listHiddenUsers);
+    this->registerCommand("/nuke", &commands::nuke);
     this->registerCommand("/banid", &commands::sendBanById);
 
     this->registerCommand("/warn", &commands::sendWarn);

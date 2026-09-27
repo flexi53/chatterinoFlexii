@@ -21,4 +21,8 @@ QString unhideUser(const CommandContext &ctx);
 /// /hidden - who is hidden
 QString listHiddenUsers(const CommandContext &ctx);
 
+/// /nuke <phrase> [minutes] [duration] - shows who wrote it lately and
+/// offers one timeout for all of them. Nothing happens without the button.
+QString nuke(const CommandContext &ctx);
+
 }  // namespace chatterino::commands

@@ -12,6 +12,7 @@
 #include "controllers/commands/Command.hpp"
 #include "controllers/commands/CommandController.hpp"
 #include "messages/Message.hpp"
+#include "messages/MessageBuilder.hpp"
 #include "mocks/BaseApplication.hpp"
 #include "mocks/EmoteController.hpp"
 #include "mocks/Helix.hpp"
@@ -19,7 +20,9 @@
 #include "mocks/TwitchIrcServer.hpp"
 #include "providers/twitch/api/Helix.hpp"
 #include "providers/twitch/TwitchAccount.hpp"
+#include "providers/twitch/TwitchBadge.hpp"
 #include "providers/twitch/TwitchChannel.hpp"
+#include "widgets/dialogs/NukePopup.hpp"
 #include "singletons/Settings.hpp"
 #include "Test.hpp"
 
@@ -149,4 +152,82 @@ TEST(FlexiiBlockedTerms, ItOnlyWorksInATwitchChannel)
     commands::listBlockedTerms(ctx);
     EXPECT_TRUE(lastSaid(channel).contains("Twitch-Kanal"))
         << lastSaid(channel).toStdString();
+}
+
+namespace {
+
+/// A message as it stands in a channel
+void say(const ChannelPtr &channel, const QString &login, const QString &text,
+         const QStringList &badges = {}, int secondsAgo = 5)
+{
+    MessageBuilder builder;
+    builder->loginName = login;
+    builder->displayName = login;
+    builder->messageText = text;
+    builder->serverReceivedTime =
+        QDateTime::currentDateTimeUtc().addSecs(-secondsAgo);
+    builder->flags.set(MessageFlag::DoNotLog);
+    for (const auto &badge : badges)
+    {
+        builder->twitchBadges.emplace_back(badge, "1");
+    }
+    channel->addMessage(builder.release(), MessageContext::Original);
+}
+
+}  // namespace
+
+TEST(FlexiiNuke, ItCatchesTheRightPeopleAndOnlyThem)
+{
+    MockApplication app;
+    auto channel = std::make_shared<TwitchChannel>("forsen");
+
+    say(channel, "spammer1", "KAUFE FOLLOWER billig");
+    say(channel, "spammer2", "kaufe follower hier");
+    say(channel, "normalo", "was ist denn hier los");
+    say(channel, "eininmod", "kaufe follower - nicht!", {"moderator"});
+    say(channel, "derstreamer", "kaufe follower", {"broadcaster"});
+    say(channel, "einvip", "kaufe follower", {"vip"});
+    say(channel, "fx_flexii", "kaufe follower");
+    // Long past, outside the stretch looked at
+    say(channel, "vorhin", "kaufe follower", {}, 3600);
+
+    const auto caught =
+        NukePopup::whoWrote(channel, "kaufe follower", 10, "fx_flexii");
+
+    QStringList names;
+    for (const auto &one : caught)
+    {
+        names.append(one.login);
+    }
+    names.sort();
+    EXPECT_EQ(names, (QStringList{"spammer1", "spammer2"}))
+        << names.join(", ").toStdString();
+}
+
+TEST(FlexiiNuke, EveryoneIsListedOnce)
+{
+    MockApplication app;
+    auto channel = std::make_shared<TwitchChannel>("forsen");
+
+    say(channel, "spammer", "erste");
+    say(channel, "spammer", "zweite");
+    say(channel, "spammer", "dritte");
+
+    const auto caught = NukePopup::whoWrote(channel, "e", 10, "ich");
+    ASSERT_EQ(caught.size(), 1u);
+    // and with the last thing they wrote
+    EXPECT_EQ(caught.at(0).message, "dritte");
+}
+
+TEST(FlexiiNuke, WhoIsBeyondATimeout)
+{
+    EXPECT_TRUE(NukePopup::beyondReach({TwitchBadge("moderator", "1")}));
+    EXPECT_TRUE(NukePopup::beyondReach({TwitchBadge("broadcaster", "1")}));
+    EXPECT_TRUE(NukePopup::beyondReach({TwitchBadge("vip", "1")}));
+    EXPECT_TRUE(NukePopup::beyondReach(
+        {TwitchBadge("subscriber", "12"), TwitchBadge("staff", "1")}));
+
+    EXPECT_FALSE(NukePopup::beyondReach({}));
+    EXPECT_FALSE(NukePopup::beyondReach({TwitchBadge("subscriber", "12")}));
+    EXPECT_FALSE(NukePopup::beyondReach({TwitchBadge("premium", "1")}));
 }

@@ -424,6 +424,22 @@ into the chat, in every channel you moderate:
 Should Twitch answer that the login may not do this, the token is older than
 the permission - logging in again under Settings -> Accounts is enough.
 
+## Clearing up after a wave
+
+**/nuke <phrase>** looks over the last ten minutes of the channel for
+everyone who wrote it and opens a window: who they are, the last thing each
+of them wrote with it in, and one button that gives them all a timeout of a
+minute. **/nuke <phrase> <minutes> <seconds>** says it otherwise.
+
+Moderators, VIPs, the broadcaster and you are never among them - a phrase
+everyone is repeating would otherwise catch the people putting a stop to
+it. The timeouts are handed over one after the other rather than all at
+once, and each carries the phrase as its reason. Nothing happens until the
+button is pressed, as with every other window here.
+
+Only what came in while the tab was open can be found - the channel's own
+buffer is what is searched, not Twitch.
+
 ## Hiding someone, and the commands as you type
 
 **/hide <name>** stops their messages arriving - for you alone. Nothing is

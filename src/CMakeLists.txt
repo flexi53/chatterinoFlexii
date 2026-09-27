@@ -877,6 +877,8 @@ set(SOURCE_FILES
         controllers/moderation/ModChanges.hpp
         providers/badgebase/BadgeBase.cpp
         providers/badgebase/BadgeBase.hpp
+        widgets/dialogs/NukePopup.cpp
+        widgets/dialogs/NukePopup.hpp
         widgets/dialogs/ModAlertPopup.cpp
         widgets/dialogs/ModAlertPopup.hpp
         widgets/dialogs/SettingsDialog.cpp
