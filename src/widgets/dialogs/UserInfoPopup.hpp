@@ -134,6 +134,9 @@ private:
         ChannelView *latestMessages = nullptr;
 
         LabelButton *usercardLabel = nullptr;
+        /// ChattiFlexii: their own chat as a tab, and their 7TV page
+        LabelButton *theirChat = nullptr;
+        LabelButton *seventvPage = nullptr;
         LabelButton *switchAvatars = nullptr;
 
         TimeoutWidget *timeoutWidget = nullptr;

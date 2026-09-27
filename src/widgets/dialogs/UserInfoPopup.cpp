@@ -35,6 +35,7 @@
 #include "util/Clipboard.hpp"
 #include "util/FormatTime.hpp"
 #include "util/Helpers.hpp"
+#include "util/OpenOwnTab.hpp"
 #include "util/LayoutCreator.hpp"
 #include "util/PostToThread.hpp"
 #include "widgets/buttons/LabelButton.hpp"
@@ -663,6 +664,17 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
             .assign(&this->ui_.notesAdd);
         auto usercard = user.emplace<LabelButton>("Usercard", this)
                             .assign(&this->ui_.usercardLabel);
+        // ChattiFlexii: their chat and their 7TV page, a click away rather
+        // than hidden in the right-click menu of the picture
+        auto theirChat = user.emplace<LabelButton>("Chat", this)
+                             .assign(&this->ui_.theirChat);
+        theirChat->setToolTip(
+            "Öffnet den Chat dieser Person als eigenen Tab - oder springt "
+            "hin, wenn er schon offen ist.");
+        auto seventv = user.emplace<LabelButton>("7TV", this)
+                           .assign(&this->ui_.seventvPage);
+        seventv->setToolTip("Öffnet ihr 7TV-Profil im Browser.");
+        seventv->setVisible(false);
         auto mod = user.emplace<PixmapButton>(this);
         mod->setPixmap(getResources().buttons.mod);
         mod->setScaleIndependentSize(30, 30);
@@ -682,6 +694,17 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
             QDesktopServices::openUrl("https://www.twitch.tv/popout/" +
                                       this->underlyingChannel_->getName() +
                                       "/viewercard/" + this->userName_);
+        });
+
+        QObject::connect(theirChat.getElement(), &Button::leftClicked, [this] {
+            showChannelTab(this->userName_, true);
+        });
+        QObject::connect(seventv.getElement(), &Button::leftClicked, [this] {
+            if (!this->seventvUserID_.isEmpty())
+            {
+                QDesktopServices::openUrl(
+                    QUrl(SEVENTV_USER_PAGE % this->seventvUserID_));
+            }
         });
 
         QObject::connect(mod.getElement(), &Button::leftClicked, [this] {
@@ -1513,6 +1536,13 @@ void UserInfoPopup::loadSevenTVAvatar(const QString &userID, bool isKick)
             const auto root = result.parseJson();
             const auto userObj = root["user"].toObject();
             this->seventvUserID_ = userObj["id"].toString();
+            // ChattiFlexii: the button only stands there once there is a
+            // page to open
+            if (this->ui_.seventvPage != nullptr)
+            {
+                this->ui_.seventvPage->setVisible(
+                    !this->seventvUserID_.isEmpty());
+            }
             auto url = userObj["avatar_url"].toString();
 
             if (url.isEmpty())
