@@ -5,8 +5,10 @@
 #include "providers/twitch/IrcMessageHandler.hpp"
 
 #include "controllers/moderation/EmoteSpamDetector.hpp"
+#include "controllers/activity/ActivityMarks.hpp"
 #include "controllers/moderation/ModerationAssistant.hpp"
 #include "util/Advanced.hpp"
+#include "util/MentionFlash.hpp"
 #include "controllers/moderation/RepeatSpamDetector.hpp"
 #include "controllers/moderation/WordAlertDetector.hpp"
 
@@ -1301,6 +1303,23 @@ void IrcMessageHandler::addMessage(Communi::IrcMessage *message,
         // them has already opened a window for does not get another on top. Messages loaded from
         // history are left out, or joining a channel would open a window for
         // everything that happened before.
+        // ChattiFlexii: where your name fell, for the marks under the curve
+        if (!tags.contains("historical") &&
+            msg->flags.has(MessageFlag::Highlighted))
+        {
+            const auto own = getApp()
+                                 ->getAccounts()
+                                 ->twitch.getCurrent()
+                                 ->getUserName();
+            if (mentionflash::namedIn(msg->messageText, own))
+            {
+                activitymarks::note(chan->getName(),
+                                    activitymarks::Kind::Mention,
+                                    msg->displayName,
+                                    msg->serverReceivedTime.toUTC());
+            }
+        }
+
         // ChattiFlexii: the alerts belong to the account this was built for
         if (!isSub && !tags.contains("historical") && advanced::unlocked())
         {

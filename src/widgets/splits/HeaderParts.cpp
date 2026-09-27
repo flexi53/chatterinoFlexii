@@ -380,6 +380,8 @@ void reset()
     s->headerFollowers.setValue(s->headerFollowers.getDefaultValue());
     s->headerChatters.setValue(s->headerChatters.getDefaultValue());
     s->headerMessageRate.setValue(s->headerMessageRate.getDefaultValue());
+    s->headerMessageRateTrend.setValue(
+        s->headerMessageRateTrend.getDefaultValue());
     s->headerViewerTrend.setValue(s->headerViewerTrend.getDefaultValue());
     s->headerColors.setValue(s->headerColors.getDefaultValue());
     s->splitHeaderSpacing.setValue(s->splitHeaderSpacing.getDefaultValue());
@@ -580,9 +582,17 @@ QString extrasAfterName(const Extras &extras, std::vector<Run> *runs, int at)
     }
     if (settings.headerMessageRate && extras.messagesPerMinute)
     {
-        appendItem(title, runs, Item::Rate,
-                   " - " + QString::number(*extras.messagesPerMinute) + "/min",
-                   at);
+        auto rate = QString::number(*extras.messagesPerMinute) + "/min";
+        // The same arrow the viewers get, against the half hour before
+        if (settings.headerMessageRateTrend && extras.rateTrend &&
+            std::abs(*extras.rateTrend) >= channelnumbers::TREND_WORTH_SAYING)
+        {
+            rate += QStringLiteral(" %1%2 %")
+                        .arg(*extras.rateTrend > 0 ? "↑" : "↓")
+                        .arg(int(std::round(std::abs(*extras.rateTrend) *
+                                            100.0)));
+        }
+        appendItem(title, runs, Item::Rate, " - " + rate, at);
     }
     return title;
 }

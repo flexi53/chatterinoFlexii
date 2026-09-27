@@ -9,6 +9,7 @@
 #include "controllers/accounts/AccountController.hpp"
 #include "controllers/commands/builtin/kick/ModerationActions.hpp"
 #include "controllers/commands/CommandContext.hpp"
+#include "controllers/activity/ActivityMarks.hpp"
 #include "controllers/moderation/SharedChatActions.hpp"
 #include "controllers/commands/common/ChannelAction.hpp"
 #include "providers/twitch/api/Helix.hpp"
@@ -92,11 +93,14 @@ void banUserByID(const ChannelPtr &channel, const QString &channelID,
 {
     getHelix()->banUser(
         channelID, sourceUserID, targetUserID, std::nullopt, reason,
-        [channel, channelID, sourceUserID, targetUserID, reason] {
+        [channel, channelID, sourceUserID, targetUserID, reason, displayName] {
             // No response for bans, they're emitted over pubsub/IRC instead
             // ChattiFlexii: and on to the other channels of a shared chat
             sharedchat::carryOver(channel, channelID, sourceUserID,
                                   targetUserID, {.reason = reason});
+            // ChattiFlexii: a mark under the activity curve
+            activitymarks::note(channel->getName(),
+                                activitymarks::Kind::ModAction, displayName);
         },
         [channel, displayName](auto error, auto message) {
             auto errorMessage =
@@ -112,12 +116,16 @@ void timeoutUserByID(const ChannelPtr &channel, const QString &channelID,
 {
     getHelix()->banUser(
         channelID, sourceUserID, targetUserID, duration, reason,
-        [channel, channelID, sourceUserID, targetUserID, duration, reason] {
+        [channel, channelID, sourceUserID, targetUserID, duration, reason,
+         displayName] {
             // No response for timeouts, they're emitted over pubsub/IRC instead
             // ChattiFlexii: and on to the other channels of a shared chat
             sharedchat::carryOver(channel, channelID, sourceUserID,
                                   targetUserID,
                                   {.duration = duration, .reason = reason});
+            // ChattiFlexii: a mark under the activity curve
+            activitymarks::note(channel->getName(),
+                                activitymarks::Kind::ModAction, displayName);
         },
         [channel, displayName](auto error, auto message) {
             auto errorMessage =

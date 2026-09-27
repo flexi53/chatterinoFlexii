@@ -38,6 +38,7 @@
 #include "util/ProfileSetup.hpp"
 #include "util/Helpers.hpp"
 #include "util/MentionFlash.hpp"
+#include "controllers/activity/ActivityMarks.hpp"
 #include "controllers/twitch/ChannelNumbers.hpp"
 #include "widgets/splits/HeaderParts.hpp"
 #include "widgets/helper/ActiveBorder.hpp"
@@ -1820,15 +1821,37 @@ TEST_F(FlexiiActivityGraphFixture, TheChatSpeedIsWhatCameInTheLastMinute)
 {
     EXPECT_EQ(this->graph.messagesPerMinute(), 0);
 
-    this->chat();
-    this->chat();
+    // Four every half minute is eight a minute, whether the half minute
+    // running is through or has just begun
+    for (int i = 0; i < 4; i++)
+    {
+        this->chat();
+    }
     this->pass(30);
-    this->chat();
-    // Both half minutes together make the minute just gone
-    EXPECT_EQ(this->graph.messagesPerMinute(), 3);
+    EXPECT_EQ(this->graph.messagesPerMinute(), 8);
 
-    // and what is older than that does not count any more
-    this->pass(60);
+    // Steady stays steady, half minute after half minute
+    for (int round = 0; round < 4; round++)
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            this->chat();
+        }
+        this->pass(30);
+        EXPECT_EQ(this->graph.messagesPerMinute(), 8) << "round " << round;
+    }
+
+    // Counted against the time it really covers: eight within fifteen
+    // seconds is a faster chat, not the same one
+    for (int i = 0; i < 8; i++)
+    {
+        this->chat();
+    }
+    this->pass(15);
+    EXPECT_GT(this->graph.messagesPerMinute(), 8);
+
+    // and what is older than a minute does not count any more
+    this->pass(120);
     EXPECT_EQ(this->graph.messagesPerMinute(), 0);
 }
 
@@ -2400,4 +2423,132 @@ TEST(FlexiiBundledPlugins, TheOneThatIsNeededComesOn)
     enableBundledPlugins({});
     EXPECT_FALSE(s->pluginsEnabled.getValue());
     EXPECT_TRUE(s->enabledPlugins.getValue().empty());
+}
+
+TEST_F(FlexiiActivityGraphFixture, TheChatSpeedSaysWhichWayItIsGoing)
+{
+    this->graph.followStream("1", this->clock);
+
+    // Too little counted yet - five minutes say nothing about a trend
+    for (int i = 0; i < 10; i++)
+    {
+        this->chat();
+        this->chat();
+        this->pass(30);
+    }
+    EXPECT_FALSE(this->graph.rateTrend().has_value());
+
+    // Half an hour at four a minute, steady
+    for (int i = 0; i < 60; i++)
+    {
+        this->chat();
+        this->chat();
+        this->pass(30);
+    }
+    const auto steady = this->graph.rateTrend();
+    ASSERT_TRUE(steady.has_value());
+    EXPECT_NEAR(*steady, 0.0, 0.2) << "a steady chat has no trend";
+
+    // and now it takes off: twice as much in the last minute
+    this->chat();
+    this->chat();
+    this->chat();
+    this->chat();
+    this->pass(30);
+    this->chat();
+    this->chat();
+    this->chat();
+    this->chat();
+    this->pass(30);
+
+    const auto faster = this->graph.rateTrend();
+    ASSERT_TRUE(faster.has_value());
+    EXPECT_GT(*faster, 0.5) << "twice the pace is worth saying";
+
+    // A chat that fell silent goes the other way
+    this->pass(60);
+    const auto quiet = this->graph.rateTrend();
+    ASSERT_TRUE(quiet.has_value());
+    EXPECT_LT(*quiet, -0.5);
+}
+
+TEST(FlexiiHeaderNumbers, ThePaceCarriesItsArrow)
+{
+    MockApplication app;
+    auto *s = getSettings();
+    s->headerMessageRate.setValue(true);
+    s->headerMessageRateTrend.setValue(true);
+
+    auto text = headerparts::extrasAfterName(
+        {.messagesPerMinute = 42, .rateTrend = 0.30});
+    EXPECT_TRUE(text.contains("42/min ↑30 %")) << text.toStdString();
+
+    text = headerparts::extrasAfterName(
+        {.messagesPerMinute = 9, .rateTrend = -0.5});
+    EXPECT_TRUE(text.contains("9/min ↓50 %")) << text.toStdString();
+
+    // A chat going along as it was says nothing
+    text = headerparts::extrasAfterName(
+        {.messagesPerMinute = 42, .rateTrend = 0.01});
+    EXPECT_TRUE(text.contains("42/min")) << text.toStdString();
+    EXPECT_FALSE(text.contains("↑")) << text.toStdString();
+
+    // and without the box ticked there is no arrow either
+    s->headerMessageRateTrend.setValue(false);
+    text = headerparts::extrasAfterName(
+        {.messagesPerMinute = 42, .rateTrend = 0.30});
+    EXPECT_FALSE(text.contains("↑")) << text.toStdString();
+
+    s->headerMessageRate.setValue(false);
+}
+
+TEST(FlexiiActivityMarks, OnlyWhatFallsInTheStretchAsked)
+{
+    using namespace chatterino::activitymarks;
+    forget();
+
+    const auto now = QDateTime::currentDateTimeUtc();
+    note("Kanal", Kind::Mention, "tom", now.addSecs(-3600));
+    note("kanal", Kind::Alert, "spammer", now.addSecs(-1800));
+    note("kanal", Kind::ModAction, "spammer", now.addSecs(-60));
+    note("woanders", Kind::Mention, "tom", now.addSecs(-60));
+
+    // However the channel is written
+    const auto all = marks("KANAL", now.addSecs(-7200), now);
+    ASSERT_EQ(all.size(), 3u);
+    EXPECT_EQ(all.at(0).kind, Kind::Mention);
+    EXPECT_EQ(all.at(2).kind, Kind::ModAction);
+    EXPECT_EQ(all.at(1).who, "spammer");
+
+    // Only what falls inside
+    EXPECT_EQ(marks("kanal", now.addSecs(-900), now).size(), 1u);
+    EXPECT_TRUE(marks("kanal", now.addSecs(-7200), now.addSecs(-7000)).empty());
+    EXPECT_TRUE(marks("niemand", now.addSecs(-7200), now).empty());
+
+    // and each channel keeps to itself
+    EXPECT_EQ(marks("woanders", now.addSecs(-7200), now).size(), 1u);
+
+    EXPECT_EQ(nameOf(Kind::Mention), "Erwähnung");
+    EXPECT_EQ(nameOf(Kind::Alert), "Alarm");
+    EXPECT_EQ(nameOf(Kind::ModAction), "Moderiert");
+    forget();
+}
+
+TEST(FlexiiActivityMarks, ALongDayDoesNotGrowWithoutEnd)
+{
+    using namespace chatterino::activitymarks;
+    forget();
+
+    const auto now = QDateTime::currentDateTimeUtc();
+    for (size_t i = 0; i < MOST_PER_CHANNEL + 50; i++)
+    {
+        note("kanal", Kind::Mention, QString::number(i),
+             now.addSecs(-qint64(MOST_PER_CHANNEL + 50 - i)));
+    }
+
+    const auto kept = marks("kanal", now.addSecs(-100000), now);
+    EXPECT_EQ(kept.size(), MOST_PER_CHANNEL);
+    // The oldest ones went, the newest stayed
+    EXPECT_EQ(kept.back().who, QString::number(MOST_PER_CHANNEL + 49));
+    forget();
 }

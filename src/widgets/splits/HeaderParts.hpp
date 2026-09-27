@@ -95,6 +95,8 @@ struct Extras {
     std::optional<int> followers;
     std::optional<int> chatters;
     std::optional<int> messagesPerMinute;
+    /// Which way the chat's pace went, as a share of what it was
+    std::optional<double> rateTrend;
     /// Which way the audience went, as a share of what it was
     std::optional<double> viewerTrend;
 };

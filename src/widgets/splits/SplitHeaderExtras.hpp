@@ -11,6 +11,7 @@
 #include <pajlada/signals/signalholder.hpp>
 #include <QDateTime>
 #include <QPixmap>
+#include <QPoint>
 #include <QSize>
 #include <QString>
 #include <QTimer>
@@ -20,6 +21,8 @@
 #include <optional>
 #include <utility>
 #include <vector>
+
+class QMouseEvent;
 
 namespace chatterino {
 
@@ -160,6 +163,19 @@ public:
     /// shows as "42/min"
     int messagesPerMinute() const;
 
+    /// How the last minute stands against the half hour before it, as a
+    /// share of it - 0.18 for a fifth livelier. Empty while too little has
+    /// been counted to say anything.
+    std::optional<double> rateTrend() const;
+
+    /// How far back the trend looks, and how much has to be counted before
+    /// it says anything, in seconds
+    static constexpr int TREND_OVER = 30 * 60;
+    static constexpr int TREND_NEEDS = 10 * 60;
+    /// The last minutes are left out of what it is compared with - they are
+    /// the ones being asked about
+    static constexpr int TREND_LEAVES_OUT = 2 * 60;
+
     /// What the channel streamed over the stretch the curve covers, in
     /// order. The first one begins where the curve does, whatever was
     /// running then.
@@ -177,6 +193,10 @@ public:
     /// A made-up quarter hour of chat, for the preview in the settings
     void showSample();
 
+    /// What to do when a place in the curve is clicked - the header sends
+    /// the chat to that moment
+    void whenClicked(std::function<void(const QDateTime &)> jump);
+
     /// As wide as it would like to be
     QSize sizeHint() const override;
     /// As narrow as it may get when the split is small
@@ -185,6 +205,9 @@ public:
 protected:
     void paintEvent(QPaintEvent *event) override;
     void scaleChangedEvent(float scale) override;
+    /// Buttons -> Titelleiste: a click sends the chat to that moment
+    void mousePressEvent(QMouseEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
     /// The text is built when it is about to be shown, so it is never a
     /// half minute out of date
     bool event(QEvent *event) override;
@@ -225,6 +248,13 @@ private:
     QDateTime streamStart_;
     /// Which stream that is, so a new one starts the counting over
     QString streamId_;
+
+    /// Which moment of the curve stands at @a x, or an invalid one where
+    /// the curve does not reach
+    QDateTime timeAt(int x) const;
+
+    std::function<void(const QDateTime &)> jump_;
+    QPoint pressedAt_;
 
     std::function<QDateTime()> clock_;
     int wantedWidth_{};

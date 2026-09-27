@@ -498,6 +498,14 @@ void ButtonsPage::initTitleBar(GeneralPageView &layout)
                      "ist.")
         ->addKeywords({"nachrichten", "minute", "tempo", "aktivität"})
         ->addTo(layout);
+    SettingWidget::checkbox("Tempo-Trend", s.headerMessageRateTrend)
+        ->setTooltip("Ein Pfeil hinter dem Tempo: wie die letzte Minute "
+                     "gegen die halbe Stunde davor steht, etwa „42/min "
+                     "↑ 30 %“. Braucht zehn Minuten offenen Kanal, bevor er "
+                     "etwas sagt, und schweigt bei weniger als 3 % "
+                     "Unterschied.")
+        ->addKeywords({"tempo", "trend", "pfeil", "nachrichten"})
+        ->addTo(layout);
 
     layout.addTitle("Farben im Titel");
     layout.addDescription(

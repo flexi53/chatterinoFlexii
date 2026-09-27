@@ -1620,6 +1620,41 @@ bool ChannelView::scrollToMessage(const MessagePtr &message)
     return true;
 }
 
+bool ChannelView::scrollToTime(const QDateTime &when)
+{
+    auto &messagesSnapshot = this->getMessagesSnapshot();
+    if (messagesSnapshot.size() == 0 || !when.isValid())
+    {
+        return false;
+    }
+
+    // The last message that came in before that moment - what stood at the
+    // top of the chat back then
+    size_t found = SIZE_MAX;
+    for (size_t i = 0; i < messagesSnapshot.size(); i++)
+    {
+        const auto &message = messagesSnapshot[i]->getMessagePtr();
+        if (!message->serverReceivedTime.isValid())
+        {
+            continue;
+        }
+        if (message->serverReceivedTime.toUTC() > when.toUTC())
+        {
+            break;
+        }
+        found = i;
+    }
+
+    // Nothing that old is left - then the oldest one there is
+    if (found == SIZE_MAX)
+    {
+        found = 0;
+    }
+
+    this->scrollToMessageLayout(messagesSnapshot[found].get(), found);
+    return true;
+}
+
 bool ChannelView::scrollToMessageId(const QString &messageId)
 {
     auto &messagesSnapshot = this->getMessagesSnapshot();

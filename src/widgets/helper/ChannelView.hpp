@@ -133,6 +133,9 @@ public:
      * @return <code>true</code> if the message was found and highlighted.
      */
     bool scrollToMessageId(const QString &id);
+    /// ChattiFlexii: puts the chat where it stood at @a when - what the
+    /// activity curve is clicked for. The message it lands on lights up.
+    bool scrollToTime(const QDateTime &when);
 
     /// Pausing
     bool pausable() const;

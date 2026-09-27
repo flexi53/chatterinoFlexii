@@ -7,14 +7,17 @@
 #include "Application.hpp"
 
 #include "common/Channel.hpp"
+#include "controllers/activity/ActivityMarks.hpp"
 #include "messages/Message.hpp"
 #include "providers/twitch/TwitchChannel.hpp"
 #include "singletons/Theme.hpp"
 #include "util/RoundPixmap.hpp"
 #include "util/UiStyle.hpp"
 
+#include <QApplication>
 #include <QEvent>
 #include <QHelpEvent>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QRegion>
 #include <QTextLayout>
@@ -437,6 +440,26 @@ void ActivityGraph::updateTooltip(std::optional<int> at)
     this->setToolTip(this->description(at));
 }
 
+namespace {
+
+/// The colour a mark under the curve is drawn in - told apart at a glance,
+/// whatever the theme does with its own colours
+QColor markColor(activitymarks::Kind kind, Theme *theme)
+{
+    switch (kind)
+    {
+        case activitymarks::Kind::Mention:
+            return {0x4d, 0xa6, 0xff};
+        case activitymarks::Kind::Alert:
+            return {0xff, 0x8c, 0x1a};
+        case activitymarks::Kind::ModAction:
+            return {0x8c, 0xd8, 0x6b};
+    }
+    return theme->messages.textColors.regular;
+}
+
+}  // namespace
+
 QString ActivityGraph::lengthLabel(qint64 seconds)
 {
     const auto minutes = std::max<qint64>(0, seconds) / 60;
@@ -520,13 +543,63 @@ int ActivityGraph::messagesPerMinute() const
     {
         return 0;
     }
-    // The last two half minutes make the minute just gone
-    auto count = this->spans_.back();
-    if (this->spans_.size() > 1)
+
+    // The half minute running now and the one before it. The one running is
+    // only part way through, so what they hold is counted against the time
+    // they really cover - otherwise the number would halve every time a
+    // half minute rolls over, and a steady chat would look as if it fell
+    // silent.
+    const auto count = qint64(this->spans_.size()) > 1
+                           ? this->spans_.back() +
+                                 this->spans_.at(this->spans_.size() - 2)
+                           : this->spans_.back();
+
+    const auto elapsed = std::clamp<qint64>(
+        this->spansStart_.secsTo(this->now()) -
+            (qint64(this->spans_.size()) - 1) * SPAN_SECONDS,
+        0, SPAN_SECONDS);
+    const auto covered =
+        double((this->spans_.size() > 1 ? SPAN_SECONDS : 0) + elapsed);
+
+    // A window barely open says nothing sensible
+    return int(std::lround(double(count) * 60.0 / std::max(15.0, covered)));
+}
+
+std::optional<double> ActivityGraph::rateTrend() const
+{
+    if (this->spans_.size() < 2)
     {
-        count += this->spans_.at(this->spans_.size() - 2);
+        return {};
     }
-    return count;
+
+    const auto now = this->now();
+    const auto from = now.addSecs(-TREND_OVER);
+    const auto until = now.addSecs(-TREND_LEAVES_OUT);
+
+    // What came in over that stretch, and how much of it was counted at all
+    int messages = 0;
+    int spans = 0;
+    for (size_t i = 0; i < this->spans_.size(); i++)
+    {
+        const auto when = this->spansStart_.addSecs(qint64(i) * SPAN_SECONDS);
+        if (when < from || when > until)
+        {
+            continue;
+        }
+        messages += this->spans_.at(i);
+        spans++;
+    }
+
+    // Too short a stretch says nothing - a channel just opened, or one that
+    // has only been quiet
+    if (spans * SPAN_SECONDS < TREND_NEEDS || messages == 0)
+    {
+        return {};
+    }
+
+    const auto before =
+        double(messages) / (double(spans * SPAN_SECONDS) / 60.0);
+    return (double(this->messagesPerMinute()) - before) / before;
 }
 
 QString ActivityGraph::description(std::optional<int> at) const
@@ -602,6 +675,32 @@ QString ActivityGraph::description(std::optional<int> at) const
         }
     }
 
+    // and what happened in between
+    if (this->channel_ != nullptr)
+    {
+        const auto marks =
+            activitymarks::marks(this->channel_->getName(), from, to);
+        if (!marks.empty())
+        {
+            text += QStringLiteral("\n");
+            // The last few, newest first - all of them would fill a screen
+            const size_t most = 6;
+            size_t shown = 0;
+            for (auto it = marks.rbegin(); it != marks.rend() && shown < most;
+                 ++it, shown++)
+            {
+                text += QStringLiteral("\n%1 Uhr: %2 (%3)")
+                            .arg(it->when.toLocalTime().toString("HH:mm"),
+                                 activitymarks::nameOf(it->kind), it->who);
+            }
+            if (marks.size() > most)
+            {
+                text += QStringLiteral("\n… und %1 weitere")
+                            .arg(marks.size() - most);
+            }
+        }
+    }
+
     const auto line = [](const Stretch &stretch) {
         return QStringLiteral("%1 - %2 Uhr: %3 (%4)")
             .arg(stretch.from.toLocalTime().toString("HH:mm"),
@@ -626,6 +725,65 @@ QString ActivityGraph::description(std::optional<int> at) const
     }
 
     return text;
+}
+
+void ActivityGraph::whenClicked(std::function<void(const QDateTime &)> jump)
+{
+    this->jump_ = std::move(jump);
+    this->setCursor(this->jump_ ? Qt::PointingHandCursor : Qt::ArrowCursor);
+}
+
+QDateTime ActivityGraph::timeAt(int x) const
+{
+    const auto area = this->curveArea();
+    if (area.width() <= 1)
+    {
+        return {};
+    }
+
+    const auto share = (double(x) - area.left()) / area.width();
+    if (share < 0 || share > 1)
+    {
+        return {};
+    }
+
+    const auto [from, to] = this->window();
+    return from.addSecs(qint64(share * double(from.secsTo(to))));
+}
+
+void ActivityGraph::mousePressEvent(QMouseEvent *event)
+{
+    if (!this->jump_ || event->button() != Qt::LeftButton)
+    {
+        BaseWidget::mousePressEvent(event);
+        return;
+    }
+    this->pressedAt_ = event->pos();
+    event->accept();
+}
+
+void ActivityGraph::mouseReleaseEvent(QMouseEvent *event)
+{
+    if (!this->jump_ || event->button() != Qt::LeftButton)
+    {
+        BaseWidget::mouseReleaseEvent(event);
+        return;
+    }
+
+    // A click, not the end of a drag
+    if ((event->pos() - this->pressedAt_).manhattanLength() >
+        QApplication::startDragDistance())
+    {
+        event->accept();
+        return;
+    }
+
+    const auto when = this->timeAt(event->pos().x());
+    if (when.isValid())
+    {
+        this->jump_(when);
+    }
+    event->accept();
 }
 
 void ActivityGraph::scaleChangedEvent(float scale)
@@ -892,6 +1050,51 @@ void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
         }
         const auto x = area.left() + (area.width() * offset / double(seconds));
         painter.drawLine(QPointF(x, area.top()), QPointF(x, axisY));
+    }
+
+    // What happened while you watched: your name, an alert, a timeout you
+    // gave - a small tick each, right above the line of time
+    if (this->channel_ != nullptr)
+    {
+        const auto marks =
+            activitymarks::marks(this->channel_->getName(), from, to);
+        const auto tick = 4.0 * this->scale();
+        double lastX = -1000;
+        for (const auto &mark : marks)
+        {
+            const auto offset = double(from.secsTo(mark.when));
+            if (offset < 0 || offset > double(seconds))
+            {
+                continue;
+            }
+            const auto x =
+                area.left() + (area.width() * offset / double(seconds));
+            // Two marks on the same spot would only smudge each other
+            if (std::abs(x - lastX) < tick)
+            {
+                continue;
+            }
+            lastX = x;
+
+            const auto color = markColor(mark.kind, getTheme());
+
+            // A short stem up into the curve, so it is seen at a glance
+            auto stem = color;
+            stem.setAlpha(120);
+            painter.setPen(QPen(stem, std::max(1.0, double(this->scale()))));
+            painter.drawLine(QPointF(x, axisY - (tick * 1.8)),
+                             QPointF(x, axisY));
+
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(color);
+            QPainterPath pointer;
+            pointer.moveTo(x, axisY - tick);
+            pointer.lineTo(x - (tick * 0.75), axisY + (tick * 0.5));
+            pointer.lineTo(x + (tick * 0.75), axisY + (tick * 0.5));
+            pointer.closeSubpath();
+            painter.drawPath(pointer);
+        }
+        painter.setBrush(Qt::NoBrush);
     }
 
     // What ran between those lines, written over the curve where the

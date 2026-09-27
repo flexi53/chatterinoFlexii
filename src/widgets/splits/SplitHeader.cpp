@@ -33,6 +33,7 @@
 #include "widgets/buttons/LabelButton.hpp"
 #include "widgets/buttons/SvgButton.hpp"
 #include "widgets/dialogs/SettingsDialog.hpp"
+#include "widgets/helper/ChannelView.hpp"
 #include "widgets/helper/CommonTexts.hpp"
 #include "widgets/Label.hpp"
 #include "widgets/splits/Split.hpp"
@@ -408,6 +409,10 @@ void SplitHeader::initializeLayout()
     this->coverPicture_ =
         new HeaderPicture(HeaderPicture::Shape::Cover, 3, this);
     this->activity_ = new ActivityGraph(this);
+    // A click in the curve sends the chat to that moment
+    this->activity_->whenClicked([this](const QDateTime &when) {
+        this->split_->getChannelView().scrollToTime(when);
+    });
     // As wide as there is room for, down to a third of that, so a narrow
     // split keeps its title
     this->activity_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -1116,6 +1121,10 @@ headerparts::Extras SplitHeader::channelNumbers(TwitchChannel *channel) const
     if (settings->headerMessageRate && this->activity_ != nullptr)
     {
         extras.messagesPerMinute = this->activity_->messagesPerMinute();
+        if (settings->headerMessageRateTrend)
+        {
+            extras.rateTrend = this->activity_->rateTrend();
+        }
     }
     if (settings->headerFollowers)
     {

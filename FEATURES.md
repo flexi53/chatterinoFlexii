@@ -112,6 +112,14 @@ the cover of what it streams, next to the name - and a small curve of how
 lively the chat was over the last ten minutes, counted from when it is
 switched on; its tooltip tells the numbers.
 
+A **click in the curve** sends the chat to that moment: it scrolls to the
+message that stood there and lets it light up, the same way a message
+jumped to does. Under the curve, small pointers say what happened while you
+were watching - blue where your name fell, orange where an alert window
+came up, green where you gave a timeout or a ban. Hovering names the last
+of them with their times. Only what came in while the program was running
+is marked, as the curve knows nothing older either.
+
 Over the curve stands what the channel was streaming at the time, centred
 between the lines that mark each change - with how long it lasted where
 there is room for both ("Just Chatting · 1 h 30"). Too narrow a stretch is
@@ -123,7 +131,11 @@ Titelleiste: the **Zuschauer-Trend** behind the viewer count ("↑ 18 %"
 against the last half hour, nothing while the channel holds steady),
 **Follows**, **Leute im Chat** - Twitch tells that to moderators only, so it
 shows in your mod channels - and **Nachrichten pro Minute**, counted from
-what arrives here rather than asked of Twitch, so it works offline too.
+what arrives here rather than asked of Twitch, so it works offline too -
+with its own **Tempo-Trend** arrow against the half hour before, once the
+channel has been open ten minutes. The pace is counted against the time it
+really covers, so it neither halves as a half minute rolls over nor makes a
+steady chat look as if it fell silent.
 
 Every part of the title can be given a **colour of its own** on the same
 page - the trend in green, the follows in purple - while the dashes between

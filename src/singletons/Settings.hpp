@@ -586,6 +586,8 @@ public:
                                   false};
     BoolSetting headerMessageRate = {"/appearance/splitheader/showMessageRate",
                                      false};
+    BoolSetting headerMessageRateTrend = {
+        "/appearance/splitheader/showMessageRateTrend", false};
     BoolSetting headerViewerTrend = {"/appearance/splitheader/showViewerTrend",
                                      false};
     /// What parts of the title were given a colour: "uptime:#ffcc00,..."

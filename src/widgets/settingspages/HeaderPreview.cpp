@@ -70,6 +70,7 @@ QString sampleTitle(std::vector<headerparts::Run> *runs = nullptr)
         .followers = 48250,
         .chatters = 1730,
         .messagesPerMinute = 42,
+        .rateTrend = 0.30,
         .viewerTrend = 0.18,
     };
     return headerparts::composeTitle(
@@ -200,6 +201,7 @@ HeaderPreview::HeaderPreview(QWidget *parent)
     s->headerFollowers.connect(reload, this->connections_, false);
     s->headerChatters.connect(reload, this->connections_, false);
     s->headerMessageRate.connect(reload, this->connections_, false);
+    s->headerMessageRateTrend.connect(reload, this->connections_, false);
     s->headerColors.connect(reload, this->connections_, false);
     s->splitHeaderSpacing.connect(reload, this->connections_, false);
     s->splitHeaderWidths.connect(reload, this->connections_, false);

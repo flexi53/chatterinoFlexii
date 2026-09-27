@@ -664,6 +664,8 @@ set(SOURCE_FILES
         util/MentionFlash.hpp
         util/OnceFlag.cpp
         util/OnceFlag.hpp
+        controllers/activity/ActivityMarks.cpp
+        controllers/activity/ActivityMarks.hpp
         controllers/twitch/ChannelNumbers.cpp
         controllers/twitch/ChannelNumbers.hpp
         controllers/moderation/ModerationAssistant.cpp

@@ -9,6 +9,8 @@
 #include "controllers/moderation/ModerationAssistant.hpp"
 #include "widgets/dialogs/ModAlertPopup.hpp"
 
+#include "controllers/activity/ActivityMarks.hpp"
+
 #include "controllers/moderation/AlertMute.hpp"
 #include "widgets/dialogs/AlertLevelBar.hpp"
 #include "widgets/dialogs/WarnDialog.hpp"
@@ -384,6 +386,10 @@ ModAlertPopup::ModAlertPopup(QString channel, QString login, QWidget *parent)
     , login_(std::move(login))
 {
     this->setWindowTitle(QStringLiteral("#%1").arg(this->channel_));
+    // ChattiFlexii: a mark under the activity curve, so a peak can be told
+    // apart later - lively chat or trouble
+    activitymarks::note(this->channel_, activitymarks::Kind::Alert,
+                        this->login_);
     this->setAttribute(Qt::WA_DeleteOnClose);
     // Pops up while the moderator may be typing - it must not take the
     // keyboard away from them
