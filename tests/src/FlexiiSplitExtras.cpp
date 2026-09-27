@@ -2552,3 +2552,99 @@ TEST(FlexiiActivityMarks, ALongDayDoesNotGrowWithoutEnd)
     EXPECT_EQ(kept.back().who, QString::number(MOST_PER_CHANNEL + 49));
     forget();
 }
+
+TEST(FlexiiChannelNumbers, WhatWasWatchedOverAStretch)
+{
+    using namespace chatterino::channelnumbers;
+    forget();
+
+    const auto start = QDateTime::currentDateTimeUtc().addSecs(-3600);
+    noteViewers("7", 1000, start);
+    noteViewers("7", 3000, start.addSecs(600));
+    noteViewers("7", 2000, start.addSecs(1200));
+
+    const auto all = viewersBetween("7", start, start.addSecs(1800));
+    ASSERT_TRUE(all.has_value());
+    EXPECT_EQ(all->average, 2000);
+    EXPECT_EQ(all->most, 3000);
+
+    // Only what falls inside the stretch asked about
+    const auto later = viewersBetween("7", start.addSecs(900),
+                                      start.addSecs(1800));
+    ASSERT_TRUE(later.has_value());
+    EXPECT_EQ(later->average, 2000);
+    EXPECT_EQ(later->most, 2000);
+
+    // and nothing where nothing was counted
+    EXPECT_FALSE(viewersBetween("7", start.addSecs(3000),
+                                start.addSecs(3600)).has_value());
+    EXPECT_FALSE(viewersBetween("niemand", start, start.addSecs(1800))
+                     .has_value());
+    forget();
+}
+
+TEST_F(FlexiiActivityGraphFixture, HoveringSaysHowTheStretchWent)
+{
+    this->graph.resize(400, 28);
+    this->graph.followStream("1", this->clock);
+    this->graph.noteCategory("Just Chatting");
+
+    for (int i = 0; i < 40; i++)
+    {
+        this->chat();
+        this->chat();
+        this->pass(60);
+    }
+
+    // Without the mouse over it, the plain description
+    const auto plain = this->graph.description();
+    EXPECT_FALSE(plain.contains("Hier:")) << plain.toStdString();
+
+    // With it, the stretch under the mouse comes first, with its numbers
+    const auto over = this->graph.description(200);
+    EXPECT_TRUE(over.contains("Hier:")) << over.toStdString();
+    EXPECT_TRUE(over.contains("Just Chatting")) << over.toStdString();
+    EXPECT_TRUE(over.contains("⌀")) << over.toStdString();
+    EXPECT_TRUE(over.contains("Spitze")) << over.toStdString();
+    // Two every minute
+    EXPECT_TRUE(over.contains("⌀ 2/min")) << over.toStdString();
+}
+
+TEST_F(FlexiiActivityGraphFixture, MarksAreOnlyCountedWhereTheyAreWanted)
+{
+    using namespace chatterino::activitymarks;
+    forget();
+    this->graph.resize(400, 28);
+    this->graph.followStream("1", this->clock);
+    this->graph.noteCategory("Just Chatting");
+    for (int i = 0; i < 20; i++)
+    {
+        this->chat();
+        this->pass(60);
+    }
+
+    note("test", Kind::Mention, "tom", this->clock.addSecs(-600));
+    note("test", Kind::ModAction, "spammer", this->clock.addSecs(-300));
+
+    auto *s = getSettings();
+    // Moderating leaves a lot of them, so those start out hidden
+    EXPECT_TRUE(s->curveMarkMentions.getValue());
+    EXPECT_FALSE(s->curveMarkActions.getValue());
+
+    auto text = this->graph.description(200);
+    EXPECT_TRUE(text.contains("Erwähnung")) << text.toStdString();
+    EXPECT_FALSE(text.contains("Moderiert")) << text.toStdString();
+
+    s->curveMarkActions.setValue(true);
+    text = this->graph.description(200);
+    EXPECT_TRUE(text.contains("Moderiert")) << text.toStdString();
+
+    s->curveMarkMentions.setValue(false);
+    s->curveMarkActions.setValue(false);
+    text = this->graph.description(200);
+    EXPECT_FALSE(text.contains("Erwähnung")) << text.toStdString();
+    EXPECT_FALSE(text.contains("Moderiert")) << text.toStdString();
+
+    s->curveMarkMentions.setValue(s->curveMarkMentions.getDefaultValue());
+    forget();
+}

@@ -25,10 +25,13 @@ public:
 private:
     void initLayout(GeneralPageView &layout);
     void initTitleBar(GeneralPageView &layout);
+    /// Buttons -> Kurve: everything about the activity curve in one place
+    void initCurve(GeneralPageView &layout);
 
     QTabWidget *tabs_{};
     GeneralPageView *view_{};
     GeneralPageView *titleBar_{};
+    GeneralPageView *curve_{};
 };
 
 }  // namespace chatterino

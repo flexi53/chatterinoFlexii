@@ -9,6 +9,7 @@
 
 #include <QHash>
 
+#include <algorithm>
 #include <deque>
 
 namespace chatterino::channelnumbers {
@@ -186,6 +187,37 @@ std::optional<double> viewerTrend(const QString &broadcasterId, QDateTime now)
 
     return (double(latest.second) - double(before->second)) /
            double(before->second);
+}
+
+std::optional<Watched> viewersBetween(const QString &broadcasterId,
+                                      const QDateTime &from,
+                                      const QDateTime &to)
+{
+    const auto found = viewerStore().find(broadcasterId);
+    if (found == viewerStore().end())
+    {
+        return {};
+    }
+
+    qint64 sum = 0;
+    int counted = 0;
+    int most = 0;
+    for (const auto &[when, count] : *found)
+    {
+        if (when < from || when > to)
+        {
+            continue;
+        }
+        sum += count;
+        counted++;
+        most = std::max(most, count);
+    }
+
+    if (counted == 0)
+    {
+        return {};
+    }
+    return Watched{.average = int(sum / counted), .most = most};
 }
 
 void forget()

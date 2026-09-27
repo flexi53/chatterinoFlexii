@@ -112,12 +112,21 @@ the cover of what it streams, next to the name - and a small curve of how
 lively the chat was over the last ten minutes, counted from when it is
 switched on; its tooltip tells the numbers.
 
+Hovering a stretch of the curve says how it went: what was streamed, from
+when to when and how long, how many messages came in with their average and
+busiest minute, how many watched on average and at most, and what happened
+in it. Everything about the curve sits together under Buttons -> **Kurve**:
+whether it is there at all, whether the category stands over it, whether a
+click jumps, and which of the marks are drawn.
+
 A **click in the curve** sends the chat to that moment: it scrolls to the
 message that stood there and lets it light up, the same way a message
 jumped to does. Under the curve, small pointers say what happened while you
 were watching - blue where your name fell, orange where an alert window
-came up, green where you gave a timeout or a ban. Hovering names the last
-of them with their times. Only what came in while the program was running
+came up, green where you gave a timeout or a ban. Each kind has its own
+checkbox; the green ones start out hidden, as a channel you moderate a lot
+would have its axis full of them. Hovering names the last of the ones shown
+with their times. Only what came in while the program was running
 is marked, as the curve knows nothing older either.
 
 Over the curve stands what the channel was streaming at the time, centred

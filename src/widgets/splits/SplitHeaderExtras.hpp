@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "controllers/activity/ActivityMarks.hpp"
 #include "widgets/BaseWidget.hpp"
 #include "widgets/Label.hpp"
 #include "widgets/splits/HeaderParts.hpp"
@@ -215,6 +216,9 @@ protected:
 private:
     QDateTime now() const;
     void updateTooltip(std::optional<int> at = {});
+    /// The marks of the stretch shown, as far as they are switched on
+    std::vector<activitymarks::Mark> marksToShow(const QDateTime &from,
+                                                 const QDateTime &to) const;
 
     /// Where the curve itself is drawn, without the room for the line of
     /// time under it - the same rectangle the painting uses

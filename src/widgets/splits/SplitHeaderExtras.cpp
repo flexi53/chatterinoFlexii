@@ -8,9 +8,12 @@
 
 #include "common/Channel.hpp"
 #include "controllers/activity/ActivityMarks.hpp"
+#include "controllers/twitch/ChannelNumbers.hpp"
 #include "messages/Message.hpp"
 #include "providers/twitch/TwitchChannel.hpp"
+#include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
+#include "util/Helpers.hpp"
 #include "util/RoundPixmap.hpp"
 #include "util/UiStyle.hpp"
 
@@ -25,6 +28,7 @@
 #include <QPainterPath>
 
 #include <algorithm>
+#include <map>
 #include <numeric>
 #include <utility>
 #include <vector>
@@ -191,6 +195,21 @@ ActivityGraph::ActivityGraph(QWidget *parent)
     });
     this->timer_.start();
     this->updateTooltip();
+
+    // Buttons -> Kurve: drawn anew when any of it is switched
+    const auto again = [this](auto, auto) {
+        this->update();
+    };
+    getSettings()->curveLabels.connect(again, this->connections_, false);
+    getSettings()->curveMarkMentions.connect(again, this->connections_, false);
+    getSettings()->curveMarkAlerts.connect(again, this->connections_, false);
+    getSettings()->curveMarkActions.connect(again, this->connections_, false);
+    getSettings()->curveClick.connect(
+        [this](auto on, auto) {
+            this->setCursor(this->jump_ && on ? Qt::PointingHandCursor
+                                              : Qt::ArrowCursor);
+        },
+        this->connections_, false);
 }
 
 void ActivityGraph::setClock(std::function<QDateTime()> clock)
@@ -565,6 +584,38 @@ int ActivityGraph::messagesPerMinute() const
     return int(std::lround(double(count) * 60.0 / std::max(15.0, covered)));
 }
 
+std::vector<activitymarks::Mark> ActivityGraph::marksToShow(
+    const QDateTime &from, const QDateTime &to) const
+{
+    if (this->channel_ == nullptr)
+    {
+        return {};
+    }
+
+    const auto *settings = getSettings();
+    std::vector<activitymarks::Mark> shown;
+    for (auto &mark : activitymarks::marks(this->channel_->getName(), from, to))
+    {
+        const bool wanted = [&] {
+            switch (mark.kind)
+            {
+                case activitymarks::Kind::Mention:
+                    return settings->curveMarkMentions.getValue();
+                case activitymarks::Kind::Alert:
+                    return settings->curveMarkAlerts.getValue();
+                case activitymarks::Kind::ModAction:
+                    return settings->curveMarkActions.getValue();
+            }
+            return false;
+        }();
+        if (wanted)
+        {
+            shown.push_back(mark);
+        }
+    }
+    return shown;
+}
+
 std::optional<double> ActivityGraph::rateTrend() const
 {
     if (this->spans_.size() < 2)
@@ -636,9 +687,9 @@ QString ActivityGraph::description(std::optional<int> at) const
                    .arg(WINDOW_SECONDS / 60);
     }
 
-    text += QStringLiteral("\n%1 Nachrichten, zuletzt etwa %2 pro Minute")
+    text += QStringLiteral("\n%1 Nachrichten, zuletzt %2/min")
                 .arg(total)
-                .arg(lastMinute);
+                .arg(this->messagesPerMinute());
 
     const auto tick = tickSeconds(seconds);
     text += QStringLiteral("\nEin Strich unten je %1")
@@ -675,32 +726,6 @@ QString ActivityGraph::description(std::optional<int> at) const
         }
     }
 
-    // and what happened in between
-    if (this->channel_ != nullptr)
-    {
-        const auto marks =
-            activitymarks::marks(this->channel_->getName(), from, to);
-        if (!marks.empty())
-        {
-            text += QStringLiteral("\n");
-            // The last few, newest first - all of them would fill a screen
-            const size_t most = 6;
-            size_t shown = 0;
-            for (auto it = marks.rbegin(); it != marks.rend() && shown < most;
-                 ++it, shown++)
-            {
-                text += QStringLiteral("\n%1 Uhr: %2 (%3)")
-                            .arg(it->when.toLocalTime().toString("HH:mm"),
-                                 activitymarks::nameOf(it->kind), it->who);
-            }
-            if (marks.size() > most)
-            {
-                text += QStringLiteral("\n… und %1 weitere")
-                            .arg(marks.size() - most);
-            }
-        }
-    }
-
     const auto line = [](const Stretch &stretch) {
         return QStringLiteral("%1 - %2 Uhr: %3 (%4)")
             .arg(stretch.from.toLocalTime().toString("HH:mm"),
@@ -710,7 +735,66 @@ QString ActivityGraph::description(std::optional<int> at) const
 
     if (under)
     {
-        text += QStringLiteral("\n\nHier: %1").arg(line(stretches.at(*under)));
+        const auto &stretch = stretches.at(*under);
+        text += QStringLiteral("\n\nHier: %1").arg(line(stretch));
+
+        // What the chat did over that stretch
+        int messages = 0;
+        int busiest = 0;
+        int counted = 0;
+        for (size_t i = 0; i < this->spans_.size(); i++)
+        {
+            const auto when =
+                this->spansStart_.addSecs(qint64(i) * SPAN_SECONDS);
+            if (when < stretch.from || when > stretch.to)
+            {
+                continue;
+            }
+            messages += this->spans_.at(i);
+            busiest = std::max(busiest, this->spans_.at(i));
+            counted++;
+        }
+        if (counted > 0)
+        {
+            const auto perMinute =
+                double(messages) * 60.0 / double(counted * SPAN_SECONDS);
+            text += QStringLiteral("\n%1 Nachrichten, ⌀ %2/min, Spitze %3/min")
+                        .arg(messages)
+                        .arg(int(std::lround(perMinute)))
+                        .arg(busiest * 2);
+        }
+
+        // and how many watched, as far as that was counted
+        if (auto *twitch = dynamic_cast<TwitchChannel *>(this->channel_.get()))
+        {
+            const auto watched = channelnumbers::viewersBetween(
+                twitch->roomId(), stretch.from, stretch.to);
+            if (watched)
+            {
+                text += QStringLiteral("\nZuschauer ⌀ %1, Spitze %2")
+                            .arg(localizeNumbers(watched->average),
+                                 localizeNumbers(watched->most));
+            }
+        }
+
+        // and what happened in it
+        const auto inStretch =
+            this->marksToShow(stretch.from, stretch.to);
+        if (!inStretch.empty())
+        {
+            std::map<activitymarks::Kind, int> counts;
+            for (const auto &mark : inStretch)
+            {
+                counts[mark.kind]++;
+            }
+            QStringList said;
+            for (const auto &[kind, count] : counts)
+            {
+                said.append(QStringLiteral("%1× %2").arg(count).arg(
+                    activitymarks::nameOf(kind)));
+            }
+            text += QStringLiteral("\n%1").arg(said.join(", "));
+        }
     }
     if (stretches.size() > 1 || (!stretches.empty() && !under))
     {
@@ -724,13 +808,37 @@ QString ActivityGraph::description(std::optional<int> at) const
         }
     }
 
+    // What happened lately, as far as those marks are switched on - last of
+    // all, so the stretch under the mouse stays at the top
+    const auto marks = this->marksToShow(from, to);
+    if (!marks.empty())
+    {
+        text += QStringLiteral("\n");
+        const size_t most = 5;
+        size_t shown = 0;
+        for (auto it = marks.rbegin(); it != marks.rend() && shown < most;
+             ++it, shown++)
+        {
+            text += QStringLiteral("\n%1 Uhr: %2 (%3)")
+                        .arg(it->when.toLocalTime().toString("HH:mm"),
+                             activitymarks::nameOf(it->kind), it->who);
+        }
+        if (marks.size() > most)
+        {
+            text += QStringLiteral("\n… und %1 weitere")
+                        .arg(marks.size() - most);
+        }
+    }
+
     return text;
 }
 
 void ActivityGraph::whenClicked(std::function<void(const QDateTime &)> jump)
 {
     this->jump_ = std::move(jump);
-    this->setCursor(this->jump_ ? Qt::PointingHandCursor : Qt::ArrowCursor);
+    this->setCursor(this->jump_ && getSettings()->curveClick
+                        ? Qt::PointingHandCursor
+                        : Qt::ArrowCursor);
 }
 
 QDateTime ActivityGraph::timeAt(int x) const
@@ -753,7 +861,8 @@ QDateTime ActivityGraph::timeAt(int x) const
 
 void ActivityGraph::mousePressEvent(QMouseEvent *event)
 {
-    if (!this->jump_ || event->button() != Qt::LeftButton)
+    if (!this->jump_ || !getSettings()->curveClick ||
+        event->button() != Qt::LeftButton)
     {
         BaseWidget::mousePressEvent(event);
         return;
@@ -764,7 +873,8 @@ void ActivityGraph::mousePressEvent(QMouseEvent *event)
 
 void ActivityGraph::mouseReleaseEvent(QMouseEvent *event)
 {
-    if (!this->jump_ || event->button() != Qt::LeftButton)
+    if (!this->jump_ || !getSettings()->curveClick ||
+        event->button() != Qt::LeftButton)
     {
         BaseWidget::mouseReleaseEvent(event);
         return;
@@ -1056,8 +1166,7 @@ void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
     // gave - a small tick each, right above the line of time
     if (this->channel_ != nullptr)
     {
-        const auto marks =
-            activitymarks::marks(this->channel_->getName(), from, to);
+        const auto marks = this->marksToShow(from, to);
         const auto tick = 4.0 * this->scale();
         double lastX = -1000;
         for (const auto &mark : marks)
@@ -1102,7 +1211,8 @@ void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
     auto over = muted;
     over.setAlpha(165);
     painter.setPen(over);
-    for (const auto &stretch : this->stretches())
+    for (const auto &stretch :
+         getSettings()->curveLabels ? this->stretches() : std::vector<Stretch>{})
     {
         const auto left =
             area.left() +

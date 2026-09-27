@@ -405,8 +405,80 @@ ButtonsPage::ButtonsPage()
     this->titleBar_ = GeneralPageView::withoutNavigation(this->tabs_);
     this->tabs_->addTab(this->titleBar_, "Titelleiste");
 
+    this->curve_ = GeneralPageView::withoutNavigation(this->tabs_);
+    this->tabs_->addTab(this->curve_, "Kurve");
+
     this->initLayout(*this->view_);
     this->initTitleBar(*this->titleBar_);
+    this->initCurve(*this->curve_);
+}
+
+void ButtonsPage::initCurve(GeneralPageView &layout)
+{
+    auto &s = *getSettings();
+
+    layout.addTitle("Aktivitäts-Kurve");
+    layout.addDescription(
+        "Die kleine Kurve rechts in der Titelleiste: wie viel im Chat los "
+        "war. Ist der Kanal live, reicht sie über den ganzen Stream, sonst "
+        "über die letzte Viertelstunde. Wie breit sie ist, ziehst du in der "
+        "Vorschau unter „Titelleiste“ an ihrem Rand zum Titel hin.");
+
+    SettingWidget::checkbox("Kurve zeigen", s.splitHeaderActivity)
+        ->setTooltip("Ohne Haken bleibt die Titelleiste ohne Kurve - Platz "
+                     "für Titel und Knöpfe.")
+        ->addKeywords({"kurve", "aktivität", "graph"})
+        ->addTo(layout);
+
+    layout.addTitle("Was drauf steht");
+    SettingWidget::checkbox("Kategorie über dem Abschnitt", s.curveLabels)
+        ->setTooltip("Was der Kanal in dem Abschnitt gestreamt hat, mittig "
+                     "zwischen den Wechsel-Strichen, mit der Dauer wenn "
+                     "Platz ist. Ein zu schmaler Abschnitt bleibt ohne "
+                     "Beschriftung - der Tooltip nennt ihn trotzdem.")
+        ->addKeywords({"kategorie", "beschriftung", "spiel"})
+        ->addTo(layout);
+    SettingWidget::checkbox("Klick springt in den Chat", s.curveClick)
+        ->setTooltip("Ein Klick auf eine Stelle der Kurve rollt den Chat "
+                     "dorthin zurück und lässt die Nachricht aufleuchten. "
+                     "Ohne Haken lässt sich der Split wieder überall in der "
+                     "Leiste anfassen und verschieben.")
+        ->addKeywords({"klick", "springen", "chat"})
+        ->addTo(layout);
+
+    layout.addTitle("Marken");
+    layout.addDescription(
+        "Kleine Dreiecke auf der Zeitachse, damit eine Spitze in der Kurve "
+        "einzuordnen ist. Gemerkt wird nur, was ankommt, solange "
+        "ChattiFlexii läuft.");
+    SettingWidget::checkbox("Erwähnungen (blau)", s.curveMarkMentions)
+        ->setTooltip("Wo dein Name gefallen ist.")
+        ->addKeywords({"marke", "erwähnung", "ping"})
+        ->addTo(layout);
+    SettingWidget::checkbox("Alarme (orange)", s.curveMarkAlerts)
+        ->setTooltip("Wo ein Alarm-Fenster aufgegangen ist.")
+        ->addKeywords({"marke", "alarm"})
+        ->addTo(layout);
+    SettingWidget::checkbox("Eigene Mod-Aktionen (grün)", s.curveMarkActions)
+        ->setTooltip("Wo du selbst getimeoutet oder gebannt hast. In einem "
+                     "Kanal, in dem du viel zu tun hast, wird die Achse "
+                     "davon schnell voll - deshalb ohne Haken zu Beginn.")
+        ->addKeywords({"marke", "timeout", "bann", "moderiert"})
+        ->addTo(layout);
+
+    addStandardButton(layout, "Kurve wieder so, wie sie hier ankommt", [&s] {
+        s.splitHeaderActivity.setValue(
+            s.splitHeaderActivity.getDefaultValue());
+        s.curveLabels.setValue(s.curveLabels.getDefaultValue());
+        s.curveClick.setValue(s.curveClick.getDefaultValue());
+        s.curveMarkMentions.setValue(s.curveMarkMentions.getDefaultValue());
+        s.curveMarkAlerts.setValue(s.curveMarkAlerts.getDefaultValue());
+        s.curveMarkActions.setValue(s.curveMarkActions.getDefaultValue());
+        s.splitHeaderActivityShare.setValue(
+            s.splitHeaderActivityShare.getDefaultValue());
+    });
+
+    layout.addStretch();
 }
 
 void ButtonsPage::initTitleBar(GeneralPageView &layout)

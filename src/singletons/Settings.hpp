@@ -592,6 +592,18 @@ public:
                                      false};
     /// What parts of the title were given a colour: "uptime:#ffcc00,..."
     QStringSetting headerColors = {"/appearance/splitheader/colors", ""};
+    // ChattiFlexii: the activity curve - Buttons -> Kurve
+    /// What the channel streamed, written over the stretch it ran
+    BoolSetting curveLabels = {"/appearance/splitheader/curveLabels", true};
+    /// A click in it sends the chat to that moment
+    BoolSetting curveClick = {"/appearance/splitheader/curveClick", true};
+    /// The pointers under it. Moderating leaves a lot of them, so those
+    /// start out hidden.
+    BoolSetting curveMarkMentions = {"/appearance/splitheader/curveMentions",
+                                     true};
+    BoolSetting curveMarkAlerts = {"/appearance/splitheader/curveAlerts", true};
+    BoolSetting curveMarkActions = {"/appearance/splitheader/curveActions",
+                                    false};
     /// Room between the parts of the title bar, in unscaled pixels
     IntSetting splitHeaderSpacing = {"/appearance/splitheader/spacing", 0};
     /// Parts made wider or narrower than they are: "picture:6,menu:-4"

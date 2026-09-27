@@ -52,6 +52,17 @@ std::optional<double> viewerTrend(
     const QString &broadcasterId,
     QDateTime now = QDateTime::currentDateTimeUtc());
 
+/// How many watched @a broadcasterId between @a from and @a to: the
+/// average and the most at any one time. Empty where nothing was counted -
+/// counts are only kept for TREND_KEEPS.
+struct Watched {
+    int average;
+    int most;
+};
+std::optional<Watched> viewersBetween(const QString &broadcasterId,
+                                      const QDateTime &from,
+                                      const QDateTime &to);
+
 /// Everything forgotten - for the tests
 void forget();
 
