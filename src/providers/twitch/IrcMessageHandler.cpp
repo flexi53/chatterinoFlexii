@@ -6,6 +6,7 @@
 
 #include "controllers/moderation/EmoteSpamDetector.hpp"
 #include "controllers/activity/ActivityMarks.hpp"
+#include "controllers/moderation/HiddenUsers.hpp"
 #include "controllers/moderation/ModerationAssistant.hpp"
 #include "util/Advanced.hpp"
 #include "util/MentionFlash.hpp"
@@ -1276,6 +1277,13 @@ void IrcMessageHandler::addMessage(Communi::IrcMessage *message,
         }
 
         sink.applySimilarityFilters(msg);
+
+        // ChattiFlexii: /hide - hidden for you alone, before anything is
+        // shown, said out loud or written into the mentions
+        if (hiddenusers::hides(msg->loginName))
+        {
+            return;
+        }
 
         if (!msg->flags.has(MessageFlag::Similar) ||
             (!getSettings()->hideSimilar &&

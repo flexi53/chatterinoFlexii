@@ -1188,6 +1188,13 @@ public:
     /// Mod-Assistent -> Shared Chat: a timeout, ban or lifting also goes to
     /// the other channels of the session the user moderates - off until
     /// asked for, as it acts in a channel other than the one in front of you
+    /// People hidden with /hide - for you alone, nothing goes to Twitch
+    QStringSetting hiddenUsers = {"/moderation/hiddenUsers", ""};
+    /// ChattiFlexii: the commands are suggested as the slash is typed
+    BoolSetting commandSuggestions = {"/ui/commandSuggestions", true};
+    /// ...and the ones needing a moderator are left out where you are none
+    BoolSetting hideUnavailableCommands = {"/ui/hideUnavailableCommands",
+                                           true};
     BoolSetting sharedChatCarryOver = {"/moderation/sharedChat/carryOver",
                                        false};
     /// Notizen -> Leute im Blick: a tab collecting what the chosen people

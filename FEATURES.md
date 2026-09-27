@@ -424,6 +424,18 @@ into the chat, in every channel you moderate:
 Should Twitch answer that the login may not do this, the token is older than
 the permission - logging in again under Settings -> Accounts is enough.
 
+## Hiding someone, and the commands as you type
+
+**/hide <name>** stops their messages arriving - for you alone. Nothing is
+sent to Twitch: they are neither blocked nor banned, and nobody can tell.
+**/unhide** lets them through again, **/hidden** says who is hidden. What
+already stands in the chat stays; it is the next messages that stop.
+
+Typing a slash now brings the **commands over the input**, the same list the
+tab key walks through. Where you are no moderator, the commands that need
+one are left out - in fifty channels half the list would otherwise be of no
+use. Both have their checkbox under Buttons -> Eingabe & Tabs.
+
 ## Pinning messages
 
 Moderators can pin messages without the Twitch website: **/pin text** sends

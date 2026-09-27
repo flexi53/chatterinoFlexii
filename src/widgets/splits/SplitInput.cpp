@@ -1173,6 +1173,16 @@ void SplitInput::updateCompletionPopup()
         return;
     }
 
+    // ChattiFlexii: the commands, suggested as the slash is typed - only in
+    // the first word, and only while nothing was written before it
+    if (getSettings()->commandSuggestions && text.startsWith('/') &&
+        position > 0 && !text.left(position).contains(' '))
+    {
+        this->showCompletionPopup(text.left(position),
+                                  CompletionKind::Command);
+        return;
+    }
+
     for (int i = std::clamp(position, 0, (int)text.length() - 1); i >= 0; i--)
     {
         if (text[i] == ' ')
@@ -1269,6 +1279,13 @@ void SplitInput::insertCompletionText(const QString &input_) const
                 formatUserMention(input_, edit.isFirstWord(),
                                   getSettings()->mentionUsersWithComma);
             input = "@" + userMention + " ";
+            done = true;
+        }
+        // ChattiFlexii: a command picked from the suggestions. Its slash is
+        // not part of the name, so it is put back here.
+        else if (text[i] == '/' && (i == 0 || text[i - 1].isSpace()))
+        {
+            input = "/" + input_ + " ";
             done = true;
         }
 

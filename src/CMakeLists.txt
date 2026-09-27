@@ -98,6 +98,8 @@ set(SOURCE_FILES
         controllers/commands/builtin/twitch/Announce.hpp
         controllers/commands/builtin/twitch/Ban.cpp
         controllers/commands/builtin/twitch/BlockedTerms.cpp
+        controllers/commands/builtin/twitch/HideUser.cpp
+        controllers/commands/builtin/twitch/HideUser.hpp
         controllers/commands/builtin/twitch/BlockedTerms.hpp
         controllers/commands/builtin/twitch/Ban.hpp
         controllers/commands/builtin/twitch/Block.cpp
@@ -171,6 +173,8 @@ set(SOURCE_FILES
         controllers/completion/strategies/ClassicUserStrategy.cpp
         controllers/completion/strategies/ClassicUserStrategy.hpp
         controllers/completion/strategies/CommandStrategy.cpp
+        controllers/completion/strategies/ModAwareCommandStrategy.cpp
+        controllers/completion/strategies/ModAwareCommandStrategy.hpp
         controllers/completion/strategies/CommandStrategy.hpp
         controllers/completion/strategies/SmartEmoteStrategy.cpp
         controllers/completion/strategies/SmartEmoteStrategy.cpp
@@ -670,6 +674,8 @@ set(SOURCE_FILES
         controllers/activity/ActivityMarks.hpp
         controllers/twitch/ChannelNumbers.cpp
         controllers/twitch/ChannelNumbers.hpp
+        controllers/moderation/HiddenUsers.cpp
+        controllers/moderation/HiddenUsers.hpp
         controllers/moderation/ModerationAssistant.cpp
         controllers/moderation/ModerationAssistant.hpp
         controllers/moderation/RepeatSpamDetector.cpp

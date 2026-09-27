@@ -611,6 +611,21 @@ void ButtonsPage::initLayout(GeneralPageView &layout)
 
     addButtonList(layout, this);
 
+    layout.addTitle("Befehle beim Tippen");
+    SettingWidget::checkbox("Befehle vorschlagen", s.commandSuggestions)
+        ->setTooltip("Tippst du einen Schrägstrich, stehen die passenden "
+                     "Befehle über der Eingabezeile - dieselbe Liste, die "
+                     "die Tabulatortaste durchgeht.")
+        ->addKeywords({"befehl", "vorschlag", "command", "slash"})
+        ->addTo(layout);
+    SettingWidget::checkbox("Nur zeigen, was hier geht",
+                            s.hideUnavailableCommands)
+        ->setTooltip("Befehle, für die man Moderator sein muss, bleiben in "
+                     "Kanälen weg, in denen du keiner bist - bei vielen "
+                     "Kanälen ist sonst die halbe Liste ohne Nutzen.")
+        ->addKeywords({"befehl", "mod", "moderator", "ausblenden"})
+        ->addTo(layout);
+
     SettingWidget::checkbox("Senden", s.showSendButton)
         ->setTooltip("Schickt die getippte Nachricht ab - dasselbe wie die "
                      "Eingabetaste. Derselbe Schalter wie General -> Show "

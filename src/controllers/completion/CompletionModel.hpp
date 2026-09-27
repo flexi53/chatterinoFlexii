@@ -19,6 +19,8 @@ class Source;
 enum class CompletionKind {
     Emote,
     User,
+    /// ChattiFlexii: the commands, suggested as you type the slash
+    Command,
 };
 
 /// @brief CompletionModel is a GenericListModel intended to provide completion

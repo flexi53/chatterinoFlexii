@@ -4,6 +4,8 @@
 
 #include "widgets/splits/InputCompletionPopup.hpp"
 
+#include "controllers/completion/sources/CommandSource.hpp"
+#include "controllers/completion/strategies/ModAwareCommandStrategy.hpp"
 #include "controllers/completion/sources/UserSource.hpp"
 #include "controllers/completion/strategies/ClassicEmoteStrategy.hpp"
 #include "controllers/completion/strategies/ClassicUserStrategy.hpp"
@@ -82,6 +84,18 @@ std::unique_ptr<completion::Source> InputCompletionPopup::getSource() const
                 this->currentChannel_.get(),
                 std::make_unique<completion::ClassicUserStrategy>(),
                 this->callback_);
+        case CompletionKind::Command: {
+            // Buttons -> Eingabe & Tabs: the ones needing a moderator are
+            // left out where you are none
+            const bool moderates =
+                !getSettings()->hideUnavailableCommands ||
+                (this->currentChannel_ != nullptr &&
+                 this->currentChannel_->hasModRights());
+            return std::make_unique<completion::CommandSource>(
+                std::make_unique<completion::ModAwareCommandStrategy>(
+                    true, moderates),
+                this->callback_);
+        }
         default:
             return nullptr;
     }

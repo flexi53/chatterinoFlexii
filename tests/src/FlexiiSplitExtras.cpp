@@ -28,6 +28,8 @@
 #include "controllers/badgealerts/BadgeAlerts.hpp"
 #include "controllers/moderation/AlertMute.hpp"
 #include "controllers/moderation/ModChanges.hpp"
+#include "controllers/completion/strategies/ModAwareCommandStrategy.hpp"
+#include "controllers/moderation/HiddenUsers.hpp"
 #include "controllers/moderation/ModHighlights.hpp"
 #include "controllers/moderation/ModerationAssistant.hpp"
 #include "controllers/moderation/SharedChatActions.hpp"
@@ -2661,4 +2663,62 @@ TEST(FlexiiPerformance, AnimationsRestWhileYouAreElsewhere)
 
     // The fade stays a choice, off to begin with as every look of ours does
     EXPECT_FALSE(s->fadeInMessages.getDefaultValue());
+}
+
+TEST(FlexiiHiddenUsers, HiddenIsHiddenHoweverItIsWritten)
+{
+    MockApplication app;
+    getSettings()->hiddenUsers.setValue("");
+
+    EXPECT_FALSE(hiddenusers::hides("tom"));
+    EXPECT_TRUE(hiddenusers::add("@Tom"));
+    EXPECT_TRUE(hiddenusers::hides("tom"));
+    EXPECT_TRUE(hiddenusers::hides("TOM"));
+    // The same one twice changes nothing
+    EXPECT_FALSE(hiddenusers::add("tom"));
+    EXPECT_EQ(hiddenusers::all().size(), 1);
+
+    EXPECT_TRUE(hiddenusers::remove("TOM"));
+    EXPECT_FALSE(hiddenusers::hides("tom"));
+    EXPECT_FALSE(hiddenusers::remove("tom"));
+
+    // Several at once, however they are written down
+    EXPECT_EQ(hiddenusers::read("@tom, Mira\nkai"),
+              (QStringList{"tom", "mira", "kai"}));
+    EXPECT_TRUE(hiddenusers::read("").isEmpty());
+
+    getSettings()->hiddenUsers.setValue("");
+}
+
+TEST(FlexiiCommandSuggestions, WhatNeedsAModStaysAwayWhereYouAreNone)
+{
+    using namespace chatterino::completion;
+
+    EXPECT_TRUE(ModAwareCommandStrategy::onlyForMods("ban"));
+    EXPECT_TRUE(ModAwareCommandStrategy::onlyForMods("timeout"));
+    EXPECT_TRUE(ModAwareCommandStrategy::onlyForMods("blockterm"));
+    EXPECT_TRUE(ModAwareCommandStrategy::onlyForMods("Ban"));
+    EXPECT_FALSE(ModAwareCommandStrategy::onlyForMods("me"));
+    EXPECT_FALSE(ModAwareCommandStrategy::onlyForMods("hide"));
+    EXPECT_FALSE(ModAwareCommandStrategy::onlyForMods("clip"));
+
+    const std::vector<CommandItem> items{
+        {.name = "ban", .prefix = "/"},
+        {.name = "clip", .prefix = "/"},
+        {.name = "hide", .prefix = "/"},
+    };
+
+    // As a moderator everything stands there
+    std::vector<CommandItem> asMod;
+    ModAwareCommandStrategy(true, true).apply(items, asMod, "/");
+    EXPECT_EQ(asMod.size(), 3u);
+
+    // and otherwise only what is of use
+    std::vector<CommandItem> asViewer;
+    ModAwareCommandStrategy(true, false).apply(items, asViewer, "/");
+    ASSERT_EQ(asViewer.size(), 2u);
+    for (const auto &item : asViewer)
+    {
+        EXPECT_NE(item.name, "ban");
+    }
 }

@@ -15,6 +15,7 @@
 #include "controllers/commands/builtin/twitch/Announce.hpp"
 #include "controllers/commands/builtin/twitch/Ban.hpp"
 #include "controllers/commands/builtin/twitch/BlockedTerms.hpp"
+#include "controllers/commands/builtin/twitch/HideUser.hpp"
 #include "controllers/commands/builtin/twitch/Block.hpp"
 #include "controllers/commands/builtin/twitch/ChatSettings.hpp"
 #include "controllers/commands/builtin/twitch/Chatters.hpp"
@@ -458,6 +459,11 @@ CommandController::CommandController(const Paths &paths)
     this->registerCommand("/blockterm", &commands::blockTerm);
     this->registerCommand("/unblockterm", &commands::unblockTerm);
     this->registerCommand("/blockterms", &commands::listBlockedTerms);
+
+    // ChattiFlexii: hidden for you alone, not blocked and not banned
+    this->registerCommand("/hide", &commands::hideUser);
+    this->registerCommand("/unhide", &commands::unhideUser);
+    this->registerCommand("/hidden", &commands::listHiddenUsers);
     this->registerCommand("/banid", &commands::sendBanById);
 
     this->registerCommand("/warn", &commands::sendWarn);
