@@ -91,6 +91,10 @@ constexpr size_t TOOLTIP_EMOTE_ENTRIES_LIMIT = 7;
 constexpr qint64 FADE_IN_MS = 400;
 /// How far below its place a new message starts, sliding up as it fades in
 constexpr qreal FADE_IN_SLIDE = 6;
+/// How many messages may be fading in at the same time. A busy chat sends
+/// more than that within one fade, and drawing them all over and over is
+/// what the program would spend its time on.
+constexpr size_t FADE_AT_ONCE = 6;
 
 using namespace chatterino;
 
@@ -1308,7 +1312,23 @@ void ChannelView::messageAppended(MessagePtr &message,
                 return now - entry.value() >= FADE_IN_MS;
             });
         }
-        this->fadeStarts_.insert(messageRef.get(), now);
+
+        // In a chat where the lines come in faster than they fade, nobody
+        // sees a single one of them fade - but every one of them has the
+        // split drawn anew sixty times a second. Past that pace the
+        // messages simply stand there.
+        size_t fading = 0;
+        for (const auto &start : this->fadeStarts_)
+        {
+            if (now - start < FADE_IN_MS)
+            {
+                fading++;
+            }
+        }
+        if (fading < FADE_AT_ONCE)
+        {
+            this->fadeStarts_.insert(messageRef.get(), now);
+        }
     }
     if (this->channel_->shouldIgnoreHighlights())
     {

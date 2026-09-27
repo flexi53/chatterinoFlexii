@@ -187,8 +187,11 @@ public:
 
     /// Appearance
     BoolSetting showTimestamps = {"/appearance/messages/showTimestamps", true};
+    /// ChattiFlexii: on rather than off - with many tabs open, animated
+    /// emotes are what the program spends most of its time drawing, and
+    /// standing still while you are in another program costs nothing
     BoolSetting animationsWhenFocused = {
-        "/appearance/enableAnimationsWhenFocused", false};
+        "/appearance/enableAnimationsWhenFocused", true};
     QStringSetting timestampFormat = {"/appearance/messages/timestampFormat",
                                       "h:mm"};
     BoolSetting showLastMessageIndicator = {

@@ -19,6 +19,7 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <QCache>
 #include <QHash>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -114,11 +115,25 @@ QHash<QString, std::vector<Waiter>> &waiters()
 }
 
 /// Pictures already loaded, by address. GUI thread only.
-/// Kept in the same way as known(), and for the same reason
-QHash<QString, QPixmap> &loadedPictures()
+/// How much room the pictures already drawn may take up together, in
+/// kilobytes. A 70x70 picture costs about 19, one at 300x300 about 350 -
+/// without a limit this grew with every chatter ever seen, and in fifty
+/// channels that is thousands.
+constexpr int PICTURE_BUDGET_KB = 12 * 1024;
+
+/// The pictures already drawn, the ones longest unused giving way first.
+/// Made once and never taken down - see known() for why.
+QCache<QString, QPixmap> &loadedPictures()
 {
-    static auto *pictures = new QHash<QString, QPixmap>();
+    static auto *pictures = new QCache<QString, QPixmap>(PICTURE_BUDGET_KB);
     return *pictures;
+}
+
+/// What a picture costs in the cache, in kilobytes and never zero
+int costOf(const QPixmap &picture)
+{
+    const auto bytes = qint64(picture.width()) * picture.height() * 4;
+    return std::max(1, int(bytes / 1024));
 }
 
 /// How big Chatterino draws the badge of a shared message - the size it
@@ -586,8 +601,9 @@ void pixmap(const QString &login, int side, QObject *context,
             }
 
             const auto url = sizedPicture(profile.pictureUrl, side);
-            const auto loaded = loadedPictures().constFind(url);
-            if (loaded != loadedPictures().constEnd())
+            // Two places may want the same picture at different sizes
+            const auto key = QStringLiteral("%1@%2").arg(url).arg(side);
+            if (const auto *loaded = loadedPictures().object(key))
             {
                 done(*loaded);
                 return;
@@ -597,15 +613,28 @@ void pixmap(const QString &login, int side, QObject *context,
                 .timeout(PICTURE_TIMEOUT_MS)
                 .cache()
                 .caller(guard.data())
-                .onSuccess([url, guard, done](const NetworkResult &result) {
+                .onSuccess([key, side, guard, done](const NetworkResult &result) {
                     const auto data = result.getData();
-                    runInGuiThread([url, data, guard, done] {
+                    runInGuiThread([key, side, data, guard, done] {
                         QPixmap picture;
                         if (!picture.loadFromData(data))
                         {
                             return;
                         }
-                        loadedPictures().insert(url, picture);
+
+                        // Kept no larger than it is ever drawn - twice the
+                        // asked-for side, so it stays sharp on a screen
+                        // that draws two pixels for one
+                        const auto most = side * 2;
+                        if (most > 0 && picture.width() > most)
+                        {
+                            picture = picture.scaled(
+                                most, most, Qt::KeepAspectRatio,
+                                Qt::SmoothTransformation);
+                        }
+
+                        loadedPictures().insert(key, new QPixmap(picture),
+                                                costOf(picture));
                         if (guard)
                         {
                             done(picture);

@@ -2648,3 +2648,17 @@ TEST_F(FlexiiActivityGraphFixture, MarksAreOnlyCountedWhereTheyAreWanted)
     s->curveMarkMentions.setValue(s->curveMarkMentions.getDefaultValue());
     forget();
 }
+
+TEST(FlexiiPerformance, AnimationsRestWhileYouAreElsewhere)
+{
+    MockApplication app;
+    auto *s = getSettings();
+
+    // Animated emotes stand still while another program is in front - with
+    // many tabs open that is the single biggest thing being drawn, and
+    // Chatterino leaves it off
+    EXPECT_TRUE(s->animationsWhenFocused.getValue());
+
+    // The fade stays a choice, off to begin with as every look of ours does
+    EXPECT_FALSE(s->fadeInMessages.getDefaultValue());
+}

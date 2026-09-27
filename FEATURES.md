@@ -443,6 +443,24 @@ shows above the chat for the pinned message is left out.
   otherwise)
 - `/predictioninfo` prints the running prediction
 
+## Where the time and the memory go
+
+Three things were changed after measuring a running window with fifty tabs
+open - 34 % of a processor and 865 MB, nearly all of it spent drawing:
+
+- **Animated emotes rest while another program is in front.** Chatterino can
+  do this and leaves it off; here it is on. The moment the window is in
+  front again everything moves as before. Settings -> Allgemein has the
+  switch.
+- **The fade of new messages stops where nobody could see it.** At most six
+  messages fade at once; in a chat sending faster than that they simply
+  stand there - which is what they looked like anyway, only without the
+  split being drawn anew sixty times a second for each of them.
+- **The pictures already drawn are kept in 12 MB**, the ones longest unused
+  giving way first, and no larger than twice the size they are drawn at. A
+  profile picture used to be kept as it came - up to 350 KB - and kept for
+  good, which in fifty channels is thousands of them.
+
 ## Logs
 
 Chat logs older than **14 days** are deleted at startup, and the size shown in
