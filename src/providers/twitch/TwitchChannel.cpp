@@ -39,6 +39,7 @@
 #include "providers/twitch/eventsub/Controller.hpp"
 #include "providers/twitch/IrcMessageHandler.hpp"
 #include "providers/twitch/PubSubManager.hpp"
+#include "providers/twitch/pubsubmessages/PinnedChatUpdates.hpp"
 #include "providers/twitch/TwitchAccount.hpp"
 #include "providers/twitch/TwitchCommon.hpp"
 #include "providers/twitch/TwitchIrcServer.hpp"
@@ -2739,6 +2740,34 @@ void TwitchChannel::refreshPinnedMessage()
             qCWarning(chatterinoTwitch)
                 << "Failed to fetch pinned message:" << error;
         });
+}
+
+void TwitchChannel::takePinnedMessageFrom(const QJsonObject &pubSubData)
+{
+    auto asHelix = pinnedMessageAsHelix(pubSubData);
+    if (!asHelix)
+    {
+        // Not enough in it - the old way, which needs moderator rights
+        qCDebug(chatterinoTwitch)
+            << "Pin event without a message of its own, asking Helix:"
+            << QJsonDocument(pubSubData).toJson(QJsonDocument::Compact);
+        this->refreshPinnedMessage();
+        return;
+    }
+
+    // A pin that is already over is no pin
+    const HelixPinnedChatMessage pin(*asHelix);
+    if (pin.endsAt.has_value() && pin.endsAt->isValid() &&
+        *pin.endsAt <= QDateTime::currentDateTimeUtc())
+    {
+        this->clearPinnedMessage();
+        return;
+    }
+
+    // Whatever Helix may still answer, this is newer
+    ++this->pinnedMessageRequestId_;
+    this->pinnedMessage_ = std::make_unique<const HelixPinnedChatMessage>(pin);
+    this->pinnedMessageChanged.invoke();
 }
 
 const HelixPinnedChatMessage *TwitchChannel::getPinnedMessage() const

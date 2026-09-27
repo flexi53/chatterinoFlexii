@@ -435,6 +435,12 @@ public:
      */
     void refreshPinnedMessage();
 
+    /// ChattiFlexii: takes the pinned message from what the pin event
+    /// itself carried, which works in every channel. Where the event says
+    /// too little, Helix is asked as Chatterino does it - which only
+    /// answers where you are a moderator.
+    void takePinnedMessageFrom(const QJsonObject &pubSubData);
+
     /**
      * Clears the pinned message for this channel immediately (e.g. on unpin
      * PubSub event).

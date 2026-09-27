@@ -51,8 +51,11 @@ public:
 
     struct {
         /// Emitted when a message is pinned or its pin is updated.
-        /// The argument is the channel name.
-        Signal<const QString &> pinned;
+        /// The arguments are the channel name and, as ChattiFlexii added,
+        /// what the event itself said - enough to show the banner without
+        /// moderator rights.
+        pajlada::Signals::Signal<const QString &, const QJsonObject &>
+            pinned;
         /// Emitted when the pinned message is removed.
         /// The argument is the channel name.
         Signal<const QString &> unpinned;

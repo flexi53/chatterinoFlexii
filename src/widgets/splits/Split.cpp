@@ -937,6 +937,8 @@ void Split::setChannel(IndirectChannel newChannel)
                 // ChattiFlexii: the bar under the input runs on the same wait
                 this->getInput().setSendWait(tc->sendWait());
             });
+
+        this->pinnedBanner_->setChannel(tc);
     }
     else if (kc != nullptr)
     {
@@ -954,7 +956,8 @@ void Split::setChannel(IndirectChannel newChannel)
                 this->getInput().setSendWaitStatus(text);
             });
 
-        this->pinnedBanner_->setChannel(tc);
+        // Kick knows no pinned message
+        this->pinnedBanner_->setChannel(nullptr);
     }
     else
     {

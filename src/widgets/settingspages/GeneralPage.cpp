@@ -1431,12 +1431,12 @@ void GeneralPage::initLayout(GeneralPageView &layout)
         s.displaySevenTVPaintShadows.connect(cb, false);
         s.largeSevenTVPaintShadows.connect(cb, false);
     }
-    SettingWidget::checkbox("Angepinnte Nachricht dauerhaft zeigen",
+    SettingWidget::checkbox("Always show pinned channel message",
                             s.alwaysShowPinnedMessage)
         ->setTooltip(
-            "Angepinnte Nachrichten bleiben stehen, statt sich nach ein "
-            "paar Sekunden von selbst auszublenden. Über den Knopf in der "
-            "Titelleiste holst du sie jederzeit zurück.")
+            "When enabled, pinned messages will stay visible instead of "
+            "hiding themselves after half a minute. The button in the split "
+            "header brings them back at any time.")
         ->addTo(layout);
 
     SettingWidget::checkbox("Lowercase domains (anti-phishing)",

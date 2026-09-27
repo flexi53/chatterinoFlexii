@@ -9,6 +9,7 @@
 #include <QString>
 
 #include <cstdint>
+#include <optional>
 
 namespace chatterino {
 
@@ -28,6 +29,13 @@ struct PubSubPinnedChatUpdatesV1Message {
 
     PubSubPinnedChatUpdatesV1Message(const QJsonObject &root);
 };
+
+/// ChattiFlexii: @a data of a pin event, written the way Helix' chat/pins
+/// answers - the event itself already carries the message, so the banner
+/// shows in every channel and not only where you are a moderator. Empty
+/// where the payload holds no message, in which case Helix is asked as
+/// Chatterino does it.
+std::optional<QJsonObject> pinnedMessageAsHelix(const QJsonObject &data);
 
 }  // namespace chatterino
 
