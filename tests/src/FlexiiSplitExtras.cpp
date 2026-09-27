@@ -588,8 +588,8 @@ TEST(FlexiiHeaderParts, AnOrderIsKeptAsWritten)
     EXPECT_EQ(order.at(2), Part::Activity);
     EXPECT_EQ(order.at(3), Part::Title);
     EXPECT_EQ(headerparts::writeOrder(order),
-              "picture,cover,activity,title,mode,moderation,chatters,tracker,"
-              "menu,add");
+              "picture,cover,activity,title,mode,pin,moderation,chatters,"
+              "tracker,menu,add");
 }
 
 TEST(FlexiiHeaderParts, WhatIsMissingGoesWhereItBelongs)
@@ -600,10 +600,9 @@ TEST(FlexiiHeaderParts, WhatIsMissingGoesWhereItBelongs)
         "menu, nonsense, title, picture, cover, mode, moderation, chatters, "
         "add, menu");
     const std::vector<Part> expected{
-        Part::Menu,       Part::Title,    Part::Activity,
-        Part::Picture,    Part::Cover,    Part::Mode,
-        Part::Moderation, Part::Chatters, Part::Tracker,
-        Part::Add,
+        Part::Menu,     Part::Title,      Part::Activity, Part::Picture,
+        Part::Cover,    Part::Mode,       Part::Pin,      Part::Moderation,
+        Part::Chatters, Part::Tracker,    Part::Add,
     };
     EXPECT_EQ(order, expected);
 }

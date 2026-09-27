@@ -115,6 +115,12 @@ HeaderPreview::HeaderPreview(QWidget *parent)
     this->activity_->showSample();
 
     this->mode_ = new LabelButton("slow", this);
+    this->pin_ = new SvgButton(
+        {
+            .dark = ":/buttons/pinnedMessage-chat.svg",
+            .light = ":/buttons/pinnedMessage-chat.svg",
+        },
+        this, {4, 4});
     this->moderation_ = new SvgButton(
         {
             .dark = ":/buttons/moderationDisabled-darkMode.svg",
@@ -144,8 +150,8 @@ HeaderPreview::HeaderPreview(QWidget *parent)
     // They are only painted from here, never shown on their own
     for (auto *widget : std::initializer_list<QWidget *>{
              this->picture_, this->cover_, this->title_, this->activity_,
-             this->mode_, this->moderation_, this->chatters_, this->tracker_,
-             this->menu_, this->add_})
+             this->mode_, this->pin_, this->moderation_, this->chatters_,
+             this->tracker_, this->menu_, this->add_})
     {
         widget->hide();
         widget->setAttribute(Qt::WA_TransparentForMouseEvents);
@@ -253,6 +259,8 @@ QWidget *HeaderPreview::widgetFor(Part part) const
             return this->activity_;
         case Part::Mode:
             return this->mode_;
+        case Part::Pin:
+            return this->pin_;
         case Part::Moderation:
             return this->moderation_;
         case Part::Chatters:
@@ -329,6 +337,7 @@ void HeaderPreview::relayout()
                 return 0;
             case Part::Mode:
                 return this->mode_->sizeHint().width();
+            case Part::Pin:
             case Part::Moderation:
             case Part::Chatters:
             case Part::Tracker:

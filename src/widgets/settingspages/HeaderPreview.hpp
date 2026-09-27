@@ -127,6 +127,7 @@ private:
     HeaderTitle *title_{};
     ActivityGraph *activity_{};
     LabelButton *mode_{};
+    SvgButton *pin_{};
     SvgButton *moderation_{};
     SvgButton *chatters_{};
     SvgButton *tracker_{};

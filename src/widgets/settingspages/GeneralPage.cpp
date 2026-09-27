@@ -1431,6 +1431,13 @@ void GeneralPage::initLayout(GeneralPageView &layout)
         s.displaySevenTVPaintShadows.connect(cb, false);
         s.largeSevenTVPaintShadows.connect(cb, false);
     }
+    SettingWidget::checkbox("Angepinnte Nachricht dauerhaft zeigen",
+                            s.alwaysShowPinnedMessage)
+        ->setTooltip(
+            "Angepinnte Nachrichten bleiben stehen, statt sich nach ein "
+            "paar Sekunden von selbst auszublenden. Über den Knopf in der "
+            "Titelleiste holst du sie jederzeit zurück.")
+        ->addTo(layout);
 
     SettingWidget::checkbox("Lowercase domains (anti-phishing)",
                             s.lowercaseDomains)

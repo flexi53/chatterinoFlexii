@@ -25,6 +25,7 @@ enum class Part {
     Title,
     Activity,
     Mode,
+    Pin,
     Moderation,
     Chatters,
     Tracker,

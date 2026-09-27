@@ -70,6 +70,14 @@ const std::vector<Info> &all()
             .canHide = true,
         },
         {
+            .part = Part::Pin,
+            .id = "pin",
+            .name = "Angepinnte Nachricht",
+            .about = "Blendet die angepinnte Nachricht ein und aus - nur "
+                     "solange eine angepinnt ist.",
+            .canHide = true,
+        },
+        {
             .part = Part::Moderation,
             .id = "moderation",
             .name = "Moderationsmodus",
