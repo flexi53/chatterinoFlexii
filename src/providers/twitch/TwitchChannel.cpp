@@ -1619,6 +1619,7 @@ void TwitchChannel::refreshPubSub()
     // ChattiFlexii: what the channel votes on, which Twitch tells everyone
     getApp()->getTwitchPubSub()->listenToPolls(roomId);
     getApp()->getTwitchPubSub()->listenToPredictions(roomId);
+    getApp()->getTwitchPubSub()->listenToHypeTrain(roomId);
 
     if (currentAccount->isAnon())
     {
@@ -2806,6 +2807,36 @@ void TwitchChannel::takePrediction(const PubSubPrediction &prediction)
 
     this->prediction_ = prediction;
     this->predictionChanged.invoke();
+}
+
+const PubSubHypeTrain *TwitchChannel::currentHypeTrain() const
+{
+    return this->hypeTrain_ ? &*this->hypeTrain_ : nullptr;
+}
+
+void TwitchChannel::takeHypeTrain(const PubSubHypeTrain &train)
+{
+    if (train.kind == PubSubHypeTrain::Kind::Ended)
+    {
+        // The end says nothing about where the train stood - what we have
+        // is simply marked as over
+        if (!this->hypeTrain_ || this->hypeTrain_->over)
+        {
+            return;
+        }
+        this->hypeTrain_->over = true;
+        this->hypeTrain_->completed = train.completed;
+        this->hypeTrainChanged.invoke();
+        return;
+    }
+
+    if (!train.hasProgress)
+    {
+        return;
+    }
+
+    this->hypeTrain_ = train;
+    this->hypeTrainChanged.invoke();
 }
 
 const HelixPinnedChatMessage *TwitchChannel::getPinnedMessage() const

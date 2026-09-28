@@ -37,6 +37,7 @@
 #include "widgets/helper/CommonTexts.hpp"
 #include "widgets/Label.hpp"
 #include "widgets/splits/PinnedMessageWidget.hpp"
+#include "widgets/splits/HypeTrainBannerWidget.hpp"
 #include "widgets/splits/VoteBannerWidget.hpp"
 #include "widgets/splits/Split.hpp"
 #include "widgets/splits/SplitContainer.hpp"
@@ -306,6 +307,7 @@ SplitHeader::SplitHeader(Split *split)
             this->updateIcons();
             this->updatePinButton();
             this->updateVoteButton();
+            this->updateHypeButton();
             this->setAddButtonVisible(this->addButtonWanted_);
         },
         this->managedConnections_, false);
@@ -413,6 +415,18 @@ void SplitHeader::initializeLayout()
                                     ? QColor(0x42, 0x42, 0x42)
                                     : QColor(0xc0, 0xc0, 0xc0));
     this->voteButton_->hide();
+
+    this->hypeButton_ = new SvgButton(
+        {
+            .dark = ":/buttons/hypetrain-chat.svg",
+            .light = ":/buttons/hypetrain-chat.svg",
+        },
+        this, {5, 5});
+    this->hypeButton_->setToolTip("Hype Train ein-/ausblenden");
+    this->hypeButton_->setColor(this->theme->isLightTheme()
+                                    ? QColor(0x42, 0x42, 0x42)
+                                    : QColor(0xc0, 0xc0, 0xc0));
+    this->hypeButton_->hide();
 
     this->addButton_ = new DrawnButton(DrawnButton::Symbol::Plus,
                                        {
@@ -525,6 +539,10 @@ void SplitHeader::initializeLayout()
 
     QObject::connect(this->voteButton_, &Button::leftClicked, this, [this]() {
         this->split_->getVoteBanner()->toggleUserPinned();
+    });
+
+    QObject::connect(this->hypeButton_, &Button::leftClicked, this, [this]() {
+        this->split_->getHypeBanner()->toggleUserPinned();
     });
 
     QObject::connect(this->addButton_, &Button::leftClicked, this, [this]() {
@@ -1030,6 +1048,15 @@ void SplitHeader::handleChannelChanged()
                 this->updateVoteButton();
             });
 
+        this->channelConnections_.managedConnect(
+            twitchChannel->hypeTrainChanged, [this]() {
+                this->updateHypeButton();
+            });
+        this->channelConnections_.managedConnect(
+            this->split_->getHypeBanner()->visibilityChanged, [this]() {
+                this->updateHypeButton();
+            });
+
     }
     else if (auto *kickChannel = dynamic_cast<KickChannel *>(channel.get()))
     {
@@ -1039,9 +1066,10 @@ void SplitHeader::handleChannelChanged()
                                                  });
     }
 
-    // Whatever the channel is, the two banner buttons know where they stand
+    // Whatever the channel is, the banner buttons know where they stand
     this->updatePinButton();
     this->updateVoteButton();
+    this->updateHypeButton();
 }
 
 void SplitHeader::scaleChangedEvent(float scale)
@@ -1074,6 +1102,7 @@ void SplitHeader::applyPartWidths(int button, int addButton, float scale)
     this->trackerButton_->setFixedWidth(width(Part::Tracker, button));
     this->pinButton_->setFixedWidth(width(Part::Pin, button));
     this->voteButton_->setFixedWidth(width(Part::Vote, button));
+    this->hypeButton_->setFixedWidth(width(Part::Hype, button));
     this->addButton_->setFixedWidth(width(Part::Add, addButton));
 
     this->channelPicture_->setExtraWidth(headerparts::widthDelta(Part::Picture));
@@ -1254,6 +1283,27 @@ void SplitHeader::updateVoteButton()
     }
 }
 
+void SplitHeader::updateHypeButton()
+{
+    auto channel = this->split_->getChannel();
+    auto *twitchChannel = dynamic_cast<TwitchChannel *>(channel.get());
+    const bool hasTrain = twitchChannel != nullptr &&
+                          twitchChannel->currentHypeTrain() != nullptr;
+
+    this->hypeButton_->setVisible(
+        hasTrain && headerparts::isShown(headerparts::Part::Hype));
+    if (hasTrain && this->split_->getHypeBanner()->isVisible())
+    {
+        this->hypeButton_->setColor(this->theme->accent);
+    }
+    else
+    {
+        this->hypeButton_->setColor(this->theme->isLightTheme()
+                                        ? QColor(0x42, 0x42, 0x42)
+                                        : QColor(0xc0, 0xc0, 0xc0));
+    }
+}
+
 void SplitHeader::updateChannelText()
 {
     this->updatePictures();
@@ -1429,6 +1479,9 @@ void SplitHeader::arrangeParts()
                 break;
             case Part::Vote:
                 layout->addWidget(this->voteButton_);
+                break;
+            case Part::Hype:
+                layout->addWidget(this->hypeButton_);
                 break;
             case Part::Moderation:
                 layout->addWidget(this->moderationButton_);

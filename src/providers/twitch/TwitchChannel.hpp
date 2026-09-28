@@ -13,6 +13,7 @@
 #include "providers/ffz/FfzBadges.hpp"
 #include "providers/ffz/FfzEmotes.hpp"
 #include "providers/twitch/eventsub/SubscriptionHandle.hpp"
+#include "providers/twitch/pubsubmessages/HypeTrain.hpp"
 #include "providers/twitch/pubsubmessages/Polls.hpp"
 #include "providers/twitch/pubsubmessages/Predictions.hpp"
 #include "providers/twitch/TwitchEmotes.hpp"
@@ -474,6 +475,13 @@ public:
     /// Fires whenever that prediction changes
     pajlada::Signals::NoArgSignal predictionChanged;
 
+    /// ChattiFlexii: the hype train going in this channel, or null
+    const PubSubHypeTrain *currentHypeTrain() const;
+    /// ChattiFlexii: what the hype train topic just said
+    void takeHypeTrain(const PubSubHypeTrain &train);
+    /// Fires whenever that train changes
+    pajlada::Signals::NoArgSignal hypeTrainChanged;
+
 private:
     struct NameOptions {
         // displayName is the non-CJK-display name for this user
@@ -677,6 +685,7 @@ private:
     /// ChattiFlexii: what the poll and prediction topics last said
     std::optional<PubSubPoll> poll_;
     std::optional<PubSubPrediction> prediction_;
+    std::optional<PubSubHypeTrain> hypeTrain_;
     /// Incremented before each getPinnedChatMessage request so that stale
     /// responses from earlier requests are discarded.
     uint64_t pinnedMessageRequestId_ = 0;

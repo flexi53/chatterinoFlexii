@@ -26,6 +26,7 @@ class SplitContainer;
 class SplitOverlay;
 class PinnedMessageWidget;
 class VoteBannerWidget;
+class HypeTrainBannerWidget;
 class SelectChannelDialog;
 class OverlayWindow;
 
@@ -60,6 +61,8 @@ public:
     [[nodiscard]] PinnedMessageWidget *getPinnedBanner() const;
     /// ChattiFlexii: the poll or prediction banner under the header
     [[nodiscard]] VoteBannerWidget *getVoteBanner() const;
+    /// ChattiFlexii: the hype train banner under the header
+    [[nodiscard]] HypeTrainBannerWidget *getHypeBanner() const;
 
     IndirectChannel getIndirectChannel();
     ChannelPtr getChannel() const;
@@ -172,6 +175,7 @@ private:
     SplitHeader *const header_;
     PinnedMessageWidget *const pinnedBanner_;
     VoteBannerWidget *const voteBanner_;
+    HypeTrainBannerWidget *const hypeBanner_;
     ChannelView *const view_;
     SplitInput *const input_;
     SplitOverlay *const overlay_;

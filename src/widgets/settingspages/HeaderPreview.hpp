@@ -129,6 +129,7 @@ private:
     LabelButton *mode_{};
     SvgButton *pin_{};
     SvgButton *vote_{};
+    SvgButton *hype_{};
     SvgButton *moderation_{};
     SvgButton *chatters_{};
     SvgButton *tracker_{};

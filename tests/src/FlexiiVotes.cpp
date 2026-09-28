@@ -7,6 +7,7 @@
 // writes nothing down about those two topics, so the reading is forgiving
 // on purpose - these tests hold every shape it is read in.
 
+#include "providers/twitch/pubsubmessages/HypeTrain.hpp"
 #include "providers/twitch/pubsubmessages/Polls.hpp"
 #include "providers/twitch/pubsubmessages/Predictions.hpp"
 #include "Test.hpp"
@@ -232,4 +233,101 @@ TEST(FlexiiVotes, WhatIsNoPredictionIsNotRead)
         predictionFrom(payload(R"({"data": {"event": {"title": "F"}}})"))
             .has_value());
     EXPECT_FALSE(predictionFrom({}).has_value());
+}
+
+TEST(FlexiiVotes, AHypeTrainIsReadOutOfWhatTheTopicSends)
+{
+    const auto train = hypeTrainFrom(payload(R"({
+        "type": "hype-train-progression",
+        "data": {
+            "user_id": "123",
+            "quantity": 500,
+            "progress": {
+                "level": {"value": 3, "goal": 4500},
+                "value": 2300,
+                "goal": 4500,
+                "total": 12300,
+                "remaining_seconds": 240
+            }
+        }
+    })"));
+    ASSERT_TRUE(train.has_value());
+
+    EXPECT_EQ(train->kind, PubSubHypeTrain::Kind::Progress);
+    EXPECT_TRUE(train->hasProgress);
+    EXPECT_FALSE(train->over);
+    EXPECT_EQ(train->level, 3);
+    EXPECT_EQ(train->value, 2300);
+    EXPECT_EQ(train->goal, 4500);
+    EXPECT_NEAR(train->share(), 0.511, 0.001);
+    // Four minutes, give or take the moment it took to read
+    EXPECT_GT(train->remaining().count(), 239000);
+    EXPECT_LE(train->remaining().count(), 240000);
+}
+
+TEST(FlexiiVotes, AHypeTrainThatStartsBringsItsOwnEnd)
+{
+    const auto expires = QDateTime::currentDateTimeUtc().addSecs(300);
+    const auto train = hypeTrainFrom(payload(
+        QString(R"({"type": "hype-train-start", "data": {
+            "id": "train-1", "expires_at": "%1",
+            "progress": {"level": {"value": 1, "goal": 1800}, "value": 400}}})")
+            .arg(expires.toString(Qt::ISODate))
+            .toUtf8()
+            .constData()));
+    ASSERT_TRUE(train.has_value());
+
+    EXPECT_EQ(train->kind, PubSubHypeTrain::Kind::Started);
+    EXPECT_EQ(train->id, "train-1");
+    EXPECT_EQ(train->level, 1);
+    EXPECT_EQ(train->value, 400);
+    // The level's goal, where the progress itself names none
+    EXPECT_EQ(train->goal, 1800);
+    EXPECT_GT(train->remaining().count(), 299000);
+}
+
+TEST(FlexiiVotes, AHypeTrainEndsWithoutSayingWhereItStood)
+{
+    const auto done = hypeTrainFrom(payload(R"({
+        "type": "hype-train-end",
+        "data": {"ended_at": 1759053660000, "ending_reason": "COMPLETED"}
+    })"));
+    ASSERT_TRUE(done.has_value());
+    EXPECT_EQ(done->kind, PubSubHypeTrain::Kind::Ended);
+    EXPECT_TRUE(done->over);
+    EXPECT_TRUE(done->completed);
+    EXPECT_FALSE(done->hasProgress);
+    EXPECT_EQ(done->remaining().count(), 0);
+
+    const auto expired = hypeTrainFrom(payload(R"({
+        "type": "hype-train-end",
+        "data": {"ending_reason": "EXPIRE"}
+    })"));
+    ASSERT_TRUE(expired.has_value());
+    EXPECT_TRUE(expired->over);
+    EXPECT_FALSE(expired->completed);
+}
+
+TEST(FlexiiVotes, WhatTheHypeTopicElseSendsSaysNothingAboutTheTrain)
+{
+    // A conductor change carries no progress - it must not wipe what we
+    // have, which is why it says so
+    const auto conductor = hypeTrainFrom(payload(R"({
+        "type": "hype-train-conductor-update",
+        "data": {"source": "BITS", "user": {"id": "1"}}
+    })"));
+    EXPECT_FALSE(conductor.has_value());
+
+    const auto levelUp = hypeTrainFrom(payload(R"({
+        "type": "hype-train-level-up",
+        "data": {"time_to_expire": 1759053660000,
+                 "progress": {"level": {"value": 4, "goal": 7600},
+                              "value": 100}}
+    })"));
+    ASSERT_TRUE(levelUp.has_value());
+    EXPECT_EQ(levelUp->kind, PubSubHypeTrain::Kind::LevelUp);
+    EXPECT_EQ(levelUp->level, 4);
+    EXPECT_TRUE(levelUp->hasProgress);
+
+    EXPECT_FALSE(hypeTrainFrom({}).has_value());
 }

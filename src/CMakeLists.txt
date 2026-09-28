@@ -574,6 +574,8 @@ set(SOURCE_FILES
         providers/twitch/pubsubmessages/Base.hpp
         providers/twitch/pubsubmessages/ChannelPoints.cpp
         providers/twitch/pubsubmessages/ChannelPoints.hpp
+        providers/twitch/pubsubmessages/HypeTrain.cpp
+        providers/twitch/pubsubmessages/HypeTrain.hpp
         providers/twitch/pubsubmessages/Listen.cpp
         providers/twitch/pubsubmessages/Listen.hpp
         providers/twitch/pubsubmessages/Message.hpp
@@ -1050,6 +1052,8 @@ set(SOURCE_FILES
         widgets/splits/InputCompletionPopup.hpp
         widgets/splits/InputHighlighter.cpp
         widgets/splits/InputHighlighter.hpp
+        widgets/splits/HypeTrainBannerWidget.cpp
+        widgets/splits/HypeTrainBannerWidget.hpp
         widgets/splits/SendWaitBar.cpp
         widgets/splits/SendWaitBar.hpp
         widgets/splits/Split.cpp

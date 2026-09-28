@@ -16,6 +16,7 @@
 #include <QLabel>
 #include <QMenu>
 #include <QScrollArea>
+#include <QTimer>
 #include <QShowEvent>
 #include <QVBoxLayout>
 
@@ -285,6 +286,13 @@ void PinnedMessageWidget::resizeEvent(QResizeEvent *event)
 void PinnedMessageWidget::showEvent(QShowEvent *event)
 {
     SplitBanner::showEvent(event);
+    // ChattiFlexii: while the banner was hidden the layout gave it no
+    // width, so a message that arrived in the meantime was measured
+    // against nothing and came out taller than it is. Once the layout has
+    // run, it is measured again.
+    QTimer::singleShot(0, this, [this] {
+        this->updateMessageHeight();
+    });
     this->visibilityChanged.invoke();
 }
 

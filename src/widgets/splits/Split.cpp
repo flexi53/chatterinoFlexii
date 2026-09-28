@@ -39,6 +39,7 @@
 #include "widgets/Scrollbar.hpp"
 #include "widgets/splits/DraggedSplit.hpp"
 #include "widgets/splits/PinnedMessageWidget.hpp"
+#include "widgets/splits/HypeTrainBannerWidget.hpp"
 #include "widgets/splits/VoteBannerWidget.hpp"
 #include "widgets/splits/SplitContainer.hpp"
 #include "widgets/splits/SplitHeader.hpp"
@@ -130,6 +131,7 @@ Split::Split(QWidget *parent)
     , header_(new SplitHeader(this))
     , pinnedBanner_(new PinnedMessageWidget(this))
     , voteBanner_(new VoteBannerWidget(this))
+    , hypeBanner_(new HypeTrainBannerWidget(this))
     , view_(new ChannelView(this, this, ChannelView::Context::None,
                             getSettings()->scrollbackSplitLimit))
     , input_(new SplitInput(this))
@@ -146,6 +148,7 @@ Split::Split(QWidget *parent)
     this->vbox_->addWidget(this->header_);
     this->vbox_->addWidget(this->pinnedBanner_);
     this->vbox_->addWidget(this->voteBanner_);
+    this->vbox_->addWidget(this->hypeBanner_);
     this->vbox_->addWidget(this->view_, 1);
     this->vbox_->addWidget(this->input_);
 
@@ -815,6 +818,11 @@ VoteBannerWidget *Split::getVoteBanner() const
     return this->voteBanner_;
 }
 
+HypeTrainBannerWidget *Split::getHypeBanner() const
+{
+    return this->hypeBanner_;
+}
+
 PinnedMessageWidget *Split::getPinnedBanner() const
 {
     return this->pinnedBanner_;
@@ -948,6 +956,7 @@ void Split::setChannel(IndirectChannel newChannel)
 
         this->pinnedBanner_->setChannel(tc);
         this->voteBanner_->setChannel(tc);
+        this->hypeBanner_->setChannel(tc);
     }
     else if (kc != nullptr)
     {
@@ -968,11 +977,13 @@ void Split::setChannel(IndirectChannel newChannel)
         // Kick knows neither pinned messages nor polls
         this->pinnedBanner_->setChannel(nullptr);
         this->voteBanner_->setChannel(nullptr);
+        this->hypeBanner_->setChannel(nullptr);
     }
     else
     {
         this->pinnedBanner_->setChannel(nullptr);
         this->voteBanner_->setChannel(nullptr);
+        this->hypeBanner_->setChannel(nullptr);
     }
 
     this->indirectChannelChangedConnection_ =

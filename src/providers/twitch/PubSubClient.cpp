@@ -240,6 +240,18 @@ void PubSubClient::handleMessageResponse(const PubSubMessageMessage &message)
         return;
     }
 
+    if (message.topic.startsWith("hype-train-events-v1."))
+    {
+        const auto channelId = message.topic.sliced(
+            static_cast<qsizetype>(sizeof("hype-train-events-v1.") - 1));
+        auto train = hypeTrainFrom(message.messageObject);
+        if (train)
+        {
+            this->manager_.hypeTrain.changed.invoke(channelId, *train);
+        }
+        return;
+    }
+
     if (!message.topic.startsWith("community-points-channel-v1."))
     {
         return;

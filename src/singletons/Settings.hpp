@@ -301,6 +301,9 @@ public:
     /// ChattiFlexii, Aussehen -> Chat: the banner under the header saying
     /// what the channel is voting on right now
     BoolSetting showVoteBanner = {"/appearance/banners/showVotes", true};
+    /// ChattiFlexii, Aussehen -> Chat: the banner for the hype train
+    BoolSetting showHypeTrainBanner = {"/appearance/banners/showHypeTrain",
+                                       true};
 
     /// Buttons -> Title bar: the parts of the split header in the order they
     /// stand, as their ids - empty for the order Chatterino has them in

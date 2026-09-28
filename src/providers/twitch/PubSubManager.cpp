@@ -148,4 +148,15 @@ void PubSub::listenToPredictions(const QString &channelID)
     this->private_->subscribe(TopicData{.topic = std::move(topic)});
 }
 
+void PubSub::listenToHypeTrain(const QString &channelID)
+{
+    static const QString topicFormat("hype-train-events-v1.%1");
+    assert(!channelID.isEmpty());
+
+    auto topic = topicFormat.arg(channelID);
+
+    qCDebug(chatterinoPubSub) << "Listen to topic" << topic;
+    this->private_->subscribe(TopicData{.topic = std::move(topic)});
+}
+
 }  // namespace chatterino

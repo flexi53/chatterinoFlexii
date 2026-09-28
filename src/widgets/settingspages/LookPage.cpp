@@ -693,6 +693,11 @@ void LookPage::buildChatTab(GeneralPageView &layout)
         ->addKeywords({"umfrage", "poll", "vorhersage", "prediction",
                        "banner"})
         ->addTo(layout);
+    SettingWidget::checkbox("Hype Train zeigen", s.showHypeTrainBanner)
+        ->setTooltip("Zeigt den laufenden Hype Train mit Level, Fortschritt "
+                     "und Restzeit.")
+        ->addKeywords({"hype", "train", "banner"})
+        ->addTo(layout);
 
     layout.addTitle("Lesbarkeit");
     layout.addDescription(

@@ -7,6 +7,7 @@
 #include "providers/liveupdates/Diag.hpp"
 
 #include <pajlada/signals/signal.hpp>
+#include "providers/twitch/pubsubmessages/HypeTrain.hpp"
 #include "providers/twitch/pubsubmessages/Polls.hpp"
 #include "providers/twitch/pubsubmessages/Predictions.hpp"
 
@@ -77,6 +78,13 @@ public:
             changed;
     } predictions;
 
+    struct {
+        /// ChattiFlexii: a hype train got going, grew, went up a level or
+        /// ended. The arguments are the channel's id and what happened.
+        pajlada::Signals::Signal<const QString &, const PubSubHypeTrain &>
+            changed;
+    } hypeTrain;
+
     /**
      * Listen to incoming channel point redemptions in the given channel.
      * This topic is relevant for everyone.
@@ -110,6 +118,14 @@ public:
      * PubSub topic: predictions-channel-v1.{channelID}
      */
     void listenToPredictions(const QString &channelID);
+
+    /**
+     * ChattiFlexii: listen to the hype train of the given channel. As with
+     * polls, this topic is answered to everyone.
+     *
+     * PubSub topic: hype-train-events-v1.{channelID}
+     */
+    void listenToHypeTrain(const QString &channelID);
 
     struct {
         std::atomic<uint32_t> messagesReceived{0};

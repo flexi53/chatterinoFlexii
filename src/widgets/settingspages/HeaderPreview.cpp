@@ -127,6 +127,12 @@ HeaderPreview::HeaderPreview(QWidget *parent)
             .light = ":/buttons/poll-chat.svg",
         },
         this, {5, 5});
+    this->hype_ = new SvgButton(
+        {
+            .dark = ":/buttons/hypetrain-chat.svg",
+            .light = ":/buttons/hypetrain-chat.svg",
+        },
+        this, {5, 5});
     this->moderation_ = new SvgButton(
         {
             .dark = ":/buttons/moderationDisabled-darkMode.svg",
@@ -156,8 +162,9 @@ HeaderPreview::HeaderPreview(QWidget *parent)
     // They are only painted from here, never shown on their own
     for (auto *widget : std::initializer_list<QWidget *>{
              this->picture_, this->cover_, this->title_, this->activity_,
-             this->mode_, this->pin_, this->vote_, this->moderation_,
-             this->chatters_, this->tracker_, this->menu_, this->add_})
+             this->mode_, this->pin_, this->vote_, this->hype_,
+             this->moderation_, this->chatters_, this->tracker_, this->menu_,
+             this->add_})
     {
         widget->hide();
         widget->setAttribute(Qt::WA_TransparentForMouseEvents);
@@ -269,6 +276,8 @@ QWidget *HeaderPreview::widgetFor(Part part) const
             return this->pin_;
         case Part::Vote:
             return this->vote_;
+        case Part::Hype:
+            return this->hype_;
         case Part::Moderation:
             return this->moderation_;
         case Part::Chatters:
@@ -347,6 +356,7 @@ void HeaderPreview::relayout()
                 return this->mode_->sizeHint().width();
             case Part::Pin:
             case Part::Vote:
+            case Part::Hype:
             case Part::Moderation:
             case Part::Chatters:
             case Part::Tracker:

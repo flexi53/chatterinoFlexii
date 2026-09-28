@@ -51,6 +51,8 @@ public:
     void updatePinButton();
     /// ChattiFlexii: the poll button, shown while a vote is running
     void updateVoteButton();
+    /// ChattiFlexii: the hype train button, shown while one runs
+    void updateHypeButton();
     // Invoked when SplitHeader should update anything refering to a TwitchChannel's mode
     // has changed (e.g. sub mode toggled)
     void updateRoomModes();
@@ -116,6 +118,7 @@ private:
 
     SvgButton *pinButton_{};
     SvgButton *voteButton_{};
+    SvgButton *hypeButton_{};
 
     SvgButton *moderationButton_{};
     SvgButton *chattersButton_{};

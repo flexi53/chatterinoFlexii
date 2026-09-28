@@ -323,6 +323,22 @@ void TwitchIrcServer::initialize()
                 }
             });
         });
+
+    this->signalHolder.managedConnect(
+        getApp()->getTwitchPubSub()->hypeTrain.changed,
+        [this](const QString &channelId, const PubSubHypeTrain &train) {
+            auto chan = this->getChannelOrEmptyByID(channelId);
+            postToThread([chan, train] {
+                if (isAppAboutToQuit())
+                {
+                    return;
+                }
+                if (auto *channel = dynamic_cast<TwitchChannel *>(chan.get()))
+                {
+                    channel->takeHypeTrain(train);
+                }
+            });
+        });
 }
 
 void TwitchIrcServer::aboutToQuit()

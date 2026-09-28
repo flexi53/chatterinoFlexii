@@ -86,6 +86,14 @@ const std::vector<Info> &all()
             .canHide = true,
         },
         {
+            .part = Part::Hype,
+            .id = "hype",
+            .name = "Hype Train",
+            .about = "Blendet den laufenden Hype Train ein und aus - nur "
+                     "solange einer fährt.",
+            .canHide = true,
+        },
+        {
             .part = Part::Moderation,
             .id = "moderation",
             .name = "Moderationsmodus",
