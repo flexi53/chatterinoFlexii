@@ -680,6 +680,20 @@ void LookPage::buildChatTab(GeneralPageView &layout)
 {
     auto &s = *getSettings();
 
+    layout.addTitle("Banner");
+    layout.addDescription(
+        "Die Leiste zwischen Titelleiste und Chat. Twitch schickt jedem "
+        "Zuschauer, was im Kanal gerade abgestimmt wird - das Banner "
+        "erscheint also überall, nicht nur wo du Mod bist. Die Knöpfe dazu "
+        "holst du dir unter Buttons -> Titelleiste.");
+    SettingWidget::checkbox("Umfragen und Vorhersagen zeigen", s.showVoteBanner)
+        ->setTooltip("Zeigt die laufende Umfrage oder Vorhersage mit "
+                     "Balken, Stimmen und Restzeit. Nach dem Ende bleibt "
+                     "das Ergebnis noch kurz stehen.")
+        ->addKeywords({"umfrage", "poll", "vorhersage", "prediction",
+                       "banner"})
+        ->addTo(layout);
+
     layout.addTitle("Lesbarkeit");
     layout.addDescription(
         "Jede zweite Nachricht bekommt einen etwas anderen Hintergrund, damit "

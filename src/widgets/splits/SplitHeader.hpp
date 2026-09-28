@@ -49,6 +49,8 @@ public:
     void applyPartWidths(int button, int addButton, float scale);
     void updateIcons();
     void updatePinButton();
+    /// ChattiFlexii: the poll button, shown while a vote is running
+    void updateVoteButton();
     // Invoked when SplitHeader should update anything refering to a TwitchChannel's mode
     // has changed (e.g. sub mode toggled)
     void updateRoomModes();
@@ -113,6 +115,7 @@ private:
     QAction *modeActionSetFollowers{};
 
     SvgButton *pinButton_{};
+    SvgButton *voteButton_{};
 
     SvgButton *moderationButton_{};
     SvgButton *chattersButton_{};

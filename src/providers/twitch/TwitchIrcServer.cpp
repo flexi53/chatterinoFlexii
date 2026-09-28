@@ -289,6 +289,40 @@ void TwitchIrcServer::initialize()
                 }
             });
         });
+
+    // ChattiFlexii: polls and predictions, which reach every viewer
+    this->signalHolder.managedConnect(
+        getApp()->getTwitchPubSub()->polls.changed,
+        [this](const QString &channelId, const PubSubPoll &poll) {
+            auto chan = this->getChannelOrEmptyByID(channelId);
+            postToThread([chan, poll] {
+                if (isAppAboutToQuit())
+                {
+                    return;
+                }
+                if (auto *channel = dynamic_cast<TwitchChannel *>(chan.get()))
+                {
+                    channel->takePoll(poll);
+                }
+            });
+        });
+
+    this->signalHolder.managedConnect(
+        getApp()->getTwitchPubSub()->predictions.changed,
+        [this](const QString &channelId,
+               const PubSubPrediction &prediction) {
+            auto chan = this->getChannelOrEmptyByID(channelId);
+            postToThread([chan, prediction] {
+                if (isAppAboutToQuit())
+                {
+                    return;
+                }
+                if (auto *channel = dynamic_cast<TwitchChannel *>(chan.get()))
+                {
+                    channel->takePrediction(prediction);
+                }
+            });
+        });
 }
 
 void TwitchIrcServer::aboutToQuit()

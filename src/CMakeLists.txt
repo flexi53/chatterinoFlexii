@@ -579,6 +579,10 @@ set(SOURCE_FILES
         providers/twitch/pubsubmessages/Message.hpp
         providers/twitch/pubsubmessages/PinnedChatUpdates.cpp
         providers/twitch/pubsubmessages/PinnedChatUpdates.hpp
+        providers/twitch/pubsubmessages/Polls.cpp
+        providers/twitch/pubsubmessages/Polls.hpp
+        providers/twitch/pubsubmessages/Predictions.cpp
+        providers/twitch/pubsubmessages/Predictions.hpp
         providers/twitch/pubsubmessages/Unlisten.cpp
         providers/twitch/pubsubmessages/Unlisten.hpp
 
@@ -1051,6 +1055,8 @@ set(SOURCE_FILES
         widgets/splits/Split.cpp
         widgets/splits/Split.hpp
         widgets/splits/SplitBanner.cpp
+        widgets/splits/VoteBannerWidget.cpp
+        widgets/splits/VoteBannerWidget.hpp
         widgets/splits/SplitBanner.hpp
         widgets/splits/SplitCommon.hpp
         widgets/splits/SplitContainer.cpp

@@ -25,6 +25,7 @@ class SplitInput;
 class SplitContainer;
 class SplitOverlay;
 class PinnedMessageWidget;
+class VoteBannerWidget;
 class SelectChannelDialog;
 class OverlayWindow;
 
@@ -57,6 +58,8 @@ public:
     ChannelView &getChannelView();
     SplitInput &getInput();
     [[nodiscard]] PinnedMessageWidget *getPinnedBanner() const;
+    /// ChattiFlexii: the poll or prediction banner under the header
+    [[nodiscard]] VoteBannerWidget *getVoteBanner() const;
 
     IndirectChannel getIndirectChannel();
     ChannelPtr getChannel() const;
@@ -168,6 +171,7 @@ private:
     QVBoxLayout *const vbox_;
     SplitHeader *const header_;
     PinnedMessageWidget *const pinnedBanner_;
+    VoteBannerWidget *const voteBanner_;
     ChannelView *const view_;
     SplitInput *const input_;
     SplitOverlay *const overlay_;

@@ -37,6 +37,7 @@
 #include "widgets/helper/CommonTexts.hpp"
 #include "widgets/Label.hpp"
 #include "widgets/splits/PinnedMessageWidget.hpp"
+#include "widgets/splits/VoteBannerWidget.hpp"
 #include "widgets/splits/Split.hpp"
 #include "widgets/splits/SplitContainer.hpp"
 #include "widgets/splits/HeaderParts.hpp"
@@ -304,6 +305,7 @@ SplitHeader::SplitHeader(Split *split)
             this->updateRoomModes();
             this->updateIcons();
             this->updatePinButton();
+            this->updateVoteButton();
             this->setAddButtonVisible(this->addButtonWanted_);
         },
         this->managedConnections_, false);
@@ -398,6 +400,19 @@ void SplitHeader::initializeLayout()
                                    ? QColor(0x42, 0x42, 0x42)
                                    : QColor(0xc0, 0xc0, 0xc0));
     this->pinButton_->hide();
+
+    // ChattiFlexii: the same for the poll or prediction running right now
+    this->voteButton_ = new SvgButton(
+        {
+            .dark = ":/buttons/poll-chat.svg",
+            .light = ":/buttons/poll-chat.svg",
+        },
+        this, {5, 5});
+    this->voteButton_->setToolTip("Umfrage/Vorhersage ein-/ausblenden");
+    this->voteButton_->setColor(this->theme->isLightTheme()
+                                    ? QColor(0x42, 0x42, 0x42)
+                                    : QColor(0xc0, 0xc0, 0xc0));
+    this->voteButton_->hide();
 
     this->addButton_ = new DrawnButton(DrawnButton::Symbol::Plus,
                                        {
@@ -506,6 +521,10 @@ void SplitHeader::initializeLayout()
 
     QObject::connect(this->pinButton_, &Button::leftClicked, this, [this]() {
         this->split_->togglePinnedBanner();
+    });
+
+    QObject::connect(this->voteButton_, &Button::leftClicked, this, [this]() {
+        this->split_->getVoteBanner()->toggleUserPinned();
     });
 
     QObject::connect(this->addButton_, &Button::leftClicked, this, [this]() {
@@ -997,6 +1016,20 @@ void SplitHeader::handleChannelChanged()
                 this->updatePinButton();
             });
 
+        // ChattiFlexii: and the same for what the channel votes on
+        this->channelConnections_.managedConnect(twitchChannel->pollChanged,
+                                                 [this]() {
+                                                     this->updateVoteButton();
+                                                 });
+        this->channelConnections_.managedConnect(
+            twitchChannel->predictionChanged, [this]() {
+                this->updateVoteButton();
+            });
+        this->channelConnections_.managedConnect(
+            this->split_->getVoteBanner()->visibilityChanged, [this]() {
+                this->updateVoteButton();
+            });
+
     }
     else if (auto *kickChannel = dynamic_cast<KickChannel *>(channel.get()))
     {
@@ -1006,8 +1039,9 @@ void SplitHeader::handleChannelChanged()
                                                  });
     }
 
-    // Whatever the channel is, the pin button knows where it stands
+    // Whatever the channel is, the two banner buttons know where they stand
     this->updatePinButton();
+    this->updateVoteButton();
 }
 
 void SplitHeader::scaleChangedEvent(float scale)
@@ -1039,6 +1073,7 @@ void SplitHeader::applyPartWidths(int button, int addButton, float scale)
     this->chattersButton_->setFixedWidth(width(Part::Chatters, button));
     this->trackerButton_->setFixedWidth(width(Part::Tracker, button));
     this->pinButton_->setFixedWidth(width(Part::Pin, button));
+    this->voteButton_->setFixedWidth(width(Part::Vote, button));
     this->addButton_->setFixedWidth(width(Part::Add, addButton));
 
     this->channelPicture_->setExtraWidth(headerparts::widthDelta(Part::Picture));
@@ -1194,6 +1229,28 @@ void SplitHeader::updatePinButton()
         this->pinButton_->setColor(this->theme->isLightTheme()
                                        ? QColor(0x42, 0x42, 0x42)
                                        : QColor(0xc0, 0xc0, 0xc0));
+    }
+}
+
+void SplitHeader::updateVoteButton()
+{
+    auto channel = this->split_->getChannel();
+    auto *twitchChannel = dynamic_cast<TwitchChannel *>(channel.get());
+    const bool hasVote = twitchChannel != nullptr &&
+                         (twitchChannel->currentPoll() != nullptr ||
+                          twitchChannel->currentPrediction() != nullptr);
+
+    this->voteButton_->setVisible(
+        hasVote && headerparts::isShown(headerparts::Part::Vote));
+    if (hasVote && this->split_->getVoteBanner()->isVisible())
+    {
+        this->voteButton_->setColor(this->theme->accent);
+    }
+    else
+    {
+        this->voteButton_->setColor(this->theme->isLightTheme()
+                                        ? QColor(0x42, 0x42, 0x42)
+                                        : QColor(0xc0, 0xc0, 0xc0));
     }
 }
 
@@ -1369,6 +1426,9 @@ void SplitHeader::arrangeParts()
                 break;
             case Part::Pin:
                 layout->addWidget(this->pinButton_);
+                break;
+            case Part::Vote:
+                layout->addWidget(this->voteButton_);
                 break;
             case Part::Moderation:
                 layout->addWidget(this->moderationButton_);

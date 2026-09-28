@@ -298,6 +298,10 @@ public:
     /// split header
     BoolSetting splitHeaderActivity = {"/appearance/splitheader/activity",
                                        false};
+    /// ChattiFlexii, Aussehen -> Chat: the banner under the header saying
+    /// what the channel is voting on right now
+    BoolSetting showVoteBanner = {"/appearance/banners/showVotes", true};
+
     /// Buttons -> Title bar: the parts of the split header in the order they
     /// stand, as their ids - empty for the order Chatterino has them in
     QStringSetting splitHeaderOrder = {"/appearance/splitheader/order", ""};

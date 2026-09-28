@@ -1616,6 +1616,9 @@ void TwitchChannel::refreshPubSub()
 
     getApp()->getTwitchPubSub()->listenToChannelPointRewards(roomId);
     getApp()->getTwitchPubSub()->listenToPinnedChatUpdates(roomId);
+    // ChattiFlexii: what the channel votes on, which Twitch tells everyone
+    getApp()->getTwitchPubSub()->listenToPolls(roomId);
+    getApp()->getTwitchPubSub()->listenToPredictions(roomId);
 
     if (currentAccount->isAnon())
     {
@@ -2768,6 +2771,41 @@ void TwitchChannel::takePinnedMessageFrom(const QJsonObject &pubSubData)
     ++this->pinnedMessageRequestId_;
     this->pinnedMessage_ = std::make_unique<const HelixPinnedChatMessage>(pin);
     this->pinnedMessageChanged.invoke();
+}
+
+const PubSubPoll *TwitchChannel::currentPoll() const
+{
+    return this->poll_ ? &*this->poll_ : nullptr;
+}
+
+void TwitchChannel::takePoll(const PubSubPoll &poll)
+{
+    // An older poll than the one we have is no news
+    if (this->poll_ && this->poll_->id == poll.id && !poll.running() &&
+        !this->poll_->running())
+    {
+        return;
+    }
+
+    this->poll_ = poll;
+    this->pollChanged.invoke();
+}
+
+const PubSubPrediction *TwitchChannel::currentPrediction() const
+{
+    return this->prediction_ ? &*this->prediction_ : nullptr;
+}
+
+void TwitchChannel::takePrediction(const PubSubPrediction &prediction)
+{
+    if (this->prediction_ && this->prediction_->id == prediction.id &&
+        !prediction.running() && !this->prediction_->running())
+    {
+        return;
+    }
+
+    this->prediction_ = prediction;
+    this->predictionChanged.invoke();
 }
 
 const HelixPinnedChatMessage *TwitchChannel::getPinnedMessage() const

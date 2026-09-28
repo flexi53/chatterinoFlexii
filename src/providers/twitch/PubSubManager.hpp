@@ -7,6 +7,9 @@
 #include "providers/liveupdates/Diag.hpp"
 
 #include <pajlada/signals/signal.hpp>
+#include "providers/twitch/pubsubmessages/Polls.hpp"
+#include "providers/twitch/pubsubmessages/Predictions.hpp"
+
 #include <QJsonObject>
 #include <QString>
 
@@ -61,6 +64,19 @@ public:
         Signal<const QString &> unpinned;
     } pinnedChatUpdates;
 
+    struct {
+        /// ChattiFlexii: a poll was opened, voted in or closed. The
+        /// arguments are the channel's id and the poll.
+        pajlada::Signals::Signal<const QString &, const PubSubPoll &> changed;
+    } polls;
+
+    struct {
+        /// ChattiFlexii: a prediction was opened, bet on, locked or
+        /// settled. The arguments are the channel's id and the prediction.
+        pajlada::Signals::Signal<const QString &, const PubSubPrediction &>
+            changed;
+    } predictions;
+
     /**
      * Listen to incoming channel point redemptions in the given channel.
      * This topic is relevant for everyone.
@@ -77,6 +93,23 @@ public:
      * PubSub topic: pinned-chat-updates-v1.{channelID}
      */
     void listenToPinnedChatUpdates(const QString &channelID);
+
+    /**
+     * ChattiFlexii: listen to the polls of the given channel. Twitch answers
+     * this topic to everyone, not only to the broadcaster - which is why the
+     * banner works in every channel.
+     *
+     * PubSub topic: polls.{channelID}
+     */
+    void listenToPolls(const QString &channelID);
+
+    /**
+     * ChattiFlexii: listen to the predictions of the given channel. As with
+     * polls, this topic is answered to everyone.
+     *
+     * PubSub topic: predictions-channel-v1.{channelID}
+     */
+    void listenToPredictions(const QString &channelID);
 
     struct {
         std::atomic<uint32_t> messagesReceived{0};

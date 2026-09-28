@@ -68,6 +68,7 @@ set(test_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/FlexiiGerman.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/FlexiiNotebook.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/FlexiiPinnedMessage.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/FlexiiVotes.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/FlexiiProfilePictures.cpp
 
     ${CMAKE_CURRENT_LIST_DIR}/src/lib/Snapshot.cpp

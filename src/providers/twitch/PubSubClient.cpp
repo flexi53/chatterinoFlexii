@@ -203,6 +203,43 @@ void PubSubClient::handleMessageResponse(const PubSubMessageMessage &message)
         return;
     }
 
+    // ChattiFlexii: polls and predictions, which Twitch tells everyone
+    if (message.topic.startsWith("polls."))
+    {
+        const auto channelId = message.topic.sliced(
+            static_cast<qsizetype>(sizeof("polls.") - 1));
+        auto poll = pollFrom(message.messageObject);
+        if (poll)
+        {
+            this->manager_.polls.changed.invoke(channelId, *poll);
+        }
+        else
+        {
+            qCDebug(chatterinoPubSub)
+                << "Poll message nothing could be read out of:"
+                << message.messageObject;
+        }
+        return;
+    }
+
+    if (message.topic.startsWith("predictions-channel-v1."))
+    {
+        const auto channelId = message.topic.sliced(
+            static_cast<qsizetype>(sizeof("predictions-channel-v1.") - 1));
+        auto prediction = predictionFrom(message.messageObject);
+        if (prediction)
+        {
+            this->manager_.predictions.changed.invoke(channelId, *prediction);
+        }
+        else
+        {
+            qCDebug(chatterinoPubSub)
+                << "Prediction message nothing could be read out of:"
+                << message.messageObject;
+        }
+        return;
+    }
+
     if (!message.topic.startsWith("community-points-channel-v1."))
     {
         return;

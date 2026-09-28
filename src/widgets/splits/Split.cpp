@@ -39,6 +39,7 @@
 #include "widgets/Scrollbar.hpp"
 #include "widgets/splits/DraggedSplit.hpp"
 #include "widgets/splits/PinnedMessageWidget.hpp"
+#include "widgets/splits/VoteBannerWidget.hpp"
 #include "widgets/splits/SplitContainer.hpp"
 #include "widgets/splits/SplitHeader.hpp"
 #include "widgets/splits/HeaderParts.hpp"
@@ -128,6 +129,7 @@ Split::Split(QWidget *parent)
     , vbox_(new QVBoxLayout(this))
     , header_(new SplitHeader(this))
     , pinnedBanner_(new PinnedMessageWidget(this))
+    , voteBanner_(new VoteBannerWidget(this))
     , view_(new ChannelView(this, this, ChannelView::Context::None,
                             getSettings()->scrollbackSplitLimit))
     , input_(new SplitInput(this))
@@ -143,6 +145,7 @@ Split::Split(QWidget *parent)
 
     this->vbox_->addWidget(this->header_);
     this->vbox_->addWidget(this->pinnedBanner_);
+    this->vbox_->addWidget(this->voteBanner_);
     this->vbox_->addWidget(this->view_, 1);
     this->vbox_->addWidget(this->input_);
 
@@ -807,6 +810,11 @@ SplitInput &Split::getInput()
     return *this->input_;
 }
 
+VoteBannerWidget *Split::getVoteBanner() const
+{
+    return this->voteBanner_;
+}
+
 PinnedMessageWidget *Split::getPinnedBanner() const
 {
     return this->pinnedBanner_;
@@ -939,6 +947,7 @@ void Split::setChannel(IndirectChannel newChannel)
             });
 
         this->pinnedBanner_->setChannel(tc);
+        this->voteBanner_->setChannel(tc);
     }
     else if (kc != nullptr)
     {
@@ -956,12 +965,14 @@ void Split::setChannel(IndirectChannel newChannel)
                 this->getInput().setSendWaitStatus(text);
             });
 
-        // Kick knows no pinned message
+        // Kick knows neither pinned messages nor polls
         this->pinnedBanner_->setChannel(nullptr);
+        this->voteBanner_->setChannel(nullptr);
     }
     else
     {
         this->pinnedBanner_->setChannel(nullptr);
+        this->voteBanner_->setChannel(nullptr);
     }
 
     this->indirectChannelChangedConnection_ =

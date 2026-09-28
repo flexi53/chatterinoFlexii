@@ -78,6 +78,14 @@ const std::vector<Info> &all()
             .canHide = true,
         },
         {
+            .part = Part::Vote,
+            .id = "vote",
+            .name = "Umfrage & Vorhersage",
+            .about = "Blendet die laufende Umfrage oder Vorhersage ein und "
+                     "aus - nur solange eine läuft.",
+            .canHide = true,
+        },
+        {
             .part = Part::Moderation,
             .id = "moderation",
             .name = "Moderationsmodus",

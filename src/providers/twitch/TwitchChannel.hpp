@@ -13,6 +13,8 @@
 #include "providers/ffz/FfzBadges.hpp"
 #include "providers/ffz/FfzEmotes.hpp"
 #include "providers/twitch/eventsub/SubscriptionHandle.hpp"
+#include "providers/twitch/pubsubmessages/Polls.hpp"
+#include "providers/twitch/pubsubmessages/Predictions.hpp"
 #include "providers/twitch/TwitchEmotes.hpp"
 #include "util/QStringHash.hpp"
 #include "util/ThreadGuard.hpp"
@@ -458,6 +460,20 @@ public:
     /// Fires when the pinned message changes (set, cleared, or updated).
     pajlada::Signals::NoArgSignal pinnedMessageChanged;
 
+    /// ChattiFlexii: the poll running in this channel, or null for none
+    const PubSubPoll *currentPoll() const;
+    /// ChattiFlexii: what the poll topic just said
+    void takePoll(const PubSubPoll &poll);
+    /// Fires whenever that poll changes
+    pajlada::Signals::NoArgSignal pollChanged;
+
+    /// ChattiFlexii: the prediction running in this channel, or null
+    const PubSubPrediction *currentPrediction() const;
+    /// ChattiFlexii: what the prediction topic just said
+    void takePrediction(const PubSubPrediction &prediction);
+    /// Fires whenever that prediction changes
+    pajlada::Signals::NoArgSignal predictionChanged;
+
 private:
     struct NameOptions {
         // displayName is the non-CJK-display name for this user
@@ -658,6 +674,9 @@ private:
 
     /// May be null if no message is currently pinned.
     std::unique_ptr<const HelixPinnedChatMessage> pinnedMessage_;
+    /// ChattiFlexii: what the poll and prediction topics last said
+    std::optional<PubSubPoll> poll_;
+    std::optional<PubSubPrediction> prediction_;
     /// Incremented before each getPinnedChatMessage request so that stale
     /// responses from earlier requests are discarded.
     uint64_t pinnedMessageRequestId_ = 0;
