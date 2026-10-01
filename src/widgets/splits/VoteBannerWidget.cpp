@@ -327,12 +327,14 @@ void VoteBannerWidget::showPoll()
     if (poll->running())
     {
         this->stopAutoHide();
+        this->setTimeShare(this->timeShareOf(poll->id, poll->remaining()));
         this->startCountdown();
     }
     else
     {
         this->stopCountdown();
         this->countdownLabel()->hide();
+        this->setTimeShare(-1);
         if (!this->userToggled_)
         {
             this->startAutoHide(SHOW_RESULT_FOR);
@@ -401,12 +403,15 @@ void VoteBannerWidget::showPrediction()
     if (prediction->status == PubSubPrediction::Status::Active)
     {
         this->stopAutoHide();
+        this->setTimeShare(
+            this->timeShareOf(prediction->id, prediction->remaining()));
         this->startCountdown();
     }
     else
     {
         this->stopCountdown();
         this->countdownLabel()->hide();
+        this->setTimeShare(-1);
         if (prediction->status == PubSubPrediction::Status::Locked)
         {
             // ChattiFlexii: no more bets to place and nothing decided yet -
@@ -426,6 +431,25 @@ void VoteBannerWidget::showPrediction()
     }
 
     this->showUnlessDismissed();
+}
+
+double VoteBannerWidget::timeShareOf(const QString &id,
+                                    std::chrono::milliseconds left)
+{
+    if (this->timedId_ != id)
+    {
+        this->timedId_ = id;
+        this->timedTotal_ = left;
+    }
+    // Where more time is left than ever before, this one turned up here
+    // after it had already started
+    this->timedTotal_ = std::max(this->timedTotal_, left);
+
+    if (this->timedTotal_.count() <= 0 || left.count() <= 0)
+    {
+        return -1;
+    }
+    return double(left.count()) / double(this->timedTotal_.count());
 }
 
 void VoteBannerWidget::tickCountdown()
@@ -450,12 +474,14 @@ void VoteBannerWidget::tickCountdown()
     if (left.count() <= 0)
     {
         this->countdownLabel()->hide();
+        this->setTimeShare(-1);
         this->stopCountdown();
         return;
     }
 
     this->countdownLabel()->setText(formatCountdown(left.count()));
     this->countdownLabel()->show();
+    this->setTimeShare(this->timeShareOf(this->showing_, left));
 }
 
 void VoteBannerWidget::autoHide()

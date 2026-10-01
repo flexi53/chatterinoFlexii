@@ -42,6 +42,12 @@ protected:
     /// Shows the banner unless it was put away
     void showUnlessDismissed();
 
+    /// ChattiFlexii: a thin bar along the bottom edge of the card that runs
+    /// out with the time, the way the one under the input does while a
+    /// channel makes you wait. @a share is what is left, from 1 to 0; a
+    /// share below zero takes the bar away.
+    void setTimeShare(double share);
+
     QLabel *headerLabel() const;
     /// Widgets added here sit after the leading label and a stretch.
     QHBoxLayout *headerRow() const;
@@ -77,6 +83,8 @@ private:
     QTimer *countdownTimer_ = nullptr;
     QTimer *autoHideTimer_ = nullptr;
     bool dismissed_ = false;
+    /// How much of the time is left, below zero while there is none to show
+    double timeShare_ = -1;
 };
 
 }  // namespace chatterino

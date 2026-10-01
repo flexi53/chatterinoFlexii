@@ -10,9 +10,12 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPainter>
+#include <QPainterPath>
 #include <QPaintEvent>
 #include <QTimer>
 #include <QVBoxLayout>
+
+#include <algorithm>
 
 using namespace std::chrono_literals;
 using namespace Qt::Literals;
@@ -107,6 +110,17 @@ void SplitBanner::setDismissed(bool dismissed)
 bool SplitBanner::isDismissed() const
 {
     return this->dismissed_;
+}
+
+void SplitBanner::setTimeShare(double share)
+{
+    const double clamped = share < 0 ? -1 : std::clamp(share, 0.0, 1.0);
+    if (std::abs(clamped - this->timeShare_) < 0.001)
+    {
+        return;
+    }
+    this->timeShare_ = clamped;
+    this->update();
 }
 
 void SplitBanner::showUnlessDismissed()
@@ -222,6 +236,29 @@ void SplitBanner::paintEvent(QPaintEvent * /*event*/)
     painter.setPen(Qt::NoPen);
     painter.setBrush(fill);
     painter.drawRoundedRect(card, radius, radius);
+
+    // ChattiFlexii: and along its bottom edge how much of the time is left
+    if (this->timeShare_ >= 0)
+    {
+        QPainterPath inside;
+        inside.addRoundedRect(card, radius, radius);
+        painter.setClipPath(inside);
+
+        QRectF bed = card;
+        bed.setTop(card.bottom() - 3 * this->scale());
+
+        auto faint = theme->accent;
+        faint.setAlpha(40);
+        painter.fillRect(bed, faint);
+
+        QRectF left = bed;
+        left.setWidth(bed.width() * this->timeShare_);
+        auto bright = theme->accent;
+        bright.setAlpha(220);
+        painter.fillRect(left, bright);
+
+        painter.setClipping(false);
+    }
 }
 
 }  // namespace chatterino

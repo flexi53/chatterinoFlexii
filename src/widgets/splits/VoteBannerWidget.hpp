@@ -11,6 +11,8 @@
 #include <QColor>
 #include <QString>
 
+#include <chrono>
+
 #include <vector>
 
 class QLabel;
@@ -93,6 +95,14 @@ private:
     bool userToggled_ = false;
     /// What is being shown, so a finished vote is not shown twice
     QString showing_;
+    /// ChattiFlexii: Twitch says when a vote ends, never how long it ran -
+    /// so the bar measures against the longest time ever seen left on this
+    /// one, which is how long it had when it first turned up here
+    QString timedId_;
+    std::chrono::milliseconds timedTotal_{0};
+    /// What is left of the time to vote, from 1 to 0 - below zero where
+    /// there is nothing to wait for
+    double timeShareOf(const QString &id, std::chrono::milliseconds left);
 
     pajlada::Signals::SignalHolder signalHolder_;
     /// What lives as long as the banner does
