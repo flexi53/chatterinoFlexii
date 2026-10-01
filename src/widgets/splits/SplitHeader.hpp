@@ -86,6 +86,12 @@ private:
     /// The widget standing for @a part, for the ones that are a single
     /// button - nullptr for the rest
     QWidget *buttonFor(headerparts::Part part) const;
+    /// ChattiFlexii: whether @a pos, in the bar's own coordinates, lies
+    /// over the block the title stands in - the pictures belong to it. The
+    /// preview of the stream shows there and nowhere else.
+    bool overTitleArea(QPoint pos) const;
+    void showChannelTooltip();
+    void hideChannelTooltip();
     /// ChattiFlexii: puts the buttons that are shown into the two rows,
     /// leaving out the ones that are not - a pin button that is away must
     /// not keep a place in the grid

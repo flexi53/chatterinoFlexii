@@ -629,8 +629,13 @@ void SplitHeader::initializeLayout()
     this->arrangeParts();
 
     // ChattiFlexii: the curve takes part of what the title leaves free
+    // The preview of the stream belongs to the title: these pass what the
+    // mouse does on to the bar, see eventFilter
     this->titleLabel_->installEventFilter(this);
     this->statsLabel_->installEventFilter(this);
+    this->titleBox_->installEventFilter(this);
+    this->channelPicture_->installEventFilter(this);
+    this->coverPicture_->installEventFilter(this);
 
     this->setAddButtonVisible(false);
 }
@@ -1825,6 +1830,22 @@ bool SplitHeader::eventFilter(QObject *watched, QEvent *event)
     {
         this->fitActivity();
     }
+
+    // ChattiFlexii: over the title, the preview of the stream - over the
+    // buttons and the curve nothing, they say what they are themselves
+    if (watched == this->titleLabel_ || watched == this->statsLabel_ ||
+        watched == this->titleBox_ || watched == this->channelPicture_ ||
+        watched == this->coverPicture_)
+    {
+        if (event->type() == QEvent::Enter)
+        {
+            this->showChannelTooltip();
+        }
+        else if (event->type() == QEvent::Leave)
+        {
+            this->hideChannelTooltip();
+        }
+    }
     return BaseWidget::eventFilter(watched, event);
 }
 
@@ -1952,6 +1973,16 @@ void SplitHeader::mouseReleaseEvent(QMouseEvent * /*event*/)
 
 void SplitHeader::mouseMoveEvent(QMouseEvent *event)
 {
+    // ChattiFlexii: the preview follows the mouse in and out of the title
+    if (this->overTitleArea(event->pos()))
+    {
+        this->showChannelTooltip();
+    }
+    else
+    {
+        this->hideChannelTooltip();
+    }
+
     if (this->dragging_)
     {
         if (distance(this->dragStart_, event->pos()) > 15 * this->scale())
@@ -1971,11 +2002,57 @@ void SplitHeader::mouseDoubleClickEvent(QMouseEvent *event)
     this->doubleClicked_ = true;
 }
 
+bool SplitHeader::overTitleArea(QPoint pos) const
+{
+    if (this->titleBox_ == nullptr)
+    {
+        return false;
+    }
+
+    auto area = this->titleBox_->geometry();
+    for (const QWidget *picture : {static_cast<const QWidget *>(
+                                       this->channelPicture_),
+                                   static_cast<const QWidget *>(
+                                       this->coverPicture_)})
+    {
+        if (picture != nullptr && !picture->isHidden())
+        {
+            area = area.united(picture->geometry());
+        }
+    }
+
+    // Up to the edges of the bar above and below it, so the few pixels of
+    // air over the title still count as the title
+    area.setTop(0);
+    area.setBottom(this->height());
+    return area.contains(pos);
+}
+
+void SplitHeader::hideChannelTooltip()
+{
+    this->tooltipWidget_->hide();
+}
+
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 void SplitHeader::enterEvent(QEnterEvent *event)
 #else
 void SplitHeader::enterEvent(QEvent *event)
 #endif
+{
+    // ChattiFlexii: only over the title, not over the curve or the buttons
+    if (this->overTitleArea(this->mapFromGlobal(QCursor::pos())))
+    {
+        this->showChannelTooltip();
+    }
+    else
+    {
+        this->hideChannelTooltip();
+    }
+
+    BaseWidget::enterEvent(event);
+}
+
+void SplitHeader::showChannelTooltip()
 {
     if (!this->tooltipText_.isEmpty())
     {
@@ -2004,8 +2081,6 @@ void SplitHeader::enterEvent(QEvent *event)
         this->tooltipWidget_->show();
 #endif
     }
-
-    BaseWidget::enterEvent(event);
 }
 
 void SplitHeader::leaveEvent(QEvent *event)
