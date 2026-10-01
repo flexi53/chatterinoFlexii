@@ -604,7 +604,9 @@ void LookPage::buildTabsTab(GeneralPageView &layout)
         "Liegen mehrere Chats in einem Tab, kannst du die Grenze dazwischen "
         "greifen und verschieben - egal ob sie neben- oder übereinander "
         "liegen. Der Griff zeigt sich erst, wenn die Maus darauf ist; ein "
-        "Rechtsklick darauf setzt die Aufteilung wieder gleichmäßig.");
+        "Rechtsklick darauf setzt die Aufteilung wieder gleichmäßig. Hältst "
+        "du dabei ⌥ gedrückt, wird nur die Seite davor kleiner und dahinter "
+        "bleibt leerer Raum stehen - der Rest rückt nicht nach.");
     SettingWidget::checkbox("Grenze jederzeit ziehen",
                             s.splitBordersDraggable)
         ->setTooltip("Ohne den Haken geht es weiterhin, aber nur solange du "

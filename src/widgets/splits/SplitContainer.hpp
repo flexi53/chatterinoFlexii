@@ -98,6 +98,10 @@ public:
         Node *getParent() const;
         qreal getHorizontalFlex() const;
         qreal getVerticalFlex() const;
+        /// ChattiFlexii: how much empty room follows this one inside its
+        /// container, as a share of that container - 0 where it is followed
+        /// by the next chat right away
+        qreal getGapAfter() const;
         const std::vector<std::shared_ptr<Node>> &getChildren();
 
     private:
@@ -127,6 +131,10 @@ public:
         QRectF geometry_;
         qreal flexH_ = 1;
         qreal flexV_ = 1;
+        /// ChattiFlexii: empty room dragged in behind this one, as a share
+        /// of the container it lies in. It comes out of this node's own
+        /// place, so what follows keeps where it is.
+        qreal gapAfter_ = 0;
         std::vector<std::shared_ptr<Node>> children_;
 
         friend class SplitContainer;
@@ -162,6 +170,9 @@ private:
         Node *node{};
 
         void setVertical(bool isVertical);
+        /// ChattiFlexii: the empty room behind the one before the border,
+        /// instead of moving the border itself
+        void dragGap(QMouseEvent *event, Node *before);
         ResizeHandle(SplitContainer *_parent = nullptr);
         void paintEvent(QPaintEvent *event) override;
         void mousePressEvent(QMouseEvent *event) override;
@@ -240,6 +251,14 @@ public:
 
     void popup();
 
+    /// ChattiFlexii: how much empty room follows a node, in pixels. @a share
+    /// is what was dragged in, @a containerSize the size of the container
+    /// along the direction it lays out in, @a slotSize what the node and its
+    /// room have together, and @a minSize what has to be left of the node
+    /// itself. A chat can be pushed small, never out of sight.
+    static qreal gapSize(qreal share, qreal containerSize, qreal slotSize,
+                         qreal minSize);
+
 protected:
     void paintEvent(QPaintEvent *event) override;
 
@@ -262,6 +281,9 @@ private:
     void focusSplitRecursive(Node *node);
     void setPreferedTargetRecursive(Node *node);
     void paintSplitBorder(Node *node, QPainter *painter);
+    /// ChattiFlexii: fills what lies between two chats where room was
+    /// dragged in - nothing draws there otherwise
+    void paintGaps(Node *node, QPainter *painter);
 
     void addSplit(Split *split);
 

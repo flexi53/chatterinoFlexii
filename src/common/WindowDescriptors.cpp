@@ -42,6 +42,7 @@ SplitNodeDescriptor loadNodes(const QJsonObject &root)
 
     descriptor.flexH_ = root.value("flexh").toDouble(1.0);
     descriptor.flexV_ = root.value("flexv").toDouble(1.0);
+    descriptor.gap_ = root.value("gap").toDouble(0.0);
 
     auto data = root.value("data").toObject();
 
@@ -57,6 +58,7 @@ ContainerNodeDescriptor loadNodes(const QJsonObject &root)
 
     descriptor.flexH_ = root.value("flexh").toDouble(1.0);
     descriptor.flexV_ = root.value("flexv").toDouble(1.0);
+    descriptor.gap_ = root.value("gap").toDouble(0.0);
 
     descriptor.vertical_ = root.value("type").toString() == "vertical";
 

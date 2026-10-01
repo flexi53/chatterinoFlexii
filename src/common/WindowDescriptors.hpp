@@ -63,6 +63,8 @@ struct SplitDescriptor {
 struct SplitNodeDescriptor : SplitDescriptor {
     qreal flexH_ = 1;
     qreal flexV_ = 1;
+    /// ChattiFlexii: empty room behind this one, as a share of its container
+    qreal gap_ = 0;
 };
 
 struct ContainerNodeDescriptor;
@@ -73,6 +75,8 @@ using NodeDescriptor =
 struct ContainerNodeDescriptor {
     qreal flexH_ = 1;
     qreal flexV_ = 1;
+    /// ChattiFlexii: empty room behind this one, as a share of its container
+    qreal gap_ = 0;
 
     bool vertical_ = false;
 

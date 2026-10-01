@@ -667,6 +667,45 @@ void SplitContainer::paintSplitBorder(Node *node, QPainter *painter)
     }
 }
 
+void SplitContainer::paintGaps(Node *node, QPainter *painter)
+{
+    switch (node->type_)
+    {
+        case Node::Type::VerticalContainer:
+        case Node::Type::HorizontalContainer: {
+            const bool isVertical =
+                node->type_ == Node::Type::VerticalContainer;
+            const auto &children = node->children_;
+
+            for (size_t i = 0; i + 1 < children.size(); i++)
+            {
+                QRectF here = children[i]->geometry_;
+                QRectF next = children[i + 1]->geometry_;
+
+                QRectF gap =
+                    isVertical
+                        ? QRectF(here.left(), here.bottom(), here.width(),
+                                 next.top() - here.bottom())
+                        : QRectF(here.right(), here.top(),
+                                 next.left() - here.right(), here.height());
+
+                if ((isVertical ? gap.height() : gap.width()) > 1)
+                {
+                    painter->fillRect(gap, this->theme->window.background);
+                }
+            }
+
+            for (const auto &child : children)
+            {
+                this->paintGaps(child.get(), painter);
+            }
+        }
+        break;
+        default:
+            break;
+    }
+}
+
 void SplitContainer::paintEvent(QPaintEvent * /*event*/)
 {
     QPainter painter(this);
@@ -697,6 +736,9 @@ void SplitContainer::paintEvent(QPaintEvent * /*event*/)
     }
     else
     {
+        // ChattiFlexii: empty room between two chats is the window's own
+        // colour - otherwise whatever stood there last stays
+        this->paintGaps(this->getBaseNode(), &painter);
         this->paintSplitBorder(this->getBaseNode(), &painter);
     }
 
@@ -976,6 +1018,7 @@ void SplitContainer::applyFromDescriptorRecursively(
 
                 node->flexH_ = splitNode.flexH_;
                 node->flexV_ = splitNode.flexV_;
+                node->gapAfter_ = splitNode.gap_;
                 baseNode->children_.emplace_back(std::move(node));
 
                 this->addSplit(split);
@@ -990,6 +1033,7 @@ void SplitContainer::applyFromDescriptorRecursively(
                 {
                     node->flexH_ = inner->flexH_;
                     node->flexV_ = inner->flexV_;
+                    node->gapAfter_ = inner->gap_;
                 }
 
                 baseNode->children_.emplace_back(node);
@@ -1094,6 +1138,11 @@ qreal SplitContainer::Node::getHorizontalFlex() const
 qreal SplitContainer::Node::getVerticalFlex() const
 {
     return this->flexV_;
+}
+
+qreal SplitContainer::Node::getGapAfter() const
+{
+    return this->gapAfter_;
 }
 
 const std::vector<std::shared_ptr<SplitContainer::Node>> &
@@ -1347,6 +1396,22 @@ qreal SplitContainer::Node::getSize(bool isVertical)
     return isVertical ? this->geometry_.height() : this->geometry_.width();
 }
 
+qreal SplitContainer::gapSize(qreal share, qreal containerSize, qreal slotSize,
+                              qreal minSize)
+{
+    // ChattiFlexii: the most of a container one stretch of empty room may
+    // take - a chat can be pushed small, never away
+    constexpr qreal maxShare = 0.9;
+
+    if (!(share > 0) || containerSize <= 0)
+    {
+        return 0;
+    }
+
+    qreal gap = std::min(share, maxShare) * containerSize;
+    return std::clamp(gap, qreal(0), std::max(qreal(0), slotSize - minSize));
+}
+
 qreal SplitContainer::Node::getChildrensTotalFlex(bool isVertical)
 {
     return std::accumulate(this->children_.begin(), this->children_.end(),
@@ -1446,6 +1511,11 @@ void SplitContainer::Node::layout(bool addSpacing, float _scale,
 
             // iterate children
             auto pos = int(isVertical ? childRect.top() : childRect.left());
+            // ChattiFlexii: the child before the one in hand, and the empty
+            // room that followed it - the border to grab belongs at the edge
+            // that moves, which is where that child ends
+            Node *previous = nullptr;
+            qreal previousGap = 0;
             for (const auto &child : this->children_)
             {
                 // set rect
@@ -1474,23 +1544,54 @@ void SplitContainer::Node::layout(bool addSpacing, float _scale,
                     rect.setBottom(childRect.bottom() - 1);
                 }
 
+                // ChattiFlexii: empty room behind this child comes out
+                // of its own place, so the next one stays where it is. The
+                // last child has nothing behind it to keep, so its room is
+                // ignored.
+                const int slot = isVertical ? rect.height() : rect.width();
+                qreal gap = 0;
+                if (child != this->children_.back())
+                {
+                    gap = SplitContainer::gapSize(child->gapAfter_,
+                                                  this->getSize(isVertical),
+                                                  slot, minSize);
+                    if (isVertical)
+                    {
+                        rect.setHeight(rect.height() - int(gap));
+                    }
+                    else
+                    {
+                        rect.setWidth(rect.width() - int(gap));
+                    }
+                }
+
                 child->geometry_ = rect;
                 child->layout(addSpacing, _scale, dropRects, resizeRects);
 
-                pos += child->getSize(isVertical);
+                pos += slot;
 
                 // add resize rect
                 if (child != this->children_.front())
                 {
-                    QRectF r = isVertical ? QRectF(this->geometry_.left(),
-                                                   child->geometry_.top() - 4,
-                                                   this->geometry_.width(), 8)
-                                          : QRectF(child->geometry_.left() - 4,
-                                                   this->geometry_.top(), 8,
-                                                   this->geometry_.height());
+                    qreal edge = isVertical ? child->geometry_.top()
+                                            : child->geometry_.left();
+                    if (previous != nullptr && previousGap > 0)
+                    {
+                        edge = isVertical ? previous->geometry_.bottom()
+                                          : previous->geometry_.right();
+                    }
+
+                    QRectF r = isVertical
+                                   ? QRectF(this->geometry_.left(), edge - 4,
+                                            this->geometry_.width(), 8)
+                                   : QRectF(edge - 4, this->geometry_.top(), 8,
+                                            this->geometry_.height());
                     resizeRects.push_back(
                         ResizeRect(r.toRect(), child.get(), isVertical));
                 }
+
+                previous = child.get();
+                previousGap = gap;
 
                 // normalize flex
                 if (isVertical)
@@ -1644,6 +1745,12 @@ SplitContainer::ResizeHandle::ResizeHandle(SplitContainer *_parent)
     , parent(_parent)
 {
     this->setMouseTracking(true);
+    // ChattiFlexii: the empty room is nowhere to be seen until one knows
+    // about the key, so the border says it itself
+    this->setToolTip(
+        "Ziehen: die Grenze zwischen beiden\n"
+        "⌥ Ziehen: nur die Seite davor - dahinter bleibt leerer Raum\n"
+        "Rechtsklick oder Doppelklick: wieder gleichmäßig, ohne Raum");
     this->hide();
 }
 
@@ -1709,6 +1816,14 @@ void SplitContainer::ResizeHandle::mouseMoveEvent(QMouseEvent *event)
     assert(it != siblings.end());
     Node *before = siblings[it - siblings.begin() - 1].get();
 
+    // ChattiFlexii: with Alt held the border stays where it is and only the
+    // chat before it gives up room - what follows keeps its place
+    if (event->modifiers().testFlag(Qt::AltModifier))
+    {
+        this->dragGap(event, before);
+        return;
+    }
+
     QPoint topLeft =
         this->parent->mapToGlobal(before->geometry_.topLeft().toPoint());
     QPoint bottomRight = this->parent->mapToGlobal(
@@ -1726,10 +1841,22 @@ void SplitContainer::ResizeHandle::mouseMoveEvent(QMouseEvent *event)
 
     QPoint mousePoint(globalX, globalY);
 
+    // ChattiFlexii: with empty room behind it, what the mouse holds is the
+    // edge of the chat before the room - the room keeps its size and travels
+    // with it, so nothing jumps when the border is moved the usual way
+    qreal room = 0;
+    if (before->gapAfter_ > 0)
+    {
+        room = this->vertical_
+                   ? this->node->geometry_.top() - before->geometry_.bottom()
+                   : this->node->geometry_.left() - before->geometry_.right();
+        room = std::max(qreal(0), room);
+    }
+
     if (this->vertical_)
     {
         qreal totalFlexV = this->node->flexV_ + before->flexV_;
-        before->flexV_ = totalFlexV * (mousePoint.y() - topLeft.y()) /
+        before->flexV_ = totalFlexV * (mousePoint.y() + room - topLeft.y()) /
                          (bottomRight.y() - topLeft.y());
         this->node->flexV_ = totalFlexV - before->flexV_;
 
@@ -1741,7 +1868,7 @@ void SplitContainer::ResizeHandle::mouseMoveEvent(QMouseEvent *event)
     else
     {
         qreal totalFlexH = this->node->flexH_ + before->flexH_;
-        before->flexH_ = totalFlexH * (mousePoint.x() - topLeft.x()) /
+        before->flexH_ = totalFlexH * (mousePoint.x() + room - topLeft.x()) /
                          (bottomRight.x() - topLeft.x());
         this->node->flexH_ = totalFlexH - before->flexH_;
 
@@ -1773,12 +1900,46 @@ void SplitContainer::ResizeHandle::mouseDoubleClickEvent(QMouseEvent *event)
     this->resetFlex();
 }
 
+void SplitContainer::ResizeHandle::dragGap(QMouseEvent *event, Node *before)
+{
+    Node *container = this->node->parent_;
+    const qreal containerSize = container->getSize(this->vertical_);
+    if (containerSize <= 0)
+    {
+        return;
+    }
+
+    // Where the two places meet - it does not move while the room grows
+    const qreal border = this->vertical_ ? this->node->geometry_.top()
+                                         : this->node->geometry_.left();
+
+    const auto local =
+        this->parent->mapFromGlobal(event->globalPosition().toPoint());
+    const qreal edge = this->vertical_ ? local.y() : local.x();
+
+    before->gapAfter_ = std::max(qreal(0), border - edge) / containerSize;
+
+    this->parent->layout();
+
+    // move handle along to the edge that moved
+    if (this->vertical_)
+    {
+        this->move(this->x(), int(before->geometry_.bottom() - 4));
+    }
+    else
+    {
+        this->move(int(before->geometry_.right() - 4), this->y());
+    }
+}
+
 void SplitContainer::ResizeHandle::resetFlex()
 {
     for (const auto &sibling : this->node->getParent()->getChildren())
     {
         sibling->flexH_ = 1;
         sibling->flexV_ = 1;
+        // ChattiFlexii: and no empty room left between them
+        sibling->gapAfter_ = 0;
     }
 
     this->parent->layout();

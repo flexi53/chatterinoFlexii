@@ -59,6 +59,10 @@
 #include "widgets/splits/HeaderParts.hpp"
 #include "widgets/splits/InputButtons.hpp"
 #include "widgets/splits/SplitHeaderExtras.hpp"
+#include "widgets/splits/SplitContainer.hpp"
+#include "common/WindowDescriptors.hpp"
+
+#include <QJsonDocument>
 
 using namespace chatterino;
 
@@ -2812,4 +2816,82 @@ TEST(FlexiiCompletionKeys, EnterBelongsToTheMessageUnlessTurnedOff)
     EXPECT_FALSE(getSettings()->enterAlwaysSends.getValue());
     getSettings()->enterAlwaysSends.setValue(
         getSettings()->enterAlwaysSends.getDefaultValue());
+}
+
+// Dragging a border with Alt leaves empty room behind the chat before it
+// instead of handing the space to the next one. The room is kept as a share
+// of the container, so it holds through a resize - and it may never swallow
+// a chat whole.
+TEST(FlexiiSplitGap, TheRoomLeavesEveryChatSomethingToStandIn)
+{
+    const qreal container = 800;
+    const qreal slot = 400;
+    const qreal minSize = 48;
+
+    // Nothing dragged in, nothing taken away
+    EXPECT_EQ(SplitContainer::gapSize(0, container, slot, minSize), 0);
+    EXPECT_EQ(SplitContainer::gapSize(-0.5, container, slot, minSize), 0);
+
+    // A quarter of the container is a quarter of the container
+    EXPECT_EQ(SplitContainer::gapSize(0.25, container, slot, minSize), 200);
+
+    // More than the chat has to give leaves it its smallest size
+    EXPECT_EQ(SplitContainer::gapSize(0.5, container, slot, minSize),
+              slot - minSize);
+
+    // And nine tenths is as far as it goes, whatever was dragged
+    EXPECT_EQ(SplitContainer::gapSize(2.0, container, container, minSize),
+              container * 0.9);
+
+    // A chat that is already at its smallest gives up nothing
+    EXPECT_EQ(SplitContainer::gapSize(0.5, container, minSize, minSize), 0);
+    EXPECT_EQ(SplitContainer::gapSize(0.5, container, 20, minSize), 0);
+
+    // No container, no room
+    EXPECT_EQ(SplitContainer::gapSize(0.5, 0, slot, minSize), 0);
+}
+
+TEST(FlexiiSplitGap, TheRoomIsWrittenDownWithTheLayout)
+{
+    auto read = [](const char *json) {
+        return TabDescriptor::loadFromJSON(
+            QJsonDocument::fromJson(QByteArray(json)).object());
+    };
+
+    // A tab with a chat above and two beside each other below it, and room
+    // dragged in between the two blocks
+    auto tab = read(R"({"splits2":{"type":"vertical","items":[
+        {"type":"split","data":{"type":"twitch","name":"a"},"gap":0.3},
+        {"type":"horizontal","items":[
+            {"type":"split","data":{"type":"twitch","name":"b"}},
+            {"type":"split","data":{"type":"twitch","name":"c"}}]}]}})");
+
+    ASSERT_TRUE(tab.rootNode_.has_value());
+    const auto *root = std::get_if<ContainerNodeDescriptor>(&*tab.rootNode_);
+    ASSERT_NE(root, nullptr);
+    ASSERT_EQ(root->items_.size(), 2);
+
+    const auto *above = std::get_if<SplitNodeDescriptor>(&root->items_[0]);
+    ASSERT_NE(above, nullptr);
+    EXPECT_DOUBLE_EQ(above->gap_, 0.3);
+
+    // The block below has none written down, so it has none
+    const auto *below = std::get_if<ContainerNodeDescriptor>(&root->items_[1]);
+    ASSERT_NE(below, nullptr);
+    EXPECT_DOUBLE_EQ(below->gap_, 0);
+
+    // A container can carry the room as well
+    auto other = read(R"({"splits2":{"type":"vertical","items":[
+        {"type":"horizontal","gap":0.15,"items":[
+            {"type":"split","data":{"type":"twitch","name":"b"}}]},
+        {"type":"split","data":{"type":"twitch","name":"a"}}]}})");
+    ASSERT_TRUE(other.rootNode_.has_value());
+    const auto *otherRoot =
+        std::get_if<ContainerNodeDescriptor>(&*other.rootNode_);
+    ASSERT_NE(otherRoot, nullptr);
+    ASSERT_EQ(otherRoot->items_.size(), 2);
+    const auto *first =
+        std::get_if<ContainerNodeDescriptor>(&otherRoot->items_[0]);
+    ASSERT_NE(first, nullptr);
+    EXPECT_DOUBLE_EQ(first->gap_, 0.15);
 }

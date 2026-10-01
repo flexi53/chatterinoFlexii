@@ -766,6 +766,11 @@ void WindowManager::encodeNodeRecursively(SplitNode *node, QJsonObject &obj)
 
     obj.insert("flexh", node->getHorizontalFlex());
     obj.insert("flexv", node->getVerticalFlex());
+    // ChattiFlexii: and the empty room behind it, where there is some
+    if (node->getGapAfter() > 0)
+    {
+        obj.insert("gap", node->getGapAfter());
+    }
 }
 
 void WindowManager::encodeChannel(IndirectChannel channel, QJsonObject &obj)
