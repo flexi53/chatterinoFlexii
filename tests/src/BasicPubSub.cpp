@@ -181,6 +181,36 @@ TEST(BasicPubSub, SubscriptionCycle)
     ASSERT_EQ(manager.messagesReceived, 2);
 }
 
+// ChattiFlexii: a topic one connection already carries must not be taken
+// up by a second one. A full connection turns a subscription down, and the
+// next one used to say yes - from then on every message of that topic
+// arrived twice, which is what made a channel point redemption show up
+// again and again.
+TEST(BasicPubSub, ATopicIsOnlyTakenUpOnce)
+{
+    mock::BaseApplication app;
+    const QString host("wss://127.0.0.1:9050/liveupdates/sub-unsub");
+    MyManager manager(host, 1);  // one subscription per connection
+
+    manager.sub({.type = 1, .condition = "foo"});
+    manager.sub({.type = 2, .condition = "foo"});
+    QTest::qWait(500);
+    ASSERT_EQ(manager.diag.connectionsOpened, 2);
+    ASSERT_EQ(manager.messagesReceived, 2);
+
+    // Asking for the first one again: both connections are full, and
+    // nothing may be opened or subscribed for it a second time
+    manager.sub({.type = 1, .condition = "foo"});
+    QTest::qWait(500);
+
+    EXPECT_EQ(manager.diag.connectionsOpened, 2);
+    EXPECT_EQ(manager.messagesReceived, 2);
+
+    manager.stop();
+    QCoreApplication::processEvents(QEventLoop::AllEvents);
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+}
+
 TEST(BasicPubSub, SubLimits)
 {
     mock::BaseApplication app;

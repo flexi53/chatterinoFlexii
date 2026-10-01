@@ -122,6 +122,18 @@ protected:
     {
         assertInGuiThread();
 
+        // ChattiFlexii: what one connection already carries is not taken up
+        // again. A connection that is full turns a subscription down, and
+        // the next one used to say yes - from then on every message of that
+        // topic arrived once per connection holding it, which is what made
+        // a channel point redemption show up again and again.
+        if (this->isSubscribed(subscription) ||
+            std::ranges::find(this->pendingSubscriptions_, subscription) !=
+                this->pendingSubscriptions_.end())
+        {
+            return;
+        }
+
         if (this->trySubscribe(subscription))
         {
             return;
