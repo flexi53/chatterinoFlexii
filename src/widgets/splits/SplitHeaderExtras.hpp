@@ -49,6 +49,9 @@ public:
 
     /// Buttons -> Titelleiste: how many pixels wider than usual it is drawn
     void setExtraWidth(int pixels);
+    /// ChattiFlexii: how tall it is drawn, in unscaled pixels - 0 for the
+    /// size it has beside a title bar of one line
+    void setTallness(int pixels);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -61,6 +64,7 @@ private:
     Shape shape_;
     int gap_;
     int extra_{};
+    int tall_{};
     QPixmap picture_;
 };
 
@@ -188,6 +192,10 @@ public:
 
     /// How wide the header wants it, in pixels - 0 for its own width
     void setWantedWidth(int pixels);
+    /// ChattiFlexii: how tall the header wants it, in unscaled pixels - 0
+    /// for the height of a title bar of one line. With two lines the curve
+    /// stands over both.
+    void setTallness(int pixels);
     /// How wide it is when nobody asks for more or less
     int ownWidth() const;
 
@@ -260,8 +268,12 @@ private:
     std::function<void(const QDateTime &)> jump_;
     QPoint pressedAt_;
 
+    /// How tall it is drawn, unscaled - 0 for one line of title bar
+    int tallness() const;
+
     std::function<QDateTime()> clock_;
     int wantedWidth_{};
+    int tallness_{};
     ChannelPtr channel_;
     pajlada::Signals::SignalHolder connections_;
     QTimer timer_;

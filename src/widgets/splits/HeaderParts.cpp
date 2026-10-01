@@ -626,14 +626,74 @@ QString extrasAfterName(const Extras &extras, std::vector<Run> *runs, int at)
     return title;
 }
 
+Row rowOf(Item item)
+{
+    switch (item)
+    {
+        // The channel, whether it is live, what it plays and what it called
+        // the stream - the line one reads
+        case Item::Name:
+        case Item::Live:
+        case Item::Game:
+        case Item::StreamTitle:
+            return Row::First;
+
+        // Everything that is a number
+        case Item::Uptime:
+        case Item::Viewers:
+        case Item::Trend:
+        case Item::Followers:
+        case Item::Chatters:
+        case Item::Rate:
+            return Row::Second;
+    }
+
+    return Row::First;
+}
+
+void dropLeadingSeparator(QString &line, std::vector<Run> *runs)
+{
+    int drop = 0;
+    if (line.startsWith(QStringLiteral(" - ")))
+    {
+        drop = 3;
+    }
+    else if (line.startsWith(' '))
+    {
+        drop = 1;
+    }
+
+    if (drop == 0)
+    {
+        return;
+    }
+
+    line.remove(0, drop);
+    if (runs == nullptr)
+    {
+        return;
+    }
+    for (auto &run : *runs)
+    {
+        run.from = std::max(0, run.from - drop);
+    }
+}
+
 QString titleAfterName(const TwitchChannel::StreamStatus &s,
-                       const Extras &extras, std::vector<Run> *runs)
+                       const Extras &extras, std::vector<Run> *runs,
+                       std::optional<Row> only)
 {
     const auto &settings = *getSettings();
     auto title = QString();
 
+    // ChattiFlexii: with the title bar in two lines, each line takes only
+    // what belongs to it
+    const auto wanted = [&](Item item) {
+        return !only.has_value() || rowOf(item) == *only;
+    };
+
     // live - ChattiFlexii: can be left out, Buttons -> Title bar
-    if (settings.headerLiveMarker)
+    if (settings.headerLiveMarker && wanted(Item::Live))
     {
         if (s.rerun)
         {
@@ -650,11 +710,11 @@ QString titleAfterName(const TwitchChannel::StreamStatus &s,
     }
 
     // description
-    if (settings.headerUptime)
+    if (settings.headerUptime && wanted(Item::Uptime))
     {
         appendItem(title, runs, Item::Uptime, " - " + s.uptime);
     }
-    if (settings.headerViewerCount)
+    if (settings.headerViewerCount && wanted(Item::Viewers))
     {
         QString viewers = localizeNumbers(s.viewerCount);
 
@@ -682,19 +742,32 @@ QString titleAfterName(const TwitchChannel::StreamStatus &s,
     // The numbers stay with the viewer count, before what is streamed: the
     // stream's own title can run long and is cut with "...", and whatever
     // stands behind it is never seen
-    title += extrasAfterName(extras, runs, int(title.size()));
+    if (wanted(Item::Followers))
+    {
+        title += extrasAfterName(extras, runs, int(title.size()));
+    }
 
-    if (settings.headerGame && !s.game.isEmpty())
+    if (settings.headerGame && !s.game.isEmpty() && wanted(Item::Game))
     {
         appendItem(title, runs, Item::Game, " - " + s.game);
     }
-    if (settings.headerStreamTitle && !s.title.isEmpty())
+    if (settings.headerStreamTitle && !s.title.isEmpty() &&
+        wanted(Item::StreamTitle))
     {
         appendItem(title, runs, Item::StreamTitle,
                    " - " + s.title.simplified());
     }
 
     return title;
+}
+
+QString titleSecondLine(const TwitchChannel::StreamStatus &s, bool live,
+                        const Extras &extras, std::vector<Run> *runs)
+{
+    auto line = live ? titleAfterName(s, extras, runs, Row::Second)
+                     : extrasAfterName(extras, runs);
+    dropLeadingSeparator(line, runs);
+    return line;
 }
 
 int curveWidth(int shared, int needed, int own, int share, int titleKeeps)

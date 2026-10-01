@@ -82,6 +82,10 @@ private:
     void fitActivity();
     /// Buttons -> Title bar: puts the parts in the order asked for
     void arrangeParts();
+    /// ChattiFlexii: how tall the bar and the parts that stand over both
+    /// of its lines are - see Aussehen -> Chat -> „Titelleiste in zwei
+    /// Zeilen“
+    void applyHeights(float scale);
     std::unique_ptr<QMenu> createMainMenu();
     std::unique_ptr<QMenu> createChatModeMenu();
 
@@ -108,6 +112,13 @@ private:
     // ui
     DrawnButton *dropdownButton_{};
     HeaderTitle *titleLabel_{};
+    /// ChattiFlexii: the second line, where the numbers stand
+    HeaderTitle *statsLabel_{};
+    /// Both lines together, which is what stands in the bar as the title
+    QWidget *titleBox_{};
+    /// Whether this channel's bar has a second line at all - only the ones
+    /// that have numbers to show do
+    bool twoRows_{false};
 
     LabelButton *modeButton_{};
     QAction *modeActionSetEmote{};

@@ -739,6 +739,84 @@ TEST_F(FlexiiHeaderPartsFixture, EachPartOfTheTitleComesOnByItself)
               " (live) - 42 - Just Chatting - Hallo Chat");
 }
 
+// The title bar in two lines: above the channel and what it streams, below
+// the numbers. Nothing is lost on the way - the same pieces, split in two.
+TEST_F(FlexiiHeaderPartsFixture, EveryPieceOfTheTitleKnowsItsLine)
+{
+    using headerparts::Item;
+    using headerparts::Row;
+
+    EXPECT_EQ(headerparts::rowOf(Item::Name), Row::First);
+    EXPECT_EQ(headerparts::rowOf(Item::Live), Row::First);
+    EXPECT_EQ(headerparts::rowOf(Item::Game), Row::First);
+    EXPECT_EQ(headerparts::rowOf(Item::StreamTitle), Row::First);
+
+    EXPECT_EQ(headerparts::rowOf(Item::Uptime), Row::Second);
+    EXPECT_EQ(headerparts::rowOf(Item::Viewers), Row::Second);
+    EXPECT_EQ(headerparts::rowOf(Item::Trend), Row::Second);
+    EXPECT_EQ(headerparts::rowOf(Item::Followers), Row::Second);
+    EXPECT_EQ(headerparts::rowOf(Item::Chatters), Row::Second);
+    EXPECT_EQ(headerparts::rowOf(Item::Rate), Row::Second);
+}
+
+TEST_F(FlexiiHeaderPartsFixture, TwoLinesSplitTheTitleWithoutLosingAnything)
+{
+    auto *s = getSettings();
+    s->headerUptime.setValue(true);
+    s->headerViewerCount.setValue(true);
+    s->headerGame.setValue(true);
+    s->headerStreamTitle.setValue(true);
+
+    // One line, as Chatterino has it
+    EXPECT_EQ(headerparts::titleAfterName(liveStream()),
+              " (live) - 2h 13m - 42 - Just Chatting - Hallo Chat");
+
+    // The upper line keeps the channel and what it streams
+    EXPECT_EQ(headerparts::titleAfterName(liveStream(), {}, nullptr,
+                                          headerparts::Row::First),
+              " (live) - Just Chatting - Hallo Chat");
+
+    // The lower one takes the numbers, and a line of its own needs no
+    // separator in front of it
+    EXPECT_EQ(headerparts::titleSecondLine(liveStream(), true, {}, nullptr),
+              "2h 13m - 42");
+}
+
+TEST_F(FlexiiHeaderPartsFixture, ALineOfItsOwnKeepsTheColoursOnTheRightWords)
+{
+    auto *s = getSettings();
+    s->headerUptime.setValue(true);
+    s->headerViewerCount.setValue(true);
+    headerparts::setColorOf(headerparts::Item::Viewers, QColor("#ff0000"));
+
+    std::vector<headerparts::Run> runs;
+    const auto line =
+        headerparts::titleSecondLine(liveStream(), true, {}, &runs);
+
+    ASSERT_EQ(line, "2h 13m - 42");
+    ASSERT_EQ(runs.size(), 1);
+    // Not "2h" or " - 4": the colour sits on the number it belongs to
+    EXPECT_EQ(line.mid(runs.at(0).from, runs.at(0).length), "42");
+
+    headerparts::setColorOf(headerparts::Item::Viewers, QColor());
+}
+
+TEST_F(FlexiiHeaderPartsFixture, AChannelThatIsNotLiveStillHasALowerLine)
+{
+    auto *s = getSettings();
+    s->headerChatters.setValue(true);
+    s->headerMessageRate.setValue(true);
+
+    // A small number, so the test does not depend on where the computer
+    // puts the thousands separator
+    const headerparts::Extras extras{
+        .chatters = 173,
+        .messagesPerMinute = 42,
+    };
+    EXPECT_EQ(headerparts::titleSecondLine({}, false, extras, nullptr),
+              "173 im Chat - 42/min");
+}
+
 TEST_F(FlexiiHeaderPartsFixture, LiveCanBeLeftOut)
 {
     auto *s = getSettings();

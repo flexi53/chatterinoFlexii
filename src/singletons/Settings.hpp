@@ -593,6 +593,9 @@ public:
                                      false};
     BoolSetting headerMessageRateTrend = {
         "/appearance/splitheader/showMessageRateTrend", false};
+    /// ChattiFlexii: the title bar in two lines - above the channel and
+    /// what it streams, below the numbers, with the curve over both
+    BoolSetting headerTwoRows = {"/appearance/splitheader/twoRows", true};
     BoolSetting headerViewerTrend = {"/appearance/splitheader/showViewerTrend",
                                      false};
     /// What parts of the title were given a colour: "uptime:#ffcc00,..."

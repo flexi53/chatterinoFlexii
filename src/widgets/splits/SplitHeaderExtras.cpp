@@ -141,10 +141,21 @@ void HeaderPicture::setExtraWidth(int pixels)
     this->update();
 }
 
+void HeaderPicture::setTallness(int pixels)
+{
+    if (pixels == this->tall_)
+    {
+        return;
+    }
+    this->tall_ = pixels;
+    this->scaleChangedEvent(this->scale());
+    this->update();
+}
+
 void HeaderPicture::scaleChangedEvent(float scale)
 {
     // Twitch's covers are 52 by 72
-    const auto height = int(16 * scale);
+    const auto height = int((this->tall_ > 0 ? this->tall_ : 16) * scale);
     auto width =
         this->shape_ == Shape::Cover ? int(height * 52 / 72.0) : height;
     width = std::max(width + int(this->extra_ * scale), int(6 * scale));
@@ -901,8 +912,24 @@ void ActivityGraph::scaleChangedEvent(float scale)
     // Room before the curve and some more after it. It would like to be
     // wide enough that a whole stream is worth looking at, but gives way
     // to the title when the split is narrow.
-    this->setFixedHeight(int(uistyle::headerHeight() * scale));
+    this->setFixedHeight(int(this->tallness() * scale));
     this->updateGeometry();
+}
+
+int ActivityGraph::tallness() const
+{
+    return this->tallness_ > 0 ? this->tallness_ : uistyle::headerHeight();
+}
+
+void ActivityGraph::setTallness(int pixels)
+{
+    if (pixels == this->tallness_)
+    {
+        return;
+    }
+    this->tallness_ = pixels;
+    this->scaleChangedEvent(this->scale());
+    this->update();
 }
 
 void ActivityGraph::setWantedWidth(int pixels)
@@ -937,13 +964,13 @@ void ActivityGraph::showSample()
 QSize ActivityGraph::sizeHint() const
 {
     return {this->wantedWidth_ > 0 ? this->wantedWidth_ : this->ownWidth(),
-            int(uistyle::headerHeight() * this->scale())};
+            int(this->tallness() * this->scale())};
 }
 
 QSize ActivityGraph::minimumSizeHint() const
 {
     return {int((LEFT_ROOM + NARROWEST + RIGHT_ROOM) * this->scale()),
-            int(uistyle::headerHeight() * this->scale())};
+            int(this->tallness() * this->scale())};
 }
 
 QRectF ActivityGraph::curveArea() const

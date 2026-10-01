@@ -127,6 +127,16 @@ enum class Item {
     StreamTitle,
 };
 
+/// ChattiFlexii: which of the two lines of the title bar an item stands in.
+/// The channel and what it streams go above, the numbers below.
+enum class Row {
+    First,
+    Second,
+};
+
+/// Where @a item stands when the title bar has two lines
+Row rowOf(Item item);
+
 struct ItemInfo {
     Item item;
     /// How it is written in the settings
@@ -150,15 +160,28 @@ bool anyColor();
 /// and, as far as they are switched on, uptime, viewers, category and the
 /// stream's title, followed by @a extras. @a runs, where one is handed in,
 /// collects the stretches that carry a colour.
+/// @a only, where it is given, leaves out everything that belongs on the
+/// other line.
 QString titleAfterName(const TwitchChannel::StreamStatus &s,
                        const Extras &extras = {},
-                       std::vector<Run> *runs = nullptr);
+                       std::vector<Run> *runs = nullptr,
+                       std::optional<Row> only = {});
+
+/// ChattiFlexii: the second line of the title bar - the numbers alone,
+/// without the separator that a line of its own does not need. @a live says
+/// whether @a s has anything to say.
+QString titleSecondLine(const TwitchChannel::StreamStatus &s, bool live,
+                        const Extras &extras, std::vector<Run> *runs);
 
 /// Only the numbers of @a extras - what a channel that is not live can
 /// still say. @a at is where the text it returns will stand, so the runs
 /// it adds point at the right letters.
 QString extrasAfterName(const Extras &extras, std::vector<Run> *runs = nullptr,
                         int at = 0);
+
+/// Takes the separator off the front of a line that stands on its own,
+/// moving the colours along with it
+void dropLeadingSeparator(QString &line, std::vector<Run> *runs);
 
 /// The whole title: @a name and @a afterName, or only what comes after it
 /// when the name is switched off. @a pictureShown says whether the

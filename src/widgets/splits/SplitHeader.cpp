@@ -47,6 +47,7 @@
 
 #include <QDrag>
 #include <QHBoxLayout>
+#include <QVBoxLayout>
 #include <QInputDialog>
 #include <QMenu>
 #include <QMimeData>
@@ -341,10 +342,16 @@ SplitHeader::SplitHeader(Split *split)
     getSettings()->uiStyle.connect(
         [this] {
             this->scaleChangedEvent(this->scale());
-            this->activity_->setFixedHeight(
-                int(uistyle::headerHeight() * this->scale()));
             this->activity_->updateGeometry();
             this->activity_->update();
+            this->update();
+        },
+        this->managedConnections_, false);
+    // ChattiFlexii: Aussehen -> Chat: the bar in one line or in two
+    getSettings()->headerTwoRows.connect(
+        [this](const auto &, auto) {
+            this->updateChannelText();
+            this->scaleChangedEvent(this->scale());
             this->update();
         },
         this->managedConnections_, false);
@@ -469,6 +476,28 @@ void SplitHeader::initializeLayout()
         // rather than running under what is next to it
         w->setShouldElide(true);
     });
+    // ChattiFlexii: the second line, where the numbers stand - smaller and
+    // paler than the title above it, see themeChangedEvent
+    this->statsLabel_ = makeWidget<HeaderTitle>([](auto w) {
+        w->setSizePolicy(QSizePolicy::MinimumExpanding,
+                         QSizePolicy::Preferred);
+        w->setCentered(true);
+        w->setPadding(QMargins{});
+        w->setShouldElide(true);
+        w->setFontStyle(FontStyle::Tiny);
+        w->hide();
+    });
+
+    // Both lines are what stands in the bar as its title
+    auto *titleRows = new QVBoxLayout();
+    titleRows->setContentsMargins(0, 0, 0, 0);
+    titleRows->setSpacing(0);
+    titleRows->addWidget(this->titleLabel_);
+    titleRows->addWidget(this->statsLabel_);
+    this->titleBox_ = wrapLayout(titleRows);
+    this->titleBox_->setSizePolicy(QSizePolicy::MinimumExpanding,
+                                   QSizePolicy::Preferred);
+
     // space - ChattiFlexii: a quarter of what it was, so the title keeps
     // close to what follows it
     this->titleSpace_ = makeWidget<BaseWidget>([](auto w) {
@@ -565,6 +594,7 @@ void SplitHeader::initializeLayout()
 
     // ChattiFlexii: the curve takes part of what the title leaves free
     this->titleLabel_->installEventFilter(this);
+    this->statsLabel_->installEventFilter(this);
 
     this->setAddButtonVisible(false);
 }
@@ -1081,8 +1111,26 @@ void SplitHeader::scaleChangedEvent(float scale)
                                 : ADD_SPLIT_BUTTON_WIDTH) *
             scale);
 
-    this->setFixedHeight(w);
+    this->applyHeights(scale);
     this->applyPartWidths(w, addSplitWidth, scale);
+}
+
+void SplitHeader::applyHeights(float scale)
+{
+    const int row = uistyle::headerHeight();
+    // Only a channel with numbers to show gets a second line
+    const int second = this->twoRows_ ? uistyle::headerSecondRow() : 0;
+
+    this->setFixedHeight(int((row + second) * scale));
+    this->titleLabel_->setFixedHeight(int(row * scale));
+    this->statsLabel_->setFixedHeight(int(std::max(second, 1) * scale));
+    this->statsLabel_->setVisible(second > 0);
+
+    // The curve and both pictures stand over the two lines together
+    this->activity_->setTallness(row + second);
+    const int picture = std::max(16, row + second - 14);
+    this->channelPicture_->setTallness(picture);
+    this->coverPicture_->setTallness(picture);
 }
 
 void SplitHeader::applyPartWidths(int button, int addButton, float scale)
@@ -1318,6 +1366,12 @@ void SplitHeader::updateChannelText()
     QString afterName;
     // ChattiFlexii: which stretches of it were given a colour
     std::vector<headerparts::Run> runs;
+    // ChattiFlexii: the second line and its colours - the numbers, where
+    // this channel has any and the bar was asked to stand in two lines
+    QString second;
+    std::vector<headerparts::Run> secondRuns;
+    const bool wasTwoRows = this->twoRows_;
+    this->twoRows_ = false;
     // Only once the picture is really there - until it has loaded, or if
     // it never does, the name says whose chat it is
     bool nameCanGo = dynamic_cast<TwitchChannel *>(channel.get()) != nullptr &&
@@ -1384,14 +1438,32 @@ void SplitHeader::updateChannelText()
             // which way it is going
             channelnumbers::noteViewers(twitchChannel->roomId(),
                                         int(streamStatus->viewerCount));
+            const auto numbers = this->channelNumbers(twitchChannel);
+            this->twoRows_ = getSettings()->headerTwoRows;
             afterName = headerparts::titleAfterName(
-                *streamStatus, this->channelNumbers(twitchChannel), &runs);
+                *streamStatus, numbers, &runs,
+                this->twoRows_ ? std::optional(headerparts::Row::First)
+                               : std::nullopt);
+            if (this->twoRows_)
+            {
+                second = headerparts::titleSecondLine(*streamStatus, true,
+                                                      numbers, &secondRuns);
+            }
         }
         else
         {
             this->tooltipText_ = formatOfflineTooltip(*streamStatus);
-            afterName = headerparts::extrasAfterName(
-                this->channelNumbers(twitchChannel), &runs);
+            const auto numbers = this->channelNumbers(twitchChannel);
+            this->twoRows_ = getSettings()->headerTwoRows;
+            if (this->twoRows_)
+            {
+                second = headerparts::titleSecondLine({}, false, numbers,
+                                                      &secondRuns);
+            }
+            else
+            {
+                afterName = headerparts::extrasAfterName(numbers, &runs);
+            }
         }
     }
     else if (auto *kickChannel = dynamic_cast<KickChannel *>(channel.get()))
@@ -1419,7 +1491,16 @@ void SplitHeader::updateChannelText()
                 this->lastThumbnail_.restart();
             }
             this->tooltipText_ = formatTooltip(twitch, this->thumbnail_, true);
-            afterName = headerparts::titleAfterName(twitch, {}, &runs);
+            this->twoRows_ = getSettings()->headerTwoRows;
+            afterName = headerparts::titleAfterName(
+                twitch, {}, &runs,
+                this->twoRows_ ? std::optional(headerparts::Row::First)
+                               : std::nullopt);
+            if (this->twoRows_)
+            {
+                second =
+                    headerparts::titleSecondLine(twitch, true, {}, &secondRuns);
+            }
         }
         else
         {
@@ -1441,6 +1522,12 @@ void SplitHeader::updateChannelText()
     this->titleLabel_->setText(title.isEmpty() && !(hadName && nameCanGo)
                                    ? "<empty>"
                                    : title);
+    this->statsLabel_->setRuns(secondRuns);
+    this->statsLabel_->setText(second);
+    if (this->twoRows_ != wasTwoRows)
+    {
+        this->applyHeights(this->scale());
+    }
     this->fitActivity();
 }
 
@@ -1465,7 +1552,7 @@ void SplitHeader::arrangeParts()
                 layout->addWidget(this->coverPicture_);
                 break;
             case Part::Title:
-                layout->addWidget(this->titleLabel_);
+                layout->addWidget(this->titleBox_);
                 layout->addWidget(this->titleSpace_);
                 break;
             case Part::Activity:
@@ -1519,12 +1606,20 @@ void SplitHeader::fitActivity()
     // first, a long one all of it, and the curve half of what is left over
     // - which halves the gap either side of the title.
     const auto shared = this->titleLabel_->width() + this->activity_->width();
-    const auto needed = static_cast<int>(std::ceil(
-        getApp()
-            ->getFonts()
-            ->getFontMetrics(this->titleLabel_->getFontStyle(),
-                             this->titleLabel_->scale())
-            .horizontalAdvance(this->titleLabel_->getText())));
+    const auto roomFor = [this](HeaderTitle *label) {
+        return static_cast<int>(std::ceil(
+            getApp()
+                ->getFonts()
+                ->getFontMetrics(label->getFontStyle(), label->scale())
+                .horizontalAdvance(label->getText())));
+    };
+    // ChattiFlexii: with two lines the longer of them says what the title
+    // needs - otherwise the curve would cut the numbers short
+    auto needed = roomFor(this->titleLabel_);
+    if (this->twoRows_)
+    {
+        needed = std::max(needed, roomFor(this->statsLabel_));
+    }
     this->activity_->setWantedWidth(headerparts::curveWidth(
         shared, needed, this->activity_->ownWidth(),
         getSettings()->splitHeaderActivityShare,
@@ -1534,7 +1629,8 @@ void SplitHeader::fitActivity()
 bool SplitHeader::eventFilter(QObject *watched, QEvent *event)
 {
     // The title changes size whenever the header or what is in it does
-    if (watched == this->titleLabel_ && event->type() == QEvent::Resize)
+    if ((watched == this->titleLabel_ || watched == this->statsLabel_) &&
+        event->type() == QEvent::Resize)
     {
         this->fitActivity();
     }
@@ -1740,6 +1836,13 @@ void SplitHeader::themeChangedEvent()
         palette.setColor(QPalette::WindowText, this->theme->splits.header.text);
     }
     this->titleLabel_->setPalette(palette);
+
+    // ChattiFlexii: the numbers underneath stand back a little
+    auto second = palette;
+    auto pale = palette.color(QPalette::WindowText);
+    pale.setAlphaF(0.72);
+    second.setColor(QPalette::WindowText, pale);
+    this->statsLabel_->setPalette(second);
 
     // Re-apply pin button color to respect updated theme
     this->updatePinButton();

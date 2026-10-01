@@ -48,6 +48,20 @@ int headerHeight()
     return compact() ? 22 : 28;
 }
 
+int headerSecondRow()
+{
+    if (!getSettings()->headerTwoRows)
+    {
+        return 0;
+    }
+    return compact() ? 15 : 18;
+}
+
+int headerTotalHeight()
+{
+    return headerHeight() + headerSecondRow();
+}
+
 int scrollbarWidth()
 {
     return compact() ? 10 : 16;

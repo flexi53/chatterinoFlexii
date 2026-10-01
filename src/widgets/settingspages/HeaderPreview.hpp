@@ -104,6 +104,8 @@ private:
     std::map<headerparts::Part, QPixmap> pictures_;
     bool picturesPending_{false};
     bool takingPictures_{false};
+    /// How high one line of the bar is - what the buttons measure
+    int rowHeight() const;
     /// The room the title and the curve have together
     int shared_{};
 
@@ -125,6 +127,10 @@ private:
     HeaderPicture *picture_{};
     HeaderPicture *cover_{};
     HeaderTitle *title_{};
+    /// ChattiFlexii: the second line of the bar, and both lines together -
+    /// what stands in the preview where the title does
+    HeaderTitle *stats_{};
+    QWidget *titleBox_{};
     ActivityGraph *activity_{};
     LabelButton *mode_{};
     SvgButton *pin_{};

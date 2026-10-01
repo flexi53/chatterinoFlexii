@@ -14,6 +14,7 @@
 #include "singletons/Fonts.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
+#include "util/LayoutHelper.hpp"
 #include "util/UiStyle.hpp"
 #include "widgets/buttons/DrawnButton.hpp"
 #include "widgets/buttons/LabelButton.hpp"
@@ -28,6 +29,7 @@
 #include <QPainter>
 #include <QTimer>
 #include <QToolTip>
+#include <QVBoxLayout>
 
 #include <algorithm>
 #include <cmath>
@@ -56,7 +58,8 @@ QString sampleName()
 
 /// The title as a live stream would have it, with what is switched on
 /// The title of the preview, and which stretches of it carry a colour
-QString sampleTitle(std::vector<headerparts::Run> *runs = nullptr)
+QString sampleTitle(std::vector<headerparts::Run> *runs = nullptr,
+                    std::optional<headerparts::Row> only = {})
 {
     TwitchChannel::StreamStatus status;
     status.live = true;
@@ -73,8 +76,12 @@ QString sampleTitle(std::vector<headerparts::Run> *runs = nullptr)
         .rateTrend = 0.30,
         .viewerTrend = 0.18,
     };
+    if (only == headerparts::Row::Second)
+    {
+        return headerparts::titleSecondLine(status, true, extras, runs);
+    }
     return headerparts::composeTitle(
-        sampleName(), headerparts::titleAfterName(status, extras, runs),
+        sampleName(), headerparts::titleAfterName(status, extras, runs, only),
         headerparts::isShown(Part::Picture), runs);
 }
 
@@ -110,6 +117,20 @@ HeaderPreview::HeaderPreview(QWidget *parent)
     this->title_->setCentered(true);
     this->title_->setPadding(QMargins{});
     this->title_->setShouldElide(true);
+
+    // ChattiFlexii: and under it the numbers, as the bar shows them
+    this->stats_ = new HeaderTitle(this, QString());
+    this->stats_->setCentered(true);
+    this->stats_->setPadding(QMargins{});
+    this->stats_->setShouldElide(true);
+    this->stats_->setFontStyle(FontStyle::Tiny);
+
+    // Both lines together are what stands in the bar as its title. They
+    // are placed by hand in relayout: this box is never shown, only drawn
+    // into a picture, and a hidden box lays nothing out by itself.
+    this->titleBox_ = new QWidget(this);
+    this->title_->setParent(this->titleBox_);
+    this->stats_->setParent(this->titleBox_);
 
     this->activity_ = new ActivityGraph(this);
     this->activity_->showSample();
@@ -161,10 +182,10 @@ HeaderPreview::HeaderPreview(QWidget *parent)
 
     // They are only painted from here, never shown on their own
     for (auto *widget : std::initializer_list<QWidget *>{
-             this->picture_, this->cover_, this->title_, this->activity_,
-             this->mode_, this->pin_, this->vote_, this->hype_,
-             this->moderation_, this->chatters_, this->tracker_, this->menu_,
-             this->add_})
+             this->picture_, this->cover_, this->title_, this->stats_,
+             this->titleBox_, this->activity_, this->mode_, this->pin_,
+             this->vote_, this->hype_, this->moderation_, this->chatters_,
+             this->tracker_, this->menu_, this->add_})
     {
         widget->hide();
         widget->setAttribute(Qt::WA_TransparentForMouseEvents);
@@ -226,6 +247,8 @@ HeaderPreview::HeaderPreview(QWidget *parent)
     s->splitHeaderWidths.connect(reload, this->connections_, false);
     s->headerGame.connect(reload, this->connections_, false);
     s->headerStreamTitle.connect(reload, this->connections_, false);
+    // ChattiFlexii: one line or two changes how tall the whole thing is
+    s->headerTwoRows.connect(reload, this->connections_, false);
 
     this->themeChangedEvent();
     this->reload();
@@ -247,10 +270,16 @@ const std::vector<HeaderPreview::Placed> &HeaderPreview::placed() const
     return this->placed_;
 }
 
+int HeaderPreview::rowHeight() const
+{
+    return int(uistyle::headerHeight() * this->scale());
+}
+
 int HeaderPreview::headerHeight() const
 {
-    // As high as the header's buttons are wide - lower in Compact
-    return int(uistyle::headerHeight() * this->scale());
+    // As high as the bar itself: one line, or two where the numbers stand
+    // under the title
+    return int(uistyle::headerTotalHeight() * this->scale());
 }
 
 QRect HeaderPreview::headerRect() const
@@ -267,7 +296,7 @@ QWidget *HeaderPreview::widgetFor(Part part) const
         case Part::Cover:
             return this->cover_;
         case Part::Title:
-            return this->title_;
+            return this->titleBox_;
         case Part::Activity:
             return this->activity_;
         case Part::Mode:
@@ -303,9 +332,18 @@ void HeaderPreview::reload()
     this->spacing_ = headerparts::spacing();
     this->deltas_.clear();
     std::vector<headerparts::Run> runs;
-    const auto text = sampleTitle(&runs);
+    const bool two = getSettings()->headerTwoRows;
+    const auto text = sampleTitle(
+        &runs, two ? std::optional(headerparts::Row::First) : std::nullopt);
     this->title_->setRuns(runs);
     this->title_->setText(text);
+
+    std::vector<headerparts::Run> secondRuns;
+    const auto second =
+        two ? sampleTitle(&secondRuns, headerparts::Row::Second) : QString();
+    this->stats_->setRuns(secondRuns);
+    this->stats_->setText(second);
+
     this->relayout();
     this->update();
 }
@@ -319,8 +357,18 @@ void HeaderPreview::relayout()
     }
     const auto scale = this->scale();
     const auto header = this->headerRect();
-    const int button = this->headerHeight();
+    // ChattiFlexii: a button stands as high as one line of the bar, while
+    // the bar itself may have two
+    const int button = this->rowHeight();
     const int titleSpace = int(2 * scale);
+
+    const int tall = uistyle::headerTotalHeight();
+    const int picture = std::max(16, tall - 14);
+    this->picture_->setTallness(picture);
+    this->cover_->setTallness(picture);
+    this->title_->setFixedHeight(this->rowHeight());
+    this->stats_->setFixedHeight(
+        std::max(int(uistyle::headerSecondRow() * scale), 1));
 
     std::vector<Part> shown;
     for (const auto part : this->order_)
@@ -368,7 +416,8 @@ void HeaderPreview::relayout()
         }
         return 0;
     };
-    this->activity_->setFixedHeight(button);
+    this->activity_->setTallness(tall);
+    this->activity_->setFixedHeight(this->headerHeight());
     int fixed = int(8 * scale);
     for (const auto part : shown)
     {
@@ -385,11 +434,18 @@ void HeaderPreview::relayout()
     int curve = 0;
     if (std::find(shown.begin(), shown.end(), Part::Activity) != shown.end())
     {
-        const auto needed = int(
-            std::ceil(getApp()
-                          ->getFonts()
-                          ->getFontMetrics(this->title_->getFontStyle(), scale)
-                          .horizontalAdvance(this->title_->getText())));
+        const auto roomFor = [&](HeaderTitle *label) {
+            return int(
+                std::ceil(getApp()
+                              ->getFonts()
+                              ->getFontMetrics(label->getFontStyle(), scale)
+                              .horizontalAdvance(label->getText())));
+        };
+        auto needed = roomFor(this->title_);
+        if (getSettings()->headerTwoRows)
+        {
+            needed = std::max(needed, roomFor(this->stats_));
+        }
         const auto own = this->activity_->ownWidth();
         auto wanted =
             headerparts::curveWidth(this->shared_, needed, own, this->share_,
@@ -424,6 +480,13 @@ void HeaderPreview::relayout()
                                       : header.height());
         }
     }
+
+    // The two lines inside the title box, one under the other
+    const int row = this->rowHeight();
+    this->title_->setGeometry(0, 0, this->titleBox_->width(), row);
+    this->stats_->setGeometry(0, row, this->titleBox_->width(),
+                              std::max(this->titleBox_->height() - row, 1));
+
     this->takePicturesSoon();
 }
 
@@ -462,7 +525,24 @@ void HeaderPreview::takePictures()
         QPixmap picture(widget->size() * ratio);
         picture.setDevicePixelRatio(ratio);
         picture.fill(Qt::transparent);
-        widget->render(&picture, QPoint(), QRegion(), QWidget::DrawChildren);
+        if (part.part == Part::Title)
+        {
+            // The box around the two lines is never shown, and a box that
+            // is not shown draws nothing of what is in it - so the lines
+            // are drawn one under the other themselves
+            this->title_->render(&picture, QPoint(), QRegion(),
+                                 QWidget::DrawChildren);
+            if (getSettings()->headerTwoRows)
+            {
+                this->stats_->render(&picture, QPoint(0, this->rowHeight()),
+                                     QRegion(), QWidget::DrawChildren);
+            }
+        }
+        else
+        {
+            widget->render(&picture, QPoint(), QRegion(),
+                           QWidget::DrawChildren);
+        }
         pictures[part.part] = picture;
     }
     this->pictures_ = std::move(pictures);
@@ -633,8 +713,8 @@ void HeaderPreview::paintEvent(QPaintEvent * /*event*/)
     }
 
     // The handle on an edge being taken hold of, or about to be
-    const auto shownEdge = this->movingEdge_ ? this->movingEdge_
-                                             : this->hoverEdge_;
+    const auto shownEdge =
+        this->movingEdge_ ? this->movingEdge_ : this->hoverEdge_;
     if (shownEdge)
     {
         const auto rect = this->edgeRect(*shownEdge);
@@ -745,9 +825,8 @@ void HeaderPreview::mouseMoveEvent(QMouseEvent *event)
     if (this->movingEdge_)
     {
         // How far the mouse went, in the pixels the settings keep
-        const auto moved =
-            int(std::lround(double(pos.x() - this->pressedAt_.x()) /
-                            double(this->scale())));
+        const auto moved = int(std::lround(
+            double(pos.x() - this->pressedAt_.x()) / double(this->scale())));
         if (this->movingEdge_->right)
         {
             this->deltas_[this->movingEdge_->part] =
@@ -963,6 +1042,13 @@ void HeaderPreview::themeChangedEvent()
     QPalette palette;
     palette.setColor(QPalette::WindowText, this->theme->splits.header.text);
     this->title_->setPalette(palette);
+
+    // ChattiFlexii: the numbers underneath stand back a little
+    auto second = palette;
+    auto pale = second.color(QPalette::WindowText);
+    pale.setAlphaF(0.72);
+    second.setColor(QPalette::WindowText, pale);
+    this->stats_->setPalette(second);
 
     const auto background = this->theme->splits.header.background;
     this->add_->setOptions({

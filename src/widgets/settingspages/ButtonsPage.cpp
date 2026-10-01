@@ -512,7 +512,18 @@ void ButtonsPage::initTitleBar(GeneralPageView &layout)
     layout.addSubtitle("Was im Titel steht");
     layout.addDescription(
         "Alles nach dem Namen steht nur da, solange der Kanal live ist - in "
-        "dieser Reihenfolge.");
+        "dieser Reihenfolge. In zwei Zeilen steht oben der Kanal mit "
+        "Kategorie und Streamtitel, unten die Zahlen.");
+    SettingWidget::checkbox("Titelleiste in zwei Zeilen", s.headerTwoRows)
+        ->setTooltip("Oben der Kanal, „(live)“, die Kategorie und der "
+                     "Streamtitel - unten die Zahlen: Laufzeit, Zuschauer, "
+                     "Follows, Leute im Chat und das Tempo. Profilbild, "
+                     "Kategoriebild und Kurve stehen über beiden Zeilen. "
+                     "Ohne den Haken steht alles in einer Zeile, wie "
+                     "Chatterino es zeigt.")
+        ->addKeywords({"zwei", "zeilen", "titelleiste", "höhe", "statistik",
+                       "zweite"})
+        ->addTo(layout);
     SettingWidget::checkbox("Name des Kanals", s.headerChannelName)
         ->setTooltip("Weglassen geht nur, solange das Profilbild davor "
                      "steht - fährst du darüber, steht der Name da. Ohne "

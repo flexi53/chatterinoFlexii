@@ -25,6 +25,11 @@ bool drawnIcons();
 int tabHeight();
 /// How high the split header is, and how wide its buttons, unscaled
 int headerHeight();
+/// ChattiFlexii: how high the second line of the split header is, unscaled -
+/// 0 while the title bar stands in one line
+int headerSecondRow();
+/// Both lines of the split header together, unscaled
+int headerTotalHeight();
 /// How wide the scrollbar is, unscaled
 int scrollbarWidth();
 /// The small buttons beside the input, unscaled
