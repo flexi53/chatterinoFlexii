@@ -169,6 +169,9 @@ private:
     void showRenameDialog();
     void rebuildTabGroupMenu();
     void rebuildTabColorMenu();
+    /// ChattiFlexii: the tick on „Show activity graph“, which says what the
+    /// splits of this tab do
+    void refreshActivityGraphAction();
 
     /// The rounded outline of this tab. Everything painting the tab body is
     /// clipped to it so nothing bleeds past the rounded corners.
@@ -232,6 +235,8 @@ private:
     HighlightState highlightState_ = HighlightState::None;
     bool highlightEnabled_ = true;
     QAction *highlightNewMessagesAction_;
+    /// ChattiFlexii: leaves the activity curve out of this tab
+    QAction *activityGraphAction_{};
 
     bool isLive_{};
     bool isRerun_{};

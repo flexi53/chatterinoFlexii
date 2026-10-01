@@ -1035,6 +1035,25 @@ bool Split::getModerationMode() const
     return this->moderationMode_;
 }
 
+void Split::setShowActivity(bool value)
+{
+    if (this->showActivity_ == value)
+    {
+        return;
+    }
+    this->showActivity_ = value;
+    // Takes the curve away or brings it back, and with it the counting
+    this->header_->updateChannelText();
+
+    // Queue up save because: the curve is kept with the split
+    getApp()->getWindows()->queueSave();
+}
+
+bool Split::getShowActivity() const
+{
+    return this->showActivity_;
+}
+
 std::optional<bool> Split::checkSpellingOverride() const
 {
     return this->input_->checkSpellingOverride();
@@ -1260,6 +1279,7 @@ void Split::popup()
 
     split->setChannel(this->getIndirectChannel());
     split->setModerationMode(this->getModerationMode());
+    split->setShowActivity(this->getShowActivity());
     split->setFilters(this->getFilters());
 
     window.getNotebook().getOrAddSelectedPage()->insertSplit(split);

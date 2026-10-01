@@ -217,6 +217,7 @@ NotebookTab::NotebookTab(Notebook *notebook)
     QObject::connect(&this->menu_, &QMenu::aboutToShow, this, [this] {
         this->rebuildTabGroupMenu();
         this->rebuildTabColorMenu();
+        this->refreshActivityGraphAction();
     });
 
     // XXX: this doesn't update after changing hotkeys
@@ -263,9 +264,53 @@ NotebookTab::NotebookTab(Notebook *notebook)
                      });
     this->menu_.addAction(this->highlightNewMessagesAction_);
 
+    // ChattiFlexii: the curve in the header of every chat in this tab. In
+    // a tab like the mentions, where a dozen channels run into one, it says
+    // nothing worth the room.
+    this->activityGraphAction_ =
+        new QAction("Show activity graph", &this->menu_);
+    this->activityGraphAction_->setCheckable(true);
+    QObject::connect(this->activityGraphAction_, &QAction::triggered, this,
+                     [this](bool checked) {
+                         auto *container =
+                             dynamic_cast<SplitContainer *>(this->page);
+                         if (container == nullptr)
+                         {
+                             return;
+                         }
+                         for (auto *split : container->getSplits())
+                         {
+                             split->setShowActivity(checked);
+                         }
+                     });
+    this->menu_.addAction(this->activityGraphAction_);
+
     this->menu_.addSeparator();
 
     this->notebook_->addNotebookActionsToMenu(&this->menu_);
+}
+
+void NotebookTab::refreshActivityGraphAction()
+{
+    if (this->activityGraphAction_ == nullptr)
+    {
+        return;
+    }
+
+    auto *container = dynamic_cast<SplitContainer *>(this->page);
+    const auto splits =
+        container == nullptr ? std::vector<Split *>{} : container->getSplits();
+
+    // Nothing to say where the curve is off everywhere anyway
+    this->activityGraphAction_->setVisible(getSettings()->splitHeaderActivity &&
+                                           !splits.empty());
+
+    bool shown = false;
+    for (auto *split : splits)
+    {
+        shown = shown || split->getShowActivity();
+    }
+    this->activityGraphAction_->setChecked(shown);
 }
 
 void NotebookTab::recreateCloseMultipleTabsMenu(

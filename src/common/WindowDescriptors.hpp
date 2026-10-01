@@ -48,6 +48,9 @@ struct SplitDescriptor {
     // Whether "Moderation Mode" (the sword icon) is enabled in this split or not
     bool moderationMode_{false};
 
+    /// ChattiFlexii: whether this split draws the activity curve
+    bool showActivity_{true};
+
     std::optional<bool> spellCheckOverride;
 
     QList<QUuid> filters_;

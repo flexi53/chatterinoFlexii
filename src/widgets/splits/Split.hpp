@@ -74,6 +74,12 @@ public:
     void setModerationMode(bool value);
     bool getModerationMode() const;
 
+    /// ChattiFlexii: whether this split draws the activity curve in its
+    /// header. Off where it has nothing to say - the mentions tab counts
+    /// what happens in a dozen channels at once.
+    void setShowActivity(bool value);
+    bool getShowActivity() const;
+
     std::optional<bool> checkSpellingOverride() const;
     void setCheckSpellingOverride(std::optional<bool> override);
 
@@ -166,6 +172,8 @@ private:
     IndirectChannel channel_;
 
     bool moderationMode_{};
+    /// ChattiFlexii: see setShowActivity - on, as the curve was
+    bool showActivity_{true};
     bool isTopRightSplit_{};
 
     bool isMouseOver_{};

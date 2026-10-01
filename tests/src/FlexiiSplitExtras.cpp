@@ -2929,6 +2929,42 @@ TEST(FlexiiSplitGap, TheRoomLeavesEveryChatSomethingToStandIn)
     EXPECT_EQ(SplitContainer::gapSize(0.5, 0, slot, minSize), 0);
 }
 
+// The curve can be left out of a single chat - in the mentions tab, where
+// a dozen channels run into one, it says nothing worth the room. What was
+// switched off is kept with the tab.
+TEST(FlexiiActivityPerSplit, ACurveLeftOutIsKeptWithTheTab)
+{
+    auto read = [](const char *json) {
+        return TabDescriptor::loadFromJSON(
+            QJsonDocument::fromJson(QByteArray(json)).object());
+    };
+
+    // Nothing written down: the curve is there, as it always was
+    auto plain = read(
+        R"({"splits2":{"type":"split","data":{"type":"twitch","name":"a"}}})");
+    ASSERT_TRUE(plain.rootNode_.has_value());
+    const auto *one = std::get_if<SplitNodeDescriptor>(&*plain.rootNode_);
+    ASSERT_NE(one, nullptr);
+    EXPECT_TRUE(one->showActivity_);
+
+    // Switched off in one chat of a tab, on in the other
+    auto mixed = read(R"({"splits2":{"type":"horizontal","items":[
+        {"type":"split","data":{"type":"mentions"},"activityGraph":false},
+        {"type":"split","data":{"type":"twitch","name":"b"}}]}})");
+    ASSERT_TRUE(mixed.rootNode_.has_value());
+    const auto *root = std::get_if<ContainerNodeDescriptor>(&*mixed.rootNode_);
+    ASSERT_NE(root, nullptr);
+    ASSERT_EQ(root->items_.size(), 2);
+
+    const auto *mentions = std::get_if<SplitNodeDescriptor>(&root->items_[0]);
+    ASSERT_NE(mentions, nullptr);
+    EXPECT_FALSE(mentions->showActivity_);
+
+    const auto *chat = std::get_if<SplitNodeDescriptor>(&root->items_[1]);
+    ASSERT_NE(chat, nullptr);
+    EXPECT_TRUE(chat->showActivity_);
+}
+
 TEST(FlexiiSplitGap, TheRoomIsWrittenDownWithTheLayout)
 {
     auto read = [](const char *json) {

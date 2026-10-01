@@ -725,6 +725,12 @@ void WindowManager::encodeNodeRecursively(SplitNode *node, QJsonObject &obj)
         case SplitNode::Type::Split: {
             obj.insert("type", "split");
             obj.insert("moderationMode", node->getSplit()->getModerationMode());
+            // ChattiFlexii: only where it was switched off, so a layout
+            // nobody changed stays as it was
+            if (!node->getSplit()->getShowActivity())
+            {
+                obj.insert("activityGraph", false);
+            }
 
             QJsonObject split;
             WindowManager::encodeChannel(node->getSplit()->getIndirectChannel(),

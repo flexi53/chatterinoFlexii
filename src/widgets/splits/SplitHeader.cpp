@@ -766,6 +766,25 @@ std::unique_ptr<QMenu> SplitHeader::createMainMenu()
             this->split_->setModerationMode(!this->split_->getModerationMode());
         });
 
+    {
+        // ChattiFlexii: the curve, for this split alone - in a tab like the
+        // mentions, where every channel runs into one, it only gets in the
+        // way. The whole tab at once is in the tab's own menu.
+        auto *action = new QAction(this);
+        action->setText("Show activity graph");
+        action->setCheckable(true);
+
+        QObject::connect(moreMenu, &QMenu::aboutToShow, this, [action, this] {
+            action->setVisible(getSettings()->splitHeaderActivity);
+            action->setChecked(this->split_->getShowActivity());
+        });
+        QObject::connect(action, &QAction::triggered, this, [this](bool on) {
+            this->split_->setShowActivity(on);
+        });
+
+        moreMenu->addAction(action);
+    }
+
     if (this->split_->getChannel()->getType() == Channel::Type::TwitchMentions)
     {
         auto *action = new QAction(this);
@@ -1248,7 +1267,10 @@ void SplitHeader::updatePictures()
     this->coverPicture_->setToolTip(game);
 
     // How lively the chat was
-    const bool activity = getSettings()->splitHeaderActivity;
+    // Buttons -> Titelleiste switches the curve off everywhere, and the
+    // split's own menu leaves it out of this one alone
+    const bool activity =
+        getSettings()->splitHeaderActivity && this->split_->getShowActivity();
     this->activity_->setVisible(activity);
     this->activity_->setChannel(activity ? channel : nullptr);
 }
