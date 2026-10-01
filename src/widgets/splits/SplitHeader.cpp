@@ -40,8 +40,10 @@
 #include "widgets/splits/PinnedMessageWidget.hpp"
 #include "widgets/splits/HypeTrainBannerWidget.hpp"
 #include "widgets/splits/VoteBannerWidget.hpp"
+#include "widgets/Window.hpp"
 #include "widgets/splits/Split.hpp"
 #include "widgets/splits/SplitContainer.hpp"
+#include "widgets/Notebook.hpp"
 #include "widgets/splits/HeaderParts.hpp"
 #include "widgets/splits/SplitHeaderExtras.hpp"
 #include "widgets/TooltipWidget.hpp"
@@ -494,8 +496,7 @@ void SplitHeader::initializeLayout()
 
     // title
     this->titleLabel_ = makeWidget<HeaderTitle>([](auto w) {
-        w->setSizePolicy(QSizePolicy::MinimumExpanding,
-                         QSizePolicy::Preferred);
+        w->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
         w->setCentered(true);
         w->setPadding(QMargins{});
         // ChattiFlexii: a title too long for the header ends in "...",
@@ -505,8 +506,7 @@ void SplitHeader::initializeLayout()
     // ChattiFlexii: the second line, where the numbers stand - smaller and
     // paler than the title above it, see themeChangedEvent
     this->statsLabel_ = makeWidget<HeaderTitle>([](auto w) {
-        w->setSizePolicy(QSizePolicy::MinimumExpanding,
-                         QSizePolicy::Preferred);
+        w->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
         w->setCentered(true);
         w->setPadding(QMargins{});
         w->setShouldElide(true);
@@ -669,6 +669,33 @@ std::unique_ptr<QMenu> SplitHeader::createMainMenu()
     menu->addAction("Set filters",
                     h->getDisplaySequence(HotkeyCategory::Split, "pickFilters"),
                     this->split_, &Split::setFiltersDialog);
+
+    // ChattiFlexii: the part at the bottom of the window stays while the
+    // tabs above it change - what is held there is seen in every tab
+    if (auto *window = dynamic_cast<Window *>(this->window()))
+    {
+        auto *container =
+            dynamic_cast<SplitContainer *>(this->split_->parentWidget());
+        const bool pinned =
+            container != nullptr && container == window->getPinnedContainer();
+        menu->addAction(
+            pinned ? "Move back into the tab" : "Keep at the bottom",
+            this->split_, [this, window, pinned] {
+                auto *from = dynamic_cast<SplitContainer *>(
+                    this->split_->parentWidget());
+                auto *to = pinned ? window->getNotebook().getOrAddSelectedPage()
+                                  : window->getPinnedContainer();
+                if (from == nullptr || to == nullptr || from == to)
+                {
+                    return;
+                }
+                from->releaseSplit(this->split_);
+                to->insertSplit(this->split_, {});
+                window->refreshPinnedArea();
+                getApp()->getWindows()->queueSave();
+            });
+    }
+
     menu->addSeparator();
 
     auto *twitchChannel =

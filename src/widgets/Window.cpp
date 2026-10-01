@@ -52,9 +52,30 @@
 #include <QObject>
 #include <QPalette>
 #include <QStandardItemModel>
+#include <QSplitter>
 #include <QVBoxLayout>
 
 namespace chatterino {
+
+namespace {
+
+/// ChattiFlexii: the notebook of the part that stays at the bottom - one
+/// page, no tabs of its own, nothing to add or close
+class PinnedNotebook : public SplitNotebook
+{
+public:
+    explicit PinnedNotebook(Window *parent)
+        : SplitNotebook(parent)
+    {
+        this->setShowTabsQuietly(false);
+        this->setAllowUserTabManagement(false);
+        this->setShowAddButton(false);
+        // No bar of its own either - the chats start right at the divider
+        this->setCustomButtonsHidden(true);
+    }
+};
+
+}  // namespace
 
 Window::Window(WindowType type, QWidget *parent)
     : BaseWindow(
@@ -194,7 +215,27 @@ void Window::addLayout()
 {
     auto *layout = new QVBoxLayout();
 
-    layout->addWidget(this->notebook_);
+    // ChattiFlexii: under the tabs a part that stays put. What is held
+    // there is shown whichever tab is open above it - one window instead
+    // of two. It has a page of its own and no tabs.
+    this->pinnedNotebook_ = new PinnedNotebook(this);
+    this->pinnedNotebook_->getOrAddSelectedPage();
+    this->pinnedNotebook_->hide();
+    this->pinnedNotebook_->getOrAddSelectedPage()->installEventFilter(this);
+
+    this->splitter_ = new QSplitter(Qt::Vertical, this);
+    this->splitter_->setChildrenCollapsible(false);
+    this->splitter_->setHandleWidth(4);
+    this->splitter_->addWidget(this->notebook_);
+    this->splitter_->addWidget(this->pinnedNotebook_);
+    this->splitter_->setStretchFactor(0, 1);
+    this->splitter_->setStretchFactor(1, 0);
+    QObject::connect(this->splitter_, &QSplitter::splitterMoved, this,
+                     [](int, int) {
+                         getApp()->getWindows()->queueSave();
+                     });
+
+    layout->addWidget(this->splitter_);
     this->getLayoutContainer()->setLayout(layout);
 
     // set margin
@@ -202,6 +243,78 @@ void Window::addLayout()
 
     this->notebook_->setAllowUserTabManagement(true);
     this->notebook_->setShowAddButton(true);
+}
+
+bool Window::eventFilter(QObject *watched, QEvent *event)
+{
+    // ChattiFlexii: a chat taken out of the lower part - once the last one
+    // is gone the part goes with it. The child list is still in flux while
+    // the event runs, so the look comes a moment later.
+    if (this->pinnedNotebook_ != nullptr &&
+        watched == this->pinnedNotebook_->getSelectedPage() &&
+        (event->type() == QEvent::ChildAdded ||
+         event->type() == QEvent::ChildRemoved))
+    {
+        QTimer::singleShot(0, this, [this] {
+            this->refreshPinnedArea();
+        });
+    }
+
+    return BaseWindow::eventFilter(watched, event);
+}
+
+SplitContainer *Window::getPinnedContainer()
+{
+    return this->pinnedNotebook_->getOrAddSelectedPage();
+}
+
+bool Window::hasPinnedSplits() const
+{
+    if (this->pinnedNotebook_ == nullptr)
+    {
+        return false;
+    }
+    auto *page = dynamic_cast<SplitContainer *>(
+        this->pinnedNotebook_->getSelectedPage());
+    return page != nullptr && !page->getSplits().empty();
+}
+
+int Window::pinnedHeight() const
+{
+    if (!this->hasPinnedSplits() || this->splitter_ == nullptr)
+    {
+        return 0;
+    }
+    return this->splitter_->sizes().value(1);
+}
+
+void Window::refreshPinnedArea(int height)
+{
+    if (this->pinnedNotebook_ == nullptr || this->splitter_ == nullptr)
+    {
+        return;
+    }
+
+    const bool anything = this->hasPinnedSplits();
+    this->pinnedNotebook_->setVisible(anything);
+    if (!anything)
+    {
+        return;
+    }
+
+    if (height > 0)
+    {
+        const int whole = this->splitter_->height();
+        const int lower = std::clamp(height, 60, std::max(60, whole - 120));
+        this->splitter_->setSizes({whole - lower, lower});
+    }
+    else if (this->splitter_->sizes().value(1) <= 0)
+    {
+        // Coming up for the first time: a third of the window, no more
+        const int whole = this->splitter_->height();
+        const int lower = std::max(120, whole / 3);
+        this->splitter_->setSizes({whole - lower, lower});
+    }
 }
 
 void Window::addCustomTitlebarButtons()

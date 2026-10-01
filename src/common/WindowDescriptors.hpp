@@ -120,6 +120,11 @@ struct WindowDescriptor {
     bool focus_ = false;
 
     std::vector<TabDescriptor> tabs_;
+
+    /// ChattiFlexii: the chats held at the bottom of the window, which stay
+    /// there while the tabs change, and how tall that part stands
+    std::optional<NodeDescriptor> pinned_;
+    int pinnedHeight_ = 0;
 };
 
 class WindowLayout

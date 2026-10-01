@@ -253,6 +253,22 @@ WindowLayout WindowLayout::loadFromFile(const QString &path)
             window.tabs_.emplace_back(std::move(tab));
         }
 
+        // ChattiFlexii: and what is held at the bottom of the window, which
+        // stays there whichever tab is open
+        {
+            const auto pinned = windowObj.value("pinned").toObject();
+            const auto type = pinned.value("type").toString();
+            if (type == "split")
+            {
+                window.pinned_ = loadNodes<SplitNodeDescriptor>(pinned);
+            }
+            else if (type == "horizontal" || type == "vertical")
+            {
+                window.pinned_ = loadNodes<ContainerNodeDescriptor>(pinned);
+            }
+            window.pinnedHeight_ = windowObj.value("pinnedHeight").toInt();
+        }
+
         // Load emote popup position
         {
             auto emotePopup = windowObj["emotePopup"].toObject();

@@ -572,6 +572,18 @@ void WindowManager::save()
         }
 
         windowObj.insert("tabs", tabsArr);
+
+        // ChattiFlexii: and what is held at the bottom, which belongs to the
+        // window rather than to any of its tabs
+        if (window->hasPinnedSplits())
+        {
+            QJsonObject pinned;
+            WindowManager::encodeNodeRecursively(
+                window->getPinnedContainer()->getBaseNode(), pinned);
+            windowObj.insert("pinned", pinned);
+            windowObj.insert("pinnedHeight", window->pinnedHeight());
+        }
+
         windowArr.append(windowObj);
     }
 
@@ -1063,7 +1075,20 @@ void WindowManager::applyWindowLayout(const WindowLayout &layout)
 
         window.getNotebook().setFocusMode(windowData.focus_);
 
+        // ChattiFlexii: what is held at the bottom of this window
+        if (windowData.pinned_)
+        {
+            window.getPinnedContainer()->applyFromDescriptor(
+                *windowData.pinned_);
+        }
+
         window.show();
+
+        // Once it stands, the lower part is given back its height
+        const int pinnedHeight = windowData.pinnedHeight_;
+        QTimer::singleShot(0, &window, [target = &window, pinnedHeight] {
+            target->refreshPinnedArea(pinnedHeight);
+        });
 
         // Set window state
         switch (windowData.state_)
