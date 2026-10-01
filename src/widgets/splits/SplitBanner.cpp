@@ -179,8 +179,19 @@ void SplitBanner::paintEvent(QPaintEvent * /*event*/)
     const qreal radius = RADIUS * this->scale();
     const QRectF card = QRectF(this->rect()).adjusted(gap, gap, -gap, 0);
 
+    auto fill = theme->splits.header.background;
+    if (fill.alpha() < 0x20)
+    {
+        // ChattiFlexii: a header made see-through under Aussehen -> Farben
+        // leaves the card nothing to show. It then takes the chat's own
+        // colour, lifted a little, so there is still a card to see.
+        fill = theme->splits.background;
+        fill = theme->isLightTheme() ? fill.darker(108) : fill.lighter(170);
+        fill.setAlpha(255);
+    }
+
     painter.setPen(Qt::NoPen);
-    painter.setBrush(theme->splits.header.background);
+    painter.setBrush(fill);
     painter.drawRoundedRect(card, radius, radius);
 }
 

@@ -31,8 +31,8 @@ protected:
     /// ChattiFlexii: the air left of the card, right of it and above it, so
     /// the chat shows through - and how round its corners are, both in
     /// unscaled pixels
-    static constexpr int GAP = 4;
-    static constexpr int RADIUS = 6;
+    static constexpr int GAP = 5;
+    static constexpr int RADIUS = 8;
 
     /// ChattiFlexii: whether the user put this banner away. What was put
     /// away stays away while the same thing is being shown - an update of
