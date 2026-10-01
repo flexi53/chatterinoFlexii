@@ -304,6 +304,10 @@ public:
     /// ChattiFlexii, Aussehen -> Splits: the banner for the hype train
     BoolSetting showHypeTrainBanner = {"/appearance/banners/showHypeTrain",
                                        true};
+    /// ChattiFlexii: the channels the hype train banner is left out of,
+    /// set in the split's menu - see controllers/banners
+    QStringSetting hypeTrainOffChannels = {"/appearance/banners/hypeTrainOff",
+                                           ""};
 
     /// Buttons -> Title bar: the parts of the split header in the order they
     /// stand, as their ids - empty for the order Chatterino has them in

@@ -28,6 +28,14 @@ public:
 protected:
     static constexpr auto MUTED_STYLE = "color: #adadb8;";
 
+    /// ChattiFlexii: whether the user put this banner away. What was put
+    /// away stays away while the same thing is being shown - an update of
+    /// it must not open it again.
+    void setDismissed(bool dismissed);
+    bool isDismissed() const;
+    /// Shows the banner unless it was put away
+    void showUnlessDismissed();
+
     QLabel *headerLabel() const;
     /// Widgets added here sit after the leading label and a stretch.
     QHBoxLayout *headerRow() const;
@@ -62,6 +70,7 @@ private:
 
     QTimer *countdownTimer_ = nullptr;
     QTimer *autoHideTimer_ = nullptr;
+    bool dismissed_ = false;
 };
 
 }  // namespace chatterino

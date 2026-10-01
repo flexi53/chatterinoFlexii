@@ -694,6 +694,8 @@ set(SOURCE_FILES
         controllers/moderation/StepEscalation.hpp
         controllers/moderation/ModHighlights.cpp
         controllers/moderation/ModHighlights.hpp
+        controllers/banners/BannerChannels.cpp
+        controllers/banners/BannerChannels.hpp
         controllers/moderation/AlertMute.cpp
         controllers/moderation/AlertMute.hpp
         controllers/moderation/EmoteSpamDetector.cpp

@@ -9,6 +9,7 @@
 #include "common/network/NetworkRequest.hpp"
 #include "common/network/NetworkResult.hpp"
 #include "controllers/accounts/AccountController.hpp"
+#include "controllers/banners/BannerChannels.hpp"
 #include "controllers/commands/CommandController.hpp"
 #include "controllers/hotkeys/Hotkey.hpp"
 #include "controllers/hotkeys/HotkeyCategory.hpp"
@@ -766,6 +767,39 @@ std::unique_ptr<QMenu> SplitHeader::createMainMenu()
             this->split_->setModerationMode(!this->split_->getModerationMode());
         });
 
+    if (twitchChannel != nullptr)
+    {
+        // ChattiFlexii: the hype train banner, for this channel - wherever
+        // it is open. In a channel where one rides every other minute it is
+        // in the way rather than news.
+        auto *action = new QAction(this);
+        action->setText("Show hype train");
+        action->setCheckable(true);
+
+        // The channel is looked up again each time: a split can be sent to
+        // another one while its menu stands open
+        const auto channelName = [this]() -> QString {
+            auto *channel =
+                dynamic_cast<TwitchChannel *>(this->split_->getChannel().get());
+            return channel == nullptr ? QString() : channel->getName();
+        };
+
+        QObject::connect(
+            moreMenu, &QMenu::aboutToShow, this, [action, channelName] {
+                const auto name = channelName();
+                action->setVisible(getSettings()->showHypeTrainBanner &&
+                                   !name.isEmpty());
+                action->setChecked(banners::hypeShownIn(name));
+            });
+        QObject::connect(action, &QAction::triggered, this,
+                         [this, channelName](bool on) {
+                             banners::setHypeShownIn(channelName(), on);
+                             this->updateHypeButton();
+                         });
+
+        moreMenu->addAction(action);
+    }
+
     {
         // ChattiFlexii: the curve, for this split alone - in a tab like the
         // mentions, where every channel runs into one, it only gets in the
@@ -1357,8 +1391,11 @@ void SplitHeader::updateHypeButton()
 {
     auto channel = this->split_->getChannel();
     auto *twitchChannel = dynamic_cast<TwitchChannel *>(channel.get());
+    // ChattiFlexii: a channel the hype train is switched off in has no
+    // button for it either
     const bool hasTrain = twitchChannel != nullptr &&
-                          twitchChannel->currentHypeTrain() != nullptr;
+                          twitchChannel->currentHypeTrain() != nullptr &&
+                          banners::hypeShownIn(twitchChannel->getName());
 
     this->hypeButton_->setVisible(
         hasTrain && headerparts::isShown(headerparts::Part::Hype));

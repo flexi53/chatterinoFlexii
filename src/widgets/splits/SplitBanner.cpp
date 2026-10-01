@@ -89,6 +89,25 @@ QLabel *SplitBanner::countdownLabel() const
     return this->countdownLabel_;
 }
 
+void SplitBanner::setDismissed(bool dismissed)
+{
+    this->dismissed_ = dismissed;
+}
+
+bool SplitBanner::isDismissed() const
+{
+    return this->dismissed_;
+}
+
+void SplitBanner::showUnlessDismissed()
+{
+    if (this->dismissed_)
+    {
+        return;
+    }
+    this->show();
+}
+
 void SplitBanner::startCountdown()
 {
     this->tickCountdown();

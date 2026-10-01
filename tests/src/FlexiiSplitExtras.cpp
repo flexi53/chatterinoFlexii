@@ -60,6 +60,8 @@
 #include "widgets/splits/InputButtons.hpp"
 #include "widgets/splits/SplitHeaderExtras.hpp"
 #include "widgets/splits/SplitContainer.hpp"
+#include "controllers/banners/BannerChannels.hpp"
+#include "widgets/splits/SplitBanner.hpp"
 #include "common/WindowDescriptors.hpp"
 
 #include <QJsonDocument>
@@ -3008,4 +3010,67 @@ TEST(FlexiiSplitGap, TheRoomIsWrittenDownWithTheLayout)
         std::get_if<ContainerNodeDescriptor>(&otherRoot->items_[0]);
     ASSERT_NE(first, nullptr);
     EXPECT_DOUBLE_EQ(first->gap_, 0.15);
+}
+
+namespace {
+
+/// Reaches the protected switches of the banner base
+class TestBanner : public SplitBanner
+{
+public:
+    using SplitBanner::isDismissed;
+    using SplitBanner::setDismissed;
+    using SplitBanner::showUnlessDismissed;
+};
+
+}  // namespace
+
+// A banner the user put away has to stay away. Twitch sends an update for a
+// running hype train every few seconds, and each one used to open it again.
+TEST(FlexiiBanners, WhatWasPutAwayStaysAway)
+{
+    MockApplication app;
+    TestBanner banner;
+
+    EXPECT_FALSE(banner.isDismissed());
+    banner.showUnlessDismissed();
+    EXPECT_FALSE(banner.isHidden());
+
+    // Put away by hand
+    banner.setDismissed(true);
+    banner.hide();
+
+    // Every update of the same thing leaves it alone
+    banner.showUnlessDismissed();
+    banner.showUnlessDismissed();
+    EXPECT_TRUE(banner.isHidden());
+
+    // Something new of its own brings it back
+    banner.setDismissed(false);
+    banner.showUnlessDismissed();
+    EXPECT_FALSE(banner.isHidden());
+}
+
+TEST(FlexiiBanners, AChannelCanBeLeftOutOfTheHypeTrain)
+{
+    MockApplication app;
+    const auto kept = getSettings()->hypeTrainOffChannels.getValue();
+
+    EXPECT_TRUE(banners::hypeShownIn("forsen"));
+
+    // However it is written, it is the same channel
+    banners::setHypeShownIn("Forsen", false);
+    EXPECT_FALSE(banners::hypeShownIn("forsen"));
+    EXPECT_FALSE(banners::hypeShownIn("FORSEN"));
+
+    // and only that one
+    EXPECT_TRUE(banners::hypeShownIn("nymn"));
+
+    banners::setHypeShownIn("forsen", true);
+    EXPECT_TRUE(banners::hypeShownIn("forsen"));
+
+    // A channel with no name says nothing either way
+    EXPECT_TRUE(banners::hypeShownIn(""));
+
+    getSettings()->hypeTrainOffChannels.setValue(kept);
 }

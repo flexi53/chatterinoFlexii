@@ -5,6 +5,7 @@
 #include "widgets/splits/HypeTrainBannerWidget.hpp"
 
 #include "providers/twitch/TwitchChannel.hpp"
+#include "controllers/banners/BannerChannels.hpp"
 #include "singletons/Settings.hpp"
 #include "util/Helpers.hpp"
 #include "widgets/splits/VoteBannerWidget.hpp"
@@ -41,6 +42,13 @@ HypeTrainBannerWidget::HypeTrainBannerWidget(QWidget *parent)
 
     this->hide();
 
+    // ChattiFlexii: and a channel it is left out of - set in the split's
+    // own menu
+    getSettings()->hypeTrainOffChannels.connect(
+        [this](const auto &, auto) {
+            this->refresh();
+        },
+        this->connections_, false);
     getSettings()->showHypeTrainBanner.connect(
         [this] {
             this->refresh();
@@ -56,6 +64,7 @@ void HypeTrainBannerWidget::setChannel(TwitchChannel *channel)
     this->channel_ = channel;
     this->userToggled_ = false;
     this->showing_.clear();
+    this->setDismissed(false);
     this->stopAutoHide();
 
     if (channel != nullptr)
@@ -72,19 +81,24 @@ void HypeTrainBannerWidget::toggleUserPinned()
 {
     if (this->isVisible())
     {
+        // Put away by hand: it stays away until this train is over, however
+        // often Twitch sends an update for it
         this->userToggled_ = false;
+        this->setDismissed(true);
         this->stopAutoHide();
         this->hide();
         return;
     }
 
     if (this->channel_ == nullptr || !getSettings()->showHypeTrainBanner ||
+        !banners::hypeShownIn(this->channel_->getName()) ||
         this->channel_->currentHypeTrain() == nullptr)
     {
         return;
     }
 
     this->userToggled_ = true;
+    this->setDismissed(false);
     this->stopAutoHide();
     this->refresh();
     this->show();
@@ -92,8 +106,10 @@ void HypeTrainBannerWidget::toggleUserPinned()
 
 void HypeTrainBannerWidget::refresh()
 {
-    // Aussehen -> Chat can do without the banner altogether
-    if (this->channel_ == nullptr || !getSettings()->showHypeTrainBanner)
+    // Aussehen -> Splits can do without the banner altogether, and the
+    // split's menu can leave it out of this one channel
+    if (this->channel_ == nullptr || !getSettings()->showHypeTrainBanner ||
+        !banners::hypeShownIn(this->channel_->getName()))
     {
         this->stopCountdown();
         this->stopAutoHide();
@@ -112,8 +128,11 @@ void HypeTrainBannerWidget::refresh()
 
     if (this->showing_ != train->id)
     {
+        // A train of its own: whatever was put away belonged to the one
+        // before it
         this->showing_ = train->id;
         this->userToggled_ = false;
+        this->setDismissed(false);
     }
 
     this->headerLabel()->setText(
@@ -154,7 +173,7 @@ void HypeTrainBannerWidget::refresh()
         this->startCountdown();
     }
 
-    this->show();
+    this->showUnlessDismissed();
 }
 
 void HypeTrainBannerWidget::tickCountdown()

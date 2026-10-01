@@ -116,13 +116,17 @@ void PinnedMessageWidget::setChannel(TwitchChannel *channel)
     this->signalHolder_.clear();
     this->channel_ = channel;
     this->userToggled_ = false;
+    this->setDismissed(false);
     this->stopAutoHide();
 
     if (channel)
     {
         this->signalHolder_.managedConnect(channel->pinnedMessageChanged,
                                            [this] {
+                                               // Another message: what was
+                                               // put away was the one before
                                                this->userToggled_ = false;
+                                               this->setDismissed(false);
                                                this->refresh();
                                            });
         this->signalHolder_.managedConnect(channel->userStateChanged, [this] {
@@ -179,6 +183,8 @@ std::unique_ptr<QMenu> PinnedMessageWidget::buildModMenu()
     menu->addSeparator();
 
     menu->addAction(u"Nur bei mir ausblenden"_s, this, [this] {
+        // And it stays away while this message is pinned
+        this->setDismissed(true);
         this->hide();
     });
 
@@ -232,7 +238,7 @@ void PinnedMessageWidget::refresh()
     const bool isMod = this->channel_->hasModRights();
     this->menuButton_->setVisible(isMod);
 
-    this->show();
+    this->showUnlessDismissed();
 
     this->stopAutoHide();
     if (!getSettings()->alwaysShowPinnedMessage && !this->userToggled_)
@@ -246,12 +252,14 @@ void PinnedMessageWidget::toggleUserPinned()
     if (this->isVisible())
     {
         this->userToggled_ = false;
+        this->setDismissed(true);
         this->stopAutoHide();
         this->hide();
     }
     else
     {
         this->userToggled_ = true;
+        this->setDismissed(false);
         this->stopAutoHide();
         this->show();
     }

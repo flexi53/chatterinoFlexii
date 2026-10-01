@@ -145,6 +145,7 @@ void VoteBannerWidget::setChannel(TwitchChannel *channel)
     this->channel_ = channel;
     this->userToggled_ = false;
     this->showing_.clear();
+    this->setDismissed(false);
     this->stopAutoHide();
 
     if (channel != nullptr)
@@ -164,7 +165,10 @@ void VoteBannerWidget::toggleUserPinned()
 {
     if (this->isVisible())
     {
+        // Put away by hand: it stays away while this one is running, every
+        // update of it included
         this->userToggled_ = false;
+        this->setDismissed(true);
         this->stopAutoHide();
         this->hide();
         return;
@@ -180,6 +184,7 @@ void VoteBannerWidget::toggleUserPinned()
     }
 
     this->userToggled_ = true;
+    this->setDismissed(false);
     this->stopAutoHide();
     this->refresh();
     this->show();
@@ -271,6 +276,7 @@ void VoteBannerWidget::showPoll()
     if (isNew)
     {
         this->userToggled_ = false;
+        this->setDismissed(false);
     }
 
     this->headerLabel()->setText(
@@ -332,7 +338,7 @@ void VoteBannerWidget::showPoll()
         }
     }
 
-    this->show();
+    this->showUnlessDismissed();
 }
 
 void VoteBannerWidget::showPrediction()
@@ -348,6 +354,7 @@ void VoteBannerWidget::showPrediction()
     if (isNew)
     {
         this->userToggled_ = false;
+        this->setDismissed(false);
     }
 
     this->headerLabel()->setText(
@@ -410,7 +417,7 @@ void VoteBannerWidget::showPrediction()
         }
     }
 
-    this->show();
+    this->showUnlessDismissed();
 }
 
 void VoteBannerWidget::tickCountdown()
