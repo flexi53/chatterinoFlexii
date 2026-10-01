@@ -522,6 +522,8 @@ set(SOURCE_FILES
         providers/twitch/ProfilePictures.cpp
         providers/twitch/ProfilePictures.hpp
         providers/twitch/IrcMessageHandler.cpp
+        providers/twitch/JoinWatch.cpp
+        providers/twitch/JoinWatch.hpp
         providers/twitch/IrcMessageHandler.hpp
         providers/twitch/PubSubClient.cpp
         providers/twitch/PubSubClient.hpp

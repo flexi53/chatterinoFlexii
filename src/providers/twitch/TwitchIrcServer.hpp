@@ -8,6 +8,7 @@
 #include "common/Channel.hpp"
 #include "common/Common.hpp"
 #include "providers/irc/IrcConnection2.hpp"
+#include "providers/twitch/JoinWatch.hpp"
 #include "util/RatelimitBucket.hpp"
 
 #include <IrcMessage>
@@ -18,6 +19,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <map>
 #include <queue>
 
 namespace chatterino {
@@ -201,6 +203,17 @@ private:
     // Our rate limiting bucket for the Twitch join rate limits
     // https://dev.twitch.tv/docs/irc/guide#rate-limits
     QObjectPtr<RatelimitBucket> joinBucket_;
+
+    /// ChattiFlexii: what we asked to join and have not heard back about,
+    /// and the timer that asks again. Twitch drops a JOIN now and then -
+    /// too many at once, a connection coming back - and the channel then
+    /// stays empty for good, without saying so.
+    std::map<QString, joinwatch::Pending> awaitingJoin_;
+    QTimer joinWatchTimer_;
+    /// Notes that @a channel answered, whatever it answered with
+    void noteJoined(const QString &channel);
+    /// Asks again for what has not come back
+    void askAgainForJoins();
 
     QTimer reconnectTimer_;
     int falloffCounter_ = 1;

@@ -17,6 +17,7 @@
 #include "messages/layouts/MessageLayout.hpp"
 #include "messages/layouts/MessageRole.hpp"
 #include "messages/Message.hpp"
+#include "providers/twitch/JoinWatch.hpp"
 #include "providers/twitch/ProfilePictures.hpp"
 #include "providers/twitch/TwitchBadge.hpp"
 #include "Test.hpp"
@@ -1351,4 +1352,38 @@ TEST(FlexiiEmoteSpam, TheDeleteButtonTakesAsManyAsAsked)
     // And never more than that, whatever is asked for
     EXPECT_EQ(EmoteSpamDetector::deleteLimit(500),
               EmoteSpamDetector::MOST_DELETED);
+}
+
+// Twitch answers a JOIN with one of its own. Where nothing comes back - too
+// many at once, a connection just coming up - the channel stays empty for
+// good, so what never answered is asked for again. A name that no longer
+// exists never answers, so it is given up on after a few tries.
+TEST(FlexiiJoinWatch, WhatNeverAnsweredIsAskedForAgain)
+{
+    using namespace std::chrono_literals;
+    const auto now = QDateTime::currentDateTimeUtc();
+
+    std::map<QString, joinwatch::Pending> pending{
+        // waited long enough
+        {"alpha", {.asked = now.addSecs(-60), .tries = 1}},
+        // asked a moment ago, give it time
+        {"beta", {.asked = now.addSecs(-5), .tries = 1}},
+        // waited longest of all
+        {"gamma", {.asked = now.addSecs(-300), .tries = 2}},
+        // asked often enough - this name will not answer
+        {"delta", {.asked = now.addSecs(-600), .tries = 4}},
+        // never really asked
+        {"epsilon", {.asked = QDateTime(), .tries = 1}},
+    };
+
+    const auto again = joinwatch::overdue(pending, now, 45s, 4);
+
+    // The one waiting longest goes first
+    ASSERT_EQ(again, QStringList({"gamma", "alpha"}));
+
+    // Nothing waiting, nothing asked
+    EXPECT_TRUE(joinwatch::overdue({}, now, 45s, 4).isEmpty());
+
+    // Given a moment longer, even gamma waits
+    EXPECT_TRUE(joinwatch::overdue(pending, now, 600s, 4).isEmpty());
 }

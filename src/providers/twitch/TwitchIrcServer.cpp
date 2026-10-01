@@ -54,6 +54,12 @@ namespace {
 // Ratelimits for joinBucket_
 constexpr int JOIN_RATELIMIT_BUDGET = 18;
 constexpr int JOIN_RATELIMIT_COOLDOWN = 12500;
+// ChattiFlexii: how often it is looked at what never came back, how long a
+// channel is given to answer, and how often it is asked before it is left
+// alone - a name that no longer exists never answers
+constexpr int JOIN_WATCH_INTERVAL = 20 * 1000;
+constexpr std::chrono::seconds JOIN_WATCH_AFTER{45};
+constexpr int JOIN_WATCH_TRIES = 4;
 
 using namespace chatterino;
 
@@ -162,10 +168,21 @@ TwitchIrcServer::TwitchIrcServer()
         {
             return;
         }
+        // ChattiFlexii: noted until Twitch answers for that channel
+        auto &pending = this->awaitingJoin_[message];
+        pending.asked = QDateTime::currentDateTimeUtc();
+        pending.tries++;
         this->readConnection_->sendRaw("JOIN #" + message);
     };
     this->joinBucket_.reset(new RatelimitBucket(
         JOIN_RATELIMIT_BUDGET, JOIN_RATELIMIT_COOLDOWN, actuallyJoin, this));
+
+    // ChattiFlexii: and every now and then a look at what never answered
+    this->joinWatchTimer_.setInterval(JOIN_WATCH_INTERVAL);
+    QObject::connect(&this->joinWatchTimer_, &QTimer::timeout, this, [this] {
+        this->askAgainForJoins();
+    });
+    this->joinWatchTimer_.start();
 
     QObject::connect(this->writeConnection_.get(),
                      &Communi::IrcConnection::messageReceived, this,
@@ -446,6 +463,12 @@ void TwitchIrcServer::readConnectionMessageReceived(
 
     const QString &command = message->command();
 
+    // ChattiFlexii: anything that arrives for a channel says we are in it
+    if (command == "JOIN" || command == "ROOMSTATE" || command == "USERSTATE")
+    {
+        this->noteJoined(message->parameter(0).mid(1));
+    }
+
     auto &handler = IrcMessageHandler::instance();
 
     // Below commands enabled through the twitch.tv/membership CAP REQ
@@ -524,9 +547,46 @@ void TwitchIrcServer::writeConnectionMessageReceived(
     }
 }
 
+void TwitchIrcServer::noteJoined(const QString &channel)
+{
+    if (channel.isEmpty())
+    {
+        return;
+    }
+    this->awaitingJoin_.erase(channel);
+}
+
+void TwitchIrcServer::askAgainForJoins()
+{
+    if (!this->readConnection_ || !this->readConnection_->isConnected())
+    {
+        return;
+    }
+
+    const auto again =
+        joinwatch::overdue(this->awaitingJoin_, QDateTime::currentDateTimeUtc(),
+                           JOIN_WATCH_AFTER, JOIN_WATCH_TRIES);
+    if (again.isEmpty())
+    {
+        return;
+    }
+
+    qCDebug(chatterinoTwitch) << "Asking again to join" << again.size()
+                              << "channels Twitch never answered for";
+
+    for (const auto &channel : again)
+    {
+        this->joinBucket_->send(channel);
+    }
+}
+
 void TwitchIrcServer::onReadConnected(IrcConnection *connection)
 {
     (void)connection;
+
+    // ChattiFlexii: a connection of its own starts the counting over - what
+    // follows is asked for again anyway
+    this->awaitingJoin_.clear();
 
     std::vector<ChannelPtr> activeChannels;
     {
@@ -1333,6 +1393,8 @@ ChannelPtr TwitchIrcServer::getOrAddChannel(const QString &dirtyChannelName)
             qCDebug(chatterinoIrc) << "[TwitchIrcServer::addChannel]"
                                    << channelName << "was destroyed";
             this->channels.remove(channelName);
+            // ChattiFlexii: and nothing is waited for any more
+            this->awaitingJoin_.erase(channelName);
 
             if (this->readConnection_)
             {
