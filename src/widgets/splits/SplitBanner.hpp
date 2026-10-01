@@ -28,6 +28,12 @@ public:
 protected:
     static constexpr auto MUTED_STYLE = "color: #adadb8;";
 
+    /// ChattiFlexii: the air left of the card, right of it and above it, so
+    /// the chat shows through - and how round its corners are, both in
+    /// unscaled pixels
+    static constexpr int GAP = 4;
+    static constexpr int RADIUS = 6;
+
     /// ChattiFlexii: whether the user put this banner away. What was put
     /// away stays away while the same thing is being shown - an update of
     /// it must not open it again.

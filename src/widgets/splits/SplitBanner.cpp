@@ -43,17 +43,8 @@ SplitBanner::SplitBanner(QWidget *parent)
 
     outerBox->addLayout(this->contentBox_);
 
-    // 1px bottom border - separates the banner from the chat view below
-    auto *bottomBorder = new QWidget(this);
-    bottomBorder->setFixedHeight(1);
-    bottomBorder->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    bottomBorder->setAutoFillBackground(true);
-    {
-        QPalette pal = bottomBorder->palette();
-        pal.setColor(QPalette::Window, pal.color(QPalette::Mid));
-        bottomBorder->setPalette(pal);
-    }
-    outerBox->addWidget(bottomBorder);
+    // ChattiFlexii: no line under it any more - the card ends by itself,
+    // and the chat shows through around it
 
     this->countdownLabel_->setStyleSheet(MUTED_STYLE);
     this->countdownLabel_->hide();
@@ -162,6 +153,12 @@ void SplitBanner::scaleChangedEvent(float newScale)
     headerFont.setPointSizeF(9.5F * newScale);
     this->headerLabel_->setFont(headerFont);
     this->countdownLabel_->setFont(headerFont);
+
+    // ChattiFlexii: what is written keeps its distance from the card's own
+    // edge, which lies GAP inside the widget
+    this->contentBox_->setContentsMargins(
+        int((8 + GAP) * newScale), int((6 + GAP) * newScale),
+        int((8 + GAP) * newScale), int(6 * newScale));
 }
 
 void SplitBanner::mousePressEvent(QMouseEvent *event)
@@ -169,17 +166,22 @@ void SplitBanner::mousePressEvent(QMouseEvent *event)
     // ignore to disable the parent's right click menu
 }
 
-void SplitBanner::paintEvent(QPaintEvent *event)
+void SplitBanner::paintEvent(QPaintEvent * /*event*/)
 {
     QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing);
     auto *theme = getTheme();
 
-    // Fill background (same color as the split header above)
-    painter.fillRect(event->rect(), theme->splits.header.background);
+    // ChattiFlexii: a card set on the chat - a few pixels of air at the
+    // sides and above it, so the chat shows through, and corners that are
+    // rounded rather than cut
+    const qreal gap = GAP * this->scale();
+    const qreal radius = RADIUS * this->scale();
+    const QRectF card = QRectF(this->rect()).adjusted(gap, gap, -gap, 0);
 
-    // Draw 1px top border
-    painter.setPen(theme->splits.header.border);
-    painter.drawLine(0, 0, this->width() - 1, 0);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(theme->splits.header.background);
+    painter.drawRoundedRect(card, radius, radius);
 }
 
 }  // namespace chatterino
