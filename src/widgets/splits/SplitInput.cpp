@@ -1028,9 +1028,9 @@ bool SplitInput::eventFilter(QObject *obj, QEvent *event)
         {
             if (popup->isVisible())
             {
-                // ChattiFlexii: a box that opened on a plain word must not
-                // swallow Enter - the message goes off as it would without
-                // the box, and the box goes away with it
+                // ChattiFlexii: where Enter does not pick a suggestion it
+                // must not be swallowed either - the message goes off as it
+                // would without the box, and the box goes away with it
                 const auto *key = dynamic_cast<QKeyEvent *>(event);
                 if (!this->completionTakesEnter_ && key != nullptr &&
                     (key->key() == Qt::Key_Enter ||
@@ -1271,8 +1271,13 @@ void SplitInput::showCompletionPopup(const QString &text, CompletionKind kind,
     auto *popup = this->inputCompletionPopup_.data();
     assert(popup);
 
-    this->completionTakesEnter_ = takesEnter;
-    popup->setTakesEnter(takesEnter);
+    // ChattiFlexii: while "Eingabetaste sendet immer" is set, no box takes
+    // Enter - not even one asked for with a colon. Tab is what picks, and
+    // Enter stays with the message, so a key macro that types a word and
+    // sends it off does not have to press Enter twice.
+    const bool enterPicks = takesEnter && !getSettings()->enterAlwaysSends;
+    this->completionTakesEnter_ = enterPicks;
+    popup->setTakesEnter(enterPicks);
     popup->updateCompletion(text, kind, this->split_->getChannel());
 
     // Nothing to offer - then no box either

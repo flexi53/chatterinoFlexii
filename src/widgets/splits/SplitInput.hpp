@@ -147,8 +147,9 @@ protected:
     void onTextChanged();
     void updateEmoteButton();
     void updateCompletionPopup();
-    /// @a takesEnter says whether Enter picks what is selected - false for
-    /// the box that opens on a plain word, where Enter sends the message
+    /// @a takesEnter says whether Enter may pick what is selected - false
+    /// for the box that opens on a plain word. Even where it is true,
+    /// "Eingabetaste sendet immer" leaves Enter to the message.
     void showCompletionPopup(const QString &text, CompletionKind kind,
                              bool takesEnter = true);
     void hideCompletionPopup();

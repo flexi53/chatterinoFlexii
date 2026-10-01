@@ -628,6 +628,17 @@ void ButtonsPage::initLayout(GeneralPageView &layout)
                      "dein Wort so stehen, wie du es getippt hast.")
         ->addKeywords({"emote", "vorschlag", "doppelpunkt", "autocomplete"})
         ->addTo(layout);
+    SettingWidget::checkbox("Eingabetaste sendet immer", s.enterAlwaysSends)
+        ->setTooltip("Steht ein Vorschlag über der Eingabezeile, schickt "
+                     "die Eingabetaste trotzdem die Nachricht ab - den "
+                     "Vorschlag holt die Tabulatortaste. Für "
+                     "Tastenmakros, die ein Wort tippen und gleich Enter "
+                     "hinterherschicken, ist das der Unterschied zwischen "
+                     "gesendet und nur vervollständigt. Aus heißt: "
+                     "wie in Chatterino, dann übernimmt die "
+                     "Eingabetaste den Vorschlag.")
+        ->addKeywords({"enter", "eingabetaste", "senden", "tab", "vorschlag"})
+        ->addTo(layout);
     SettingWidget::checkbox("Nur zeigen, was hier geht",
                             s.hideUnavailableCommands)
         ->setTooltip("Befehle, für die man Moderator sein muss, bleiben in "

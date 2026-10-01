@@ -23,8 +23,9 @@ public:
     void setModel(QAbstractItemModel *model) override;
     void setModel(GenericListModel *);
     void setInvokeActionOnTab(bool);
-    /// ChattiFlexii: whether the Enter key picks what is selected. Off for
-    /// a box that opened by itself, where Enter belongs to the message.
+    /// ChattiFlexii: whether the Enter key picks what is selected. Off
+    /// where Enter belongs to whoever is underneath - in the input box
+    /// that means the message is sent and Tab is what picks.
     void setInvokeActionOnEnter(bool);
     bool eventFilter(QObject *watched, QEvent *event) override;
 

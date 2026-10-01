@@ -2770,9 +2770,9 @@ TEST(FlexiiHeaderNumbers, BothArrowsShareTheTrendColour)
     s->headerMessageRate.setValue(false);
 }
 
-// Emote suggestions appear while a plain word is typed, so the box must not
-// take the Enter key away from the message - only the box you asked for with
-// a colon does that. Tab picks what is selected either way.
+// Emote suggestions appear while a plain word is typed, so no box may take
+// the Enter key away from the message. Tab picks what is selected either
+// way - that is the pair of keys the switch below settles.
 TEST(FlexiiCompletionKeys, ABoxThatOpenedByItselfLeavesEnterAlone)
 {
     GenericListModel model;
@@ -2796,4 +2796,20 @@ TEST(FlexiiCompletionKeys, ABoxThatOpenedByItselfLeavesEnterAlone)
     // And so do the arrow keys
     QKeyEvent down(QEvent::KeyPress, Qt::Key_Down, Qt::NoModifier);
     EXPECT_TRUE(view.eventFilter(nullptr, &down));
+}
+
+TEST(FlexiiCompletionKeys, EnterBelongsToTheMessageUnlessTurnedOff)
+{
+    MockApplication app;
+
+    // Out of the box Enter belongs to the message in every box, so a key
+    // macro that types a word and presses Enter once still sends
+    EXPECT_TRUE(getSettings()->enterAlwaysSends.getDefaultValue());
+    EXPECT_TRUE(getSettings()->enterAlwaysSends.getValue());
+
+    // Turned off, it is Chatterino's own behaviour again
+    getSettings()->enterAlwaysSends.setValue(false);
+    EXPECT_FALSE(getSettings()->enterAlwaysSends.getValue());
+    getSettings()->enterAlwaysSends.setValue(
+        getSettings()->enterAlwaysSends.getDefaultValue());
 }

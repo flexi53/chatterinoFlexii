@@ -64,8 +64,8 @@ bool GenericListView::eventFilter(QObject * /*watched*/, QEvent *event)
 
         if (key == Qt::Key_Enter || key == Qt::Key_Return)
         {
-            // ChattiFlexii: where the box opened by itself, Enter sends the
-            // message as it always did - Tab picks what is selected
+            // ChattiFlexii: switched off, Enter belongs to whoever is
+            // underneath - Tab is what picks what is selected
             if (!this->invokeActionOnEnter_)
             {
                 return false;

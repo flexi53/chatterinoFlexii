@@ -1203,6 +1203,9 @@ public:
     /// ...and the ones needing a moderator are left out where you are none
     BoolSetting hideUnavailableCommands = {"/ui/hideUnavailableCommands",
                                            true};
+    /// ...and whatever box stands over the input, the Enter key stays with
+    /// the message - the Tab key is the one that picks a suggestion
+    BoolSetting enterAlwaysSends = {"/ui/enterAlwaysSends", true};
     BoolSetting sharedChatCarryOver = {"/moderation/sharedChat/carryOver",
                                        false};
     /// Notizen -> Leute im Blick: a tab collecting what the chosen people
