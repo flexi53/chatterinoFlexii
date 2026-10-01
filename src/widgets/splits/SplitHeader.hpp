@@ -96,7 +96,8 @@ private:
     void resetThumbnail();
 
     void handleChannelChanged();
-    /// Look -> Tabs: the channel's picture, the cover of what it streams and
+    /// Look -> Splits: the channel's picture, the cover of what it streams
+    /// and
     /// the activity curve, as far as they are switched on
     void updatePictures();
 

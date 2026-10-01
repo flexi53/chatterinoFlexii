@@ -7,7 +7,8 @@
 #include <QColor>
 
 /// What the split you type in and the tab you are on are outlined in - see
-/// Look -> Tabs. Both ask here, so the two borders keep the same colour
+/// Look -> Tabs and Look -> Splits. Both ask here, so the two borders
+/// keep the same colour
 /// unless one is given its own.
 namespace chatterino::activeborder {
 

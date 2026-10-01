@@ -68,7 +68,7 @@ namespace chatterino {
 
 namespace {
 
-/// A border drawn over a split, in the colour chosen under Look -> Tabs -
+/// A border drawn over a split, in the colour chosen under Look -> Splits -
 /// see Split::refreshActiveFrame
 class ActiveFrame : public QWidget
 {

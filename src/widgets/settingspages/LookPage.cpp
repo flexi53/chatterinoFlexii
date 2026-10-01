@@ -187,6 +187,9 @@ LookPage::LookPage()
     };
     this->buildStyleTab(addTab("Stil"));
     this->buildTabsTab(addTab("Tabs"));
+    // ChattiFlexii: everything about a single chat in one place, instead of
+    // half of it standing among the tabs
+    this->buildSplitsTab(addTab("Splits"));
     this->buildChatTab(addTab("Chat"));
     this->buildColorsTab(addTab("Farben"));
 
@@ -527,36 +530,6 @@ void LookPage::buildTabsTab(GeneralPageView &layout)
         s.tabLiveRing.setValue(false);
     });
 
-    layout.addTitle("Titelleiste");
-    layout.addDescription(
-        "Die Leiste über jedem Chat, mit dem Namen des Kanals. Welche Teile "
-        "sie hat, in welcher Reihenfolge und wie breit die Kurve ist, "
-        "stellst du unter Buttons → Titelleiste ein.");
-    SettingWidget::checkbox("Profilbild und Kategorie zeigen",
-                            s.splitHeaderPictures)
-        ->setTooltip("Links in der Titelleiste das Bild des Kanals und, "
-                     "solange er live ist, das Cover dessen, was er streamt.")
-        ->addKeywords({"avatar", "spiel", "game", "kategorie", "cover"})
-        ->addTo(layout);
-    SettingWidget::checkbox("Aktivitäts-Kurve zeigen", s.splitHeaderActivity)
-        ->setTooltip("Eine kleine Kurve rechts in der Titelleiste: wie viel im "
-                     "Chat los war. Ist der Kanal live, reicht sie über den "
-                     "ganzen Stream, sonst über die letzte Viertelstunde. "
-                     "Darunter eine Zeitachse, deren Striche je nach Länge "
-                     "eine Minute bis mehrere Stunden auseinander liegen; "
-                     "wo der Kanal die Kategorie gewechselt hat, steht ein "
-                     "senkrechter Strich, und der Tooltip nennt Uhrzeit und "
-                     "Kategorie. Was war, bevor du den Kanal geöffnet hast, "
-                     "weiß niemand - der Anfang bleibt dann leer. Im "
-                     "schmalen Split wird die Kurve kürzer, damit der Titel "
-                     "bleibt.")
-        ->addKeywords({"aktivität", "activity", "kurve", "graph"})
-        ->addTo(layout);
-    addStandardButton(layout, "Nur der Name, wie bisher", [&s] {
-        s.splitHeaderPictures.setValue(false);
-        s.splitHeaderActivity.setValue(false);
-    });
-
     layout.addTitle("Aktiver Tab");
     layout.addDescription(
         "Der Tab, in dem du gerade bist, bekommt einen farbigen Rahmen - "
@@ -598,40 +571,6 @@ void LookPage::buildTabsTab(GeneralPageView &layout)
                           s.tabMarkMuted.setValue(false);
                           s.tabDimOfflinePinned.setValue(false);
                       });
-
-    layout.addTitle("Grenzen zwischen Splits");
-    layout.addDescription(
-        "Liegen mehrere Chats in einem Tab, kannst du die Grenze dazwischen "
-        "greifen und verschieben - egal ob sie neben- oder übereinander "
-        "liegen. Der Griff zeigt sich erst, wenn die Maus darauf ist; ein "
-        "Rechtsklick darauf setzt die Aufteilung wieder gleichmäßig. Hältst "
-        "du dabei ⌥ gedrückt, wird nur die Seite davor kleiner und dahinter "
-        "bleibt leerer Raum stehen - der Rest rückt nicht nach.");
-    SettingWidget::checkbox("Grenze jederzeit ziehen",
-                            s.splitBordersDraggable)
-        ->setTooltip("Ohne den Haken geht es weiterhin, aber nur solange du "
-                     "⌘ gedrückt hältst - so macht es Chatterino von Haus "
-                     "aus.")
-        ->addKeywords({"split", "grenze", "ziehen", "größe", "teilen"})
-        ->addTo(layout);
-
-    layout.addTitle("Aktiver Split");
-    layout.addDescription(
-        "Hat ein Tab mehrere Chats nebeneinander, bekommt der, in den du "
-        "gerade tippst, einen farbigen Rand - so schreibst du nie in den "
-        "falschen.");
-    SettingWidget::checkbox("Rand um den Split, in den du tippst",
-                            s.activeSplitBorder)
-        ->addKeywords({"rand", "border", "fokus", "aktiv"})
-        ->addTo(layout);
-    SettingWidget::colorButton("Farbe des Rands", s.activeSplitBorderColor)
-        ->conditionallyEnabledBy(s.activeSplitBorder)
-        ->addTo(layout);
-    addStandardButton(layout, "Kein Rand, Farbe wie zu Beginn", [&s] {
-        s.activeSplitBorder.setValue(false);
-        s.activeSplitBorderColor.setValue(
-            s.activeSplitBorderColor.getDefaultValue());
-    });
 
     layout.addTitle("Dem Browser folgen");
     layout.addDescription(
@@ -678,9 +617,39 @@ void LookPage::buildTabsTab(GeneralPageView &layout)
     layout.addStretch();
 }
 
-void LookPage::buildChatTab(GeneralPageView &layout)
+void LookPage::buildSplitsTab(GeneralPageView &layout)
 {
     auto &s = *getSettings();
+
+    layout.addTitle("Titelleiste");
+    layout.addDescription(
+        "Die Leiste über jedem Chat, mit dem Namen des Kanals. Welche Teile "
+        "sie hat, in welcher Reihenfolge und wie breit die Kurve ist, "
+        "stellst du unter Buttons → Titelleiste ein.");
+    SettingWidget::checkbox("Profilbild und Kategorie zeigen",
+                            s.splitHeaderPictures)
+        ->setTooltip("Links in der Titelleiste das Bild des Kanals und, "
+                     "solange er live ist, das Cover dessen, was er streamt.")
+        ->addKeywords({"avatar", "spiel", "game", "kategorie", "cover"})
+        ->addTo(layout);
+    SettingWidget::checkbox("Aktivitäts-Kurve zeigen", s.splitHeaderActivity)
+        ->setTooltip("Eine kleine Kurve rechts in der Titelleiste: wie viel im "
+                     "Chat los war. Ist der Kanal live, reicht sie über den "
+                     "ganzen Stream, sonst über die letzte Viertelstunde. "
+                     "Darunter eine Zeitachse, deren Striche je nach Länge "
+                     "eine Minute bis mehrere Stunden auseinander liegen; "
+                     "wo der Kanal die Kategorie gewechselt hat, steht ein "
+                     "senkrechter Strich, und der Tooltip nennt Uhrzeit und "
+                     "Kategorie. Was war, bevor du den Kanal geöffnet hast, "
+                     "weiß niemand - der Anfang bleibt dann leer. Im "
+                     "schmalen Split wird die Kurve kürzer, damit der Titel "
+                     "bleibt.")
+        ->addKeywords({"aktivität", "activity", "kurve", "graph"})
+        ->addTo(layout);
+    addStandardButton(layout, "Nur der Name, wie bisher", [&s] {
+        s.splitHeaderPictures.setValue(false);
+        s.splitHeaderActivity.setValue(false);
+    });
 
     layout.addTitle("Banner");
     layout.addDescription(
@@ -700,6 +669,47 @@ void LookPage::buildChatTab(GeneralPageView &layout)
                      "und Restzeit.")
         ->addKeywords({"hype", "train", "banner"})
         ->addTo(layout);
+
+    layout.addTitle("Grenzen zwischen Splits");
+    layout.addDescription(
+        "Liegen mehrere Chats in einem Tab, kannst du die Grenze dazwischen "
+        "greifen und verschieben - egal ob sie neben- oder übereinander "
+        "liegen. Der Griff zeigt sich erst, wenn die Maus darauf ist; ein "
+        "Rechtsklick darauf setzt die Aufteilung wieder gleichmäßig. Hältst "
+        "du dabei ⌥ gedrückt, wird nur die Seite davor kleiner und dahinter "
+        "bleibt leerer Raum stehen - der Rest rückt nicht nach.");
+    SettingWidget::checkbox("Grenze jederzeit ziehen",
+                            s.splitBordersDraggable)
+        ->setTooltip("Ohne den Haken geht es weiterhin, aber nur solange du "
+                     "⌘ gedrückt hältst - so macht es Chatterino von Haus "
+                     "aus.")
+        ->addKeywords({"split", "grenze", "ziehen", "größe", "teilen"})
+        ->addTo(layout);
+
+    layout.addTitle("Aktiver Split");
+    layout.addDescription(
+        "Hat ein Tab mehrere Chats nebeneinander, bekommt der, in den du "
+        "gerade tippst, einen farbigen Rand - so schreibst du nie in den "
+        "falschen.");
+    SettingWidget::checkbox("Rand um den Split, in den du tippst",
+                            s.activeSplitBorder)
+        ->addKeywords({"rand", "border", "fokus", "aktiv"})
+        ->addTo(layout);
+    SettingWidget::colorButton("Farbe des Rands", s.activeSplitBorderColor)
+        ->conditionallyEnabledBy(s.activeSplitBorder)
+        ->addTo(layout);
+    addStandardButton(layout, "Kein Rand, Farbe wie zu Beginn", [&s] {
+        s.activeSplitBorder.setValue(false);
+        s.activeSplitBorderColor.setValue(
+            s.activeSplitBorderColor.getDefaultValue());
+    });
+
+    layout.addStretch();
+}
+
+void LookPage::buildChatTab(GeneralPageView &layout)
+{
+    auto &s = *getSettings();
 
     layout.addTitle("Lesbarkeit");
     layout.addDescription(

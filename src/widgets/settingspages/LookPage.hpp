@@ -27,6 +27,9 @@ public:
 private:
     void buildStyleTab(GeneralPageView &layout);
     void buildTabsTab(GeneralPageView &layout);
+    /// ChattiFlexii: the chat itself - its frame, what stands over it
+    /// and what lies between two of them
+    void buildSplitsTab(GeneralPageView &layout);
     void buildChatTab(GeneralPageView &layout);
     void buildColorsTab(GeneralPageView &layout);
     /// A role's stripe colour - greyed out, showing the badge highlight's

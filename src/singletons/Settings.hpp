@@ -298,10 +298,10 @@ public:
     /// split header
     BoolSetting splitHeaderActivity = {"/appearance/splitheader/activity",
                                        false};
-    /// ChattiFlexii, Aussehen -> Chat: the banner under the header saying
+    /// ChattiFlexii, Aussehen -> Splits: the banner under the header saying
     /// what the channel is voting on right now
     BoolSetting showVoteBanner = {"/appearance/banners/showVotes", true};
-    /// ChattiFlexii, Aussehen -> Chat: the banner for the hype train
+    /// ChattiFlexii, Aussehen -> Splits: the banner for the hype train
     BoolSetting showHypeTrainBanner = {"/appearance/banners/showHypeTrain",
                                        true};
 
@@ -1244,7 +1244,7 @@ public:
     /// the file keeps the filled one, as macOS would put it on a pale plate
     /// of its own anyway
     BoolSetting appIconBare = {"/appearance/iconBare", false};
-    /// Aussehen -> Tabs: the border between two splits can be dragged at
+    /// Aussehen -> Splits: the border between two splits can be dragged at
     /// any time, without holding a key
     BoolSetting splitBordersDraggable = {"/ui/splits/dragBorders", true};
     /// Which order the buttons in the input bar stand in - their keys,

@@ -30,7 +30,7 @@ namespace chatterino {
 class Channel;
 using ChannelPtr = std::shared_ptr<Channel>;
 
-/// A small picture in the split header - see Look -> Tabs: the channel's
+/// A small picture in the split header - see Look -> Splits: the channel's
 /// own, round, or the cover of what it streams, as Twitch shows it
 class HeaderPicture : public BaseWidget
 {
@@ -87,7 +87,8 @@ private:
 };
 
 /// How lively the chat was, as a small curve in the split header - see
-/// Look -> Tabs. It follows the stream from the moment it went live, with
+/// Look -> Splits. It follows the stream from the moment it went live,
+/// with
 /// a line of time under it and an upright line wherever the channel
 /// changed what it streams. What happened before the channel was open here
 /// nobody can know, so that stretch stays empty.
