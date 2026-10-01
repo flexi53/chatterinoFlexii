@@ -128,11 +128,11 @@ void HypeTrainBannerWidget::refresh()
 
     if (this->showing_ != train->id)
     {
-        // A train of its own: whatever was put away belonged to the one
-        // before it
+        // ChattiFlexii: a train of its own, but what was put away stays
+        // away - the button in the header is what brings it back, and
+        // nothing Twitch sends opens it again
         this->showing_ = train->id;
         this->userToggled_ = false;
-        this->setDismissed(false);
     }
 
     this->headerLabel()->setText(

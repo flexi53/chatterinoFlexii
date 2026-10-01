@@ -3093,6 +3093,16 @@ TEST(FlexiiBanners, WhatWasPutAwayStaysAway)
     EXPECT_FALSE(banner.isHidden());
 }
 
+// A pinned message pops up once, when it is pinned, and then waits for the
+// button. Chatterino takes it away again after half a minute.
+TEST(FlexiiBanners, APinnedMessageWaitsForTheButton)
+{
+    MockApplication app;
+
+    EXPECT_TRUE(getSettings()->alwaysShowPinnedMessage.getDefaultValue());
+    EXPECT_TRUE(getSettings()->alwaysShowPinnedMessage.getValue());
+}
+
 TEST(FlexiiBanners, AChannelCanBeLeftOutOfTheHypeTrain)
 {
     MockApplication app;

@@ -23,7 +23,8 @@ using namespace Qt::Literals;
 namespace {
 
 /// How long a finished vote stays up before it goes away by itself
-constexpr auto SHOW_RESULT_FOR = 20s;
+/// ChattiFlexii: how long the result stands before the banner folds away
+constexpr auto SHOW_RESULT_FOR = 30s;
 /// How tall one line of the vote is, unscaled
 constexpr int BAR_HEIGHT = 22;
 /// Room left and right of the words inside a line
@@ -406,10 +407,17 @@ void VoteBannerWidget::showPrediction()
     {
         this->stopCountdown();
         this->countdownLabel()->hide();
-        if (prediction->running())
+        if (prediction->status == PubSubPrediction::Status::Locked)
         {
-            // Locked: it stays until it is settled
+            // ChattiFlexii: no more bets to place and nothing decided yet -
+            // it folds away by itself and comes back with the result,
+            // unless it was opened by hand
             this->stopAutoHide();
+            if (!this->userToggled_)
+            {
+                this->hide();
+                return;
+            }
         }
         else if (!this->userToggled_)
         {

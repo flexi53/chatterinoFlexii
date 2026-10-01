@@ -692,8 +692,11 @@ public:
     };
 
     /// Behaviour
+    /// ChattiFlexii: on, unlike Chatterino - a pinned message pops up once
+    /// when it is pinned and then stays until the button in the header
+    /// takes it away. Nothing else happens by itself.
     BoolSetting alwaysShowPinnedMessage = {"/behaviour/alwaysShowPinnedMessage",
-                                           false};
+                                           true};
     BoolSetting allowDuplicateMessages = {"/behaviour/allowDuplicateMessages",
                                           true};
     BoolSetting mentionUsersWithAt = {"/behaviour/mentionUsersWithAt", false};
