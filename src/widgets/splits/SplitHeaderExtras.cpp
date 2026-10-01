@@ -979,9 +979,19 @@ QRectF ActivityGraph::curveArea() const
     // that for what its marks stand for - Compact's lower header has no
     // room for those, the tooltip says them
     const bool labels = !uistyle::compact();
+    const qreal bottom = (6 + (labels ? LABEL_ROOM : 0)) * this->scale();
+
+    // ChattiFlexii: as much air above the curve as under the line of time,
+    // so what the channel streamed - written over the curve - does not sit
+    // on the edge of the header. Where that would leave the curve itself
+    // nothing, it keeps the two pixels it had.
+    const qreal least = 12 * this->scale();
+    const qreal top = std::max<qreal>(
+        2, std::min<qreal>(6 * this->scale(), this->height() - bottom - least));
+
     return QRectF(this->rect())
-        .adjusted(LEFT_ROOM * this->scale(), 2, -RIGHT_ROOM * this->scale(),
-                  -(6 + (labels ? LABEL_ROOM : 0)) * this->scale());
+        .adjusted(LEFT_ROOM * this->scale(), top, -RIGHT_ROOM * this->scale(),
+                  -bottom);
 }
 
 void ActivityGraph::paintEvent(QPaintEvent * /*event*/)
