@@ -173,6 +173,16 @@ Split::Split(QWidget *parent)
     // The room on the right follows the scrollbar coming and going
     this->view_->getScrollBar().installEventFilter(this);
     this->layoutBanners();
+    // ChattiFlexii: the cards carry the colour of the title bar, which
+    // changes as the split is typed in or left
+    const auto repaintBanners = [this] {
+        this->pinnedBanner_->update();
+        this->voteBanner_->update();
+        this->hypeBanner_->update();
+    };
+    this->signalHolder_.managedConnect(this->focused, repaintBanners);
+    this->signalHolder_.managedConnect(this->focusLost, repaintBanners);
+
     this->signalHolder_.managedConnect(this->pinnedBanner_->visibilityChanged,
                                        [this] {
                                            this->layoutBanners();

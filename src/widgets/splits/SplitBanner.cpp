@@ -5,6 +5,7 @@
 #include "widgets/splits/SplitBanner.hpp"
 
 #include "singletons/Theme.hpp"
+#include "widgets/splits/Split.hpp"
 
 #include <QHBoxLayout>
 #include <QLabel>
@@ -17,6 +18,24 @@ using namespace std::chrono_literals;
 using namespace Qt::Literals;
 
 namespace chatterino {
+
+namespace {
+
+/// ChattiFlexii: the split a banner lies in, so its card can carry the
+/// colour of that split's title bar - focused or not
+const Split *splitOf(const QWidget *widget)
+{
+    for (const auto *w = widget; w != nullptr; w = w->parentWidget())
+    {
+        if (const auto *split = dynamic_cast<const Split *>(w))
+        {
+            return split;
+        }
+    }
+    return nullptr;
+}
+
+}  // namespace
 
 SplitBanner::SplitBanner(QWidget *parent)
     : BaseWidget(parent)
@@ -179,15 +198,25 @@ void SplitBanner::paintEvent(QPaintEvent * /*event*/)
     const qreal radius = RADIUS * this->scale();
     const QRectF card = QRectF(this->rect()).adjusted(gap, gap, -gap, 0);
 
-    auto fill = theme->splits.header.background;
-    if (fill.alpha() < 0x20)
+    // ChattiFlexii: the card carries the colour of the title bar, one to
+    // one. Where that colour is see-through - Aussehen -> Farben - the bar
+    // shows the chat through itself, so the card takes what that comes out
+    // as. It stays solid either way: the card lies on the chat, and
+    // messages running through the writing would not be readable.
+    // The bar above lights up while one types in this split, and the card
+    // goes along with it
+    const auto *split = splitOf(this);
+    auto fill = split != nullptr && split->hasFocus()
+                    ? theme->splits.header.focusedBackground
+                    : theme->splits.header.background;
+    if (fill.alpha() < 255)
     {
-        // ChattiFlexii: a header made see-through under Aussehen -> Farben
-        // leaves the card nothing to show. It then takes the chat's own
-        // colour, lifted a little, so there is still a card to see.
-        fill = theme->splits.background;
-        fill = theme->isLightTheme() ? fill.darker(108) : fill.lighter(170);
-        fill.setAlpha(255);
+        const auto under = theme->splits.background;
+        const qreal share = fill.alphaF();
+        fill = QColor::fromRgbF(
+            under.redF() * (1 - share) + fill.redF() * share,
+            under.greenF() * (1 - share) + fill.greenF() * share,
+            under.blueF() * (1 - share) + fill.blueF() * share);
     }
 
     painter.setPen(Qt::NoPen);
