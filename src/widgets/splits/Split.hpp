@@ -191,6 +191,10 @@ private:
     QWidget *activeFrame_{};
     bool inputFocused_{};
     void refreshActiveFrame();
+    bool eventFilter(QObject *watched, QEvent *event) override;
+    /// ChattiFlexii: how much room the banners lying on the chat leave at
+    /// the sides - the chat is seen there, and the scrollbar stays clear
+    void layoutBanners();
 
     QPointer<OverlayWindow> overlayWindow_;
 
@@ -206,6 +210,8 @@ private:
     pajlada::Signals::SignalHolder channelSignalHolder_;
 
     pajlada::Signals::SignalHolder signalHolder_;
+    /// ChattiFlexii: holds the banners at the top of the chat view
+    QVBoxLayout *bannerBox_{};
     std::vector<boost::signals2::scoped_connection> bSignals_;
 
 public Q_SLOTS:

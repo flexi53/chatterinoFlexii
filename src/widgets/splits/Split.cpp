@@ -68,6 +68,14 @@ namespace chatterino {
 
 namespace {
 
+/// ChattiFlexii: how much chat is seen left and right of a banner lying on
+/// it, in unscaled pixels - on top of the air the card keeps inside itself
+constexpr int BANNER_SIDE = 10;
+
+}  // namespace
+
+namespace {
+
 /// A border drawn over a split, in the colour chosen under Look -> Splits -
 /// see Split::refreshActiveFrame
 class ActiveFrame : public QWidget
@@ -146,11 +154,37 @@ Split::Split(QWidget *parent)
     this->vbox_->setContentsMargins(1, 1, 1, 1);
 
     this->vbox_->addWidget(this->header_);
-    this->vbox_->addWidget(this->pinnedBanner_);
-    this->vbox_->addWidget(this->voteBanner_);
-    this->vbox_->addWidget(this->hypeBanner_);
     this->vbox_->addWidget(this->view_, 1);
     this->vbox_->addWidget(this->input_);
+
+    // ChattiFlexii: the banners do not push the chat down - they lie on it,
+    // as children of the chat view, so the messages run on behind and
+    // beside them. A layout of their own holds them at the top, with room
+    // at the sides for the chat to be seen and for the scrollbar.
+    auto *banners = new QVBoxLayout(this->view_);
+    banners->setSizeConstraint(QLayout::SetNoConstraint);
+    banners->setContentsMargins(0, 0, 0, 0);
+    banners->setSpacing(0);
+    banners->addWidget(this->pinnedBanner_);
+    banners->addWidget(this->voteBanner_);
+    banners->addWidget(this->hypeBanner_);
+    banners->addStretch(1);
+    this->bannerBox_ = banners;
+    // The room on the right follows the scrollbar coming and going
+    this->view_->getScrollBar().installEventFilter(this);
+    this->layoutBanners();
+    this->signalHolder_.managedConnect(this->pinnedBanner_->visibilityChanged,
+                                       [this] {
+                                           this->layoutBanners();
+                                       });
+    this->signalHolder_.managedConnect(this->voteBanner_->visibilityChanged,
+                                       [this] {
+                                           this->layoutBanners();
+                                       });
+    this->signalHolder_.managedConnect(this->hypeBanner_->visibilityChanged,
+                                       [this] {
+                                           this->layoutBanners();
+                                       });
 
     this->input_->ui_.textEdit->installEventFilter(parent);
 
@@ -1156,6 +1190,42 @@ void Split::resizeEvent(QResizeEvent *event)
     if (this->activeFrame_ != nullptr)
     {
         this->activeFrame_->setGeometry(this->rect());
+    }
+    this->layoutBanners();
+}
+
+bool Split::eventFilter(QObject *watched, QEvent *event)
+{
+    // ChattiFlexii: the scrollbar showed itself or went away - the cards
+    // lying on the chat keep their distance from it either way
+    if (watched == &this->view_->getScrollBar() &&
+        (event->type() == QEvent::Show || event->type() == QEvent::Hide))
+    {
+        this->layoutBanners();
+    }
+
+    return BaseWidget::eventFilter(watched, event);
+}
+
+void Split::layoutBanners()
+{
+    if (this->bannerBox_ == nullptr)
+    {
+        return;
+    }
+
+    // ChattiFlexii: how much chat is seen left and right of a card - on the
+    // right the scrollbar is left its own room as well
+    const int side = int(BANNER_SIDE * this->scale());
+    const int bar = this->view_->getScrollBar().isVisible()
+                        ? this->view_->getScrollBar().width()
+                        : 0;
+    this->bannerBox_->setContentsMargins(side, 0, side + bar, 0);
+
+    for (auto *banner : std::initializer_list<QWidget *>{
+             this->pinnedBanner_, this->voteBanner_, this->hypeBanner_})
+    {
+        banner->raise();
     }
 }
 
