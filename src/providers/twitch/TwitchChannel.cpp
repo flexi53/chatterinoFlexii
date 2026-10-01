@@ -2047,7 +2047,7 @@ void TwitchChannel::createClip(const QString &title,
         [this](const HelixClip &clip) {
             const auto link = CLIPS_LINK.arg(clip.id);
 
-            // Buttons -> Clip: what happens once the clip is there, however
+            // Eingabefeld: what happens once the clip is there, however
             // it was started - the button, the split menu or the hotkey
             const bool copied = getSettings()->clipCopyLink;
             if (copied)

@@ -626,7 +626,7 @@ void SplitInput::updateModAssistButton()
     this->ui_.alertMuteButton->setChannel(
         twitch != nullptr ? twitch->getName() : QString{});
 
-    // Buttons -> Input: a badge can be worn in every Twitch channel you can
+    // Eingabefeld: a badge can be worn in every Twitch channel you can
     // write in logged in - moderating it or not
     const bool canWrite =
         twitch != nullptr &&

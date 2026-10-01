@@ -13,7 +13,7 @@
 #include <utility>
 #include <vector>
 
-/// Buttons -> Title bar: which parts the split header has, in what order,
+/// Titelleiste: which parts the split header has, in what order,
 /// and how wide its curve is. Nothing changed, it is the header Chatterino
 /// has.
 namespace chatterino::headerparts {

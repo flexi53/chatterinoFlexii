@@ -22,7 +22,7 @@
 #include "widgets/settingspages/AdvancedPage.hpp"
 #include "widgets/settingspages/AccountsPage.hpp"
 #include "widgets/settingspages/BadgesPage.hpp"
-#include "widgets/settingspages/ButtonsPage.hpp"
+#include "widgets/settingspages/InputPage.hpp"
 #include "widgets/settingspages/CommandPage.hpp"
 #include "widgets/settingspages/ExternalToolsPage.hpp"
 #include "widgets/settingspages/FiltersPage.hpp"
@@ -31,6 +31,7 @@
 #include "widgets/settingspages/IgnoresPage.hpp"
 #include "widgets/settingspages/KeyboardSettingsPage.hpp"
 #include "widgets/settingspages/LookPage.hpp"
+#include "widgets/settingspages/TitleBarPage.hpp"
 #include "widgets/settingspages/ModAssistantPage.hpp"
 #include "widgets/settingspages/ModerationPage.hpp"
 #include "widgets/settingspages/ModHighlightsPage.hpp"
@@ -502,7 +503,8 @@ void SettingsDialog::addTabs()
     // What ChattiFlexii adds comes first - that is what gets changed most
     this->ownHeading_ = this->addSectionLabel("ChattiFlexii");
     this->addTab([]{return new LookPage;},             "Aussehen",       ":/settings/look.svg");
-    this->addTab([]{return new ButtonsPage;},          "Buttons",        ":/settings/buttons.svg");
+    this->addTab([]{return new TitleBarPage;},         "Titelleiste",    ":/settings/titlebar.svg");
+    this->addTab([]{return new InputPage;},            "Eingabefeld",    ":/settings/input.svg");
     this->addTab([]{return new AdvancedPage;},         "Erweitert",      ":/settings/modassistant.svg");
     this->addTab([]{return new ModHighlightsPage;},    "Mod-Highlights", ":/settings/modhighlights.svg");
     this->addTab([]{return new BadgesPage;},           "Badges",         ":/settings/badges.svg");
@@ -547,7 +549,7 @@ void SettingsDialog::addTab(std::function<SettingsPage *()> page,
         uistyle::drawnIcons() && !modern.isEmpty() ? modern : iconPath;
     // "Buttons" and "Badges" keep their English names on purpose - everything
     // else is said in German
-    static const QStringList keepTheirName{"Buttons", "Badges"};
+    static const QStringList keepTheirName{"Badges"};
     const auto title =
         keepTheirName.contains(name) ? name : german::say(name);
     auto *tab =

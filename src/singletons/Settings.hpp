@@ -309,20 +309,20 @@ public:
     QStringSetting hypeTrainOffChannels = {"/appearance/banners/hypeTrainOff",
                                            ""};
 
-    /// Buttons -> Title bar: the parts of the split header in the order they
+    /// Titelleiste: the parts of the split header in the order they
     /// stand, as their ids - empty for the order Chatterino has them in
     QStringSetting splitHeaderOrder = {"/appearance/splitheader/order", ""};
-    /// Buttons -> Title bar: the parts switched off, as their ids
+    /// Titelleiste: the parts switched off, as their ids
     QStringSetting splitHeaderHidden = {"/appearance/splitheader/hidden", ""};
-    /// Buttons -> Title bar: how much of the room beside the title the
+    /// Titelleiste: how much of the room beside the title the
     /// curve takes, in percent - 0 for half of what the title leaves free
     IntSetting splitHeaderActivityShare = {
         "/appearance/splitheader/activityShare", 0};
-    /// Buttons -> Title bar: "(live)" or "(rerun)" after the channel's name,
+    /// Titelleiste: "(live)" or "(rerun)" after the channel's name,
     /// as Chatterino always has it
     BoolSetting headerLiveMarker = {"/appearance/splitheader/showLiveMarker",
                                     true};
-    /// Buttons -> Title bar: the channel's name at the start of the title -
+    /// Titelleiste: the channel's name at the start of the title -
     /// only left out while its picture stands before it
     BoolSetting headerChannelName = {"/appearance/splitheader/showChannelName",
                                      true};
@@ -588,7 +588,7 @@ public:
                                      false};
     BoolSetting headerGame = {"/appearance/splitheader/showGame", false};
     BoolSetting headerUptime = {"/appearance/splitheader/showUptime", false};
-    // ChattiFlexii: more numbers for the title bar - Buttons -> Titelleiste
+    // ChattiFlexii: more numbers for the title bar - Titelleiste
     BoolSetting headerFollowers = {"/appearance/splitheader/showFollowers",
                                    false};
     BoolSetting headerChatters = {"/appearance/splitheader/showChatters",
@@ -608,7 +608,7 @@ public:
                                      false};
     /// What parts of the title were given a colour: "uptime:#ffcc00,..."
     QStringSetting headerColors = {"/appearance/splitheader/colors", ""};
-    // ChattiFlexii: the activity curve - Buttons -> Kurve
+    // ChattiFlexii: the activity curve - Titelleiste -> Kurve
     /// What the channel streamed, written over the stretch it ran
     BoolSetting curveLabels = {"/appearance/splitheader/curveLabels", true};
     /// A click in it sends the chat to that moment
@@ -1275,7 +1275,7 @@ public:
     BoolSetting badgePickerChannelOpen = {"/ui/badgePicker/channelOpen",
                                           false};
     BoolSetting badgePickerGlobalOpen = {"/ui/badgePicker/globalOpen", false};
-    /// Buttons -> Usercard: warning a user as twitch.tv does - they only
+    /// Aussehen -> Chat -> In der Usercard: warning a user as twitch.tv does - they only
     /// write again once they have read it
     BoolSetting showWarnButton = {"/ui/usercard/warn", true};
     /// The same in the alert windows of the moderation assistant, as the

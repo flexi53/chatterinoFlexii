@@ -45,7 +45,7 @@ public:
     /// ChattiFlexii: the numbers the title bar shows beside the stream's
     /// own - only those switched on, and only where they can be had
     headerparts::Extras channelNumbers(TwitchChannel *channel) const;
-    /// Buttons -> Titelleiste: how wide each part is drawn and how much
+    /// Titelleiste: how wide each part is drawn and how much
     /// room stands between them
     void applyPartWidths(int button, int addButton, float scale);
     void updateIcons();
@@ -81,7 +81,7 @@ private:
     /// half of what the title does not need, so a short title does not
     /// float in a wide gap
     void fitActivity();
-    /// Buttons -> Title bar: puts the parts in the order asked for
+    /// Titelleiste: puts the parts in the order asked for
     void arrangeParts();
     /// The widget standing for @a part, for the ones that are a single
     /// button - nullptr for the rest
@@ -156,7 +156,7 @@ private:
     BaseWidget *titleSpace_{};
     QHBoxLayout *partsLayout_{};
     /// ChattiFlexii: the small buttons in two rows, where the bar has two
-    /// lines - see Buttons -> Titelleiste
+    /// lines - see Titelleiste
     QWidget *buttonGrid_{};
     QGridLayout *buttonGridLayout_{};
 

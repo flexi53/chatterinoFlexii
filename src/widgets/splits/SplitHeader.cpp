@@ -314,7 +314,7 @@ SplitHeader::SplitHeader(Split *split)
     getSettings()->headerChannelName.connect(_, this->managedConnections_);
     getSettings()->splitHeaderPictures.connect(_, this->managedConnections_);
     getSettings()->splitHeaderActivity.connect(_, this->managedConnections_);
-    // Buttons -> Title bar
+    // Titelleiste
     getSettings()->splitHeaderOrder.connect(
         [this] {
             this->arrangeParts();
@@ -336,7 +336,7 @@ SplitHeader::SplitHeader(Split *split)
             this->fitActivity();
         },
         this->managedConnections_, false);
-    // Buttons -> Titelleiste: dragged wider or further apart in the preview
+    // Titelleiste: dragged wider or further apart in the preview
     const auto again = [this] {
         this->scaleChangedEvent(this->scale());
         this->fitActivity();
@@ -547,7 +547,7 @@ void SplitHeader::initializeLayout()
     this->buttonGrid_->hide();
 
     // The space at the start stays first; everything after it stands in
-    // the order Buttons -> Title bar asks for - see arrangeParts
+    // the order Titelleiste asks for - see arrangeParts
     auto *layout = makeLayout<QHBoxLayout>({
         // space
         makeWidget<BaseWidget>([](auto w) {
@@ -1259,7 +1259,7 @@ void SplitHeader::applyPartWidths(int button, int addButton, float scale)
 {
     using headerparts::Part;
 
-    // Buttons -> Titelleiste: each part can be dragged wider or narrower in
+    // Titelleiste: each part can be dragged wider or narrower in
     // the preview, and the room between them is set there too
     const auto width = [&](Part part, int usual) {
         return std::max(int(headerparts::LEAST_WIDTH * scale),
@@ -1300,7 +1300,7 @@ void SplitHeader::updatePictures()
     }
     const auto channel = this->split_->getChannel();
     auto *twitchChannel = dynamic_cast<TwitchChannel *>(channel.get());
-    // Buttons -> Title bar can leave out either of them
+    // Titelleiste can leave out either of them
     const bool picture = twitchChannel != nullptr &&
                          headerparts::isShown(headerparts::Part::Picture);
     const bool cover = twitchChannel != nullptr &&
@@ -1371,7 +1371,7 @@ void SplitHeader::updatePictures()
     this->coverPicture_->setToolTip(game);
 
     // How lively the chat was
-    // Buttons -> Titelleiste switches the curve off everywhere, and the
+    // Titelleiste switches the curve off everywhere, and the
     // split's own menu leaves it out of this one alone
     const bool activity =
         getSettings()->splitHeaderActivity && this->split_->getShowActivity();
@@ -1420,7 +1420,7 @@ void SplitHeader::updatePinButton()
     const bool hasPinnedMessage = twitchChannel != nullptr &&
                                   twitchChannel->getPinnedMessage() != nullptr;
 
-    // Buttons -> Titelleiste can leave the button out altogether
+    // Titelleiste can leave the button out altogether
     this->pinButton_->setVisible(
         hasPinnedMessage && headerparts::isShown(headerparts::Part::Pin));
     if (hasPinnedMessage && this->split_->getPinnedBanner()->isVisible())
@@ -1643,7 +1643,7 @@ void SplitHeader::updateChannelText()
         }
     }
 
-    // Buttons -> Title bar: the name goes only where its picture stands,
+    // Titelleiste: the name goes only where its picture stands,
     // and every part can carry a colour of its own
     const bool hadName = !title.isEmpty();
     title = headerparts::composeTitle(title, afterName, nameCanGo, &runs);

@@ -13,7 +13,7 @@
 /// The numbers behind a channel that the title bar can show: how many follow
 /// it, how many stand in its chat, and which way its audience is going.
 /// Asked of Twitch no more often than they change, and kept here so every
-/// split of the same channel shares one answer. See Buttons -> Titelleiste.
+/// split of the same channel shares one answer. See Titelleiste.
 namespace chatterino::channelnumbers {
 
 using namespace std::chrono_literals;

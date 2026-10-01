@@ -20,7 +20,7 @@ namespace chatterino {
 class Channel;
 class BadgePicker;
 
-/// Buttons -> Input: chooses the badge you wear, as the chat on twitch.tv
+/// Eingabefeld: chooses the badge you wear, as the chat on twitch.tv
 /// does - one of this channel's, or one worn everywhere. Shows the badge
 /// worn here once it is known. Needs the browser login kept under Buttons;
 /// without it, it says so and where to put it.

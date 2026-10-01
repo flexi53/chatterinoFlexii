@@ -13,7 +13,7 @@ namespace chatterino::completion {
 
 /// Suggests commands the way Chatterino does, but leaves out the ones that
 /// need a moderator where you are none - in fifty channels half the list
-/// would be of no use otherwise. See Buttons -> Eingabe & Tabs.
+/// would be of no use otherwise. See Eingabefeld.
 class ModAwareCommandStrategy : public CommandStrategy
 {
 public:

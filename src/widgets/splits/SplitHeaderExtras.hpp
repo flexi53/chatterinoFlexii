@@ -47,7 +47,7 @@ public:
     /// Shows @a picture; a null one hides it
     void setPicture(const QPixmap &picture);
 
-    /// Buttons -> Titelleiste: how many pixels wider than usual it is drawn
+    /// Titelleiste: how many pixels wider than usual it is drawn
     void setExtraWidth(int pixels);
     /// ChattiFlexii: how tall it is drawn, in unscaled pixels - 0 for the
     /// size it has beside a title bar of one line
@@ -70,7 +70,7 @@ private:
 
 /// The title in the split header. It is one line of text, but the parts it
 /// is made of - uptime, viewers, follows and the rest - can each carry a
-/// colour of their own, see Buttons -> Titelleiste.
+/// colour of their own, see Titelleiste.
 class HeaderTitle : public Label
 {
 public:
@@ -215,7 +215,7 @@ public:
 protected:
     void paintEvent(QPaintEvent *event) override;
     void scaleChangedEvent(float scale) override;
-    /// Buttons -> Titelleiste: a click sends the chat to that moment
+    /// Titelleiste: a click sends the chat to that moment
     void mousePressEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
     /// The text is built when it is about to be shown, so it is never a

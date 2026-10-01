@@ -25,7 +25,7 @@ class Label;
 class LabelButton;
 class SvgButton;
 
-/// Buttons -> Title bar: the split header as it will look, made of the
+/// Titelleiste: the split header as it will look, made of the
 /// header's own parts. A part is dragged to another place, and the edge of
 /// the curve facing the title makes the curve wider or narrower - both
 /// land in the settings when the mouse lets go.

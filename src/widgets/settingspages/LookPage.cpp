@@ -29,6 +29,7 @@
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QPlainTextEdit>
 #include <QPushButton>
 #include <QToolButton>
 #include <QTabWidget>
@@ -572,6 +573,31 @@ void LookPage::buildTabsTab(GeneralPageView &layout)
                           s.tabDimOfflinePinned.setValue(false);
                       });
 
+    layout.addTitle("Oben in der Tab-Leiste");
+    layout.addDescription(
+        "Die Knöpfe links neben den Tabs und das Kreuz am Tab selbst. Das "
+        "sind Chatterinos eigene Schalter, hier gleich zur Hand.");
+    SettingWidget::inverseCheckbox("Einstellungen (Zahnrad)",
+                                   s.hidePreferencesButton)
+        ->setTooltip("Ohne ihn kommst du mit ⌘P in die Einstellungen.")
+        ->addTo(layout);
+    SettingWidget::inverseCheckbox("Eigenes Konto", s.hideUserButton)
+        ->setTooltip("Ohne ihn wechselst du das Konto über die "
+                     "Einstellungen -> Konten.")
+        ->addTo(layout);
+    SettingWidget::checkbox("Kreuz zum Schließen am Tab", s.showTabCloseButton)
+        ->setTooltip("Ohne es schließt du einen Tab über sein Rechtsklick-"
+                     "Menü.")
+        ->addTo(layout);
+
+    addStandardButton(layout, "Wieder so, wie Chatterino es zeigt", [&s] {
+        s.hidePreferencesButton.setValue(
+            s.hidePreferencesButton.getDefaultValue());
+        s.hideUserButton.setValue(s.hideUserButton.getDefaultValue());
+        s.showTabCloseButton.setValue(
+            s.showTabCloseButton.getDefaultValue());
+    });
+
     layout.addTitle("Dem Browser folgen");
     layout.addDescription(
         "Wechselst du auf twitch.tv den Streamer, wechselt ChattiFlexii den "
@@ -621,42 +647,12 @@ void LookPage::buildSplitsTab(GeneralPageView &layout)
 {
     auto &s = *getSettings();
 
-    layout.addTitle("Titelleiste");
-    layout.addDescription(
-        "Die Leiste über jedem Chat, mit dem Namen des Kanals. Welche Teile "
-        "sie hat, in welcher Reihenfolge und wie breit die Kurve ist, "
-        "stellst du unter Buttons → Titelleiste ein.");
-    SettingWidget::checkbox("Profilbild und Kategorie zeigen",
-                            s.splitHeaderPictures)
-        ->setTooltip("Links in der Titelleiste das Bild des Kanals und, "
-                     "solange er live ist, das Cover dessen, was er streamt.")
-        ->addKeywords({"avatar", "spiel", "game", "kategorie", "cover"})
-        ->addTo(layout);
-    SettingWidget::checkbox("Aktivitäts-Kurve zeigen", s.splitHeaderActivity)
-        ->setTooltip("Eine kleine Kurve rechts in der Titelleiste: wie viel im "
-                     "Chat los war. Ist der Kanal live, reicht sie über den "
-                     "ganzen Stream, sonst über die letzte Viertelstunde. "
-                     "Darunter eine Zeitachse, deren Striche je nach Länge "
-                     "eine Minute bis mehrere Stunden auseinander liegen; "
-                     "wo der Kanal die Kategorie gewechselt hat, steht ein "
-                     "senkrechter Strich, und der Tooltip nennt Uhrzeit und "
-                     "Kategorie. Was war, bevor du den Kanal geöffnet hast, "
-                     "weiß niemand - der Anfang bleibt dann leer. Im "
-                     "schmalen Split wird die Kurve kürzer, damit der Titel "
-                     "bleibt.")
-        ->addKeywords({"aktivität", "activity", "kurve", "graph"})
-        ->addTo(layout);
-    addStandardButton(layout, "Nur der Name, wie bisher", [&s] {
-        s.splitHeaderPictures.setValue(false);
-        s.splitHeaderActivity.setValue(false);
-    });
-
     layout.addTitle("Banner");
     layout.addDescription(
         "Die Leiste zwischen Titelleiste und Chat. Twitch schickt jedem "
         "Zuschauer, was im Kanal gerade abgestimmt wird - das Banner "
         "erscheint also überall, nicht nur wo du Mod bist. Die Knöpfe dazu "
-        "holst du dir unter Buttons -> Titelleiste.");
+        "holst du dir unter Titelleiste → Aufbau.");
     SettingWidget::checkbox("Umfragen und Vorhersagen zeigen", s.showVoteBanner)
         ->setTooltip("Zeigt die laufende Umfrage oder Vorhersage mit "
                      "Balken, Stimmen und Restzeit. Nach dem Ende bleibt "
@@ -832,25 +828,6 @@ void LookPage::buildChatTab(GeneralPageView &layout)
                           s.enableSmoothScrollingNewMessages.setValue(false);
                       });
 
-    layout.addTitle("Eingabefeld");
-    SettingWidget::checkbox("Wartebalken unter dem Eingabefeld", s.slowModeBar)
-        ->setTooltip("Hat ein Kanal Slow-Modus oder hast du einen Timeout, "
-                     "läuft unter dem Eingabefeld ein Balken ab, bis du "
-                     "wieder schreiben darfst - so wie im Twitch-Chat. Für "
-                     "Mods und VIPs gilt der Slow-Modus nicht, dann bleibt "
-                     "der Balken weg.")
-        ->addKeywords({"slowmode", "slow mode", "timeout", "balken", "warten"})
-        ->addTo(layout);
-    SettingWidget::checkbox("Restzeit als Zahl rechts im Eingabefeld",
-                            s.showSendWaitTimer)
-        ->setTooltip("Derselbe Schalter wie General -> Chat -> Show countdown "
-                     "on slow mode or when timed out.")
-        ->addTo(layout);
-    addStandardButton(layout, "Kein Balken, Restzeit wie bei Chatterino", [&s] {
-        s.slowModeBar.setValue(false);
-        s.showSendWaitTimer.setValue(s.showSendWaitTimer.getDefaultValue());
-    });
-
     layout.addTitle("Profilbilder im Chat");
     SettingWidget::checkbox("Profilbild vor jedem Namen", s.chatAvatars)
         ->setTooltip("Ein kleines rundes Bild des Chatters vor seinem Namen. "
@@ -910,6 +887,47 @@ void LookPage::buildChatTab(GeneralPageView &layout)
             setting->setValue(setting->getDefaultValue());
         }
     });
+
+    layout.addTitle("In der Usercard");
+    layout.addDescription(
+        "Die Knöpfe unter dem Namen, wenn du jemanden anklickst - dort, wo "
+        "du Mod bist.");
+    SettingWidget::checkbox("Verwarnen", s.showWarnButton)
+        ->setTooltip("Verwarnt wie auf twitch.tv: mit einem Grund, den der "
+                     "User sieht und bestätigen muss, bevor er "
+                     "weiterschreiben kann. Andere Mods sehen die Warnung "
+                     "auch. Dasselbe wie /warn name grund.")
+        ->addKeywords({"warn", "warnung", "verwarnen", "usercard"})
+        ->addTo(layout);
+    layout.addDescription(
+        "Gründe, die beim Verwarnen zur Auswahl stehen - einer pro Zeile. "
+        "Der zuletzt benutzte steht jeweils oben, eigene tippst du einfach.");
+    {
+        auto *reasons = new QPlainTextEdit;
+        reasons->setPlainText(s.warnReasons.getValue());
+        reasons->setFixedHeight(90);
+        QObject::connect(reasons, &QPlainTextEdit::textChanged, reasons,
+                         [reasons, &s] {
+                             s.warnReasons.setValue(reasons->toPlainText());
+                         });
+        // Standard below puts the list back - the box follows
+        s.warnReasons.connect(
+            [reasons](const QString &value, auto) {
+                if (reasons->toPlainText() != value)
+                {
+                    reasons->setPlainText(value);
+                }
+            },
+            this->managedConnections_, false);
+        layout.addWidget(reasons, {"warn", "grund", "gründe"});
+    }
+    addStandardButton(layout, "Verwarnen wieder da, mit den Gründen vom Anfang",
+                      [&s] {
+                          s.showWarnButton.setValue(
+                              s.showWarnButton.getDefaultValue());
+                          s.warnReasons.setValue(
+                              s.warnReasons.getDefaultValue());
+                      });
 
     layout.addStretch();
 }

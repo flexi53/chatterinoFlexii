@@ -803,7 +803,7 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
             }
             lineMod->setVisible(visible);
             timeout->setVisible(visible);
-            // Buttons -> Usercard: warning is Twitch's own
+            // Aussehen -> Chat -> In der Usercard: warning is Twitch's own
             timeout->setWarnVisible(visible && twitchChannel != nullptr &&
                                     getSettings()->showWarnButton);
         });

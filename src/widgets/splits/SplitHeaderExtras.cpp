@@ -207,7 +207,7 @@ ActivityGraph::ActivityGraph(QWidget *parent)
     this->timer_.start();
     this->updateTooltip();
 
-    // Buttons -> Kurve: drawn anew when any of it is switched
+    // Titelleiste -> Kurve: drawn anew when any of it is switched
     const auto again = [this](auto, auto) {
         this->update();
     };

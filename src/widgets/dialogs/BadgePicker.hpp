@@ -17,7 +17,7 @@ class QVBoxLayout;
 
 namespace chatterino {
 
-/// Buttons -> Input: the badges to choose from, laid out like the chat
+/// Eingabefeld: the badges to choose from, laid out like the chat
 /// identity on twitch.tv - how your name looks with them, then a tile for
 /// each badge: those of this channel, worn only here, apart from those worn
 /// in every channel. A click wears it at once.

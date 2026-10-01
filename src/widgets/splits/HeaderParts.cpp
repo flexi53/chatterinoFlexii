@@ -730,7 +730,7 @@ QString titleAfterName(const TwitchChannel::StreamStatus &s,
         return !only.has_value() || rowOf(item) == *only;
     };
 
-    // live - ChattiFlexii: can be left out, Buttons -> Title bar
+    // live - ChattiFlexii: can be left out, Titelleiste
     if (settings.headerLiveMarker && wanted(Item::Live))
     {
         if (s.rerun)

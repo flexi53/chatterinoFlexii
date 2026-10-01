@@ -382,7 +382,7 @@ void HeaderPreview::relayout()
 
     // Everything but the title and the curve keeps its own width, as in
     // the header itself
-    // Buttons -> Titelleiste: each part can be dragged wider or narrower
+    // Titelleiste: each part can be dragged wider or narrower
     const auto widened = [&](Part part, int usual) {
         return std::max(int(headerparts::LEAST_WIDTH * scale),
                         usual + int(this->deltaOf(part) * scale));

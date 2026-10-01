@@ -90,7 +90,7 @@ std::unique_ptr<completion::Source> InputCompletionPopup::getSource() const
                 std::make_unique<completion::ClassicUserStrategy>(),
                 this->callback_);
         case CompletionKind::Command: {
-            // Buttons -> Eingabe & Tabs: the ones needing a moderator are
+            // Eingabefeld: the ones needing a moderator are
             // left out where you are none
             const bool moderates =
                 !getSettings()->hideUnavailableCommands ||

@@ -11,25 +11,23 @@ class QTabWidget;
 
 namespace chatterino {
 
-/// Which of the small buttons are there - the row under the chat and the
-/// ones in the tab bar - and, in a tab of its own, what the title bar over
-/// each chat holds. Everything they do can be reached another way, so
-/// nothing is lost by switching one off; the row just gets quieter.
-class ButtonsPage : public SettingsPage
+/// Titelleiste: everything the bar over each chat is made of - which parts
+/// it has and in what order, what the title says, what colour each piece
+/// carries, and the activity curve with its marks. One page for one thing,
+/// instead of half of it standing among the buttons.
+class TitleBarPage : public SettingsPage
 {
 public:
-    ButtonsPage();
+    TitleBarPage();
 
     bool filterElements(const QString &query) override;
 
 private:
-    void initLayout(GeneralPageView &layout);
     void initTitleBar(GeneralPageView &layout);
-    /// Buttons -> Kurve: everything about the activity curve in one place
+    /// Everything about the activity curve in one place
     void initCurve(GeneralPageView &layout);
 
     QTabWidget *tabs_{};
-    GeneralPageView *view_{};
     GeneralPageView *titleBar_{};
     GeneralPageView *curve_{};
 };

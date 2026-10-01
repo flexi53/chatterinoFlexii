@@ -1000,8 +1000,6 @@ set(SOURCE_FILES
         widgets/settingspages/AccountsPage.hpp
         widgets/settingspages/BadgesPage.cpp
         widgets/settingspages/BadgesPage.hpp
-        widgets/settingspages/ButtonsPage.cpp
-        widgets/settingspages/ButtonsPage.hpp
         widgets/settingspages/HeaderPreview.cpp
         widgets/settingspages/HeaderPreview.hpp
         widgets/settingspages/CommandPage.cpp
@@ -1021,6 +1019,8 @@ set(SOURCE_FILES
         widgets/settingspages/IgnoresPage.hpp
         widgets/settingspages/KeyboardSettingsPage.cpp
         widgets/settingspages/KeyboardSettingsPage.hpp
+        widgets/settingspages/InputPage.cpp
+        widgets/settingspages/InputPage.hpp
         widgets/settingspages/LookPage.cpp
         widgets/settingspages/LookPage.hpp
         widgets/settingspages/ModAssistantPage.cpp
@@ -1044,6 +1044,8 @@ set(SOURCE_FILES
         widgets/settingspages/SettingsPage.cpp
         widgets/settingspages/SettingsPage.hpp
         widgets/settingspages/SettingWidget.cpp
+        widgets/settingspages/TitleBarPage.cpp
+        widgets/settingspages/TitleBarPage.hpp
         widgets/settingspages/SettingWidget.hpp
 
         widgets/splits/ClosedSplits.cpp
