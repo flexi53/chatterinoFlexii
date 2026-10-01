@@ -126,6 +126,11 @@ void InputCompletionPopup::setInputAction(ActionCallback callback)
     this->callback_ = std::move(callback);
 }
 
+void InputCompletionPopup::setTakesEnter(bool value)
+{
+    this->ui_.listView->setInvokeActionOnEnter(value);
+}
+
 bool InputCompletionPopup::eventFilter(QObject *watched, QEvent *event)
 {
     return this->ui_.listView->eventFilter(watched, event);

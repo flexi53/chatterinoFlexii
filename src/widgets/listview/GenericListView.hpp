@@ -23,6 +23,9 @@ public:
     void setModel(QAbstractItemModel *model) override;
     void setModel(GenericListModel *);
     void setInvokeActionOnTab(bool);
+    /// ChattiFlexii: whether the Enter key picks what is selected. Off for
+    /// a box that opened by itself, where Enter belongs to the message.
+    void setInvokeActionOnEnter(bool);
     bool eventFilter(QObject *watched, QEvent *event) override;
 
     GenericListModel *model_{};
@@ -35,6 +38,7 @@ Q_SIGNALS:
 
 private:
     bool invokeActionOnTab_{};
+    bool invokeActionOnEnter_{true};
 
     /**
      * @brief Gets the currently selected item (if any) and calls its action

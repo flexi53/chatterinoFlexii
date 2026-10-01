@@ -147,7 +147,10 @@ protected:
     void onTextChanged();
     void updateEmoteButton();
     void updateCompletionPopup();
-    void showCompletionPopup(const QString &text, CompletionKind kind);
+    /// @a takesEnter says whether Enter picks what is selected - false for
+    /// the box that opens on a plain word, where Enter sends the message
+    void showCompletionPopup(const QString &text, CompletionKind kind,
+                             bool takesEnter = true);
     void hideCompletionPopup();
     void insertCompletionText(const QString &input_) const;
     void openEmotePopup();
@@ -182,6 +185,8 @@ protected:
     /// Follows the moderator status of the current channel
     std::optional<pajlada::Signals::ScopedConnection> modStateConnection_;
     QPointer<InputCompletionPopup> inputCompletionPopup_;
+    /// ChattiFlexii: whether the box showing now wants the Enter key
+    bool completionTakesEnter_ = true;
 
     struct {
         // vbox for all components

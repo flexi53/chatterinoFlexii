@@ -39,6 +39,10 @@ public:
 
     void setInputAction(ActionCallback callback);
 
+    /// ChattiFlexii: whether Enter picks what is selected. Off for the box
+    /// that opens on a plain word, where Enter sends the message.
+    void setTakesEnter(bool value);
+
     bool eventFilter(QObject *watched, QEvent *event) override;
 
 protected:

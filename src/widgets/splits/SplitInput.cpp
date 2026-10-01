@@ -48,6 +48,7 @@
 #include "widgets/splits/SplitContainer.hpp"
 
 #include <QCompleter>
+#include <QKeyEvent>
 #include <QPainter>
 #include <QSignalBlocker>
 
@@ -1027,6 +1028,18 @@ bool SplitInput::eventFilter(QObject *obj, QEvent *event)
         {
             if (popup->isVisible())
             {
+                // ChattiFlexii: a box that opened on a plain word must not
+                // swallow Enter - the message goes off as it would without
+                // the box, and the box goes away with it
+                const auto *key = dynamic_cast<QKeyEvent *>(event);
+                if (!this->completionTakesEnter_ && key != nullptr &&
+                    (key->key() == Qt::Key_Enter ||
+                     key->key() == Qt::Key_Return))
+                {
+                    this->hideCompletionPopup();
+                    return BaseWidget::eventFilter(obj, event);
+                }
+
                 // Stop shortcut from triggering by saying we will handle it ourselves
                 event->accept();
 
@@ -1203,7 +1216,7 @@ void SplitInput::updateCompletionPopup()
             position - i + 1 >= LETTERS_BEFORE_SUGGESTING)
         {
             this->showCompletionPopup(text.mid(i, position - i + 1),
-                                      CompletionKind::Emote);
+                                      CompletionKind::Emote, false);
             return;
         }
 
@@ -1239,7 +1252,8 @@ void SplitInput::updateCompletionPopup()
     this->hideCompletionPopup();
 }
 
-void SplitInput::showCompletionPopup(const QString &text, CompletionKind kind)
+void SplitInput::showCompletionPopup(const QString &text, CompletionKind kind,
+                                     bool takesEnter)
 {
     if (this->inputCompletionPopup_.isNull())
     {
@@ -1257,6 +1271,8 @@ void SplitInput::showCompletionPopup(const QString &text, CompletionKind kind)
     auto *popup = this->inputCompletionPopup_.data();
     assert(popup);
 
+    this->completionTakesEnter_ = takesEnter;
+    popup->setTakesEnter(takesEnter);
     popup->updateCompletion(text, kind, this->split_->getChannel());
 
     // Nothing to offer - then no box either

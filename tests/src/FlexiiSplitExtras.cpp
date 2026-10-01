@@ -44,6 +44,8 @@
 #include "controllers/twitch/ChannelNumbers.hpp"
 #include "widgets/splits/HeaderParts.hpp"
 #include "widgets/helper/ActiveBorder.hpp"
+#include "widgets/listview/GenericListModel.hpp"
+#include "widgets/listview/GenericListView.hpp"
 #include "widgets/splits/SendWaitBar.hpp"
 #include "providers/badgebase/BadgeBase.hpp"
 #include "providers/twitch/TwitchWebBadges.hpp"
@@ -2766,4 +2768,32 @@ TEST(FlexiiHeaderNumbers, BothArrowsShareTheTrendColour)
     headerparts::reset();
     s->headerViewerCount.setValue(false);
     s->headerMessageRate.setValue(false);
+}
+
+// Emote suggestions appear while a plain word is typed, so the box must not
+// take the Enter key away from the message - only the box you asked for with
+// a colon does that. Tab picks what is selected either way.
+TEST(FlexiiCompletionKeys, ABoxThatOpenedByItselfLeavesEnterAlone)
+{
+    GenericListModel model;
+    GenericListView view;
+    view.setModel(&model);
+
+    QKeyEvent enter(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+
+    // As Chatterino has it: the box takes Enter
+    EXPECT_TRUE(view.eventFilter(nullptr, &enter));
+
+    // Switched off, Enter travels on and the message is sent
+    view.setInvokeActionOnEnter(false);
+    EXPECT_FALSE(view.eventFilter(nullptr, &enter));
+
+    // Tab still picks what is selected, whatever Enter does
+    view.setInvokeActionOnTab(true);
+    QKeyEvent tab(QEvent::KeyPress, Qt::Key_Tab, Qt::NoModifier);
+    EXPECT_TRUE(view.eventFilter(nullptr, &tab));
+
+    // And so do the arrow keys
+    QKeyEvent down(QEvent::KeyPress, Qt::Key_Down, Qt::NoModifier);
+    EXPECT_TRUE(view.eventFilter(nullptr, &down));
 }

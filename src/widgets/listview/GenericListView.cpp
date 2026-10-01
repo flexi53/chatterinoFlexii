@@ -45,6 +45,11 @@ void GenericListView::setInvokeActionOnTab(bool value)
     this->invokeActionOnTab_ = value;
 }
 
+void GenericListView::setInvokeActionOnEnter(bool value)
+{
+    this->invokeActionOnEnter_ = value;
+}
+
 bool GenericListView::eventFilter(QObject * /*watched*/, QEvent *event)
 {
     if (this->model_ == nullptr)
@@ -59,6 +64,12 @@ bool GenericListView::eventFilter(QObject * /*watched*/, QEvent *event)
 
         if (key == Qt::Key_Enter || key == Qt::Key_Return)
         {
+            // ChattiFlexii: where the box opened by itself, Enter sends the
+            // message as it always did - Tab picks what is selected
+            if (!this->invokeActionOnEnter_)
+            {
+                return false;
+            }
             this->acceptCompletion();
             return true;
         }
