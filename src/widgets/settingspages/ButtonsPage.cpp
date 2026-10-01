@@ -524,6 +524,16 @@ void ButtonsPage::initTitleBar(GeneralPageView &layout)
         ->addKeywords({"zwei", "zeilen", "titelleiste", "höhe", "statistik",
                        "zweite"})
         ->addTo(layout);
+    SettingWidget::checkbox("Knöpfe in zwei Reihen", s.splitHeaderButtonGrid)
+        ->setTooltip("Die kleinen Knöpfe rechts - Tracker, Umfrage, "
+                     "angepinnte Nachricht und der Rest - stehen zu zweit "
+                     "übereinander statt alle nebeneinander. Das halbiert, "
+                     "was sie dem Titel wegnehmen. Wirkt nur mit zwei "
+                     "Zeilen; in einer Zeile wäre für zwei Reihen kein "
+                     "Platz.")
+        ->addKeywords({"knöpfe", "buttons", "reihen", "raster", "grid",
+                       "platz"})
+        ->addTo(layout);
     SettingWidget::checkbox("Name des Kanals", s.headerChannelName)
         ->setTooltip("Weglassen geht nur, solange das Profilbild davor "
                      "steht - fährst du darüber, steht der Name da. Ohne "

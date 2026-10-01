@@ -13,6 +13,7 @@
 #include <pajlada/signals/connection.hpp>
 #include <pajlada/signals/signalholder.hpp>
 #include <QElapsedTimer>
+#include <QGridLayout>
 #include <QHBoxLayout>
 #include <QMenu>
 #include <QPoint>
@@ -82,6 +83,13 @@ private:
     void fitActivity();
     /// Buttons -> Title bar: puts the parts in the order asked for
     void arrangeParts();
+    /// The widget standing for @a part, for the ones that are a single
+    /// button - nullptr for the rest
+    QWidget *buttonFor(headerparts::Part part) const;
+    /// ChattiFlexii: puts the buttons that are shown into the two rows,
+    /// leaving out the ones that are not - a pin button that is away must
+    /// not keep a place in the grid
+    void fillButtonGrid();
     /// ChattiFlexii: how tall the bar and the parts that stand over both
     /// of its lines are - see Aussehen -> Chat -> „Titelleiste in zwei
     /// Zeilen“
@@ -141,6 +149,10 @@ private:
     /// The bit of room after the title, which goes wherever it goes
     BaseWidget *titleSpace_{};
     QHBoxLayout *partsLayout_{};
+    /// ChattiFlexii: the small buttons in two rows, where the bar has two
+    /// lines - see Buttons -> Titelleiste
+    QWidget *buttonGrid_{};
+    QGridLayout *buttonGridLayout_{};
 
     HeaderPicture *channelPicture_{};
     HeaderPicture *coverPicture_{};

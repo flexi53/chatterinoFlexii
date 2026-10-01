@@ -249,6 +249,7 @@ HeaderPreview::HeaderPreview(QWidget *parent)
     s->headerStreamTitle.connect(reload, this->connections_, false);
     // ChattiFlexii: one line or two changes how tall the whole thing is
     s->headerTwoRows.connect(reload, this->connections_, false);
+    s->splitHeaderButtonGrid.connect(reload, this->connections_, false);
 
     this->themeChangedEvent();
     this->reload();
@@ -418,16 +419,45 @@ void HeaderPreview::relayout()
     };
     this->activity_->setTallness(tall);
     this->activity_->setFixedHeight(this->headerHeight());
+    // ChattiFlexii: with two lines the small buttons stand in two rows, so
+    // two of them share one column's worth of width
+    const bool grid = getSettings()->headerTwoRows &&
+                      getSettings()->splitHeaderButtonGrid;
+
     int fixed = int(8 * scale);
+    int items = 0;
+    int pending = -1;
     for (const auto part : shown)
     {
-        fixed += fixedWidth(part);
+        const int width = fixedWidth(part);
+        if (grid && headerparts::isButton(part))
+        {
+            if (pending < 0)
+            {
+                pending = width;
+            }
+            else
+            {
+                fixed += std::max(pending, width);
+                pending = -1;
+                items++;
+            }
+            continue;
+        }
+        fixed += width;
+        items++;
     }
+    if (pending >= 0)
+    {
+        fixed += pending;
+        items++;
+    }
+
     // The room between the parts is taken from what the title and the curve
     // have to share - otherwise the last parts are pushed off the edge
-    if (shown.size() > 1)
+    if (items > 1)
     {
-        fixed += int(this->spacing_ * scale) * int(shown.size() - 1);
+        fixed += int(this->spacing_ * scale) * (items - 1);
     }
     this->shared_ = std::max(header.width() - fixed, 0);
 
@@ -461,8 +491,37 @@ void HeaderPreview::relayout()
 
     this->placed_.clear();
     int x = header.left() + int(8 * scale);
+    const int buttonRow = header.height() / 2;
+    int buttons = 0;
+    int column = 0;
+    // Closes a column of buttons, so what follows starts behind it
+    const auto flush = [&] {
+        if (column > 0)
+        {
+            x += column + int(this->spacing_ * scale);
+            column = 0;
+        }
+    };
+
     for (const auto part : shown)
     {
+        if (grid && headerparts::isButton(part))
+        {
+            const int width = fixedWidth(part);
+            const auto [row, unused] = headerparts::buttonPlace(buttons++);
+            this->placed_.push_back(
+                {part,
+                 QRect(x, header.top() + row * buttonRow, width, buttonRow)});
+            this->widgetFor(part)->resize(width, buttonRow);
+            column = std::max(column, width);
+            if (row == 1)
+            {
+                flush();
+            }
+            continue;
+        }
+        flush();
+
         const int width = part == Part::Title      ? title
                           : part == Part::Activity ? curve
                                                    : fixedWidth(part);
@@ -480,6 +539,7 @@ void HeaderPreview::relayout()
                                       : header.height());
         }
     }
+    flush();
 
     // The two lines inside the title box, one under the other
     const int row = this->rowHeight();

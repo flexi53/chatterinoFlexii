@@ -129,6 +129,22 @@ QString formatRoomModeUnclean(const KickChannel::RoomModes &modes)
     return formatRoomModeUnclean(twitch);
 }
 
+/// ChattiFlexii: the modes one under the other instead of side by side.
+/// With two lines of title bar there is room for it, and what it saves is
+/// width - which is what the title needs.
+QString stackRoomModes(const QString &text)
+{
+    auto parts = text.split(QStringLiteral(", "), Qt::SkipEmptyParts);
+    if (parts.size() < 2)
+    {
+        return text;
+    }
+
+    const auto half = (parts.size() + 1) / 2;
+    return parts.mid(0, half).join(QStringLiteral(", ")) + '\n' +
+           parts.mid(half).join(QStringLiteral(", "));
+}
+
 void cleanRoomModeText(QString &text, bool hasModRights)
 {
     if (text.length() > 2)
@@ -352,6 +368,15 @@ SplitHeader::SplitHeader(Split *split)
     getSettings()->headerTwoRows.connect(
         [this](const auto &, auto) {
             this->updateChannelText();
+            this->arrangeParts();
+            this->scaleChangedEvent(this->scale());
+            this->update();
+        },
+        this->managedConnections_, false);
+    // ...and the small buttons in one row or two
+    getSettings()->splitHeaderButtonGrid.connect(
+        [this](const auto &, auto) {
+            this->arrangeParts();
             this->scaleChangedEvent(this->scale());
             this->update();
         },
@@ -485,7 +510,8 @@ void SplitHeader::initializeLayout()
         w->setCentered(true);
         w->setPadding(QMargins{});
         w->setShouldElide(true);
-        w->setFontStyle(FontStyle::Tiny);
+        // The same size as the title, only paler - see themeChangedEvent
+        w->setFontStyle(FontStyle::UiMedium);
         w->hide();
     });
 
@@ -510,6 +536,15 @@ void SplitHeader::initializeLayout()
         w->hide();
         w->setMenu(this->createChatModeMenu());
     });
+
+    // ChattiFlexii: where the bar has two lines, the small buttons stand
+    // in two rows of their own - half the width for the same buttons
+    this->buttonGridLayout_ = new QGridLayout();
+    this->buttonGridLayout_->setContentsMargins(0, 0, 0, 0);
+    this->buttonGridLayout_->setSpacing(0);
+    this->buttonGrid_ = new QWidget(this);
+    this->buttonGrid_->setLayout(this->buttonGridLayout_);
+    this->buttonGrid_->hide();
 
     // The space at the start stays first; everything after it stands in
     // the order Buttons -> Title bar asks for - see arrangeParts
@@ -1049,7 +1084,8 @@ void SplitHeader::updateRoomModes()
 
         if (!text.isEmpty())
         {
-            this->modeButton_->setText(text);
+            this->modeButton_->setText(this->twoRows_ ? stackRoomModes(text)
+                                                      : text);
             this->modeButton_->setVisible(
                 headerparts::isShown(headerparts::Part::Mode));
         }
@@ -1070,7 +1106,8 @@ void SplitHeader::updateRoomModes()
 
         if (!text.isEmpty())
         {
-            this->modeButton_->setText(text);
+            this->modeButton_->setText(this->twoRows_ ? stackRoomModes(text)
+                                                      : text);
             this->modeButton_->setVisible(
                 headerparts::isShown(headerparts::Part::Mode));
         }
@@ -1220,6 +1257,7 @@ void SplitHeader::setAddButtonVisible(bool value)
     this->addButtonWanted_ = value;
     this->addButton_->setVisible(
         value && headerparts::isShown(headerparts::Part::Add));
+    this->fillButtonGrid();
 }
 
 void SplitHeader::updatePictures()
@@ -1363,6 +1401,8 @@ void SplitHeader::updatePinButton()
                                        ? QColor(0x42, 0x42, 0x42)
                                        : QColor(0xc0, 0xc0, 0xc0));
     }
+
+    this->fillButtonGrid();
 }
 
 void SplitHeader::updateVoteButton()
@@ -1385,6 +1425,8 @@ void SplitHeader::updateVoteButton()
                                         ? QColor(0x42, 0x42, 0x42)
                                         : QColor(0xc0, 0xc0, 0xc0));
     }
+
+    this->fillButtonGrid();
 }
 
 void SplitHeader::updateHypeButton()
@@ -1409,6 +1451,8 @@ void SplitHeader::updateHypeButton()
                                         ? QColor(0x42, 0x42, 0x42)
                                         : QColor(0xc0, 0xc0, 0xc0));
     }
+
+    this->fillButtonGrid();
 }
 
 void SplitHeader::updateChannelText()
@@ -1586,6 +1630,10 @@ void SplitHeader::updateChannelText()
     if (this->twoRows_ != wasTwoRows)
     {
         this->applyHeights(this->scale());
+        // One line or two decides whether the chat modes stand side by side
+        // and whether the buttons stand in two rows
+        this->updateRoomModes();
+        this->arrangeParts();
     }
     this->fitActivity();
 }
@@ -1599,9 +1647,33 @@ void SplitHeader::arrangeParts()
     {
         delete layout->takeAt(1);
     }
+    while (this->buttonGridLayout_->count() > 0)
+    {
+        delete this->buttonGridLayout_->takeAt(0);
+    }
+
+    // ChattiFlexii: two rows of buttons only where there are two lines to
+    // put them in
+    const bool grid = this->twoRows_ &&
+                      getSettings()->splitHeaderButtonGrid &&
+                      getSettings()->headerTwoRows;
+    this->buttonGrid_->setVisible(grid);
+    bool gridPlaced = false;
 
     for (const auto part : headerparts::order())
     {
+        if (grid && headerparts::isButton(part))
+        {
+            // The block of buttons stands where the first of them does; what
+            // goes into which place is settled in fillButtonGrid
+            if (!gridPlaced)
+            {
+                layout->addWidget(this->buttonGrid_);
+                gridPlaced = true;
+            }
+            continue;
+        }
+
         switch (part)
         {
             case Part::Picture:
@@ -1645,6 +1717,66 @@ void SplitHeader::arrangeParts()
                 layout->addWidget(this->addButton_);
                 break;
         }
+    }
+
+    this->fillButtonGrid();
+}
+
+void SplitHeader::fillButtonGrid()
+{
+    if (this->buttonGridLayout_ == nullptr || this->buttonGrid_->isHidden())
+    {
+        return;
+    }
+
+    while (this->buttonGridLayout_->count() > 0)
+    {
+        delete this->buttonGridLayout_->takeAt(0);
+    }
+
+    int index = 0;
+    for (const auto part : headerparts::order())
+    {
+        if (!headerparts::isButton(part))
+        {
+            continue;
+        }
+        auto *button = this->buttonFor(part);
+        // A button that is away - no pinned message, no mod rights - leaves
+        // no hole behind: the next one moves up into its place
+        if (button == nullptr || button->isHidden())
+        {
+            continue;
+        }
+        const auto [row, column] = headerparts::buttonPlace(index++);
+        this->buttonGridLayout_->addWidget(button, row, column);
+    }
+}
+
+QWidget *SplitHeader::buttonFor(headerparts::Part part) const
+{
+    using headerparts::Part;
+
+    switch (part)
+    {
+        case Part::Pin:
+            return this->pinButton_;
+        case Part::Vote:
+            return this->voteButton_;
+        case Part::Hype:
+            return this->hypeButton_;
+        case Part::Moderation:
+            return this->moderationButton_;
+        case Part::Chatters:
+            return this->chattersButton_;
+        case Part::Tracker:
+            return this->trackerButton_;
+        case Part::Menu:
+            return this->dropdownButton_;
+        case Part::Add:
+            return this->addButton_;
+        default:
+            return nullptr;
     }
 }
 
@@ -1752,6 +1884,8 @@ void SplitHeader::updateIcons()
         this->chattersButton_->hide();
         this->trackerButton_->hide();
     }
+
+    this->fillButtonGrid();
 }
 
 void SplitHeader::paintEvent(QPaintEvent * /*event*/)

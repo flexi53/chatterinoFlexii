@@ -819,6 +819,48 @@ TEST_F(FlexiiHeaderPartsFixture, AChannelThatIsNotLiveStillHasALowerLine)
               "173 im Chat - 42/min");
 }
 
+// With two lines of title bar the small buttons stand in two rows, which
+// halves what they take away from the title. They go down first, then
+// right, so their order reads the same as in one row.
+TEST(FlexiiHeaderParts, TheSmallButtonsKnowTheyAreButtons)
+{
+    using headerparts::Part;
+
+    EXPECT_TRUE(headerparts::isButton(Part::Pin));
+    EXPECT_TRUE(headerparts::isButton(Part::Vote));
+    EXPECT_TRUE(headerparts::isButton(Part::Hype));
+    EXPECT_TRUE(headerparts::isButton(Part::Moderation));
+    EXPECT_TRUE(headerparts::isButton(Part::Chatters));
+    EXPECT_TRUE(headerparts::isButton(Part::Tracker));
+    EXPECT_TRUE(headerparts::isButton(Part::Menu));
+    EXPECT_TRUE(headerparts::isButton(Part::Add));
+
+    // The title, the pictures, the curve and the chat mode are none
+    EXPECT_FALSE(headerparts::isButton(Part::Title));
+    EXPECT_FALSE(headerparts::isButton(Part::Picture));
+    EXPECT_FALSE(headerparts::isButton(Part::Cover));
+    EXPECT_FALSE(headerparts::isButton(Part::Activity));
+    EXPECT_FALSE(headerparts::isButton(Part::Mode));
+}
+
+TEST(FlexiiHeaderParts, ButtonsFillTheTwoRowsColumnByColumn)
+{
+    EXPECT_EQ(headerparts::buttonPlace(0), std::make_pair(0, 0));
+    EXPECT_EQ(headerparts::buttonPlace(1), std::make_pair(1, 0));
+    EXPECT_EQ(headerparts::buttonPlace(2), std::make_pair(0, 1));
+    EXPECT_EQ(headerparts::buttonPlace(3), std::make_pair(1, 1));
+    EXPECT_EQ(headerparts::buttonPlace(7), std::make_pair(1, 3));
+
+    // Nothing sensible asked for, nothing silly given back
+    EXPECT_EQ(headerparts::buttonPlace(-5), std::make_pair(0, 0));
+
+    // Eight buttons take four columns, seven take four as well
+    EXPECT_EQ(headerparts::buttonColumns(8), 4);
+    EXPECT_EQ(headerparts::buttonColumns(7), 4);
+    EXPECT_EQ(headerparts::buttonColumns(1), 1);
+    EXPECT_EQ(headerparts::buttonColumns(0), 0);
+}
+
 TEST_F(FlexiiHeaderPartsFixture, LiveCanBeLeftOut)
 {
     auto *s = getSettings();

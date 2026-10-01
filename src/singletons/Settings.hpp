@@ -600,6 +600,10 @@ public:
     /// ChattiFlexii: the title bar in two lines - above the channel and
     /// what it streams, below the numbers, with the curve over both
     BoolSetting headerTwoRows = {"/appearance/splitheader/twoRows", true};
+    /// ...and with two lines, the small buttons in two rows as well, which
+    /// halves what they take from the title
+    BoolSetting splitHeaderButtonGrid = {"/appearance/splitheader/buttonGrid",
+                                         true};
     BoolSetting headerViewerTrend = {"/appearance/splitheader/showViewerTrend",
                                      false};
     /// What parts of the title were given a colour: "uptime:#ffcc00,..."

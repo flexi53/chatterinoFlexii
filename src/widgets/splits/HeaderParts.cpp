@@ -626,6 +626,44 @@ QString extrasAfterName(const Extras &extras, std::vector<Run> *runs, int at)
     return title;
 }
 
+bool isButton(Part part)
+{
+    switch (part)
+    {
+        case Part::Pin:
+        case Part::Vote:
+        case Part::Hype:
+        case Part::Moderation:
+        case Part::Chatters:
+        case Part::Tracker:
+        case Part::Menu:
+        case Part::Add:
+            return true;
+
+        // The pictures, the title, the curve and the chat mode are no
+        // buttons, or not square ones
+        case Part::Picture:
+        case Part::Cover:
+        case Part::Title:
+        case Part::Activity:
+        case Part::Mode:
+            return false;
+    }
+
+    return false;
+}
+
+std::pair<int, int> buttonPlace(int index)
+{
+    index = std::max(0, index);
+    return {index % 2, index / 2};
+}
+
+int buttonColumns(int buttons)
+{
+    return (std::max(0, buttons) + 1) / 2;
+}
+
 Row rowOf(Item item)
 {
     switch (item)

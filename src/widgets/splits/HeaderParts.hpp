@@ -10,6 +10,7 @@
 #include <QString>
 
 #include <optional>
+#include <utility>
 #include <vector>
 
 /// Buttons -> Title bar: which parts the split header has, in what order,
@@ -72,6 +73,18 @@ void setShown(Part part, bool shown);
 int spacing();
 void setSpacing(int pixels);
 constexpr int MOST_SPACING = 24;
+
+/// ChattiFlexii: whether @a part is one of the small square buttons. Those
+/// can stand in two rows where the title bar has two lines.
+bool isButton(Part part);
+
+/// Where the @a index-th button stands when they are laid out in two rows:
+/// the row (0 or 1) and the column. They go down first, then right, so
+/// their order reads the same as in one row.
+std::pair<int, int> buttonPlace(int index);
+
+/// How many columns @a buttons buttons take in two rows
+int buttonColumns(int buttons);
 
 /// Whether @a part can be made wider or narrower. The title and the curve
 /// take what is left over, so they are not among them - the curve has its
