@@ -338,13 +338,13 @@ void SettingsDialog::addTabs()
     this->addTab([]{return new TitleBarPage;},         "Titelleiste",    ":/settings/titlebar.svg");
     this->addTab([]{return new InputPage;},            "Eingabefeld",    ":/settings/input.svg");
     this->ui_.tabContainer->addSpacing(16);
-    this->addTab([]{return new AdvancedPage;},         "Erweitert",      ":/settings/modassistant.svg");
-    this->ui_.tabContainer->addSpacing(16);
-    this->addTab([]{return new ModHighlightsPage;},    "Mod-Highlights", ":/settings/modhighlights.svg");
     this->addTab([]{return new ModChangesPage;},       "WhosTheMod",     ":/settings/whosthemod.svg");
     this->addTab([]{return new BadgesPage;},           "HallOfBadges",   ":/settings/badges.svg");
     this->ui_.tabContainer->addSpacing(16);
     this->addTab([]{return new NotesPage;},            "Notizen",        ":/settings/notes.svg");
+    this->addTab([]{return new ModHighlightsPage;},    "Mod-Highlights", ":/settings/modhighlights.svg");
+    this->addTab([]{return new AdvancedPage;},         "Erweitert",      ":/settings/modassistant.svg");
+    this->ui_.tabContainer->addSpacing(16);
     this->addTab([]{return new TransferPage;},         "Sichern & Übertragen", ":/settings/transfer.svg");
     // Ours are drawn in the modern way to begin with; Chatterino's own get
     // a second set, picked when the modern look is on
