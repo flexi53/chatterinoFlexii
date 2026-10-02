@@ -799,17 +799,21 @@ void LookPage::buildSplitsTab(GeneralPageView &layout)
         ->addKeywords({"split", "grenze", "ziehen", "größe", "teilen"})
         ->addTo(layout);
     layout.addDescription(
-        "Dieser leere Raum trägt die Farbe, auf der auch die Tab-Leiste "
-        "liegt - so liest er sich als Lücke im Fenster und nicht als "
-        "Streifen. Das gilt genauso für die Linie über dem festen Bereich "
-        "unten, die du ebenso mit ⌥ auseinanderziehen kannst.");
+        "Dieser leere Raum ist genauso gefüllt wie der Streifen unter den "
+        "Tabs - mit derselben Farbe, und wenn du dort einen Verlauf "
+        "eingestellt hast, mit demselben Verlauf. So liest er sich als "
+        "Stück Fenster und nicht als fremder Streifen. Das gilt auch für "
+        "die Linie über dem festen Bereich unten, die du ebenso mit ⌥ "
+        "auseinanderziehen kannst. Den Streifen selbst stellst du unter "
+        "Aussehen → Tabs → Tab-Leiste ein.");
     SettingWidget::checkbox("Eigene Farbe für den Zwischenraum", s.gapOwnColor)
         ->addKeywords({"zwischenraum", "lücke", "gap", "abstand", "farbe"})
         ->addTo(layout);
     SettingWidget::colorButton("Farbe des Zwischenraums", s.gapColor)
         ->conditionallyEnabledBy(s.gapOwnColor)
         ->addTo(layout);
-    addStandardButton(layout, "Ziehen an, Zwischenraum wie die Tab-Leiste",
+    addStandardButton(layout,
+                      "Ziehen an, Zwischenraum wie der Streifen unter den Tabs",
                       [&s] {
                           s.splitBordersDraggable.setValue(true);
                           s.gapOwnColor.setValue(false);

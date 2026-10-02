@@ -12,6 +12,7 @@
 #include <pajlada/signals/signalholder.hpp>
 #include <QColor>
 #include <QDragEnterEvent>
+#include <QRectF>
 #include <QRect>
 #include <QWidget>
 
@@ -260,10 +261,11 @@ public:
     static qreal gapSize(qreal share, qreal containerSize, qreal slotSize,
                          qreal minSize);
 
-    /// ChattiFlexii: what empty room between two chats is filled with. The
-    /// colour the tab bar sits on, so the room reads as a window showing
-    /// through, unless one was chosen under Aussehen -> Splits.
-    static QColor gapColor(Theme *theme);
+    /// ChattiFlexii: fills empty room between two chats the way the strip
+    /// under the tabs is filled - the same colour, or the same gradient
+    /// where one is set, so the room reads as a piece of the window showing
+    /// through. Aussehen -> Splits can put a colour of its own there.
+    static void fillGap(QPainter &painter, const QRectF &where, Theme *theme);
 
 protected:
     void paintEvent(QPaintEvent *event) override;

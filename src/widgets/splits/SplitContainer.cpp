@@ -26,6 +26,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QMimeData>
+#include <QLinearGradient>
 #include <QPainter>
 #include <QPainterPath>
 
@@ -691,8 +692,7 @@ void SplitContainer::paintGaps(Node *node, QPainter *painter)
 
                 if ((isVertical ? gap.height() : gap.width()) > 1)
                 {
-                    painter->fillRect(gap,
-                                      SplitContainer::gapColor(this->theme));
+                    SplitContainer::fillGap(*painter, gap, this->theme);
                 }
             }
 
@@ -1399,17 +1399,40 @@ qreal SplitContainer::Node::getSize(bool isVertical)
     return isVertical ? this->geometry_.height() : this->geometry_.width();
 }
 
-QColor SplitContainer::gapColor(Theme *theme)
+void SplitContainer::fillGap(QPainter &painter, const QRectF &where,
+                             Theme *theme)
 {
-    // ChattiFlexii: by default the room shows the same colour the tab bar
-    // sits on, so it reads as a gap in the window rather than a stripe
-    if (!getSettings()->gapOwnColor)
+    auto *settings = getSettings();
+
+    if (settings->gapOwnColor)
     {
-        return theme->window.background;
+        const QColor chosen(settings->gapColor.getValue());
+        painter.fillRect(where,
+                         chosen.isValid() ? chosen : theme->window.background);
+        return;
     }
 
-    const QColor chosen(getSettings()->gapColor.getValue());
-    return chosen.isValid() ? chosen : theme->window.background;
+    // ChattiFlexii: otherwise the room is filled the way the strip under
+    // the tabs is - a see-through colour there lets the window show
+    // through, so the same has to lie underneath here
+    painter.fillRect(where, theme->window.background);
+
+    const QColor top(settings->tabBarGradientTopColor.getValue());
+    const QColor bottom(settings->tabBarGradientBottomColor.getValue());
+    if (settings->tabBarGradient && top.isValid() && bottom.isValid())
+    {
+        QLinearGradient gradient(where.topLeft(), where.bottomLeft());
+        gradient.setColorAt(0.0, top);
+        gradient.setColorAt(1.0, bottom);
+        painter.fillRect(where, gradient);
+        return;
+    }
+
+    const QColor picked(settings->tabBarBackgroundColor.getValue());
+    if (picked.isValid())
+    {
+        painter.fillRect(where, picked);
+    }
 }
 
 qreal SplitContainer::gapSize(qreal share, qreal containerSize, qreal slotSize,
