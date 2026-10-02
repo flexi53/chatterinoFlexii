@@ -113,7 +113,7 @@ void addButtonList(GeneralPageView &layout, QWidget *parent)
         {
             return "Zeigt, welches Badge du im Kanal trägst, und lässt dich "
                    "wie auf twitch.tv ein anderes wählen. Braucht den "
-                   "Browser-Login unter Einstellungen → Badges.";
+                   "Browser-Login unter Einstellungen → HallOfBadges.";
         }
         if (key == inputbuttons::CLIP)
         {

@@ -34,6 +34,7 @@
 #include "widgets/settingspages/TitleBarPage.hpp"
 #include "widgets/settingspages/ModAssistantPage.hpp"
 #include "widgets/settingspages/ModerationPage.hpp"
+#include "widgets/settingspages/ModChangesPage.hpp"
 #include "widgets/settingspages/ModHighlightsPage.hpp"
 #include "widgets/settingspages/NotesPage.hpp"
 #include "widgets/settingspages/NicknamesPage.hpp"
@@ -507,7 +508,8 @@ void SettingsDialog::addTabs()
     this->addTab([]{return new InputPage;},            "Eingabefeld",    ":/settings/input.svg");
     this->addTab([]{return new AdvancedPage;},         "Erweitert",      ":/settings/modassistant.svg");
     this->addTab([]{return new ModHighlightsPage;},    "Mod-Highlights", ":/settings/modhighlights.svg");
-    this->addTab([]{return new BadgesPage;},           "Badges",         ":/settings/badges.svg");
+    this->addTab([]{return new ModChangesPage;},       "WhosTheMod",     ":/settings/whosthemod.svg");
+    this->addTab([]{return new BadgesPage;},           "HallOfBadges",   ":/settings/badges.svg");
     this->addTab([]{return new NotesPage;},            "Notizen",        ":/settings/notes.svg");
     this->addTab([]{return new TransferPage;},         "Sichern & Übertragen", ":/settings/transfer.svg");
     // Ours are drawn in the modern way to begin with; Chatterino's own get
@@ -549,7 +551,7 @@ void SettingsDialog::addTab(std::function<SettingsPage *()> page,
         uistyle::drawnIcons() && !modern.isEmpty() ? modern : iconPath;
     // "Buttons" and "Badges" keep their English names on purpose - everything
     // else is said in German
-    static const QStringList keepTheirName{"Badges"};
+    static const QStringList keepTheirName{"HallOfBadges", "WhosTheMod"};
     const auto title =
         keepTheirName.contains(name) ? name : german::say(name);
     auto *tab =

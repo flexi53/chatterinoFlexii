@@ -1025,6 +1025,8 @@ set(SOURCE_FILES
         widgets/settingspages/LookPage.hpp
         widgets/settingspages/ModAssistantPage.cpp
         widgets/settingspages/ModAssistantPage.hpp
+        widgets/settingspages/ModChangesPage.cpp
+        widgets/settingspages/ModChangesPage.hpp
         widgets/settingspages/ModHighlightsPage.cpp
         widgets/settingspages/ModHighlightsPage.hpp
         widgets/settingspages/NotesPage.cpp

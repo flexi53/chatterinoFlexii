@@ -379,7 +379,7 @@ void BadgeAlerts::checkTwitch()
                         "Ohne BadgeBase-Schlüssel meldet dieser Tab nur neue "
                         "Badges von Twitch - ohne Termine und ohne „fehlt "
                         "dir noch“. Den Schlüssel trägst du unter "
-                        "Einstellungen → Badges ein."));
+                        "Einstellungen → HallOfBadges ein."));
                 }
                 return;
             }

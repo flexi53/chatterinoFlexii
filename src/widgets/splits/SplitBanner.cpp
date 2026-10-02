@@ -4,6 +4,7 @@
 
 #include "widgets/splits/SplitBanner.hpp"
 
+#include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
 #include "widgets/splits/Split.hpp"
 
@@ -236,6 +237,18 @@ void SplitBanner::paintEvent(QPaintEvent * /*event*/)
     painter.setPen(Qt::NoPen);
     painter.setBrush(fill);
     painter.drawRoundedRect(card, radius, radius);
+
+    // ChattiFlexii: a line around it, so the card is seen as one even where
+    // it carries the colour of the bar above - Aussehen -> Splits -> Banner
+    if (getSettings()->bannerBorder)
+    {
+        const QColor chosen(getSettings()->bannerBorderColor.getValue());
+        painter.setBrush(Qt::NoBrush);
+        painter.setPen(
+            QPen(chosen.isValid() ? chosen : theme->accent, 1.5 * this->scale()));
+        painter.drawRoundedRect(card.adjusted(0.5, 0.5, -0.5, -0.5), radius,
+                                radius);
+    }
 
     // ChattiFlexii: and along its bottom edge how much of the time is left
     if (this->timeShare_ >= 0)

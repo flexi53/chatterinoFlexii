@@ -665,6 +665,31 @@ void LookPage::buildSplitsTab(GeneralPageView &layout)
                      "und Restzeit.")
         ->addKeywords({"hype", "train", "banner"})
         ->addTo(layout);
+    SettingWidget::checkbox("Rahmen um die Banner", s.bannerBorder)
+        ->setTooltip("Eine dünne Linie um jede Karte. Trägt die Karte die "
+                     "Farbe der Titelleiste - und ist die bei dir "
+                     "durchsichtig -, sieht man sonst nur am Abstand, wo "
+                     "sie anfängt.")
+        ->addKeywords({"rahmen", "rand", "banner", "linie", "umrandung"})
+        ->addTo(layout);
+    SettingWidget::colorButton("Farbe des Rahmens", s.bannerBorderColor)
+        ->setTooltip("Ohne eigene Farbe nimmt er die Akzentfarbe des Themes "
+                     "- dieselbe, die auch die Zeitleiste der Umfrage "
+                     "benutzt.")
+        ->addKeywords({"farbe", "rahmen", "banner"})
+        ->addTo(layout);
+    addStandardButton(layout, "Banner wie am Anfang, mit Rahmen in der "
+                              "Akzentfarbe",
+                      [&s] {
+                          s.showVoteBanner.setValue(
+                              s.showVoteBanner.getDefaultValue());
+                          s.showHypeTrainBanner.setValue(
+                              s.showHypeTrainBanner.getDefaultValue());
+                          s.bannerBorder.setValue(
+                              s.bannerBorder.getDefaultValue());
+                          s.bannerBorderColor.setValue(
+                              s.bannerBorderColor.getDefaultValue());
+                      });
 
     layout.addTitle("Grenzen zwischen Splits");
     layout.addDescription(

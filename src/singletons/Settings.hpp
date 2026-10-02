@@ -304,6 +304,11 @@ public:
     /// ChattiFlexii, Aussehen -> Splits: the banner for the hype train
     BoolSetting showHypeTrainBanner = {"/appearance/banners/showHypeTrain",
                                        true};
+    /// ChattiFlexii: a line around the banners, so the card is seen as one
+    /// even where it carries the colour of the title bar
+    BoolSetting bannerBorder = {"/appearance/banners/border", true};
+    /// The colour of that line - empty for the accent colour of the theme
+    QStringSetting bannerBorderColor = {"/appearance/banners/borderColor", ""};
     /// ChattiFlexii: the channels the hype train banner is left out of,
     /// set in the split's menu - see controllers/banners
     QStringSetting hypeTrainOffChannels = {"/appearance/banners/hypeTrainOff",

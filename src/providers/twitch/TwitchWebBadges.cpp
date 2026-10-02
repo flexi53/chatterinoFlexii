@@ -204,7 +204,7 @@ void fetchChoices(const QString &channelId, QObject *caller,
             Choices none;
             none.problem = QStringLiteral(
                 "Kein Browser-Login gespeichert - einrichten unter "
-                "Einstellungen → Badges → Badge wechseln.");
+                "Einstellungen → HallOfBadges → Badge wechseln.");
             done(none);
             return;
         }
