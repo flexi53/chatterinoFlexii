@@ -465,17 +465,6 @@ void LookPage::buildStyleTab(GeneralPageView &layout)
         appicon::apply();
     });
 
-    layout.addTitle("Einstellungsfenster");
-    layout.addDescription(
-        "Die Seiten links in diesem Fenster kannst du anders anordnen: einen "
-        "Eintrag anfassen und an eine andere Stelle ziehen - innerhalb "
-        "seines Blocks, ChattiFlexii oder Chatterino. „Über“ bleibt unten.");
-    addStandardButton(layout, "Die Seiten wieder in der Reihenfolge vom Anfang",
-                      [&s] {
-                          s.settingsTabOrder.setValue(
-                              s.settingsTabOrder.getDefaultValue());
-                      });
-
     layout.addStretch();
 }
 
