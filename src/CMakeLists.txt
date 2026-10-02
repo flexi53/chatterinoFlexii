@@ -315,6 +315,8 @@ set(SOURCE_FILES
         controllers/plugins/SolTypes.cpp
         controllers/plugins/SolTypes.hpp
 
+        controllers/splits/PinnedSplits.cpp
+        controllers/splits/PinnedSplits.hpp
         controllers/sound/ISoundController.hpp
         controllers/sound/MiniaudioBackend.cpp
         controllers/sound/MiniaudioBackend.hpp

@@ -10,6 +10,7 @@
 #include "common/network/NetworkResult.hpp"
 #include "controllers/accounts/AccountController.hpp"
 #include "controllers/banners/BannerChannels.hpp"
+#include "controllers/splits/PinnedSplits.hpp"
 #include "controllers/commands/CommandController.hpp"
 #include "controllers/hotkeys/Hotkey.hpp"
 #include "controllers/hotkeys/HotkeyCategory.hpp"
@@ -672,28 +673,34 @@ std::unique_ptr<QMenu> SplitHeader::createMainMenu()
 
     // ChattiFlexii: the part at the bottom of the window stays while the
     // tabs above it change - what is held there is seen in every tab
-    if (auto *window = dynamic_cast<Window *>(this->window()))
     {
-        auto *container =
-            dynamic_cast<SplitContainer *>(this->split_->parentWidget());
-        const bool pinned =
-            container != nullptr && container == window->getPinnedContainer();
-        menu->addAction(
-            pinned ? "Move back into the tab" : "Keep at the bottom",
-            this->split_, [this, window, pinned] {
-                auto *from = dynamic_cast<SplitContainer *>(
-                    this->split_->parentWidget());
-                auto *to = pinned ? window->getNotebook().getOrAddSelectedPage()
-                                  : window->getPinnedContainer();
-                if (from == nullptr || to == nullptr || from == to)
-                {
-                    return;
-                }
-                from->releaseSplit(this->split_);
-                to->insertSplit(this->split_, {});
-                window->refreshPinnedArea();
-                getApp()->getWindows()->queueSave();
-            });
+        // The list holds for every window and every tab, so what happens
+        // here is a change to it - the windows follow by themselves
+        const auto entry = pinnedsplits::nameOf(this->split_->getChannel());
+        if (!entry.isEmpty())
+        {
+            const bool pinned = pinnedsplits::contains(entry);
+            menu->addAction(
+                pinned ? "Not at the bottom any more" : "Keep at the bottom",
+                this->split_, [this, entry, pinned] {
+                    if (pinned)
+                    {
+                        pinnedsplits::remove(entry);
+                        return;
+                    }
+
+                    pinnedsplits::add(entry);
+                    // The chat is down there now, so the one in the tab has
+                    // done its job - unless it is the only one left
+                    auto *container = dynamic_cast<SplitContainer *>(
+                        this->split_->parentWidget());
+                    if (container != nullptr &&
+                        container->getSplits().size() > 1)
+                    {
+                        container->deleteSplit(this->split_);
+                    }
+                });
+        }
     }
 
     menu->addSeparator();

@@ -20,6 +20,7 @@
 #include "singletons/StreamerMode.hpp"
 #include "singletons/Theme.hpp"
 #include "singletons/Updates.hpp"
+#include "controllers/splits/PinnedSplits.hpp"
 #include "singletons/WindowManager.hpp"
 #include "util/RapidJsonSerializeQSize.hpp"
 #include "widgets/AccountSwitchPopup.hpp"
@@ -238,11 +239,24 @@ void Window::addLayout()
     layout->addWidget(this->splitter_);
     this->getLayoutContainer()->setLayout(layout);
 
+    // ChattiFlexii: the lower part follows the one list that holds for
+    // every window - changed in one place, there in all of them
+    getSettings()->pinnedSplits.connect(
+        [this](const auto &, auto) {
+            this->applyPinnedSplits();
+        },
+        this->signalHolder_, false);
+
     // set margin
     layout->setContentsMargins(0, 0, 0, 0);
 
     this->notebook_->setAllowUserTabManagement(true);
     this->notebook_->setShowAddButton(true);
+
+    // Once the window stands, what belongs at its bottom is put there
+    QTimer::singleShot(0, this, [this] {
+        this->applyPinnedSplits();
+    });
 }
 
 bool Window::eventFilter(QObject *watched, QEvent *event)
@@ -265,7 +279,59 @@ bool Window::eventFilter(QObject *watched, QEvent *event)
 
 SplitContainer *Window::getPinnedContainer()
 {
+    // Always the one page it was given - never a second one
+    if (auto *page = dynamic_cast<SplitContainer *>(
+            this->pinnedNotebook_->getPageAt(0)))
+    {
+        return page;
+    }
     return this->pinnedNotebook_->getOrAddSelectedPage();
+}
+
+void Window::applyPinnedSplits()
+{
+    auto *container = this->getPinnedContainer();
+    const auto wanted = pinnedsplits::held();
+
+    // What is no longer wanted goes
+    for (auto *split : container->getSplits())
+    {
+        if (!wanted.contains(pinnedsplits::nameOf(split->getChannel())))
+        {
+            container->deleteSplit(split);
+        }
+    }
+
+    // ...and what is missing comes, in the order of the list
+    for (const auto &entry : wanted)
+    {
+        bool there = false;
+        for (auto *split : container->getSplits())
+        {
+            there = there || pinnedsplits::nameOf(split->getChannel()) == entry;
+        }
+        if (there)
+        {
+            continue;
+        }
+
+        SplitDescriptor descriptor;
+        if (entry.startsWith("twitch:"))
+        {
+            descriptor.type_ = "twitch";
+            descriptor.channelName_ = entry.mid(7);
+        }
+        else
+        {
+            descriptor.type_ = entry;
+        }
+
+        auto *split = new Split(container);
+        split->setChannel(WindowManager::decodeChannel(descriptor));
+        container->insertSplit(split, {});
+    }
+
+    this->refreshPinnedArea();
 }
 
 bool Window::hasPinnedSplits() const

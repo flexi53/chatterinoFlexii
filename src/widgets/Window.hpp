@@ -42,6 +42,9 @@ public:
     SplitContainer *getPinnedContainer();
     /// Whether anything is held down there
     bool hasPinnedSplits() const;
+    /// ChattiFlexii: builds the lower part from the list that holds for
+    /// every window - see controllers/splits/PinnedSplits.hpp
+    void applyPinnedSplits();
     /// Shows or hides the lower part, depending on whether anything is in
     /// it, and gives it @a height pixels where one is asked for
     void refreshPinnedArea(int height = 0);

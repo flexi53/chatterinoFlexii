@@ -304,6 +304,9 @@ public:
     /// ChattiFlexii, Aussehen -> Splits: the banner for the hype train
     BoolSetting showHypeTrainBanner = {"/appearance/banners/showHypeTrain",
                                        true};
+    /// ChattiFlexii: the chats held at the bottom of every window, under
+    /// the tabs - see controllers/splits/PinnedSplits.hpp
+    QStringSetting pinnedSplits = {"/appearance/splits/pinned", ""};
     /// ChattiFlexii: a line around the banners, so the card is seen as one
     /// even where it carries the colour of the title bar
     BoolSetting bannerBorder = {"/appearance/banners/border", true};

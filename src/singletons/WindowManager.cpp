@@ -13,6 +13,7 @@
 #include "providers/kick/KickChatServer.hpp"
 #include "providers/twitch/TwitchIrcServer.hpp"
 #include "singletons/Paths.hpp"
+#include "controllers/splits/PinnedSplits.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
 #include "util/CombinePath.hpp"
@@ -573,14 +574,11 @@ void WindowManager::save()
 
         windowObj.insert("tabs", tabsArr);
 
-        // ChattiFlexii: and what is held at the bottom, which belongs to the
-        // window rather than to any of its tabs
+        // ChattiFlexii: what is held at the bottom is one list for every
+        // window, kept with the settings - only how tall that part stands
+        // belongs to this window
         if (window->hasPinnedSplits())
         {
-            QJsonObject pinned;
-            WindowManager::encodeNodeRecursively(
-                window->getPinnedContainer()->getBaseNode(), pinned);
-            windowObj.insert("pinned", pinned);
             windowObj.insert("pinnedHeight", window->pinnedHeight());
         }
 
@@ -1075,12 +1073,33 @@ void WindowManager::applyWindowLayout(const WindowLayout &layout)
 
         window.getNotebook().setFocusMode(windowData.focus_);
 
-        // ChattiFlexii: what is held at the bottom of this window
+        // ChattiFlexii: what used to be held in this window alone becomes
+        // part of the one list that holds for all of them
         if (windowData.pinned_)
         {
-            window.getPinnedContainer()->applyFromDescriptor(
-                *windowData.pinned_);
+            const auto take = [](auto &&self,
+                                 const NodeDescriptor &node) -> void {
+                if (const auto *one = std::get_if<SplitNodeDescriptor>(&node))
+                {
+                    const auto entry =
+                        one->type_ == u"twitch"
+                            ? "twitch:" + one->channelName_.toLower()
+                            : one->type_;
+                    pinnedsplits::add(entry);
+                    return;
+                }
+                if (const auto *box =
+                        std::get_if<ContainerNodeDescriptor>(&node))
+                {
+                    for (const auto &item : box->items_)
+                    {
+                        self(self, item);
+                    }
+                }
+            };
+            take(take, *windowData.pinned_);
         }
+        window.applyPinnedSplits();
 
         window.show();
 

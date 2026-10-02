@@ -13,6 +13,7 @@
 #include "messages/MessageElement.hpp"
 #include "providers/twitch/TwitchBadge.hpp"
 #include "widgets/helper/ChannelView.hpp"
+#include "controllers/splits/PinnedSplits.hpp"
 #include "singletons/Settings.hpp"
 #include "util/AppIcon.hpp"
 #include "singletons/Theme.hpp"
@@ -30,6 +31,8 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPlainTextEdit>
+#include <QListWidget>
+#include <QLineEdit>
 #include <QPushButton>
 #include <QToolButton>
 #include <QTabWidget>
@@ -45,6 +48,79 @@
 namespace chatterino {
 
 namespace {
+
+/// ChattiFlexii: the chats held at the bottom of every window - see
+/// controllers/splits/PinnedSplits.hpp. The list holds for all windows and
+/// all tabs, which is the whole point of it.
+class PinnedList : public QWidget
+{
+public:
+    PinnedList()
+    {
+        auto *box = new QVBoxLayout(this);
+        box->setContentsMargins(0, 0, 0, 0);
+        box->setSpacing(4);
+
+        this->list_ = new QListWidget;
+        this->list_->setMaximumHeight(130);
+        box->addWidget(this->list_);
+
+        auto *row = new QHBoxLayout;
+        this->name_ = new QLineEdit;
+        this->name_->setPlaceholderText("Kanal hinzufügen …");
+        row->addWidget(this->name_, 1);
+
+        auto *add = new QPushButton("Hinzufügen");
+        auto *remove = new QPushButton("Entfernen");
+        row->addWidget(add);
+        row->addWidget(remove);
+        box->addLayout(row);
+
+        const auto addTyped = [this] {
+            const auto name = this->name_->text().trimmed().toLower();
+            if (name.isEmpty())
+            {
+                return;
+            }
+            pinnedsplits::add(name.startsWith('/') ? name.mid(1)
+                                                   : "twitch:" + name);
+            this->name_->clear();
+        };
+        QObject::connect(add, &QPushButton::clicked, this, addTyped);
+        QObject::connect(this->name_, &QLineEdit::returnPressed, this,
+                         addTyped);
+        QObject::connect(remove, &QPushButton::clicked, this, [this] {
+            auto *item = this->list_->currentItem();
+            if (item != nullptr)
+            {
+                pinnedsplits::remove(item->data(Qt::UserRole).toString());
+            }
+        });
+
+        getSettings()->pinnedSplits.connect(
+            [this](const auto &, auto) {
+                this->fill();
+            },
+            this->connections_);
+    }
+
+private:
+    void fill()
+    {
+        this->list_->clear();
+        for (const auto &entry : pinnedsplits::held())
+        {
+            auto *item = new QListWidgetItem(pinnedsplits::label(entry));
+            item->setData(Qt::UserRole, entry);
+            this->list_->addItem(item);
+        }
+    }
+
+    QListWidget *list_{};
+    QLineEdit *name_{};
+    pajlada::Signals::SignalHolder connections_;
+};
+
 
 /// The zoom levels Chatterino offers, in its own order
 const QStringList ZOOM_LEVELS = {
@@ -690,6 +766,17 @@ void LookPage::buildSplitsTab(GeneralPageView &layout)
                           s.bannerBorderColor.setValue(
                               s.bannerBorderColor.getDefaultValue());
                       });
+
+    layout.addTitle("Fester Bereich unten");
+    layout.addDescription(
+        "Diese Chats stehen unter den Tabs und bleiben dort stehen, egal "
+        "welchen Tab du oben wählst - und in jedem Fenster gleich. Einen "
+        "Chat legst du auch über sein Menü hinein: die drei Punkte → „Keep "
+        "at the bottom“. Die Höhe ziehst du an der Trennlinie, sie bleibt "
+        "pro Fenster gespeichert. Für die eigenen Kanäle tippst du "
+        "/mentions, /live, /automod oder /whispers.");
+    layout.addWidget(new PinnedList, {"fest", "unten", "mentions", "bereich",
+                                      "angeheftet", "pinned"});
 
     layout.addTitle("Grenzen zwischen Splits");
     layout.addDescription(
