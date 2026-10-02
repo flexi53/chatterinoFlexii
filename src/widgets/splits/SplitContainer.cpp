@@ -691,7 +691,8 @@ void SplitContainer::paintGaps(Node *node, QPainter *painter)
 
                 if ((isVertical ? gap.height() : gap.width()) > 1)
                 {
-                    painter->fillRect(gap, this->theme->window.background);
+                    painter->fillRect(gap,
+                                      SplitContainer::gapColor(this->theme));
                 }
             }
 
@@ -1396,6 +1397,19 @@ qreal SplitContainer::Node::getFlex(bool isVertical)
 qreal SplitContainer::Node::getSize(bool isVertical)
 {
     return isVertical ? this->geometry_.height() : this->geometry_.width();
+}
+
+QColor SplitContainer::gapColor(Theme *theme)
+{
+    // ChattiFlexii: by default the room shows the same colour the tab bar
+    // sits on, so it reads as a gap in the window rather than a stripe
+    if (!getSettings()->gapOwnColor)
+    {
+        return theme->window.background;
+    }
+
+    const QColor chosen(getSettings()->gapColor.getValue());
+    return chosen.isValid() ? chosen : theme->window.background;
 }
 
 qreal SplitContainer::gapSize(qreal share, qreal containerSize, qreal slotSize,

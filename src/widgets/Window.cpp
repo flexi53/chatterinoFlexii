@@ -55,6 +55,7 @@
 #include <QStandardItemModel>
 #include <QSplitter>
 #include <QMouseEvent>
+#include <QPainter>
 #include <QSplitterHandle>
 #include <QVBoxLayout>
 
@@ -79,6 +80,15 @@ public:
     }
 
 protected:
+    void paintEvent(QPaintEvent * /*event*/) override
+    {
+        // ChattiFlexii: the same filling the room between two chats has,
+        // so a window reads as one whether the gap sits inside a tab or
+        // over the part kept at the bottom
+        QPainter painter(this);
+        painter.fillRect(this->rect(), SplitContainer::gapColor(getTheme()));
+    }
+
     void mousePressEvent(QMouseEvent *event) override
     {
         this->tookAt_ = event->globalPosition().toPoint().y();

@@ -10,6 +10,7 @@
 
 #include <pajlada/signals/signal.hpp>
 #include <pajlada/signals/signalholder.hpp>
+#include <QColor>
 #include <QDragEnterEvent>
 #include <QRect>
 #include <QWidget>
@@ -258,6 +259,11 @@ public:
     /// itself. A chat can be pushed small, never out of sight.
     static qreal gapSize(qreal share, qreal containerSize, qreal slotSize,
                          qreal minSize);
+
+    /// ChattiFlexii: what empty room between two chats is filled with. The
+    /// colour the tab bar sits on, so the room reads as a window showing
+    /// through, unless one was chosen under Aussehen -> Splits.
+    static QColor gapColor(Theme *theme);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
