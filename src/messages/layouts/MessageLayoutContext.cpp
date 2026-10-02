@@ -43,6 +43,21 @@ void MessageColors::applyTheme(Theme *theme, bool isOverlay,
             this->regularBg, this->alternateBg,
             getSettings()->alternateMessageStrength,
             QColor(getSettings()->alternateMessageTint.getValue()));
+
+        // ChattiFlexii: lies a picture under the chat, the rows let it
+        // through as far as Aussehen -> Chat says. Solid rows would cover
+        // it everywhere a message stands, which is most of the chat.
+        if (!getSettings()->chatBackground.getValue().isEmpty())
+        {
+            const int through = std::clamp(
+                getSettings()->chatBackgroundThrough.getValue(), 0, 100);
+            const auto letThrough = [through](QColor &color) {
+                color.setAlpha(std::clamp(
+                    (color.alpha() * (100 - through)) / 100, 0, 255));
+            };
+            letThrough(this->regularBg);
+            letThrough(this->alternateBg);
+        }
     }
 
     this->messageSeperator = theme->splits.messageSeperator;

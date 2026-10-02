@@ -35,6 +35,7 @@
 #include "providers/twitch/TwitchChannel.hpp"
 #include "providers/twitch/TwitchIrcServer.hpp"
 #include "singletons/Resources.hpp"
+#include "singletons/ChatBackground.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/StreamerMode.hpp"
 #include "singletons/Theme.hpp"
@@ -456,6 +457,20 @@ ChannelView::ChannelView(InternalCtor /*tag*/, QWidget *parent, Split *split,
             this->refreshAlternateBackgrounds();
         },
         this->signalHolder_, false);
+    // ChattiFlexii: a picture under the chat - a new file or another way of
+    // fitting it means what was kept is no longer what should be drawn
+    const auto backgroundChanged = [this] {
+        chatbackground::forget();
+        this->themeChangedEvent();
+    };
+    getSettings()->chatBackground.connect(backgroundChanged,
+                                          this->signalHolder_, false);
+    getSettings()->chatBackgroundFit.connect(backgroundChanged,
+                                             this->signalHolder_, false);
+    getSettings()->chatBackgroundVeil.connect(backgroundChanged,
+                                              this->signalHolder_, false);
+    getSettings()->chatBackgroundThrough.connect(backgroundChanged,
+                                                 this->signalHolder_, false);
     // Role stripes take the colours of the badge highlights
     this->signalHolder_.managedConnect(
         getSettings()->highlightedBadges.delayedItemsChanged, [this] {
@@ -1726,6 +1741,14 @@ void ChannelView::paintEvent(QPaintEvent *event)
     QPainter painter(this);
 
     painter.fillRect(this->rect(), this->messageColors_.channelBackground);
+
+    // ChattiFlexii: and over that the picture, if one is set - the overlay
+    // window keeps its see-through background
+    if (!this->isOverlay_)
+    {
+        chatbackground::paint(painter, this->rect(),
+                              this->messageColors_.channelBackground);
+    }
 
     // draw messages
     this->drawMessages(painter, event->rect());

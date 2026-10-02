@@ -15,6 +15,7 @@
 #include "widgets/helper/ChannelView.hpp"
 #include "controllers/splits/PinnedSplits.hpp"
 #include "singletons/Settings.hpp"
+#include "singletons/ChatBackground.hpp"
 #include "util/AppIcon.hpp"
 #include "singletons/Theme.hpp"
 #include "util/FuzzyConvert.hpp"
@@ -25,11 +26,15 @@
 #include "widgets/settingspages/SettingWidget.hpp"
 
 #include <QComboBox>
+#include <QDir>
+#include <QFileDialog>
+#include <QFileInfo>
 #include <QGraphicsOpacityEffect>
 #include <QButtonGroup>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QListWidget>
 #include <QLineEdit>
@@ -793,6 +798,23 @@ void LookPage::buildSplitsTab(GeneralPageView &layout)
                      "aus.")
         ->addKeywords({"split", "grenze", "ziehen", "größe", "teilen"})
         ->addTo(layout);
+    layout.addDescription(
+        "Dieser leere Raum trägt die Farbe, auf der auch die Tab-Leiste "
+        "liegt - so liest er sich als Lücke im Fenster und nicht als "
+        "Streifen. Das gilt genauso für die Linie über dem festen Bereich "
+        "unten, die du ebenso mit ⌥ auseinanderziehen kannst.");
+    SettingWidget::checkbox("Eigene Farbe für den Zwischenraum", s.gapOwnColor)
+        ->addKeywords({"zwischenraum", "lücke", "gap", "abstand", "farbe"})
+        ->addTo(layout);
+    SettingWidget::colorButton("Farbe des Zwischenraums", s.gapColor)
+        ->conditionallyEnabledBy(s.gapOwnColor)
+        ->addTo(layout);
+    addStandardButton(layout, "Ziehen an, Zwischenraum wie die Tab-Leiste",
+                      [&s] {
+                          s.splitBordersDraggable.setValue(true);
+                          s.gapOwnColor.setValue(false);
+                          s.gapColor.setValue(s.gapColor.getDefaultValue());
+                      });
 
     layout.addTitle("Aktiver Split");
     layout.addDescription(
@@ -877,6 +899,102 @@ void LookPage::buildChatTab(GeneralPageView &layout)
                           s.alternateMessageTint.setValue("");
                           s.alternateMessagesBySender.setValue(false);
                       });
+
+    layout.addTitle("Hintergrundbild");
+    layout.addDescription(
+        "Unter dem Chat kann ein eigenes Bild liegen. Damit die Schrift "
+        "lesbar bleibt, wird die Chatfarbe darüber gelegt - wie stark, "
+        "stellst du mit dem Schleier ein; und die Nachrichtenzeilen lassen "
+        "das Bild so weit durch, wie du es hier sagst. Das Bild wandert "
+        "beim Scrollen nicht mit und gilt für alle Chats.");
+
+    {
+        auto *name = new QLabel;
+        name->setStyleSheet("color: #8a8a8a;");
+        auto *pick = new QPushButton("Bild wählen …");
+        auto *drop = new QPushButton("Entfernen");
+
+        const auto show = [name, drop](const QString &file) {
+            name->setText(file.isEmpty() ? "Kein Bild gewählt"
+                                         : QFileInfo(file).fileName());
+            drop->setEnabled(!file.isEmpty());
+        };
+        show(s.chatBackground.getValue());
+        s.chatBackground.connect(
+            [show](const QString &file, auto) {
+                show(file);
+            },
+            this->managedConnections_, false);
+
+        QObject::connect(pick, &QPushButton::clicked, this, [this] {
+            const auto file = QFileDialog::getOpenFileName(
+                this, "Bild für den Chat", QDir::homePath(),
+                "Bilder (*.png *.jpg *.jpeg *.webp *.bmp *.gif)");
+            if (file.isEmpty())
+            {
+                return;
+            }
+            // Into the profile, so it stays when the original is moved
+            const auto ours = chatbackground::adopt(file);
+            if (ours.isEmpty())
+            {
+                QMessageBox::warning(this, "Bild für den Chat",
+                                     "Diese Datei lässt sich nicht als Bild "
+                                     "lesen.");
+                return;
+            }
+            getSettings()->chatBackground.setValue(ours);
+        });
+        QObject::connect(drop, &QPushButton::clicked, this, [] {
+            getSettings()->chatBackground.setValue("");
+        });
+
+        auto *row = new QHBoxLayout;
+        row->addWidget(name);
+        row->addStretch(1);
+        row->addWidget(pick);
+        row->addWidget(drop);
+        layout.addLayout(row);
+    }
+
+    layout.addDropdown<int>(
+        "Wie es den Chat füllt",
+        {"Füllend, Ränder abgeschnitten", "Ganz zu sehen", "Nebeneinander "
+         "gekachelt", "In der Mitte, Originalgröße"},
+        s.chatBackgroundFit,
+        [](int value) {
+            return std::clamp(value, 0, 3);
+        },
+        [](const DropdownArgs &args) {
+            return std::clamp(args.index, 0, 3);
+        },
+        false);
+
+    SettingWidget::intInput("Schleier in der Chatfarbe (%)",
+                            s.chatBackgroundVeil,
+                            {.min = 0, .max = 100, .singleStep = 5})
+        ->setTooltip("0 zeigt das Bild in voller Stärke, 100 deckt es ganz "
+                     "zu. Um die 60 bleibt das Bild zu ahnen und die Schrift "
+                     "gut zu lesen.")
+        ->addKeywords({"hintergrund", "bild", "schleier", "deckkraft"})
+        ->addTo(layout);
+
+    SettingWidget::intInput("Nachrichtenzeilen lassen durch (%)",
+                            s.chatBackgroundThrough,
+                            {.min = 0, .max = 100, .singleStep = 5})
+        ->setTooltip("0 lässt die Zeilen so undurchsichtig wie sonst - das "
+                     "Bild zeigt sich dann nur dort, wo keine Nachricht "
+                     "steht. 100 macht sie ganz durchsichtig.")
+        ->addKeywords({"hintergrund", "bild", "durchsichtig"})
+        ->addTo(layout);
+
+    addStandardButton(layout, "Kein Bild", [&s] {
+        s.chatBackground.setValue("");
+        s.chatBackgroundFit.setValue(s.chatBackgroundFit.getDefaultValue());
+        s.chatBackgroundVeil.setValue(s.chatBackgroundVeil.getDefaultValue());
+        s.chatBackgroundThrough.setValue(
+            s.chatBackgroundThrough.getDefaultValue());
+    });
 
     layout.addTitle("Nachrichten");
     layout.addDropdown<int>(

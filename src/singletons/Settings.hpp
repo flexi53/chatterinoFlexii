@@ -340,6 +340,21 @@ public:
     BoolSetting pulseMentions = {"/appearance/messages/pulseMentions", false};
     /// The chatter's round profile picture in front of their name
     BoolSetting chatAvatars = {"/appearance/messages/avatars", false};
+    /// ChattiFlexii: a picture under the chat - Aussehen -> Chat. The path
+    /// of the file as it was taken into the profile; empty for none.
+    QStringSetting chatBackground = {"/appearance/messages/background", ""};
+    /// How it fills the chat - see chatbackground::Fit
+    IntSetting chatBackgroundFit = {"/appearance/messages/backgroundFit", 0};
+    /// How strongly the chat's own colour lies over the picture, in percent
+    IntSetting chatBackgroundVeil = {"/appearance/messages/backgroundVeil", 65};
+    /// How far the rows of the messages let the picture through, in percent
+    IntSetting chatBackgroundThrough = {
+        "/appearance/messages/backgroundThrough", 70};
+    /// ChattiFlexii: the empty room between two chats, and over the part
+    /// kept at the bottom, carries a colour of its own instead of the one
+    /// the tabs sit on
+    BoolSetting gapOwnColor = {"/appearance/splits/gapOwnColor", false};
+    QStringSetting gapColor = {"/appearance/splits/gapColor", "#1a1a1a"};
     /// A border around the split being typed in, when a tab has several
     BoolSetting activeSplitBorder = {"/appearance/splitheader/activeBorder",
                                      false};
