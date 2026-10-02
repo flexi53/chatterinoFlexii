@@ -54,7 +54,11 @@
 #include <QPalette>
 #include <QStandardItemModel>
 #include <QSplitter>
+#include <QMouseEvent>
+#include <QSplitterHandle>
 #include <QVBoxLayout>
+
+#include <algorithm>
 
 namespace chatterino {
 
@@ -62,6 +66,71 @@ namespace {
 
 /// ChattiFlexii: the notebook of the part that stays at the bottom - one
 /// page, no tabs of its own, nothing to add or close
+/// ChattiFlexii: the line between the tabs and the part at the bottom.
+/// Dragging it moves the border, as any splitter does; holding Alt leaves
+/// empty room between the two instead - the same hand movement as between
+/// two chats, see SplitContainer::ResizeHandle.
+class GapHandle : public QSplitterHandle
+{
+public:
+    GapHandle(Qt::Orientation orientation, QSplitter *parent)
+        : QSplitterHandle(orientation, parent)
+    {
+    }
+
+protected:
+    void mousePressEvent(QMouseEvent *event) override
+    {
+        this->tookAt_ = event->globalPosition().toPoint().y();
+        this->tookWidth_ = this->splitter()->handleWidth();
+        QSplitterHandle::mousePressEvent(event);
+    }
+
+    void mouseMoveEvent(QMouseEvent *event) override
+    {
+        if (!event->modifiers().testFlag(Qt::AltModifier))
+        {
+            QSplitterHandle::mouseMoveEvent(event);
+            return;
+        }
+
+        // Up grows the room, down takes it away again
+        const int moved = this->tookAt_ - event->globalPosition().toPoint().y();
+        this->splitter()->setHandleWidth(
+            std::clamp(this->tookWidth_ + moved, LEAST_GAP, MOST_GAP));
+    }
+
+    void mouseDoubleClickEvent(QMouseEvent *event) override
+    {
+        // Back to a plain line
+        this->splitter()->setHandleWidth(LEAST_GAP);
+        QSplitterHandle::mouseDoubleClickEvent(event);
+    }
+
+private:
+    static constexpr int LEAST_GAP = 4;
+    static constexpr int MOST_GAP = 160;
+
+    int tookAt_ = 0;
+    int tookWidth_ = 0;
+};
+
+/// A splitter whose line can be taken hold of that way
+class GapSplitter : public QSplitter
+{
+public:
+    GapSplitter(Qt::Orientation orientation, QWidget *parent)
+        : QSplitter(orientation, parent)
+    {
+    }
+
+protected:
+    QSplitterHandle *createHandle() override
+    {
+        return new GapHandle(this->orientation(), this);
+    }
+};
+
 class PinnedNotebook : public SplitNotebook
 {
 public:
@@ -224,7 +293,7 @@ void Window::addLayout()
     this->pinnedNotebook_->hide();
     this->pinnedNotebook_->getOrAddSelectedPage()->installEventFilter(this);
 
-    this->splitter_ = new QSplitter(Qt::Vertical, this);
+    this->splitter_ = new GapSplitter(Qt::Vertical, this);
     this->splitter_->setChildrenCollapsible(false);
     this->splitter_->setHandleWidth(4);
     this->splitter_->addWidget(this->notebook_);
@@ -352,6 +421,20 @@ int Window::pinnedHeight() const
         return 0;
     }
     return this->splitter_->sizes().value(1);
+}
+
+int Window::pinnedGap() const
+{
+    return this->splitter_ == nullptr ? 0 : this->splitter_->handleWidth();
+}
+
+void Window::setPinnedGap(int gap)
+{
+    if (this->splitter_ == nullptr || gap <= 0)
+    {
+        return;
+    }
+    this->splitter_->setHandleWidth(std::clamp(gap, 4, 160));
 }
 
 void Window::refreshPinnedArea(int height)

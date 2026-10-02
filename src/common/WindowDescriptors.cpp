@@ -267,6 +267,7 @@ WindowLayout WindowLayout::loadFromFile(const QString &path)
                 window.pinned_ = loadNodes<ContainerNodeDescriptor>(pinned);
             }
             window.pinnedHeight_ = windowObj.value("pinnedHeight").toInt();
+            window.pinnedGap_ = windowObj.value("pinnedGap").toInt();
         }
 
         // Load emote popup position

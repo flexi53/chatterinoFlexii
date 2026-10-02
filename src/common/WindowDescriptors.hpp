@@ -125,6 +125,8 @@ struct WindowDescriptor {
     /// there while the tabs change, and how tall that part stands
     std::optional<NodeDescriptor> pinned_;
     int pinnedHeight_ = 0;
+    /// ...and the empty room between the tabs and that part
+    int pinnedGap_ = 0;
 };
 
 class WindowLayout

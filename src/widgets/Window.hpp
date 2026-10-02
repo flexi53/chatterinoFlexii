@@ -50,6 +50,10 @@ public:
     void refreshPinnedArea(int height = 0);
     /// How tall the lower part stands right now, 0 while it is empty
     int pinnedHeight() const;
+    /// ChattiFlexii: how much empty room stands between the tabs and the
+    /// lower part - dragged there with Alt on the line between them
+    int pinnedGap() const;
+    void setPinnedGap(int gap);
 
     pajlada::Signals::NoArgSignal closed;
 

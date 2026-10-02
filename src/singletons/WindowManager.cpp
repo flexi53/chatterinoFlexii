@@ -580,6 +580,7 @@ void WindowManager::save()
         if (window->hasPinnedSplits())
         {
             windowObj.insert("pinnedHeight", window->pinnedHeight());
+            windowObj.insert("pinnedGap", window->pinnedGap());
         }
 
         windowArr.append(windowObj);
@@ -1105,9 +1106,12 @@ void WindowManager::applyWindowLayout(const WindowLayout &layout)
 
         // Once it stands, the lower part is given back its height
         const int pinnedHeight = windowData.pinnedHeight_;
-        QTimer::singleShot(0, &window, [target = &window, pinnedHeight] {
-            target->refreshPinnedArea(pinnedHeight);
-        });
+        const int pinnedGap = windowData.pinnedGap_;
+        QTimer::singleShot(0, &window,
+                           [target = &window, pinnedHeight, pinnedGap] {
+                               target->setPinnedGap(pinnedGap);
+                               target->refreshPinnedArea(pinnedHeight);
+                           });
 
         // Set window state
         switch (windowData.state_)
