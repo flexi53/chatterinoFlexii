@@ -162,6 +162,12 @@ private:
 
     HeaderPicture *channelPicture_{};
     HeaderPicture *coverPicture_{};
+    /// ChattiFlexii: asks Twitch where the picture of @a gameId lies and
+    /// puts it beside the channel's own
+    void fetchCover(const QString &gameId);
+    void loadCover(const QString &gameId, const QString &url);
+    /// Lets the next look around try again after a try came to nothing
+    void forgetCover(const QString &gameId);
     ActivityGraph *activity_{};
     /// Whose picture and which cover are shown, or being loaded
     QString pictureLogin_;

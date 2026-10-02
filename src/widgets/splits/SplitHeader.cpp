@@ -18,6 +18,7 @@
 #include "controllers/splits/PinnedSplits.hpp"
 #include "controllers/twitch/ChannelNumbers.hpp"
 #include "providers/kick/KickChannel.hpp"
+#include "providers/twitch/api/Helix.hpp"
 #include "providers/twitch/ProfilePictures.hpp"
 #include "providers/twitch/TwitchAccount.hpp"
 #include "providers/twitch/TwitchChannel.hpp"
@@ -53,6 +54,7 @@
 #include <QDir>
 #include <QDrag>
 #include <QFileDialog>
+#include <QHash>
 #include <QHBoxLayout>
 #include <QInputDialog>
 #include <QMenu>
@@ -64,6 +66,29 @@
 #include <cmath>
 
 namespace {
+
+/// ChattiFlexii: how big the cover is asked for, and where each category's
+/// picture lies once Twitch has been asked - by category id, for as long
+/// as Chatti runs
+constexpr int COVER_WIDTH = 52;
+constexpr int COVER_HEIGHT = 72;
+
+QHash<QString, QString> &coverUrls()
+{
+    static QHash<QString, QString> urls;
+    return urls;
+}
+
+/// The address built from the id alone - right for most categories, and
+/// what is left when Twitch cannot be asked
+QString guessedCoverUrl(const QString &gameId)
+{
+    return QStringLiteral(
+               "https://static-cdn.jtvnw.net/ttv-boxart/%1-%2x%3.jpg")
+        .arg(gameId)
+        .arg(COVER_WIDTH)
+        .arg(COVER_HEIGHT);
+}
 
 using namespace chatterino;
 
@@ -1431,22 +1456,7 @@ void SplitHeader::updatePictures()
         this->coverPicture_->setPicture({});
         if (!gameId.isEmpty())
         {
-            NetworkRequest(
-                QStringLiteral(
-                    "https://static-cdn.jtvnw.net/ttv-boxart/%1-52x72.jpg")
-                    .arg(gameId),
-                NetworkRequestType::Get)
-                .cache()
-                .caller(this)
-                .onSuccess([this, gameId](const NetworkResult &result) {
-                    QPixmap cover;
-                    if (gameId == this->coverGameId_ &&
-                        cover.loadFromData(result.getData()))
-                    {
-                        this->coverPicture_->setPicture(cover);
-                    }
-                })
-                .execute();
+            this->fetchCover(gameId);
         }
     }
     this->coverPicture_->setToolTip(game);
@@ -1566,6 +1576,76 @@ void SplitHeader::updateHypeButton()
     }
 
     this->fillButtonGrid();
+}
+
+void SplitHeader::fetchCover(const QString &gameId)
+{
+    // ChattiFlexii: where the picture of this category lies, Twitch says
+    // itself - the address used to be built by hand from the id, which is
+    // right for most of them and wrong for the rest. What Twitch answers
+    // is kept, so the many splits on the same game ask only once.
+    const auto known = coverUrls().constFind(gameId);
+    if (known != coverUrls().constEnd())
+    {
+        this->loadCover(gameId, *known);
+        return;
+    }
+
+    getHelix()->getGameById(
+        gameId,
+        [this, gameId](const HelixGame &game) {
+            auto url = game.boxArtUrl;
+            url.replace("{width}", QString::number(COVER_WIDTH));
+            url.replace("{height}", QString::number(COVER_HEIGHT));
+            if (url.isEmpty())
+            {
+                url = guessedCoverUrl(gameId);
+            }
+            coverUrls().insert(gameId, url);
+            this->loadCover(gameId, url);
+        },
+        [this, gameId] {
+            // Without an account, or when Twitch says nothing, the address
+            // built from the id is still better than an empty space
+            this->loadCover(gameId, guessedCoverUrl(gameId));
+        });
+}
+
+void SplitHeader::loadCover(const QString &gameId, const QString &url)
+{
+    NetworkRequest(url, NetworkRequestType::Get)
+        .cache()
+        .caller(this)
+        .onSuccess([this, gameId](const NetworkResult &result) {
+            QPixmap cover;
+            if (gameId != this->coverGameId_)
+            {
+                return;
+            }
+            if (cover.loadFromData(result.getData()))
+            {
+                this->coverPicture_->setPicture(cover);
+            }
+            else
+            {
+                this->forgetCover(gameId);
+            }
+        })
+        .onError([this, gameId](const auto &) {
+            // ChattiFlexii: one failed try used to mean no picture until
+            // the streamer changed category - forgetting which one is
+            // being shown lets the next look around try again
+            this->forgetCover(gameId);
+        })
+        .execute();
+}
+
+void SplitHeader::forgetCover(const QString &gameId)
+{
+    if (this->coverGameId_ == gameId)
+    {
+        this->coverGameId_.clear();
+    }
 }
 
 void SplitHeader::updateChannelText()
