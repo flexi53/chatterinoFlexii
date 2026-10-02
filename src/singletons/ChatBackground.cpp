@@ -12,8 +12,13 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QPainter>
 #include <QPixmap>
+#include <QSet>
+#include <QStringList>
+#include <QWidget>
 
 #include <algorithm>
 
@@ -48,6 +53,29 @@ QString ourDirectory()
         .filePath(u"Backgrounds"_s);
 }
 
+/// Which places the picture was switched off in
+QSet<QString> switchedOff()
+{
+    const auto value = getSettings()->chatBackgroundOffChannels.getValue();
+    QSet<QString> places;
+    for (const auto &place : value.split(',', Qt::SkipEmptyParts))
+    {
+        places.insert(place);
+    }
+    return places;
+}
+
+/// What each place picked for itself, by key
+QJsonObject ownPictures()
+{
+    const auto value = getSettings()->chatBackgroundPerChannel.getValue();
+    if (value.isEmpty())
+    {
+        return {};
+    }
+    return QJsonDocument::fromJson(value.toUtf8()).object();
+}
+
 QPixmap fitted(const QString &file, Fit fit, QSize over)
 {
     QPixmap source(file);
@@ -75,18 +103,106 @@ QPixmap fitted(const QString &file, Fit fit, QSize over)
 
 bool isSet()
 {
-    return !getSettings()->chatBackground.getValue().isEmpty();
+    return !getSettings()->chatBackground.getValue().isEmpty() ||
+           !ownPictures().isEmpty();
 }
 
-void forget()
+bool shownIn(const QString &key)
 {
-    kept() = {};
+    if (key.isEmpty())
+    {
+        return true;
+    }
+    return !switchedOff().contains(key.toLower());
 }
 
-void paint(QPainter &painter, const QRect &area, const QColor &chatColor)
+void setShownIn(const QString &key, bool shown)
 {
-    const auto file = getSettings()->chatBackground.getValue();
-    if (file.isEmpty() || area.isEmpty())
+    if (key.isEmpty())
+    {
+        return;
+    }
+
+    auto places = switchedOff();
+    if (shown)
+    {
+        places.remove(key.toLower());
+    }
+    else
+    {
+        places.insert(key.toLower());
+    }
+
+    auto names = QStringList(places.begin(), places.end());
+    names.sort();
+    getSettings()->chatBackgroundOffChannels.setValue(names.join(','));
+}
+
+QString fileFor(const QString &key)
+{
+    if (!shownIn(key))
+    {
+        return {};
+    }
+
+    const auto own = ownPictures().value(key.toLower()).toString();
+    if (!own.isEmpty())
+    {
+        return own;
+    }
+    return getSettings()->chatBackground.getValue();
+}
+
+void setFileFor(const QString &key, const QString &file)
+{
+    if (key.isEmpty())
+    {
+        return;
+    }
+
+    auto own = ownPictures();
+    if (file.isEmpty())
+    {
+        own.remove(key.toLower());
+    }
+    else
+    {
+        own[key.toLower()] = file;
+    }
+
+    getSettings()->chatBackgroundPerChannel.setValue(
+        own.isEmpty() ? QString()
+                      : QString::fromUtf8(
+                            QJsonDocument(own).toJson(QJsonDocument::Compact)));
+    tidy();
+}
+
+Place placeOf(const QWidget *widget, QPoint inside)
+{
+    if (widget == nullptr)
+    {
+        return {};
+    }
+
+    // ChattiFlexii: one picture over the whole window means every chat
+    // shows its own cut-out of it, and the room between them carries the
+    // piece that belongs there - the window reads as one picture with the
+    // chats laid on it
+    if (getSettings()->chatBackgroundSpan)
+    {
+        const auto *window = widget->window();
+        if (window != nullptr)
+        {
+            return {window->size(), widget->mapTo(window, inside)};
+        }
+    }
+    return {widget->size(), inside};
+}
+
+void paint(QPainter &painter, const QRect &area, const Place &place,
+           const QColor &veilColor, const QString &file)
+{
+    if (file.isEmpty() || area.isEmpty() || place.whole.isEmpty())
     {
         return;
     }
@@ -96,12 +212,12 @@ void paint(QPainter &painter, const QRect &area, const QColor &chatColor)
     const auto fit = static_cast<Fit>(wanted);
 
     auto &held = kept();
-    if (held.from != file || held.fit != wanted || held.over != area.size())
+    if (held.from != file || held.fit != wanted || held.over != place.whole)
     {
         held.from = file;
         held.fit = wanted;
-        held.over = area.size();
-        held.picture = fitted(file, fit, area.size());
+        held.over = place.whole;
+        held.picture = fitted(file, fit, place.whole);
     }
 
     if (held.picture.isNull())
@@ -112,16 +228,19 @@ void paint(QPainter &painter, const QRect &area, const QColor &chatColor)
     painter.save();
     painter.setClipRect(area);
 
+    // What shows here is the piece of the picture this spot stands on
+    const QRect over(area.topLeft() - place.at, place.whole);
+
     if (fit == Fit::Tile)
     {
-        painter.drawTiledPixmap(area, held.picture);
+        painter.drawTiledPixmap(over, held.picture);
     }
     else
     {
-        // Filled, the picture is bigger than the chat - it is the middle of
+        // Filled, the picture is bigger than the room - it is the middle of
         // it that shows
         QRect where(QPoint(), held.picture.size());
-        where.moveCenter(area.center());
+        where.moveCenter(over.center());
         painter.drawPixmap(where, held.picture);
     }
 
@@ -132,12 +251,17 @@ void paint(QPainter &painter, const QRect &area, const QColor &chatColor)
         std::clamp(getSettings()->chatBackgroundVeil.getValue(), 0, 100);
     if (veil > 0)
     {
-        QColor over = chatColor;
-        over.setAlpha(std::clamp(veil * 255 / 100, 0, 255));
-        painter.fillRect(area, over);
+        QColor veiled = veilColor;
+        veiled.setAlpha(std::clamp(veil * 255 / 100, 0, 255));
+        painter.fillRect(area, veiled);
     }
 
     painter.restore();
+}
+
+void forget()
+{
+    kept() = {};
 }
 
 QString adopt(const QString &file)
@@ -153,16 +277,11 @@ QString adopt(const QString &file)
         return {};
     }
 
-    // The one before it goes - only one picture is ever used, and the name
-    // carries the moment so a new file is seen as a new one
-    for (const auto &old : where.entryList({u"chat-*"_s}, QDir::Files))
-    {
-        where.remove(old);
-    }
-
     const QFileInfo what(file);
     const QString suffix =
         what.suffix().isEmpty() ? u"png"_s : what.suffix().toLower();
+    // The name carries the moment, so a picture chosen anew counts as a new
+    // one even where the file it came from was called the same
     const QString to = where.filePath(
         u"chat-%1.%2"_s.arg(QDateTime::currentMSecsSinceEpoch()).arg(suffix));
 
@@ -171,6 +290,30 @@ QString adopt(const QString &file)
         return {};
     }
     return to;
+}
+
+void tidy()
+{
+    QSet<QString> inUse;
+    const auto general = getSettings()->chatBackground.getValue();
+    if (!general.isEmpty())
+    {
+        inUse.insert(QFileInfo(general).fileName());
+    }
+    const auto own = ownPictures();
+    for (auto it = own.begin(); it != own.end(); ++it)
+    {
+        inUse.insert(QFileInfo(it.value().toString()).fileName());
+    }
+
+    QDir where(ourDirectory());
+    for (const auto &there : where.entryList({u"chat-*"_s}, QDir::Files))
+    {
+        if (!inUse.contains(there))
+        {
+            where.remove(there);
+        }
+    }
 }
 
 }  // namespace chatterino::chatbackground

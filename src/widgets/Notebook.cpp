@@ -9,6 +9,7 @@
 #include "common/QLogging.hpp"
 #include "controllers/hotkeys/HotkeyCategory.hpp"
 #include "controllers/hotkeys/HotkeyController.hpp"
+#include "singletons/ChatBackground.hpp"
 #include "singletons/Paths.hpp"
 #include "singletons/Resources.hpp"
 #include "singletons/Settings.hpp"
@@ -30,7 +31,6 @@
 #include "widgets/Window.hpp"
 
 #include <boost/foreach.hpp>
-#include <QLinearGradient>
 #include <QActionGroup>
 #include <QColorDialog>
 #include <QDebug>
@@ -43,6 +43,7 @@
 #include <QInputDialog>
 #include <QLabel>
 #include <QLayout>
+#include <QLinearGradient>
 #include <QList>
 #include <QListWidget>
 #include <QPainter>
@@ -1357,6 +1358,16 @@ void Notebook::paintEvent(QPaintEvent *event)
         else if (picked.isValid())
         {
             painter.fillRect(strip, picked);
+        }
+
+        // ChattiFlexii: and the picture over it, where the strip is meant
+        // to carry it too - Aussehen -> Chat
+        if (barSettings->chatBackgroundBehindTabs)
+        {
+            chatbackground::paint(
+                painter, strip, chatbackground::placeOf(this, strip.topLeft()),
+                this->theme->splits.background,
+                barSettings->chatBackground.getValue());
         }
     }
     if (this->tabLocation_ == NotebookTabLocation::Top ||

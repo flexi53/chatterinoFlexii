@@ -86,7 +86,8 @@ protected:
         // so a window reads as one whether the gap sits inside a tab or
         // over the part kept at the bottom
         QPainter painter(this);
-        SplitContainer::fillGap(painter, QRectF(this->rect()), getTheme());
+        SplitContainer::fillGap(painter, QRectF(this->rect()), getTheme(),
+                                this);
     }
 
     void mousePressEvent(QMouseEvent *event) override

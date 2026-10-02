@@ -10,18 +10,19 @@
 #include "common/network/NetworkResult.hpp"
 #include "controllers/accounts/AccountController.hpp"
 #include "controllers/banners/BannerChannels.hpp"
-#include "controllers/splits/PinnedSplits.hpp"
 #include "controllers/commands/CommandController.hpp"
 #include "controllers/hotkeys/Hotkey.hpp"
 #include "controllers/hotkeys/HotkeyCategory.hpp"
 #include "controllers/hotkeys/HotkeyController.hpp"
-#include "controllers/twitch/ChannelNumbers.hpp"
 #include "controllers/notifications/NotificationController.hpp"
+#include "controllers/splits/PinnedSplits.hpp"
+#include "controllers/twitch/ChannelNumbers.hpp"
 #include "providers/kick/KickChannel.hpp"
 #include "providers/twitch/ProfilePictures.hpp"
 #include "providers/twitch/TwitchAccount.hpp"
 #include "providers/twitch/TwitchChannel.hpp"
 #include "providers/twitch/TwitchIrcServer.hpp"
+#include "singletons/ChatBackground.hpp"
 #include "singletons/Fonts.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/StreamerMode.hpp"
@@ -38,24 +39,27 @@
 #include "widgets/helper/ChannelView.hpp"
 #include "widgets/helper/CommonTexts.hpp"
 #include "widgets/Label.hpp"
-#include "widgets/splits/PinnedMessageWidget.hpp"
-#include "widgets/splits/HypeTrainBannerWidget.hpp"
-#include "widgets/splits/VoteBannerWidget.hpp"
-#include "widgets/Window.hpp"
-#include "widgets/splits/Split.hpp"
-#include "widgets/splits/SplitContainer.hpp"
 #include "widgets/Notebook.hpp"
 #include "widgets/splits/HeaderParts.hpp"
+#include "widgets/splits/HypeTrainBannerWidget.hpp"
+#include "widgets/splits/PinnedMessageWidget.hpp"
+#include "widgets/splits/Split.hpp"
+#include "widgets/splits/SplitContainer.hpp"
 #include "widgets/splits/SplitHeaderExtras.hpp"
+#include "widgets/splits/VoteBannerWidget.hpp"
 #include "widgets/TooltipWidget.hpp"
+#include "widgets/Window.hpp"
 
+#include <QDir>
 #include <QDrag>
+#include <QFileDialog>
 #include <QHBoxLayout>
-#include <QVBoxLayout>
 #include <QInputDialog>
 #include <QMenu>
+#include <QMessageBox>
 #include <QMimeData>
 #include <QPainter>
+#include <QVBoxLayout>
 
 #include <cmath>
 
@@ -872,6 +876,76 @@ std::unique_ptr<QMenu> SplitHeader::createMainMenu()
                          });
 
         moreMenu->addAction(action);
+    }
+
+    {
+        // ChattiFlexii: the background picture, for this chat alone - and a
+        // picture of its own where the general one does not suit it
+        const auto place = [this] {
+            return pinnedsplits::nameOf(this->split_->getChannel());
+        };
+
+        auto *shown = new QAction(this);
+        shown->setText("Hintergrundbild hier zeigen");
+        shown->setCheckable(true);
+        QObject::connect(moreMenu, &QMenu::aboutToShow, this, [shown, place] {
+            const auto key = place();
+            shown->setVisible(!key.isEmpty());
+            shown->setChecked(chatbackground::shownIn(key));
+        });
+        QObject::connect(shown, &QAction::triggered, this,
+                         [this, place](bool on) {
+                             chatbackground::setShownIn(place(), on);
+                             chatbackground::forget();
+                             this->split_->update();
+                         });
+        moreMenu->addAction(shown);
+
+        auto *own = new QAction(this);
+        own->setText("Eigenes Hintergrundbild …");
+        QObject::connect(moreMenu, &QMenu::aboutToShow, this, [own, place] {
+            own->setVisible(!place().isEmpty());
+        });
+        QObject::connect(own, &QAction::triggered, this, [this, place] {
+            const auto key = place();
+            if (key.isEmpty())
+            {
+                return;
+            }
+            const auto file = QFileDialog::getOpenFileName(
+                this, "Bild für diesen Chat", QDir::homePath(),
+                "Bilder (*.png *.jpg *.jpeg *.webp *.bmp *.gif)");
+            if (file.isEmpty())
+            {
+                return;
+            }
+            const auto ours = chatbackground::adopt(file);
+            if (ours.isEmpty())
+            {
+                QMessageBox::warning(
+                    this, "Bild für diesen Chat",
+                    "Diese Datei lässt sich nicht als Bild lesen.");
+                return;
+            }
+            chatbackground::setFileFor(key, ours);
+            chatbackground::forget();
+            this->split_->update();
+        });
+        moreMenu->addAction(own);
+
+        auto *general = new QAction(this);
+        general->setText("Wieder das allgemeine Bild");
+        QObject::connect(moreMenu, &QMenu::aboutToShow, this, [general, place] {
+            const auto key = place();
+            general->setVisible(!key.isEmpty() &&
+                                !chatbackground::fileFor(key).isEmpty());
+        });
+        QObject::connect(general, &QAction::triggered, this, [this, place] {
+            chatbackground::setFileFor(place(), QString());
+            chatbackground::forget();
+            this->split_->update();
+        });
+        moreMenu->addAction(general);
     }
 
     {

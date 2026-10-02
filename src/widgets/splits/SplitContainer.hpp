@@ -265,7 +265,10 @@ public:
     /// under the tabs is filled - the same colour, or the same gradient
     /// where one is set, so the room reads as a piece of the window showing
     /// through. Aussehen -> Splits can put a colour of its own there.
-    static void fillGap(QPainter &painter, const QRectF &where, Theme *theme);
+    /// @a on is the widget being painted, so a picture spread over the
+    /// window shows the piece that belongs at this spot
+    static void fillGap(QPainter &painter, const QRectF &where, Theme *theme,
+                        const QWidget *on);
 
 protected:
     void paintEvent(QPaintEvent *event) override;

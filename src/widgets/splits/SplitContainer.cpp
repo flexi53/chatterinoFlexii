@@ -9,6 +9,7 @@
 #include "common/QLogging.hpp"
 #include "common/WindowDescriptors.hpp"
 #include "debug/AssertInGuiThread.hpp"
+#include "singletons/ChatBackground.hpp"
 #include "singletons/Fonts.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
@@ -25,8 +26,8 @@
 #include <QApplication>
 #include <QJsonArray>
 #include <QJsonObject>
-#include <QMimeData>
 #include <QLinearGradient>
+#include <QMimeData>
 #include <QPainter>
 #include <QPainterPath>
 
@@ -692,7 +693,7 @@ void SplitContainer::paintGaps(Node *node, QPainter *painter)
 
                 if ((isVertical ? gap.height() : gap.width()) > 1)
                 {
-                    SplitContainer::fillGap(*painter, gap, this->theme);
+                    SplitContainer::fillGap(*painter, gap, this->theme, this);
                 }
             }
 
@@ -1400,7 +1401,7 @@ qreal SplitContainer::Node::getSize(bool isVertical)
 }
 
 void SplitContainer::fillGap(QPainter &painter, const QRectF &where,
-                             Theme *theme)
+                             Theme *theme, const QWidget *on)
 {
     auto *settings = getSettings();
 
@@ -1409,29 +1410,40 @@ void SplitContainer::fillGap(QPainter &painter, const QRectF &where,
         const QColor chosen(settings->gapColor.getValue());
         painter.fillRect(where,
                          chosen.isValid() ? chosen : theme->window.background);
-        return;
+    }
+    else
+    {
+        // ChattiFlexii: otherwise the room is filled the way the strip
+        // under the tabs is - a see-through colour there lets the window
+        // show through, so the same has to lie underneath here
+        painter.fillRect(where, theme->window.background);
+
+        const QColor top(settings->tabBarGradientTopColor.getValue());
+        const QColor bottom(settings->tabBarGradientBottomColor.getValue());
+        const QColor picked(settings->tabBarBackgroundColor.getValue());
+
+        if (settings->tabBarGradient && top.isValid() && bottom.isValid())
+        {
+            QLinearGradient gradient(where.topLeft(), where.bottomLeft());
+            gradient.setColorAt(0.0, top);
+            gradient.setColorAt(1.0, bottom);
+            painter.fillRect(where, gradient);
+        }
+        else if (picked.isValid())
+        {
+            painter.fillRect(where, picked);
+        }
     }
 
-    // ChattiFlexii: otherwise the room is filled the way the strip under
-    // the tabs is - a see-through colour there lets the window show
-    // through, so the same has to lie underneath here
-    painter.fillRect(where, theme->window.background);
-
-    const QColor top(settings->tabBarGradientTopColor.getValue());
-    const QColor bottom(settings->tabBarGradientBottomColor.getValue());
-    if (settings->tabBarGradient && top.isValid() && bottom.isValid())
+    // ChattiFlexii: and over whichever of those, the picture, where the
+    // room is meant to carry it too - Aussehen -> Chat. A colour chosen
+    // for the room is what lies under it then.
+    if (settings->chatBackgroundInGaps)
     {
-        QLinearGradient gradient(where.topLeft(), where.bottomLeft());
-        gradient.setColorAt(0.0, top);
-        gradient.setColorAt(1.0, bottom);
-        painter.fillRect(where, gradient);
-        return;
-    }
-
-    const QColor picked(settings->tabBarBackgroundColor.getValue());
-    if (picked.isValid())
-    {
-        painter.fillRect(where, picked);
+        const auto area = where.toRect();
+        chatbackground::paint(
+            painter, area, chatbackground::placeOf(on, area.topLeft()),
+            theme->splits.background, settings->chatBackground.getValue());
     }
 }
 

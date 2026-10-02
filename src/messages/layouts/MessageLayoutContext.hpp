@@ -46,7 +46,10 @@ struct MessageColors {
     QColor focusedLastMessageLine;
     QColor unfocusedLastMessageLine;
 
-    void applyTheme(Theme *theme, bool isOverlay, int backgroundOpacity);
+    /// @a hasPicture says whether a picture lies under this chat - its
+    /// rows then let it through, see Aussehen -> Chat
+    void applyTheme(Theme *theme, bool isOverlay, int backgroundOpacity,
+                    bool hasPicture = false);
 };
 
 // TODO: Explore if we can let settings own this

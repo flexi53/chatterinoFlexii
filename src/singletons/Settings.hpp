@@ -350,6 +350,22 @@ public:
     /// How far the rows of the messages let the picture through, in percent
     IntSetting chatBackgroundThrough = {
         "/appearance/messages/backgroundThrough", 70};
+    /// One picture over the whole window instead of one per chat - every
+    /// chat then shows its own cut-out of it
+    BoolSetting chatBackgroundSpan = {"/appearance/messages/backgroundSpan",
+                                      false};
+    /// The picture also fills the empty room between two chats
+    BoolSetting chatBackgroundInGaps = {"/appearance/messages/backgroundGaps",
+                                        false};
+    /// ... and the strip the tabs sit on
+    BoolSetting chatBackgroundBehindTabs = {
+        "/appearance/messages/backgroundTabs", false};
+    /// Where the picture was switched off, by the names pinnedsplits uses
+    QStringSetting chatBackgroundOffChannels = {
+        "/appearance/messages/backgroundOff", ""};
+    /// Which place picked which picture for itself, as JSON
+    QStringSetting chatBackgroundPerChannel = {
+        "/appearance/messages/backgroundOwn", ""};
     /// ChattiFlexii: the empty room between two chats, and over the part
     /// kept at the bottom, carries a colour of its own instead of the one
     /// the tabs sit on

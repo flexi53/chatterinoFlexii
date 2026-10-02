@@ -992,8 +992,40 @@ void LookPage::buildChatTab(GeneralPageView &layout)
         ->addKeywords({"hintergrund", "bild", "durchsichtig"})
         ->addTo(layout);
 
+    SettingWidget::checkbox("Ein Bild über das ganze Fenster",
+                            s.chatBackgroundSpan)
+        ->setTooltip("Ohne den Haken trägt jeder Chat das ganze Bild für "
+                     "sich. Mit ihm liegt ein Bild über dem Fenster und "
+                     "jeder Chat zeigt den Ausschnitt, auf dem er steht.")
+        ->addKeywords({"hintergrund", "bild", "fenster", "spannen"})
+        ->addTo(layout);
+
+    SettingWidget::checkbox("Auch im Raum zwischen den Chats",
+                            s.chatBackgroundInGaps)
+        ->setTooltip("Der leere Raum, den du mit ⌥ aufziehst, trägt dann "
+                     "auch das Bild statt der Farbe.")
+        ->addKeywords({"hintergrund", "bild", "zwischenraum", "lücke"})
+        ->addTo(layout);
+
+    SettingWidget::checkbox("Auch hinter der Tab-Leiste",
+                            s.chatBackgroundBehindTabs)
+        ->addKeywords({"hintergrund", "bild", "tabs", "leiste"})
+        ->addTo(layout);
+
+    layout.addDescription(
+        "Die beiden letzten sehen zusammen mit „ein Bild über das ganze "
+        "Fenster“ richtig aus - sonst zeigen Chat, Zwischenraum und Leiste "
+        "jeweils ein eigenes, unterschiedlich großes Bild. Für einen "
+        "einzelnen Chat schaltest du das Bild im Menü des Splits aus, und "
+        "dort gibst du ihm auch ein eigenes.");
+
     addStandardButton(layout, "Kein Bild", [&s] {
         s.chatBackground.setValue("");
+        s.chatBackgroundSpan.setValue(false);
+        s.chatBackgroundInGaps.setValue(false);
+        s.chatBackgroundBehindTabs.setValue(false);
+        s.chatBackgroundOffChannels.setValue("");
+        s.chatBackgroundPerChannel.setValue("");
         s.chatBackgroundFit.setValue(s.chatBackgroundFit.getDefaultValue());
         s.chatBackgroundVeil.setValue(s.chatBackgroundVeil.getDefaultValue());
         s.chatBackgroundThrough.setValue(

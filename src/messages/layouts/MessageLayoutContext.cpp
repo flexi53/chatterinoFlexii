@@ -13,7 +13,7 @@
 namespace chatterino {
 
 void MessageColors::applyTheme(Theme *theme, bool isOverlay,
-                               int backgroundOpacity)
+                               int backgroundOpacity, bool hasPicture)
 {
     auto applyColors = [this](const auto &src) {
         this->regularBg = src.backgrounds.regular;
@@ -47,7 +47,7 @@ void MessageColors::applyTheme(Theme *theme, bool isOverlay,
         // ChattiFlexii: lies a picture under the chat, the rows let it
         // through as far as Aussehen -> Chat says. Solid rows would cover
         // it everywhere a message stands, which is most of the chat.
-        if (!getSettings()->chatBackground.getValue().isEmpty())
+        if (hasPicture)
         {
             const int through = std::clamp(
                 getSettings()->chatBackgroundThrough.getValue(), 0, 100);

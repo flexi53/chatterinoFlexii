@@ -13,6 +13,7 @@
 #include "controllers/filters/FilterSet.hpp"
 #include "controllers/people/WatchedPeople.hpp"
 #include "controllers/saved/SavedMessages.hpp"
+#include "controllers/splits/PinnedSplits.hpp"
 #include "debug/Benchmark.hpp"
 #include "messages/Emote.hpp"
 #include "messages/Image.hpp"
@@ -34,16 +35,16 @@
 #include "providers/twitch/TwitchAccount.hpp"
 #include "providers/twitch/TwitchChannel.hpp"
 #include "providers/twitch/TwitchIrcServer.hpp"
-#include "singletons/Resources.hpp"
 #include "singletons/ChatBackground.hpp"
+#include "singletons/Resources.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/StreamerMode.hpp"
 #include "singletons/Theme.hpp"
 #include "singletons/WindowManager.hpp"
+#include "util/Advanced.hpp"
 #include "util/Clipboard.hpp"
 #include "util/DistanceBetweenPoints.hpp"
 #include "util/Helpers.hpp"
-#include "util/Advanced.hpp"
 #include "util/IncognitoBrowser.hpp"
 #include "util/MentionFlash.hpp"
 #include "util/QMagicEnum.hpp"
@@ -435,8 +436,10 @@ ChannelView::ChannelView(InternalCtor /*tag*/, QWidget *parent, Split *split,
                          this->queueUpdate();
                      });
 
-    this->messageColors_.applyTheme(getTheme(), this->isOverlay_,
-                                    getSettings()->overlayBackgroundOpacity);
+    this->messageColors_.applyTheme(
+        getTheme(), this->isOverlay_, getSettings()->overlayBackgroundOpacity,
+        !chatbackground::fileFor(pinnedsplits::nameOf(this->channel_))
+             .isEmpty());
     this->messagePreferences_.connectSettings(getSettings(),
                                               this->signalHolder_);
 
@@ -471,6 +474,12 @@ ChannelView::ChannelView(InternalCtor /*tag*/, QWidget *parent, Split *split,
                                               this->signalHolder_, false);
     getSettings()->chatBackgroundThrough.connect(backgroundChanged,
                                                  this->signalHolder_, false);
+    getSettings()->chatBackgroundSpan.connect(backgroundChanged,
+                                              this->signalHolder_, false);
+    getSettings()->chatBackgroundOffChannels.connect(
+        backgroundChanged, this->signalHolder_, false);
+    getSettings()->chatBackgroundPerChannel.connect(backgroundChanged,
+                                                    this->signalHolder_, false);
     // Role stripes take the colours of the badge highlights
     this->signalHolder_.managedConnect(
         getSettings()->highlightedBadges.delayedItemsChanged, [this] {
@@ -705,8 +714,10 @@ void ChannelView::themeChangedEvent()
     BaseWidget::themeChangedEvent();
 
     this->setupHighlightAnimationColors();
-    this->messageColors_.applyTheme(getTheme(), this->isOverlay_,
-                                    getSettings()->overlayBackgroundOpacity);
+    this->messageColors_.applyTheme(
+        getTheme(), this->isOverlay_, getSettings()->overlayBackgroundOpacity,
+        !chatbackground::fileFor(pinnedsplits::nameOf(this->channel_))
+             .isEmpty());
     this->invalidateBuffers();
 }
 
@@ -1742,12 +1753,14 @@ void ChannelView::paintEvent(QPaintEvent *event)
 
     painter.fillRect(this->rect(), this->messageColors_.channelBackground);
 
-    // ChattiFlexii: and over that the picture, if one is set - the overlay
-    // window keeps its see-through background
+    // ChattiFlexii: and over that the picture, if one is set for this
+    // chat - the overlay window keeps its see-through background
     if (!this->isOverlay_)
     {
-        chatbackground::paint(painter, this->rect(),
-                              this->messageColors_.channelBackground);
+        chatbackground::paint(
+            painter, this->rect(), chatbackground::placeOf(this),
+            this->messageColors_.channelBackground,
+            chatbackground::fileFor(pinnedsplits::nameOf(this->channel_)));
     }
 
     // draw messages
