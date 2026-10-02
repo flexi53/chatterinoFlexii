@@ -15,13 +15,21 @@ namespace chatterino {
 
 namespace {
 
+// ChattiFlexii: on macOS a plain window of its own is put on a desktop of
+// its own as soon as Chatti runs full screen - the usercard then takes the
+// whole screen away instead of lying on the chat. A window that belongs to
+// another one is allowed to stay with it, which is what the mod windows do
+// already: they all go through BasePopup, which asks for this everywhere.
 constexpr FlagsEnum<BaseWindow::Flags> POPUP_FLAGS{
-#ifdef Q_OS_LINUX
+#if defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
     BaseWindow::Dialog,
 #endif
     BaseWindow::EnableCustomFrame,
 };
 constexpr FlagsEnum<BaseWindow::Flags> POPUP_FLAGS_CLOSE_AUTOMATICALLY{
+#ifdef Q_OS_MACOS
+    BaseWindow::Dialog,
+#endif
     BaseWindow::EnableCustomFrame,
     BaseWindow::Frameless,
     BaseWindow::FramelessDraggable,
