@@ -45,6 +45,10 @@ public:
     /// ChattiFlexii: builds the lower part from the list that holds for
     /// every window - see controllers/splits/PinnedSplits.hpp
     void applyPinnedSplits();
+    /// ChattiFlexii: writes down how the chats at the bottom stand right
+    /// now - their filters, their curve, moderation mode. They belong to no
+    /// window's layout, so nothing else would keep it.
+    void savePinnedSplits();
     /// Shows or hides the lower part, depending on whether anything is in
     /// it, and gives it @a height pixels where one is asked for
     void refreshPinnedArea(int height = 0);

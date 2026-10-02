@@ -4,10 +4,13 @@
 
 #pragma once
 
+#include <QList>
 #include <QString>
 #include <QStringList>
+#include <QUuid>
 
 #include <memory>
+#include <optional>
 
 namespace chatterino {
 
@@ -29,6 +32,23 @@ void setHeld(const QStringList &chats);
 QString nameOf(const ChannelPtr &channel);
 /// How an entry reads on the settings page
 QString label(const QString &entry);
+
+/// ChattiFlexii: everything about a held chat that is not its name. The
+/// list is one for all windows, so this has to travel with it - a held
+/// chat is never written into a window's own layout, and without this its
+/// filters and its curve would be forgotten at every restart.
+struct State {
+    bool moderationMode = false;
+    bool showActivity = true;
+    QList<QUuid> filters;
+    std::optional<bool> checkSpelling;
+};
+
+/// How @a entry was left - the plain state where nothing was kept for it
+State stateOf(const QString &entry);
+void setStateOf(const QString &entry, const State &state);
+/// Drops what was kept for chats that are no longer held
+void forgetUnheld();
 
 bool contains(const QString &entry);
 void add(const QString &entry);

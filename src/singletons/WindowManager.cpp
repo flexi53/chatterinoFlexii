@@ -581,6 +581,7 @@ void WindowManager::save()
         {
             windowObj.insert("pinnedHeight", window->pinnedHeight());
             windowObj.insert("pinnedGap", window->pinnedGap());
+            window->savePinnedSplits();
         }
 
         windowArr.append(windowObj);

@@ -307,6 +307,9 @@ public:
     /// ChattiFlexii: the chats held at the bottom of every window, under
     /// the tabs - see controllers/splits/PinnedSplits.hpp
     QStringSetting pinnedSplits = {"/appearance/splits/pinned", ""};
+    /// ChattiFlexii: what else belongs to each held chat - filters, the
+    /// curve, moderation mode - as JSON, by the name in the list above
+    QStringSetting pinnedSplitsState = {"/appearance/splits/pinnedState", ""};
     /// ChattiFlexii: a line around the banners, so the card is seen as one
     /// even where it carries the colour of the title bar
     BoolSetting bannerBorder = {"/appearance/banners/border", true};

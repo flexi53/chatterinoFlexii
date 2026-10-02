@@ -406,12 +406,52 @@ void Window::applyPinnedSplits()
             descriptor.type_ = entry;
         }
 
+        // What was left of this chat last time comes back with it - the
+        // held chats stand in no window's layout, so this is the only
+        // place their filters and their curve are kept
+        const auto state = pinnedsplits::stateOf(entry);
+
         auto *split = new Split(container);
         split->setChannel(WindowManager::decodeChannel(descriptor));
+        split->setModerationMode(state.moderationMode);
+        split->setShowActivity(state.showActivity);
+        split->setFilters(state.filters);
+        split->setCheckSpellingOverride(state.checkSpelling);
         container->insertSplit(split, {});
     }
 
     this->refreshPinnedArea();
+}
+
+void Window::savePinnedSplits()
+{
+    if (this->pinnedNotebook_ == nullptr)
+    {
+        return;
+    }
+    auto *container =
+        dynamic_cast<SplitContainer *>(this->pinnedNotebook_->getPageAt(0));
+    if (container == nullptr)
+    {
+        return;
+    }
+
+    for (auto *split : container->getSplits())
+    {
+        const auto entry = pinnedsplits::nameOf(split->getChannel());
+        if (entry.isEmpty())
+        {
+            continue;
+        }
+        pinnedsplits::setStateOf(
+            entry, {
+                       .moderationMode = split->getModerationMode(),
+                       .showActivity = split->getShowActivity(),
+                       .filters = split->getFilters(),
+                       .checkSpelling = split->checkSpellingOverride(),
+                   });
+    }
+    pinnedsplits::forgetUnheld();
 }
 
 bool Window::hasPinnedSplits() const

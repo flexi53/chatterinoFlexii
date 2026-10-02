@@ -1542,6 +1542,10 @@ void Split::setFilters(const QList<QUuid> ids)
 {
     this->view_->setFilters(ids);
     this->header_->updateChannelText();
+
+    // ChattiFlexii: queue up save because the filters are kept with the
+    // split - nothing else was writing them down when they changed
+    getApp()->getWindows()->queueSave();
 }
 
 QList<QUuid> Split::getFilters() const

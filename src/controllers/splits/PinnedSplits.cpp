@@ -7,7 +7,34 @@
 #include "common/Channel.hpp"
 #include "singletons/Settings.hpp"
 
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+
 namespace chatterino::pinnedsplits {
+
+namespace {
+
+/// What was kept for every held chat, by name
+QJsonObject kept()
+{
+    const auto value = getSettings()->pinnedSplitsState.getValue();
+    if (value.isEmpty())
+    {
+        return {};
+    }
+    return QJsonDocument::fromJson(value.toUtf8()).object();
+}
+
+void keep(const QJsonObject &all)
+{
+    getSettings()->pinnedSplitsState.setValue(
+        all.isEmpty() ? QString()
+                      : QString::fromUtf8(
+                            QJsonDocument(all).toJson(QJsonDocument::Compact)));
+}
+
+}  // namespace
 
 QStringList held()
 {
@@ -68,6 +95,95 @@ QString label(const QString &entry)
         return "Flüstern";
     }
     return entry;
+}
+
+State stateOf(const QString &entry)
+{
+    State state;
+    const auto mine = kept().value(entry).toObject();
+    if (mine.isEmpty())
+    {
+        return state;
+    }
+
+    state.moderationMode = mine.value("moderationMode").toBool(false);
+    state.showActivity = mine.value("activityGraph").toBool(true);
+    for (const auto &id : mine.value("filters").toArray())
+    {
+        const auto uuid = QUuid::fromString(id.toString());
+        if (!uuid.isNull())
+        {
+            state.filters.append(uuid);
+        }
+    }
+    if (mine.contains("checkSpelling"))
+    {
+        state.checkSpelling = mine.value("checkSpelling").toBool();
+    }
+    return state;
+}
+
+void setStateOf(const QString &entry, const State &state)
+{
+    if (entry.isEmpty())
+    {
+        return;
+    }
+
+    QJsonObject mine;
+    // Only what was moved away from the plain state is written down, so a
+    // list nobody touched stays empty
+    if (state.moderationMode)
+    {
+        mine["moderationMode"] = true;
+    }
+    if (!state.showActivity)
+    {
+        mine["activityGraph"] = false;
+    }
+    if (!state.filters.isEmpty())
+    {
+        QJsonArray filters;
+        for (const auto &id : state.filters)
+        {
+            filters.append(id.toString(QUuid::WithBraces));
+        }
+        mine["filters"] = filters;
+    }
+    if (state.checkSpelling)
+    {
+        mine["checkSpelling"] = *state.checkSpelling;
+    }
+
+    auto all = kept();
+    if (mine.isEmpty())
+    {
+        all.remove(entry);
+    }
+    else
+    {
+        all[entry] = mine;
+    }
+    keep(all);
+}
+
+void forgetUnheld()
+{
+    const auto chats = held();
+    auto all = kept();
+    bool changed = false;
+    for (const auto &entry : all.keys())
+    {
+        if (!chats.contains(entry))
+        {
+            all.remove(entry);
+            changed = true;
+        }
+    }
+    if (changed)
+    {
+        keep(all);
+    }
 }
 
 bool contains(const QString &entry)
