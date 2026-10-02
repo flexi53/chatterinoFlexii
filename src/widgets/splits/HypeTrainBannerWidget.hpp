@@ -9,6 +9,8 @@
 #include <pajlada/signals/signalholder.hpp>
 #include <QString>
 
+#include <chrono>
+
 class QLabel;
 
 namespace chatterino {
@@ -45,6 +47,17 @@ protected:
 
 private:
     void refresh();
+
+    /// ChattiFlexii: Twitch says when this level runs out, never how long
+    /// it had - so the bar measures against the longest time ever seen left
+    /// on it, which is what it had when it first turned up here. Each level
+    /// counts for itself: reaching the next one winds the clock up again,
+    /// and the bar fills up with it.
+    QString timedLevel_;
+    std::chrono::milliseconds timedTotal_{0};
+    /// What is left of this level's time, from 1 to 0 - below zero once the
+    /// train is over and there is nothing left to run out
+    double timeShareOf(const QString &level, std::chrono::milliseconds left);
 
     TwitchChannel *channel_ = nullptr;
     VoteBarWidget *bar_ = nullptr;

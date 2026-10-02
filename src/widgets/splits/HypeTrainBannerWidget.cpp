@@ -13,6 +13,7 @@
 #include <QLabel>
 #include <QVBoxLayout>
 
+#include <algorithm>
 #include <cmath>
 
 using namespace std::chrono_literals;
@@ -104,6 +105,17 @@ void HypeTrainBannerWidget::toggleUserPinned()
     this->show();
 }
 
+namespace {
+
+/// ChattiFlexii: one level of one train - the clock is wound up again at
+/// every level, so the bar belongs to the level and not to the train
+QString levelKey(const PubSubHypeTrain &train)
+{
+    return u"%1#%2"_s.arg(train.id).arg(train.level);
+}
+
+}  // namespace
+
 void HypeTrainBannerWidget::refresh()
 {
     // Aussehen -> Splits can do without the banner altogether, and the
@@ -162,6 +174,7 @@ void HypeTrainBannerWidget::refresh()
     {
         this->stopCountdown();
         this->countdownLabel()->hide();
+        this->setTimeShare(-1);
         if (!this->userToggled_)
         {
             this->startAutoHide(SHOW_RESULT_FOR);
@@ -170,10 +183,31 @@ void HypeTrainBannerWidget::refresh()
     else
     {
         this->stopAutoHide();
+        this->setTimeShare(
+            this->timeShareOf(levelKey(*train), train->remaining()));
         this->startCountdown();
     }
 
     this->showUnlessDismissed();
+}
+
+double HypeTrainBannerWidget::timeShareOf(const QString &level,
+                                          std::chrono::milliseconds left)
+{
+    if (this->timedLevel_ != level)
+    {
+        this->timedLevel_ = level;
+        this->timedTotal_ = left;
+    }
+    // Where more time is left than ever before, this level began before the
+    // banner got to see it
+    this->timedTotal_ = std::max(this->timedTotal_, left);
+
+    if (this->timedTotal_.count() <= 0 || left.count() <= 0)
+    {
+        return -1;
+    }
+    return double(left.count()) / double(this->timedTotal_.count());
 }
 
 void HypeTrainBannerWidget::tickCountdown()
@@ -186,6 +220,7 @@ void HypeTrainBannerWidget::tickCountdown()
     if (train == nullptr || train->remaining().count() <= 0)
     {
         this->countdownLabel()->hide();
+        this->setTimeShare(-1);
         this->stopCountdown();
         return;
     }
@@ -193,6 +228,7 @@ void HypeTrainBannerWidget::tickCountdown()
     this->countdownLabel()->setText(
         formatCountdown(train->remaining().count()));
     this->countdownLabel()->show();
+    this->setTimeShare(this->timeShareOf(levelKey(*train), train->remaining()));
 }
 
 void HypeTrainBannerWidget::showEvent(QShowEvent *event)
