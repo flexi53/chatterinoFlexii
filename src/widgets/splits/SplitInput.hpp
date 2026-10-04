@@ -53,6 +53,14 @@ class SplitInput : public BaseWidget
     Q_OBJECT
 
 public:
+    /// ChattiFlexii: where the box with the suggestions goes. It stands
+    /// over the input at @a input, is @a popup big, and has to stay on the
+    /// screen covering @a screen - where there is no room above it goes
+    /// under the input instead. Full screen is where this showed: the box
+    /// went past the top edge and ended up at the very top of the screen,
+    /// which there is the top of the window.
+    static QPoint completionPlace(QRect input, QSize popup, QRect screen);
+
     SplitInput(Split *_chatWidget, bool enableInlineReplying = true);
     SplitInput(QWidget *parent, Split *_chatWidget, ChannelView *_channelView,
                bool enableInlineReplying = true);

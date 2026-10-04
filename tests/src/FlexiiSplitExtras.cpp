@@ -9,62 +9,61 @@
 // application with a theme.
 
 #include "common/Channel.hpp"
+#include "common/SecretBox.hpp"
+#include "common/WindowDescriptors.hpp"
+#include "controllers/activity/ActivityMarks.hpp"
+#include "controllers/badgealerts/BadgeAlerts.hpp"
+#include "controllers/banners/BannerChannels.hpp"
+#include "controllers/completion/strategies/ModAwareCommandStrategy.hpp"
+#include "controllers/moderation/AlertMute.hpp"
+#include "controllers/moderation/HiddenUsers.hpp"
+#include "controllers/moderation/ModChanges.hpp"
+#include "controllers/moderation/ModerationAssistant.hpp"
+#include "controllers/moderation/ModHighlights.hpp"
+#include "controllers/moderation/SharedChatActions.hpp"
+#include "controllers/people/WatchedPeople.hpp"
+#include "controllers/saved/SavedMessages.hpp"
+#include "controllers/twitch/ChannelNumbers.hpp"
+#include "controllers/userdata/UserNotes.hpp"
 #include "messages/Message.hpp"
 #include "messages/MessageBuilder.hpp"
 #include "mocks/BaseApplication.hpp"
+#include "providers/badgebase/BadgeBase.hpp"
+#include "providers/twitch/TwitchWebBadges.hpp"
 #include "singletons/Fonts.hpp"
 #include "singletons/Paths.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
 #include "singletons/WindowManager.hpp"
 #include "Test.hpp"
-
-#include <QDir>
-#include <QJsonArray>
-#include <QJsonObject>
-#include <QFile>
-#include <QStandardPaths>
-#include "common/SecretBox.hpp"
-#include "controllers/badgealerts/BadgeAlerts.hpp"
-#include "controllers/moderation/AlertMute.hpp"
-#include "controllers/moderation/ModChanges.hpp"
-#include "controllers/completion/strategies/ModAwareCommandStrategy.hpp"
-#include "controllers/moderation/HiddenUsers.hpp"
-#include "controllers/moderation/ModHighlights.hpp"
-#include "controllers/moderation/ModerationAssistant.hpp"
-#include "controllers/moderation/SharedChatActions.hpp"
-#include "controllers/people/WatchedPeople.hpp"
-#include "controllers/saved/SavedMessages.hpp"
-#include "controllers/userdata/UserNotes.hpp"
 #include "util/Advanced.hpp"
-#include "util/ProfileSetup.hpp"
+#include "util/AppIcon.hpp"
 #include "util/Helpers.hpp"
 #include "util/MentionFlash.hpp"
-#include "controllers/activity/ActivityMarks.hpp"
-#include "controllers/twitch/ChannelNumbers.hpp"
-#include "widgets/splits/HeaderParts.hpp"
-#include "widgets/helper/ActiveBorder.hpp"
-#include "widgets/listview/GenericListModel.hpp"
-#include "widgets/listview/GenericListView.hpp"
-#include "widgets/splits/SendWaitBar.hpp"
-#include "providers/badgebase/BadgeBase.hpp"
-#include "providers/twitch/TwitchWebBadges.hpp"
+#include "util/ProfileSetup.hpp"
 #include "util/QMagicEnumTagged.hpp"
-#include "util/AppIcon.hpp"
 #include "util/SavedOrder.hpp"
+#include "util/UiStyle.hpp"
 #include "widgets/buttons/BadgeButton.hpp"
 #include "widgets/dialogs/WarnDialog.hpp"
-#include "util/UiStyle.hpp"
+#include "widgets/helper/ActiveBorder.hpp"
 #include "widgets/helper/NotebookTab.hpp"
+#include "widgets/listview/GenericListModel.hpp"
+#include "widgets/listview/GenericListView.hpp"
 #include "widgets/splits/HeaderParts.hpp"
 #include "widgets/splits/InputButtons.hpp"
-#include "widgets/splits/SplitHeaderExtras.hpp"
-#include "widgets/splits/SplitContainer.hpp"
-#include "controllers/banners/BannerChannels.hpp"
+#include "widgets/splits/SendWaitBar.hpp"
 #include "widgets/splits/SplitBanner.hpp"
-#include "common/WindowDescriptors.hpp"
+#include "widgets/splits/SplitContainer.hpp"
+#include "widgets/splits/SplitHeaderExtras.hpp"
+#include "widgets/splits/SplitInput.hpp"
 
+#include <QDir>
+#include <QFile>
+#include <QJsonArray>
 #include <QJsonDocument>
+#include <QJsonObject>
+#include <QStandardPaths>
 
 using namespace chatterino;
 
@@ -3125,4 +3124,46 @@ TEST(FlexiiBanners, AChannelCanBeLeftOutOfTheHypeTrain)
     EXPECT_TRUE(banners::hypeShownIn(""));
 
     getSettings()->hypeTrainOffChannels.setValue(kept);
+}
+
+TEST(FlexiiCompletion, TheBoxStandsAtTheInput)
+{
+    // A window standing in the middle of the screen - the box sits right
+    // over the input and is centred on it
+    const QRect screen(0, 0, 1000, 800);
+    const QRect input(100, 700, 400, 40);
+    const QSize box(300, 130);
+
+    const auto place = SplitInput::completionPlace(input, box, screen);
+    EXPECT_EQ(place.y() + box.height(), input.top());
+    EXPECT_EQ(place.x() + box.width() / 2, input.left() + input.width() / 2);
+}
+
+TEST(FlexiiCompletion, WithoutRoomAboveItGoesUnder)
+{
+    // Full screen on a tall screen used to put the box at the very top of
+    // the window, far from the input. Where it does not fit over the
+    // input, it belongs under it.
+    const QRect screen(0, 0, 1000, 800);
+    const QRect input(100, 20, 400, 40);
+    const QSize box(300, 130);
+
+    const auto place = SplitInput::completionPlace(input, box, screen);
+    EXPECT_GE(place.y(), input.bottom());
+    EXPECT_LE(place.y() + box.height(), screen.bottom() + 1);
+}
+
+TEST(FlexiiCompletion, ItStaysOnTheScreenItIsOn)
+{
+    // A screen whose corner is not at zero - a second monitor left of and
+    // above the first, as one of them has
+    const QRect screen(-3000, -475, 1080, 1920);
+    const QRect input(-2990, -465 + 1850, 1060, 40);
+    const QSize box(300, 130);
+
+    const auto place = SplitInput::completionPlace(input, box, screen);
+    EXPECT_GE(place.x(), screen.left());
+    EXPECT_GE(place.y(), screen.top());
+    EXPECT_LE(place.x() + box.width(), screen.right() + 1);
+    EXPECT_LE(place.y() + box.height(), screen.bottom() + 1);
 }

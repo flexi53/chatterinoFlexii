@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: MIT
 
 #include "widgets/splits/SplitInput.hpp"
-#include "widgets/dialogs/ModerationAssistantPopup.hpp"
 
 #include "Application.hpp"
 #include "common/enums/MessageOverflow.hpp"
@@ -21,8 +20,8 @@
 #include "providers/twitch/TwitchIrcServer.hpp"
 #include "singletons/Fonts.hpp"
 #include "singletons/Settings.hpp"
-#include "util/Advanced.hpp"
 #include "singletons/Theme.hpp"
+#include "util/Advanced.hpp"
 #include "util/Helpers.hpp"
 #include "util/LayoutCreator.hpp"
 #include "util/UiStyle.hpp"
@@ -31,16 +30,17 @@
 #include "widgets/buttons/ClearChatButton.hpp"
 #include "widgets/buttons/FocusButton.hpp"
 #include "widgets/buttons/FollowBrowserButton.hpp"
-#include "widgets/splits/InputButtons.hpp"
 #include "widgets/buttons/LabelButton.hpp"
 #include "widgets/buttons/SvgButton.hpp"
 #include "widgets/dialogs/EmotePopup.hpp"
+#include "widgets/dialogs/ModerationAssistantPopup.hpp"
 #include "widgets/helper/ChannelView.hpp"
 #include "widgets/helper/CmdDeleteKeyFilter.hpp"
 #include "widgets/helper/MessageView.hpp"
 #include "widgets/helper/ResizingTextEdit.hpp"
 #include "widgets/Notebook.hpp"
 #include "widgets/Scrollbar.hpp"
+#include "widgets/splits/InputButtons.hpp"
 #include "widgets/splits/InputCompletionPopup.hpp"
 #include "widgets/splits/InputHighlighter.hpp"
 #include "widgets/splits/SendWaitBar.hpp"
@@ -50,8 +50,10 @@
 #include <QCompleter>
 #include <QKeyEvent>
 #include <QPainter>
+#include <QScreen>
 #include <QSignalBlocker>
 
+#include <algorithm>
 #include <functional>
 #include <ranges>
 
@@ -1252,6 +1254,26 @@ void SplitInput::updateCompletionPopup()
     this->hideCompletionPopup();
 }
 
+QPoint SplitInput::completionPlace(QRect input, QSize popup, QRect screen)
+{
+    QPoint pos(input.left() + (input.width() - popup.width()) / 2,
+               input.top() - popup.height());
+
+    // No room over the input - then it goes under it
+    if (pos.y() < screen.top())
+    {
+        pos.setY(input.bottom() + 1);
+    }
+
+    pos.setY(std::clamp(
+        pos.y(), screen.top(),
+        std::max(screen.top(), screen.bottom() - popup.height() + 1)));
+    pos.setX(std::clamp(
+        pos.x(), screen.left(),
+        std::max(screen.left(), screen.right() - popup.width() + 1)));
+    return pos;
+}
+
 void SplitInput::showCompletionPopup(const QString &text, CompletionKind kind,
                                      bool takesEnter)
 {
@@ -1287,11 +1309,18 @@ void SplitInput::showCompletionPopup(const QString &text, CompletionKind kind,
         return;
     }
 
-    auto pos = this->mapToGlobal(QPoint{0, 0}) - QPoint(0, popup->height()) +
-               QPoint((this->width() - popup->width()) / 2, 0);
+    const QRect input(this->mapToGlobal(QPoint{0, 0}), this->size());
+    const auto *screen = this->screen();
+    const auto pos = SplitInput::completionPlace(
+        input, popup->size(),
+        screen == nullptr ? input : screen->availableGeometry());
 
+    // Moved again once it stands: a window that is not there yet keeps the
+    // place it is given only on some systems, and on macOS it lands where
+    // it last stood - which after going full screen is the wrong place
     popup->move(pos);
     popup->show();
+    popup->move(pos);
 }
 
 void SplitInput::hideCompletionPopup()
