@@ -166,9 +166,15 @@ QString invalidateBuffers(const CommandContext & /*ctx*/)
     return {};
 }
 
-QString eventsub(const CommandContext & /*ctx*/)
+QString eventsub(const CommandContext &ctx)
 {
     getApp()->getEventSub()->debug();
+    // ChattiFlexii: the whole list goes to the log as before, and the short
+    // of it into the chat, where one can actually read it
+    if (ctx.channel != nullptr)
+    {
+        ctx.channel->addSystemMessage(getApp()->getEventSub()->summary());
+    }
     return {};
 }
 

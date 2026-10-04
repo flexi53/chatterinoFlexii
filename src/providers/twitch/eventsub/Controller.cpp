@@ -19,6 +19,7 @@
 #include <boost/certify/https_verification.hpp>
 #include <twitch-eventsub-ws/session.hpp>
 
+#include <map>
 #include <memory>
 #include <utility>
 
@@ -320,6 +321,42 @@ void Controller::reconnectConnection(
     {
         this->subscribe(sub, false);
     }
+}
+
+QString Controller::summary() const
+{
+    // ChattiFlexii: counted by kind of event and by how it stands, so one
+    // look says whether the mod events are coming in at all
+    std::map<QString, std::map<QString, int>> counted;
+    {
+        std::lock_guard g(this->subscriptionsMutex);
+        for (const auto &[request, subscription] : this->subscriptions)
+        {
+            const auto state =
+                qmagicenum::enumName(subscription.state).toString();
+            counted[request.subscriptionType][state]++;
+        }
+    }
+
+    if (counted.empty())
+    {
+        return "EventSub: nichts abonniert.";
+    }
+
+    QStringList lines;
+    for (const auto &[type, states] : counted)
+    {
+        QStringList parts;
+        int all = 0;
+        for (const auto &[state, count] : states)
+        {
+            parts.append(QString("%1 %2").arg(count).arg(state));
+            all += count;
+        }
+        lines.append(
+            QString("%1: %2 (%3)").arg(type).arg(all).arg(parts.join(", ")));
+    }
+    return "EventSub - " + lines.join(" | ");
 }
 
 void Controller::debug()

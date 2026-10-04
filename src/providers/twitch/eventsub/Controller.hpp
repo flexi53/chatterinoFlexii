@@ -59,6 +59,11 @@ public:
         const std::unordered_set<SubscriptionRequest> &subs) = 0;
 
     virtual void debug() = 0;
+
+    /// ChattiFlexii: what stands where, in a few lines - which kinds of
+    /// event are subscribed and how many of each came through. The log has
+    /// it all, but nobody reads a log out of a running app.
+    virtual QString summary() const = 0;
 };
 
 class Controller : public IController
@@ -80,6 +85,8 @@ public:
         const std::unordered_set<SubscriptionRequest> &subs) override;
 
     void debug() override;
+
+    QString summary() const override;
 
 private:
     void subscribe(const SubscriptionRequest &request, bool isRetry);
@@ -155,7 +162,7 @@ private:
         ExponentialBackoff<6> backoff{std::chrono::milliseconds{500}};
     };
 
-    std::mutex subscriptionsMutex;
+    mutable std::mutex subscriptionsMutex;
     std::unordered_map<SubscriptionRequest, Subscription> subscriptions;
 
     std::atomic<bool> quitting = false;
@@ -191,6 +198,11 @@ public:
 
     void debug() override
     {
+    }
+
+    QString summary() const override
+    {
+        return {};
     }
 };
 
