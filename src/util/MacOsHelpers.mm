@@ -24,6 +24,25 @@ void chatterinoShowOnAllSpaces(std::uintptr_t nativeView)
     [window setCollectionBehavior:behavior];
 }
 
+void chatterinoStayOverFullScreen(std::uintptr_t nativeView)
+{
+    NSWindow *window = [(NSView *)(void *)nativeView window];
+    if (window == nil)
+    {
+        return;
+    }
+
+    NSWindowCollectionBehavior behavior = [window collectionBehavior];
+    behavior &= ~NSWindowCollectionBehaviorFullScreenPrimary;
+    behavior |= NSWindowCollectionBehaviorFullScreenAuxiliary;
+    // One that shows on every space already needs no moving
+    if ((behavior & NSWindowCollectionBehaviorCanJoinAllSpaces) == 0)
+    {
+        behavior |= NSWindowCollectionBehaviorMoveToActiveSpace;
+    }
+    [window setCollectionBehavior:behavior];
+}
+
 bool chatterinoIsOnActiveSpace(std::uintptr_t nativeView)
 {
     NSWindow *window = [(NSView *)(void *)nativeView window];

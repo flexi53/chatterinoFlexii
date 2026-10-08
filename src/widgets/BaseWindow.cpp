@@ -18,6 +18,10 @@
 #include "widgets/Label.hpp"
 #include "widgets/Window.hpp"
 
+#ifdef Q_OS_MACOS
+#    include "util/MacOsHelpers.h"
+#endif
+
 #include <QApplication>
 #include <QFont>
 #include <QIcon>
@@ -786,6 +790,17 @@ void BaseWindow::closeEvent(QCloseEvent *)
 
 void BaseWindow::showEvent(QShowEvent *)
 {
+#ifdef Q_OS_MACOS
+    // ChattiFlexii: macOS gives a window of its own a full screen space of
+    // its own while Chatti runs full screen. The dialogs are hidden when
+    // closed, not done away with, so each opening left one more black
+    // screen behind. Over the full screen window they go away with it.
+    if (this->flags_.has(Dialog))
+    {
+        chatterinoStayOverFullScreen(
+            static_cast<std::uintptr_t>(this->winId()));
+    }
+#endif
 #ifdef Q_OS_WIN
     if (this->flags_.has(BoundsCheckOnShow))
     {

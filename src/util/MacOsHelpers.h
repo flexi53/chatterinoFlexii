@@ -9,6 +9,11 @@ void chatterinoSetMacOsActivationPolicyProhibited();
 /// rather than left behind on the one it opened on.
 void chatterinoShowOnAllSpaces(std::uintptr_t nativeView);
 
+/// Lets the window with the native view @a nativeView open over a full screen
+/// window of the app instead of on a full screen space of its own - which,
+/// hidden again rather than closed, would stay behind as a black screen
+void chatterinoStayOverFullScreen(std::uintptr_t nativeView);
+
 /// Whether the window with the native view @a nativeView is on the space the
 /// user is looking at
 bool chatterinoIsOnActiveSpace(std::uintptr_t nativeView);
