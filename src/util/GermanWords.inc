@@ -101,6 +101,8 @@
      "Abzeichen"},
     {"Badges for 7TV admins, developers, and supporters",
      "Abzeichen für 7TV-Admins, -Entwickler und -Unterstützer"},
+    {"Badges for Moltorino developers and supporters",
+     "Abzeichen für Entwickler und Unterstützer von Moltorino"},
     {"Beta",
      "Beta"},
     {"BetterTTV",

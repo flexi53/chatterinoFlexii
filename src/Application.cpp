@@ -47,6 +47,7 @@
 #include "providers/chatterino/ChatterinoBadges.hpp"
 #include "providers/ffz/FfzBadges.hpp"
 #include "providers/homies/HomiesBadges.hpp"
+#include "providers/moltorino/MoltorinoBadges.hpp"
 #include "providers/seventv/SeventvBadges.hpp"
 #include "providers/seventv/SeventvEventAPI.hpp"
 #include "providers/seventv/SeventvPaints.hpp"
@@ -199,6 +200,7 @@ Application::Application(Settings &_settings, const Paths &paths,
     , bttvBadges(new BttvBadges)
     , seventvBadges(new SeventvBadges)
     , homiesBadges(new HomiesBadges)
+    , moltorinoBadges(new MoltorinoBadges)
     , seventvPaints(new SeventvPaints)
     , seventvPersonalEmotes(new SeventvPersonalEmotes)
     , userData(new UserDataController(paths))
@@ -485,6 +487,12 @@ HomiesBadges *Application::getHomiesBadges()
 {
     // HomiesBadges handles its own locks, so we don't need to assert that this is called in the GUI thread
     return this->homiesBadges.get();
+}
+
+MoltorinoBadges *Application::getMoltorinoBadges()
+{
+    // MoltorinoBadges handles its own locks, so we don't need to assert that this is called in the GUI thread
+    return this->moltorinoBadges.get();
 }
 
 

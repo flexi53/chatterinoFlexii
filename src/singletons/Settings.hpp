@@ -706,6 +706,7 @@ public:
     BoolSetting showBadgesBttv = {"/appearance/badges/bttv", true};
     BoolSetting showBadgesSevenTV = {"/appearance/badges/seventv", true};
     BoolSetting showBadgesHomies = {"/appearance/badges/homies", true};
+    BoolSetting showBadgesMoltorino = {"/appearance/badges/moltorino", true};
     /// The label put on a first-time chatter's message, the way Twitch does.
     /// Edited through the "First Messages" row on the highlights page like
     /// every other caption; empty means no label.

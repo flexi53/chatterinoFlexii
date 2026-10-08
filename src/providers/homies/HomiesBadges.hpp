@@ -21,7 +21,8 @@ using EmotePtr = std::shared_ptr<const Emote>;
 /// can upload a badge of their own that is then shown next to their name.
 ///
 /// The list is fetched once at startup, the same way Chatterino's own badges
-/// are loaded. Each user has at most one badge.
+/// are loaded. Each user has at most one badge of their own, and at most one
+/// of the badges Homies hands its developers and supporters.
 class HomiesBadges
 {
 public:
@@ -36,8 +37,13 @@ public:
     /// The badge for the given Twitch user, if they have one
     std::optional<EmotePtr> getBadge(const UserId &id);
 
+    /// ChattiFlexii: the Homies Developer/Supporter/Founder badge of the
+    /// given Twitch user, if they have one
+    std::optional<EmotePtr> getSupporterBadge(const UserId &id);
+
 private:
     void loadHomiesBadges();
+    void loadSupporterBadges();
 
     std::shared_mutex mutex_;
 
@@ -46,6 +52,9 @@ private:
 
     /// The badges themselves, referred to by badgeMap_
     std::vector<EmotePtr> emotes_;
+
+    /// The same for the supporter badges. Guarded by mutex_
+    std::unordered_map<QString, EmotePtr> supporterMap_;
 };
 
 }  // namespace chatterino

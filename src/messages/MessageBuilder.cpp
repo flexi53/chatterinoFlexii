@@ -30,6 +30,7 @@
 #include "providers/ffz/FfzBadges.hpp"
 #include "providers/ffz/FfzEmotes.hpp"
 #include "providers/homies/HomiesBadges.hpp"
+#include "providers/moltorino/MoltorinoBadges.hpp"
 #include "providers/links/LinkResolver.hpp"
 #include "providers/seventv/SeventvBadges.hpp"
 #include "providers/seventv/SeventvEmotes.hpp"
@@ -1815,6 +1816,7 @@ std::pair<MessagePtrMut, HighlightAlert> MessageBuilder::makeIrcMessage(
     builder.appendBttvBadges(userID);
     builder.appendSeventvBadges(userID);
     builder.appendHomiesBadge(userID);
+    builder.appendMoltorinoBadge(userID);
 
     builder.appendUsername(tags, args);
 
@@ -2770,6 +2772,32 @@ void MessageBuilder::appendHomiesBadge(const QString &userID)
         this->emplace<BadgeElement>(*badge, MessageElementFlag::BadgeHomies);
 
         /// e.g. "homies:usVesper Badge"
+        this->message().externalBadges.emplace_back((*badge)->name.string);
+    }
+
+    if (auto badge = badges->getSupporterBadge({userID}))
+    {
+        this->emplace<BadgeElement>(*badge, MessageElementFlag::BadgeHomies);
+
+        /// e.g. "homies:Homies Supporter"
+        this->message().externalBadges.emplace_back((*badge)->name.string);
+    }
+}
+
+void MessageBuilder::appendMoltorinoBadge(const QString &userID)
+{
+    auto *badges = getApp()->getMoltorinoBadges();
+    if (badges == nullptr)
+    {
+        return;  // not available, e.g. in tests
+    }
+
+    if (auto badge = badges->getBadge({userID}))
+    {
+        this->emplace<BadgeElement>(*badge,
+                                    MessageElementFlag::BadgeMoltorino);
+
+        /// e.g. "moltorino:Moltorino Supporter"
         this->message().externalBadges.emplace_back((*badge)->name.string);
     }
 }

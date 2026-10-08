@@ -49,7 +49,8 @@ enum class MessageElementFlag : int64_t {
     EmoteText = (1LL << 5),
     Emote = EmoteImage | EmoteText,
 
-    // unused: (1LL << 7),
+    /// ChattiFlexii: supporter badge from Moltorino
+    BadgeMoltorino = (1LL << 7),
 
     ChannelPointReward = (1LL << 8),
     ChannelPointRewardImage = ChannelPointReward | EmoteImage,
@@ -133,7 +134,8 @@ enum class MessageElementFlag : int64_t {
 
     Badges = BadgeGlobalAuthority | BadgePredictions | BadgeChannelAuthority |
              BadgeSubscription | BadgeVanity | BadgeChatterino | BadgeSevenTV |
-             BadgeFfz | BadgeSharedChannel | BadgeBttv | BadgeHomies,
+             BadgeFfz | BadgeSharedChannel | BadgeBttv | BadgeHomies |
+             BadgeMoltorino,
 
     ChannelName = (1LL << 20),
 

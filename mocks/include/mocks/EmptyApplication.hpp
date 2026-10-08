@@ -182,6 +182,12 @@ public:
         return nullptr;
     }
 
+    MoltorinoBadges *getMoltorinoBadges() override
+    {
+        assert(!"getMoltorinoBadges was called without being initialized");
+        return nullptr;
+    }
+
     IUserDataController *getUserData() override
     {
         assert(false && "EmptyApplication::getUserData was called without "

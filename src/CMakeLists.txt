@@ -433,6 +433,8 @@ set(SOURCE_FILES
 
         providers/homies/HomiesBadges.cpp
         providers/homies/HomiesBadges.hpp
+        providers/moltorino/MoltorinoBadges.cpp
+        providers/moltorino/MoltorinoBadges.hpp
         providers/ffz/FfzBadges.cpp
         providers/ffz/FfzBadges.hpp
         providers/ffz/FfzEmotes.cpp
