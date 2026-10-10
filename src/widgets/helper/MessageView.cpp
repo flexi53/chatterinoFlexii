@@ -104,6 +104,12 @@ void MessageView::themeChangedEvent()
 {
     this->messageColors_.applyTheme(getTheme(), false, 255);
     this->messageColors_.regularBg = getTheme()->splits.input.background;
+    // ChattiFlexii: the input may be given a colour that lets things through
+    // - then the buffer has to be cleared first, or whatever was in its
+    // memory shows through it
+    this->messageColors_.hasTransparency =
+        this->messageColors_.regularBg.alpha() != 255 ||
+        this->messageColors_.alternateBg.alpha() != 255;
     if (this->messageLayout_)
     {
         this->messageLayout_->invalidateBuffer();
