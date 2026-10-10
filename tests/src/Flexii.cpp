@@ -133,6 +133,22 @@ TEST(FlexiiSteps, AListThatDoesNotReadIsRejectedWhole)
     EXPECT_TRUE(RepeatSpamDetector::parseSteps("5x").empty());
 }
 
+TEST(FlexiiSteps, MoreOfTheSameIsTheSameMessage)
+{
+    EXPECT_EQ(RepeatSpamDetector::coreOf("111"),
+              RepeatSpamDetector::coreOf("111111"));
+    EXPECT_EQ(RepeatSpamDetector::coreOf("1 1 1"), QStringLiteral("1"));
+    EXPECT_EQ(RepeatSpamDetector::coreOf("lul lul lul"), QStringLiteral("lul"));
+    EXPECT_EQ(RepeatSpamDetector::coreOf("lollol"), QStringLiteral("lol"));
+
+    // Nothing repeats - the text stays as it is
+    EXPECT_EQ(RepeatSpamDetector::coreOf("hallo"), QStringLiteral("hallo"));
+    EXPECT_EQ(RepeatSpamDetector::coreOf("lulu l"), QStringLiteral("lulul"));
+    EXPECT_NE(RepeatSpamDetector::coreOf("12"),
+              RepeatSpamDetector::coreOf("1212121"));
+    EXPECT_EQ(RepeatSpamDetector::coreOf(""), QString());
+}
+
 TEST(FlexiiSteps, EmoteSpamStepsDeleteFirst)
 {
     const auto del = EmoteSpamDetector::DELETE;

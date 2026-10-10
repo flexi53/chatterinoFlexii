@@ -54,6 +54,11 @@ public:
     /// neither.
     static std::vector<int> parseSteps(const QString &text);
 
+    /// The piece @a text is made of by repeating it, spaces left out - "1"
+    /// for "111111", "lul" for "lul lul lul". The text itself when it does
+    /// not repeat. Expects it normalised: case folded, spaces simplified.
+    static QString coreOf(const QString &text);
+
 private:
     RepeatSpamDetector() = default;
 

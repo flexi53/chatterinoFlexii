@@ -93,6 +93,12 @@ bool sameMessage(const QString &a, const QString &b)
     {
         return true;
     }
+    // "111" and then "111111", or "LUL" and then "LUL LUL" - the same thing
+    // over and over, only more or less of it each time
+    if (RepeatSpamDetector::coreOf(a) == RepeatSpamDetector::coreOf(b))
+    {
+        return true;
+    }
     if (std::min(a.size(), b.size()) < MIN_FUZZY_LENGTH)
     {
         return false;
@@ -343,6 +349,38 @@ void RepeatSpamDetector::showAlert(const QString &channel, const QString &login,
                    stepFor(escalation.level), escalation.level,
                    escalation.actions);
     popup->present();
+}
+
+QString RepeatSpamDetector::coreOf(const QString &text)
+{
+    QString compact = text;
+    compact.remove(' ');
+    const auto length = compact.size();
+    if (length == 0)
+    {
+        return compact;
+    }
+
+    // The longest part that both starts and ends the text, for each prefix
+    // (Knuth-Morris-Pratt). Whatever is left over at the end, if it divides
+    // the length, is the piece the whole text is made of.
+    std::vector<qsizetype> border(static_cast<size_t>(length), 0);
+    for (qsizetype i = 1; i < length; i++)
+    {
+        auto k = border[static_cast<size_t>(i - 1)];
+        while (k > 0 && compact[i] != compact[k])
+        {
+            k = border[static_cast<size_t>(k - 1)];
+        }
+        if (compact[i] == compact[k])
+        {
+            k++;
+        }
+        border[static_cast<size_t>(i)] = k;
+    }
+
+    const auto period = length - border.back();
+    return length % period == 0 ? compact.left(period) : compact;
 }
 
 std::vector<int> RepeatSpamDetector::steps()
