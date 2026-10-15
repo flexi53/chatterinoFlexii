@@ -5,6 +5,7 @@
 #include "providers/twitch/IrcMessageHandler.hpp"
 
 #include "controllers/moderation/EmoteSpamDetector.hpp"
+#include "controllers/automessages/AutoMessages.hpp"
 #include "controllers/activity/ActivityMarks.hpp"
 #include "controllers/moderation/HiddenUsers.hpp"
 #include "controllers/moderation/ModerationAssistant.hpp"
@@ -64,6 +65,70 @@ const QSet<QString> SPECIAL_MESSAGE_TYPES{
 };
 
 const QString ANONYMOUS_GIFTER_ID = "274598607";
+
+/// Whether a message was sent in another channel of a shared chat session
+/// and only shows here
+bool fromOtherChannel(const QVariantMap &tags)
+{
+    auto rIt = tags.find("room-id");
+    auto sIt = tags.find("source-room-id");
+    return tags.value("msg-id").toString() == "sharedchatnotice" ||
+           (rIt != tags.end() && sIt != tags.end() &&
+            rIt.value().toString() != sIt.value().toString());
+}
+
+/// ChattiFlexii: hands a live sub, resub, gift or raid to the automatic
+/// answers. A gift of many subs is one submysterygift followed by one
+/// subgift per sub, which carry msg-param-community-gift-id - only the
+/// first counts, so ten subs get one answer and not eleven.
+void tellAutoMessages(const QVariantMap &tags, const QString &channel)
+{
+    if (tags.contains("historical") || fromOtherChannel(tags))
+    {
+        return;
+    }
+    const auto type = tags.value("msg-id").toString();
+    AutoMessages::Event event{
+        .channel = channel,
+        .login = tags.value("login").toString(),
+        .displayName = tags.value("display-name").toString(),
+    };
+    if (type == "sub")
+    {
+        event.kind = AutoMessages::Kind::Sub;
+        event.count = 1;
+        event.months = 1;
+    }
+    else if (type == "resub")
+    {
+        event.kind = AutoMessages::Kind::Resub;
+        event.count = 1;
+        event.months = tags.value("msg-param-cumulative-months").toInt();
+    }
+    else if (type == "submysterygift")
+    {
+        event.kind = AutoMessages::Kind::Gift;
+        event.count = tags.value("msg-param-mass-gift-count").toInt();
+    }
+    else if (type == "subgift" &&
+             !tags.contains("msg-param-community-gift-id"))
+    {
+        event.kind = AutoMessages::Kind::Gift;
+        event.count = 1;
+    }
+    else if (type == "raid")
+    {
+        event.kind = AutoMessages::Kind::Raid;
+        event.login = tags.value("msg-param-login").toString();
+        event.displayName = tags.value("msg-param-displayName").toString();
+        event.count = tags.value("msg-param-viewerCount").toInt();
+    }
+    else
+    {
+        return;
+    }
+    AutoMessages::instance().onEvent(event);
+}
 
 MessagePtr generateBannedMessage(bool confirmedBan)
 {
@@ -747,6 +812,9 @@ void IrcMessageHandler::handleUserNoticeMessage(Communi::IrcMessage *message,
         return;
     }
     parseUserNoticeMessageInto(message, *channel, channel);
+    // Only here, not in parseUserNoticeMessageInto - that one also reads
+    // the history loaded on joining
+    tellAutoMessages(message->tags(), channel->getName());
 }
 
 void IrcMessageHandler::parseUserNoticeMessageInto(Communi::IrcMessage *message,
@@ -1342,6 +1410,12 @@ void IrcMessageHandler::addMessage(Communi::IrcMessage *message,
             ModerationAssistant::instance().onMessage(
                 chan->getName(), msg->loginName, msg->displayName, content,
                 tags.value("badges").toString());
+            if (!fromOtherChannel(tags))
+            {
+                AutoMessages::instance().onChat(chan->getName(),
+                                                msg->loginName,
+                                                msg->displayName, content);
+            }
         }
     }
 }

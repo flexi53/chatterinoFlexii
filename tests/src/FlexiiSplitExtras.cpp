@@ -12,6 +12,7 @@
 #include "common/SecretBox.hpp"
 #include "common/WindowDescriptors.hpp"
 #include "controllers/activity/ActivityMarks.hpp"
+#include "controllers/automessages/AutoMessages.hpp"
 #include "controllers/badgealerts/BadgeAlerts.hpp"
 #include "controllers/banners/BannerChannels.hpp"
 #include "controllers/completion/strategies/ModAwareCommandStrategy.hpp"
@@ -3166,4 +3167,87 @@ TEST(FlexiiCompletion, ItStaysOnTheScreenItIsOn)
     EXPECT_GE(place.y(), screen.top());
     EXPECT_LE(place.x() + box.width(), screen.right() + 1);
     EXPECT_LE(place.y() + box.height(), screen.bottom() + 1);
+}
+
+namespace {
+
+AutoMessages::Rule autoRule(AutoMessages::Kind kind, int minCount,
+                            const QString &reply)
+{
+    AutoMessages::Rule rule;
+    rule.kind = kind;
+    rule.minCount = minCount;
+    rule.replies = {reply};
+    return rule;
+}
+
+}  // namespace
+
+TEST(FlexiiAutoMessages, HighestGiftThresholdAnswers)
+{
+    using Kind = AutoMessages::Kind;
+    const std::vector<AutoMessages::Rule> rules{
+        autoRule(Kind::Gift, 1, "danke"),
+        autoRule(Kind::Gift, 10, "Kussdigga {anzahl}"),
+        autoRule(Kind::Gift, 50, "WAHNSINN"),
+    };
+    const auto now = QDateTime::currentDateTimeUtc();
+    AutoMessages::Event event{.kind = Kind::Gift, .channel = "zarbex",
+                              .login = "a", .displayName = "A", .count = 10};
+
+    auto index = AutoMessages::pick(rules, event, {}, now);
+    ASSERT_TRUE(index.has_value());
+    EXPECT_EQ(*index, 1);
+    EXPECT_EQ(AutoMessages::fill(rules[*index].replies.first(), event),
+              "Kussdigga 10");
+
+    event.count = 1;
+    EXPECT_EQ(AutoMessages::pick(rules, event, {}, now), 0);
+    event.count = 99;
+    EXPECT_EQ(AutoMessages::pick(rules, event, {}, now), 2);
+
+    // Cooling down: nobody steps in for it
+    QHash<QString, QDateTime> fired{
+        {AutoMessages::cooldownKey(2, "zarbex"), now.addSecs(-3)}};
+    EXPECT_FALSE(AutoMessages::pick(rules, event, fired, now).has_value());
+}
+
+TEST(FlexiiAutoMessages, ChatPatternAndChannel)
+{
+    using Kind = AutoMessages::Kind;
+    auto rule = autoRule(Kind::Chat, 1, "hi {user}");
+    rule.pattern = R"(\bwann\s+stream\b)";
+    rule.channel = "zarbex";
+    const std::vector<AutoMessages::Rule> rules{rule};
+    const auto now = QDateTime::currentDateTimeUtc();
+
+    AutoMessages::Event event{.kind = Kind::Chat, .channel = "Zarbex",
+                              .login = "a", .displayName = "A",
+                              .text = "WANN STREAM heute?"};
+    EXPECT_EQ(AutoMessages::pick(rules, event, {}, now), 0);
+    event.text = "streamt er wann";
+    EXPECT_FALSE(AutoMessages::pick(rules, event, {}, now).has_value());
+    event.text = "wann stream";
+    event.channel = "trymacs";
+    EXPECT_FALSE(AutoMessages::pick(rules, event, {}, now).has_value());
+
+    EXPECT_TRUE(AutoMessages::problemWith(R"(\bok)").isEmpty());
+    EXPECT_FALSE(AutoMessages::problemWith("(kaputt").isEmpty());
+}
+
+TEST(FlexiiAutoMessages, RulesSurviveSaving)
+{
+    auto rule = autoRule(AutoMessages::Kind::Raid, 5, "Willkommen {user}");
+    rule.delayMin = 0.5;
+    rule.delayMax = 3;
+    rule.cooldown = 30;
+    rule.channel = "Zarbex";
+    const auto back = AutoMessages::read(AutoMessages::write({rule}));
+    ASSERT_EQ(back.size(), 1);
+    EXPECT_EQ(back[0].kind, AutoMessages::Kind::Raid);
+    EXPECT_EQ(back[0].minCount, 5);
+    EXPECT_EQ(back[0].channel, "zarbex");
+    EXPECT_EQ(back[0].replies, QStringList{"Willkommen {user}"});
+    EXPECT_DOUBLE_EQ(back[0].delayMax, 3);
+    EXPECT_EQ(back[0].cooldown, 30);
 }

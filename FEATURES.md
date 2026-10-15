@@ -235,14 +235,38 @@ off brings the theme back and keeps your colours for later.
 
 ## Erweitert
 
-The moderation assistant and the User tab sit together on one settings page
-called **Erweitert**, one tab each. That page is only there while the
+The moderation assistant, the User tab and the automatic answers sit
+together on one settings page called **Erweitert**, one tab each. That page is only there while the
 account it was built for is logged in - anyone else gets ChattiFlexii
 without those parts: no page, no shield and bell beside the input, no entry
 in the right-click menu, no User tab and no alert window ever opens. The
 rest of the program is the same for everyone. It is tidying up rather than
 a lock: the code is public, and whoever builds it can put their own name in
 (`src/util/Advanced.hpp`).
+
+## Automatic answers
+
+Under Erweitert → **Autonachrichten** your own account answers by itself
+when something happens in a channel:
+
+- **Sub-Gifts** from so many subs on - of several rules the one with the
+  highest threshold answers, so `ab 1`, `ab 10` and `ab 50` can each say
+  something else. A gift of ten subs is one event, not eleven.
+- **Sub**, **Resub**, **Raid** from so many viewers on
+- A **chat message** matching a regular expression, as in Fossabot (case
+  does not matter); the field says at once whether the pattern holds
+- The answer takes `{user}`, `{anzahl}`, `{monate}` and `{kanal}` -
+  `Kussdigga {anzahl}` says `Kussdigga 10`. Several answers, one per line,
+  and one is picked at random
+- A **delay** drawn anew each time between a least and a most, say 0.5 to
+  3 seconds, a **cooldown** per rule, a channel or all of them, and a
+  switch per rule and for the whole thing
+- **Testen** shows what would be sent, without sending it
+
+Only what comes in live counts - never the history loaded on joining a
+channel, never your own messages, subs or gifts, and never what another
+channel of a shared chat sends. One channel gets at most one answer every
+two seconds, whatever the rules say.
 
 ## Moderation assistant
 

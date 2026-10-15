@@ -889,6 +889,8 @@ set(SOURCE_FILES
         widgets/dialogs/BadgePicker.hpp
         widgets/dialogs/WarnDialog.cpp
         widgets/dialogs/WarnDialog.hpp
+        controllers/automessages/AutoMessages.cpp
+        controllers/automessages/AutoMessages.hpp
         controllers/badgealerts/BadgeAlerts.cpp
         controllers/badgealerts/BadgeAlerts.hpp
         controllers/moderation/ModChanges.cpp
@@ -1000,6 +1002,8 @@ set(SOURCE_FILES
 
         widgets/settingspages/AdvancedPage.cpp
         widgets/settingspages/AdvancedPage.hpp
+        widgets/settingspages/AutoMessagesTab.cpp
+        widgets/settingspages/AutoMessagesTab.hpp
         widgets/settingspages/AboutPage.cpp
         widgets/settingspages/AboutPage.hpp
         widgets/settingspages/AccountsPage.cpp

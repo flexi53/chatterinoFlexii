@@ -6,6 +6,7 @@
 
 #include "controllers/people/WatchedPeople.hpp"
 #include "singletons/Settings.hpp"
+#include "widgets/settingspages/AutoMessagesTab.hpp"
 #include "widgets/settingspages/ModAssistantPage.hpp"
 #include "widgets/settingspages/PageSections.hpp"
 
@@ -34,6 +35,7 @@ AdvancedPage::AdvancedPage()
     this->assistant_ = new ModAssistantPage;
     this->tabs_->addTab(this->assistant_, "Mod-Assistent");
     this->buildPeopleTab(addPageTab(this->tabs_, "User"));
+    addPageTab(this->tabs_, "Autonachrichten")->addWidget(new AutoMessagesTab);
 }
 
 bool AdvancedPage::filterElements(const QString &query)
@@ -49,6 +51,11 @@ bool AdvancedPage::filterElements(const QString &query)
                                       "mod",
                                       "assistent",
                                       "alarm",
+                                      "autonachrichten",
+                                      "auto",
+                                      "gift",
+                                      "regex",
+                                      "antwort",
                                   });
 }
 

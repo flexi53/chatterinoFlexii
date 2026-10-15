@@ -1268,6 +1268,10 @@ public:
     /// Notizen -> Leute im Blick: a tab collecting what the chosen people
     /// write, wherever you have their channel open
     BoolSetting watchedPeopleEnabled = {"/notes/people/enabled", false};
+    /// Erweitert -> Autonachrichten: rules as JSON, see
+    /// controllers/automessages/AutoMessages.hpp
+    BoolSetting autoMessagesEnabled = {"/advanced/autoMessages/enabled", false};
+    QStringSetting autoMessagesRules = {"/advanced/autoMessages/rules", ""};
     QStringSetting watchedPeople = {"/notes/people/list", ""};
     /// Instead of the list: a filter in the language of the filters page,
     /// say (author.name == "a") || (author.name == "b")
