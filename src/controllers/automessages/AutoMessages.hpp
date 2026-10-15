@@ -65,6 +65,12 @@ public:
 
     static AutoMessages &instance();
 
+    /// Whether they are switched on in @a channel
+    static bool isOn(const QString &channel);
+    static void setOn(const QString &channel, bool on);
+    /// Where they are switched on
+    static QStringList onChannels();
+
     /// From a live chat message; leaves out your own
     void onChat(const QString &channel, const QString &login,
                 const QString &displayName, const QString &text);

@@ -260,7 +260,11 @@ when something happens in a channel:
   and one is picked at random
 - A **delay** drawn anew each time between a least and a most, say 0.5 to
   3 seconds, a **cooldown** per rule, a channel or all of them, and a
-  switch per rule and for the whole thing
+  switch per rule
+- Switched on and off **per channel** by a speech bubble in the input bar -
+  green while your account answers there, struck through while not. Off
+  everywhere to begin with; it can be hidden and moved like the other
+  buttons
 - **Testen** shows what would be sent, without sending it
 
 Only what comes in live counts - never the history loaded on joining a

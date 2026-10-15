@@ -45,6 +45,7 @@ class SpellCheckHighlighter;
 enum class CompletionKind;
 
 class AlertMuteButton;
+class AutoMessageButton;
 class BadgeButton;
 class SendWaitBar;
 
@@ -222,6 +223,8 @@ protected:
         SvgButton *modAssistButton;
         /// ChattiFlexii: silences the alert windows
         AlertMuteButton *alertMuteButton;
+        /// ChattiFlexii: Autonachrichten on or off in this channel
+        AutoMessageButton *autoMessageButton;
         BadgeButton *badgeButton;
         /// ChattiFlexii: clips the stream from the chat window
         SvgButton *clipButton;

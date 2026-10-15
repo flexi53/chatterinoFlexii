@@ -97,7 +97,7 @@ void AutoMessages::onChat(const QString &channel, const QString &login,
 void AutoMessages::onEvent(const Event &event)
 {
     auto &s = *getSettings();
-    if (!s.autoMessagesEnabled || !advanced::unlocked())
+    if (!advanced::unlocked() || !isOn(event.channel))
     {
         return;
     }
@@ -146,7 +146,7 @@ void AutoMessages::onEvent(const Event &event)
 
     QTimer::singleShot(delayMs, [channel, reply] {
         // Switched off or logged out in the meantime: say nothing
-        if (!getSettings()->autoMessagesEnabled || !advanced::unlocked())
+        if (!advanced::unlocked() || !isOn(channel))
         {
             return;
         }
@@ -156,6 +156,33 @@ void AutoMessages::onEvent(const Event &event)
             twitch->sendMessage(reply);
         }
     });
+}
+
+QStringList AutoMessages::onChannels()
+{
+    return getSettings()->autoMessagesChannels.getValue().split(
+        u';', Qt::SkipEmptyParts);
+}
+
+bool AutoMessages::isOn(const QString &channel)
+{
+    return !channel.isEmpty() && onChannels().contains(channel.toLower());
+}
+
+void AutoMessages::setOn(const QString &channel, bool on)
+{
+    if (channel.isEmpty())
+    {
+        return;
+    }
+    auto channels = onChannels();
+    channels.removeAll(channel.toLower());
+    if (on)
+    {
+        channels.append(channel.toLower());
+    }
+    channels.sort();
+    getSettings()->autoMessagesChannels = channels.join(u';');
 }
 
 std::vector<AutoMessages::Rule> AutoMessages::read(const QString &json)

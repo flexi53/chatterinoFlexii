@@ -1235,6 +1235,7 @@ public:
     BoolSetting showFocusButton = {"/ui/buttons/focus", true};
     BoolSetting showModAssistButton = {"/ui/buttons/modAssist", true};
     BoolSetting showAlertMuteButton = {"/ui/buttons/alertMute", true};
+    BoolSetting showAutoMessagesButton = {"/ui/buttons/autoMessages", true};
     /// Choosing the badge you wear - needs the browser login, so off until
     /// asked for
     BoolSetting showBadgeButton = {"/ui/buttons/badge", false};
@@ -1270,7 +1271,10 @@ public:
     BoolSetting watchedPeopleEnabled = {"/notes/people/enabled", false};
     /// Erweitert -> Autonachrichten: rules as JSON, see
     /// controllers/automessages/AutoMessages.hpp
-    BoolSetting autoMessagesEnabled = {"/advanced/autoMessages/enabled", false};
+    /// Channels (logins, ';' between them) where they are switched on - by
+    /// the speech bubble in the input bar
+    QStringSetting autoMessagesChannels = {"/advanced/autoMessages/channels",
+                                           ""};
     QStringSetting autoMessagesRules = {"/advanced/autoMessages/rules", ""};
     QStringSetting watchedPeople = {"/notes/people/list", ""};
     /// Instead of the list: a filter in the language of the filters page,

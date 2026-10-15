@@ -6,6 +6,7 @@
 
 #include "controllers/automessages/AutoMessages.hpp"
 
+#include <pajlada/signals/signalholder.hpp>
 #include <QWidget>
 
 #include <vector>
@@ -46,7 +47,7 @@ private:
     /// changes to it
     bool filling_ = false;
 
-    QCheckBox *enabled_{};
+    QLabel *onStatus_{};
     QListWidget *list_{};
     QPushButton *remove_{};
     QPushButton *up_{};
@@ -69,6 +70,7 @@ private:
     QSpinBox *testCount_{};
     QLabel *testResult_{};
     QTimer *saveTimer_{};
+    pajlada::Signals::SignalHolder connections_;
 };
 
 }  // namespace chatterino

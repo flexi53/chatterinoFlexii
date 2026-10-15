@@ -82,12 +82,33 @@ AutoMessagesTab::AutoMessagesTab()
             "einem Kanal gehen höchstens alle 2 Sekunden eine Antwort raus.",
             true);
 
-    this->enabled_ = new QCheckBox("Autonachrichten einschalten");
-    this->enabled_->setChecked(s.autoMessagesEnabled);
-    QObject::connect(this->enabled_, &QCheckBox::toggled, [](bool on) {
-        getSettings()->autoMessagesEnabled = on;
-    });
-    layout->addWidget(this->enabled_);
+    addHeading(layout, "An und aus");
+    addText(layout,
+            "Pro Kanal mit der Sprechblase im Eingabefeld: grün = an, "
+            "durchgestrichen = aus. Ohne sie antwortet nirgends etwas, "
+            "egal welche Regeln hier stehen.",
+            true);
+    this->onStatus_ = addText(layout, QString());
+    const auto showOn = [this] {
+        const auto channels = AutoMessages::onChannels();
+        this->onStatus_->setText(
+            channels.isEmpty()
+                ? QStringLiteral("Gerade in keinem Kanal an.")
+                : QStringLiteral("An in: %1").arg(channels.join(", ")));
+    };
+    showOn();
+    s.autoMessagesChannels.connect(
+        [showOn](const QString &, auto) {
+            showOn();
+        },
+        this->connections_, false);
+    {
+        auto *allOff = new QPushButton("Überall aus");
+        QObject::connect(allOff, &QPushButton::clicked, [] {
+            getSettings()->autoMessagesChannels = QString();
+        });
+        addButtonRow(layout, allOff);
+    }
 
     addHeading(layout, "Regeln");
     addText(layout,

@@ -53,6 +53,10 @@ void addButtonList(GeneralPageView &layout, QWidget *parent)
         {
             return &s.showAlertMuteButton;
         }
+        if (key == inputbuttons::AUTO_MESSAGES)
+        {
+            return &s.showAutoMessagesButton;
+        }
         if (key == inputbuttons::CLEAR)
         {
             return &s.showClearChatButton;
@@ -93,6 +97,12 @@ void addButtonList(GeneralPageView &layout, QWidget *parent)
                    "Einstellungen zu ändern. Erscheint nur, wo du Mod oder "
                    "Streamer bist.";
         }
+        if (key == inputbuttons::AUTO_MESSAGES)
+        {
+            return "Schaltet die Autonachrichten (Erweitert → "
+                   "Autonachrichten) für diesen Kanal an und aus. Grün heißt: "
+                   "dein Account antwortet hier von selbst.";
+        }
         if (key == inputbuttons::CLEAR)
         {
             return "Leert diesen Chat hier bei dir, wie „Clear messages“. "
@@ -131,7 +141,7 @@ void addButtonList(GeneralPageView &layout, QWidget *parent)
     auto *list = new QListWidget;
     list->setSelectionMode(QAbstractItemView::SingleSelection);
     // Room for all of them, so nothing has to be scrolled to
-    list->setFixedHeight(list->fontMetrics().lineSpacing() * 9 + 16);
+    list->setFixedHeight(list->fontMetrics().lineSpacing() * 10 + 16);
 
     auto *up = new QPushButton("Hoch");
     auto *down = new QPushButton("Runter");
@@ -271,6 +281,8 @@ void InputPage::initLayout(GeneralPageView &layout)
                 s.showModAssistButton.getDefaultValue());
             s.showAlertMuteButton.setValue(
                 s.showAlertMuteButton.getDefaultValue());
+            s.showAutoMessagesButton.setValue(
+                s.showAutoMessagesButton.getDefaultValue());
             s.showBadgeButton.setValue(s.showBadgeButton.getDefaultValue());
             s.showClipButton.setValue(s.showClipButton.getDefaultValue());
             s.showFollowBrowserButton.setValue(

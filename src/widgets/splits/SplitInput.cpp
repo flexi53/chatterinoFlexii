@@ -26,6 +26,7 @@
 #include "util/LayoutCreator.hpp"
 #include "util/UiStyle.hpp"
 #include "widgets/buttons/AlertMuteButton.hpp"
+#include "widgets/buttons/AutoMessageButton.hpp"
 #include "widgets/buttons/BadgeButton.hpp"
 #include "widgets/buttons/ClearChatButton.hpp"
 #include "widgets/buttons/FocusButton.hpp"
@@ -247,6 +248,7 @@ void SplitInput::initLayout()
                           &getSettings()->showFocusButton,
                           &getSettings()->showModAssistButton,
                           &getSettings()->showAlertMuteButton,
+                          &getSettings()->showAutoMessagesButton,
                           &getSettings()->showBadgeButton,
                           &getSettings()->showClipButton,
                           &getSettings()->showFollowBrowserButton})
@@ -293,6 +295,10 @@ void SplitInput::initLayout()
         // that decides what this channel watches for
         this->ui_.alertMuteButton = new AlertMuteButton;
         this->ui_.alertMuteButton->hide();
+
+        // Autonachrichten on or off for this channel
+        this->ui_.autoMessageButton = new AutoMessageButton;
+        this->ui_.autoMessageButton->hide();
 
         // Which badge you wear here, as on twitch.tv
         this->ui_.badgeButton = new BadgeButton;
@@ -510,6 +516,8 @@ void SplitInput::updateEmoteButton()
     this->ui_.modAssistButton->setFixedWidth(width);
     this->ui_.alertMuteButton->setFixedHeight(height);
     this->ui_.alertMuteButton->setFixedWidth(width);
+    this->ui_.autoMessageButton->setFixedHeight(height);
+    this->ui_.autoMessageButton->setFixedWidth(width);
     this->ui_.badgeButton->setFixedHeight(height);
     this->ui_.badgeButton->setFixedWidth(width);
     this->ui_.clipButton->setFixedHeight(height);
@@ -562,6 +570,10 @@ void SplitInput::arrangeButtons()
         else if (key == inputbuttons::ALERT_MUTE)
         {
             button = this->ui_.alertMuteButton;
+        }
+        else if (key == inputbuttons::AUTO_MESSAGES)
+        {
+            button = this->ui_.autoMessageButton;
         }
         else if (key == inputbuttons::CLEAR)
         {
@@ -633,6 +645,13 @@ void SplitInput::updateModAssistButton()
     const bool canWrite =
         twitch != nullptr &&
         !getApp()->getAccounts()->twitch.getCurrent()->isAnon();
+
+    // Autonachrichten: wherever you can write, for the account this was
+    // built for
+    this->ui_.autoMessageButton->setChannel(
+        twitch != nullptr ? twitch->getName() : QString{});
+    this->ui_.autoMessageButton->setVisible(
+        canWrite && mine && getSettings()->showAutoMessagesButton);
     this->ui_.badgeButton->setChannel(
         canWrite ? this->split_->getChannel() : nullptr);
     this->ui_.badgeButton->setVisible(canWrite &&
