@@ -57,6 +57,7 @@ private:
     QComboBox *kind_{};
     QLineEdit *channel_{};
     QWidget *patternRow_{};
+    QLineEdit *fromText_{};
     QLineEdit *pattern_{};
     QLabel *patternStatus_{};
     QWidget *countRow_{};

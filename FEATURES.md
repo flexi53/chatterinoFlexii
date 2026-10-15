@@ -254,8 +254,12 @@ when something happens in a channel:
   something else. A gift of ten subs is one event, not eleven.
 - **Sub**, **Resub**, **Raid** from so many viewers on
 - A **chat message** matching a regular expression, as in Fossabot (case
-  does not matter); the field says at once whether the pattern holds
-- The answer takes `{user}`, `{anzahl}`, `{monate}` and `{kanal}` -
+  does not matter); the field says at once whether the pattern holds. Or
+  just type the words - `was baust du, was machst du` - and the pattern is
+  built as you type: those words in a row, spaces and punctuation between
+  them free, not inside other words, a comma for each other phrase
+- The answer takes `{user}` (or just `username`: who wrote the message or
+  gave the subs), `{anzahl}`, `{monate}` and `{kanal}` -
   `Kussdigga {anzahl}` says `Kussdigga 10`. Several answers, one per line,
   and one is picked at random
 - A **delay** drawn anew each time between a least and a most, say 0.5 to

@@ -91,8 +91,15 @@ public:
         const std::vector<Rule> &rules, const Event &event,
         const QHash<QString, QDateTime> &lastFired, const QDateTime &now);
 
-    /// The answer with {user}, {anzahl}, {monate} and {kanal} filled in
+    /// The answer with {user}, {anzahl}, {monate} and {kanal} filled in;
+    /// {username} and the bare word username are {user} too
     static QString fill(const QString &reply, const Event &event);
+
+    /// A pattern from plain text: "was baust du" matches those words in a
+    /// row, whatever case, spaces or punctuation between them, but not
+    /// inside other words; commas part several phrases, any one counts.
+    /// Empty when there is nothing to match.
+    static QString patternFromText(const QString &text);
 
     /// Why @a pattern is no valid regular expression, empty when it is
     static QString problemWith(const QString &pattern);

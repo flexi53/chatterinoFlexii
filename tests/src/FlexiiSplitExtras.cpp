@@ -3212,6 +3212,41 @@ TEST(FlexiiAutoMessages, HighestGiftThresholdAnswers)
     EXPECT_FALSE(AutoMessages::pick(rules, event, fired, now).has_value());
 }
 
+TEST(FlexiiAutoMessages, PatternFromPlainText)
+{
+    using Kind = AutoMessages::Kind;
+    auto rule = autoRule(Kind::Chat, 1, "@username ich baue ein Haus");
+    rule.pattern = AutoMessages::patternFromText(" was baust du , !discord ");
+    EXPECT_TRUE(AutoMessages::problemWith(rule.pattern).isEmpty());
+    const std::vector<AutoMessages::Rule> rules{rule};
+    const auto now = QDateTime::currentDateTimeUtc();
+
+    AutoMessages::Event event{.kind = Kind::Chat, .channel = "zarbex",
+                              .login = "tom", .displayName = "Tom",
+                              .text = "Hey, WAS   baust du da?"};
+    EXPECT_EQ(AutoMessages::pick(rules, event, {}, now), 0);
+    EXPECT_EQ(AutoMessages::fill(rule.replies.first(), event),
+              "@Tom ich baue ein Haus");
+    event.text = "was, baust... du";
+    EXPECT_EQ(AutoMessages::pick(rules, event, {}, now), 0);
+    event.text = "!discord";
+    EXPECT_EQ(AutoMessages::pick(rules, event, {}, now), 0);
+    event.text = "etwas baust du";  // "was" inside another word
+    EXPECT_FALSE(AutoMessages::pick(rules, event, {}, now).has_value());
+    event.text = "was du baust";
+    EXPECT_FALSE(AutoMessages::pick(rules, event, {}, now).has_value());
+
+    // Special characters stay plain text
+    const auto plus = AutoMessages::patternFromText("c++ (neu)");
+    EXPECT_TRUE(AutoMessages::problemWith(plus).isEmpty());
+    EXPECT_TRUE(QRegularExpression(plus).match("lernst du c++ (neu)?").hasMatch());
+    EXPECT_FALSE(QRegularExpression(plus).match("cxx neu").hasMatch());
+
+    EXPECT_TRUE(AutoMessages::patternFromText(" , ").isEmpty());
+    EXPECT_EQ(AutoMessages::fill("{username} usernames {USER}", event),
+              "Tom usernames Tom");
+}
+
 TEST(FlexiiAutoMessages, ChatPatternAndChannel)
 {
     using Kind = AutoMessages::Kind;

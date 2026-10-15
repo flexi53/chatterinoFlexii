@@ -71,7 +71,8 @@ AutoMessagesTab::AutoMessagesTab()
             "Subs, Resubs, Sub-Gifts ab einer Anzahl, Raids, oder eine "
             "Chat-Nachricht passt auf ein Muster (Regex, wie bei Fossabot).");
     addText(layout,
-            "Platzhalter in der Antwort: {user} = wer es war, {anzahl} = "
+            "Platzhalter in der Antwort: {user} oder einfach username = wer "
+            "es war (bei Chat: wer geschrieben hat), {anzahl} = "
             "Anzahl Gifts bzw. Raider, {monate} = Sub-Monate, {kanal} = Kanal. "
             "Beispiel: Kussdigga {anzahl}",
             true);
@@ -229,6 +230,16 @@ AutoMessagesTab::AutoMessagesTab()
         this->patternRow_ = new QWidget;
         auto *box = new QVBoxLayout(this->patternRow_);
         box->setContentsMargins(0, 0, 0, 0);
+        this->fromText_ = new QLineEdit;
+        this->fromText_->setPlaceholderText(
+            "Einfach Text, z. B. was baust du, was machst du");
+        this->fromText_->setToolTip(
+            "Schreib die Wörter, auf die geantwortet werden soll - das Regex\n"
+            "darunter entsteht beim Tippen von selbst. Komma = mehrere Sätze,\n"
+            "einer davon reicht. Groß-/Kleinschreibung, Leerzeichen und\n"
+            "Satzzeichen dazwischen sind egal, mitten in anderen Wörtern zählt\n"
+            "es nicht.");
+        box->addWidget(this->fromText_);
         this->pattern_ = new QLineEdit;
         this->pattern_->setPlaceholderText(R"(\bwann\s+stream\b)");
         this->pattern_->setToolTip(
@@ -240,7 +251,7 @@ AutoMessagesTab::AutoMessagesTab()
         this->patternStatus_ = new QLabel;
         this->patternStatus_->setWordWrap(true);
         box->addWidget(this->patternStatus_);
-        form->addRow("Muster (Regex)", this->patternRow_);
+        form->addRow("Text oder\nMuster (Regex)", this->patternRow_);
     }
     {
         this->count_ = new QSpinBox;
@@ -252,7 +263,8 @@ AutoMessagesTab::AutoMessagesTab()
 
     this->replies_ = new QPlainTextEdit;
     this->replies_->setPlaceholderText(
-        "Kussdigga {anzahl}\nDanke {user} für {anzahl} Subs!");
+        "Kussdigga {anzahl}\nDanke {user} für {anzahl} Subs!\n"
+        "@username ich baue gerade ein Haus");
     this->replies_->setToolTip(
         "Eine Antwort pro Zeile - jedes Mal wird zufällig eine davon "
         "genommen.");
@@ -333,6 +345,14 @@ AutoMessagesTab::AutoMessagesTab()
                      changed);
     QObject::connect(this->channel_, &QLineEdit::textChanged, this, changed);
     QObject::connect(this->pattern_, &QLineEdit::textChanged, this, changed);
+    QObject::connect(this->fromText_, &QLineEdit::textChanged, this,
+                     [this](const QString &text) {
+                         if (!this->filling_)
+                         {
+                             this->pattern_->setText(
+                                 AutoMessages::patternFromText(text));
+                         }
+                     });
     QObject::connect(this->count_, &QSpinBox::valueChanged, this, changed);
     QObject::connect(this->replies_, &QPlainTextEdit::textChanged, this,
                      changed);
@@ -391,6 +411,7 @@ void AutoMessagesTab::showRule()
     this->kind_->setCurrentIndex(
         this->kind_->findData(static_cast<int>(rule.kind)));
     this->channel_->setText(rule.channel);
+    this->fromText_->clear();
     this->pattern_->setText(rule.pattern);
     this->count_->setValue(rule.minCount);
     this->replies_->setPlainText(rule.replies.join('\n'));

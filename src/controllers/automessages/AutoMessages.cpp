@@ -300,15 +300,45 @@ std::optional<size_t> AutoMessages::pick(
 
 QString AutoMessages::fill(const QString &reply, const Event &event)
 {
+    static const QRegularExpression bareUsername(
+        R"((?<![\w{])username(?![\w}]))",
+        QRegularExpression::CaseInsensitiveOption |
+            QRegularExpression::UseUnicodePropertiesOption);
+    const auto user =
+        event.displayName.isEmpty() ? event.login : event.displayName;
     auto out = reply;
-    out.replace("{user}", event.displayName.isEmpty() ? event.login
-                                                      : event.displayName,
-                Qt::CaseInsensitive);
+    out.replace("{username}", user, Qt::CaseInsensitive);
+    out.replace("{user}", user, Qt::CaseInsensitive);
+    out.replace(bareUsername, user);
     out.replace("{anzahl}", QString::number(event.count), Qt::CaseInsensitive);
     out.replace("{monate}", QString::number(event.months),
                 Qt::CaseInsensitive);
     out.replace("{kanal}", event.channel, Qt::CaseInsensitive);
     return out;
+}
+
+QString AutoMessages::patternFromText(const QString &text)
+{
+    static const QRegularExpression space(R"(\s+)");
+    QStringList phrases;
+    for (const auto &phrase : text.split(u','))
+    {
+        QStringList words;
+        for (const auto &word : phrase.split(space, Qt::SkipEmptyParts))
+        {
+            words.append(QRegularExpression::escape(word));
+        }
+        if (!words.isEmpty())
+        {
+            phrases.append(words.join(R"([\s,.!?]+)"));
+        }
+    }
+    if (phrases.isEmpty())
+    {
+        return {};
+    }
+    // Not \b: that fails before a word starting with ! or ?
+    return QStringLiteral(R"((?<!\w)(?:%1)(?!\w))").arg(phrases.join(u'|'));
 }
 
 QString AutoMessages::problemWith(const QString &pattern)
