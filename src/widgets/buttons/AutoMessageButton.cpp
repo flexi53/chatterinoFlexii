@@ -7,6 +7,7 @@
 #include "controllers/automessages/AutoMessages.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
+#include "widgets/helper/ActiveBorder.hpp"
 
 #include <QPainter>
 #include <QPainterPath>
@@ -64,17 +65,12 @@ void AutoMessageButton::paintContent(QPainter &painter)
 {
     const bool on = AutoMessages::isOn(this->channel_);
 
-    // Quiet like the icons next to it while off; green while it answers
-    // here, so a channel left on does not go unnoticed
-    QColor color =
-        getTheme()->isLightTheme() ? QColor("#333333") : QColor("#e6e6e6");
-    if (on)
-    {
-        color = QColor("#3ecf8e");
-    }
+    // Green while it answers here, red and struck through while off - the
+    // same two colours as the bell beside it
+    QColor color = on ? QColor("#3ecf8e") : activeborder::fallback();
     if (!this->mouseOver())
     {
-        color.setAlpha(on ? 235 : 200);
+        color.setAlpha(235);
     }
 
     const auto scale = this->scale();

@@ -70,17 +70,12 @@ void AlertMuteButton::paintContent(QPainter &painter)
 {
     const bool muted = this->muted();
 
-    // Quiet like the icons next to it while the alerts may come; red while
-    // they are held back, so a channel left silent does not go unnoticed
-    QColor color =
-        getTheme()->isLightTheme() ? QColor("#333333") : QColor("#e6e6e6");
-    if (muted)
-    {
-        color = activeborder::fallback();
-    }
+    // Green while the alerts may come, red while they are held back - the
+    // same two colours as the speech bubble beside it
+    QColor color = muted ? activeborder::fallback() : QColor("#3ecf8e");
     if (!this->mouseOver())
     {
-        color.setAlpha(muted ? 235 : 200);
+        color.setAlpha(235);
     }
 
     const auto scale = this->scale();
