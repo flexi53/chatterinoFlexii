@@ -77,6 +77,10 @@ private:
     void refreshPoints();
     void showPoints(const modgql::ChannelPoints &points);
     void redeem(const modgql::Reward &reward);
+    /// The channel's sub emotes to pick one from, for Twitch's own reward
+    void pickEmote(const modgql::Reward &reward);
+    void sendRedeem(const modgql::Reward &reward, const QString &text,
+                    const QString &emoteId);
     /// Colours that come from the theme, again after it changed
     void applyStyles();
 

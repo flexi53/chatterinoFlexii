@@ -24,6 +24,9 @@
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QHideEvent>
+#include <QAction>
+#include <QTimer>
+#include <QIcon>
 #include <QInputDialog>
 #include <QLabel>
 #include <QLineEdit>
@@ -870,6 +873,13 @@ void TwitchActionsPopup::showPoints(const modgql::ChannelPoints &channelPoints)
 
 void TwitchActionsPopup::redeem(const modgql::Reward &reward)
 {
+    // Twitch's own "choose an emote": the channel's sub emotes to pick from
+    if (reward.type == QStringLiteral("CHOSEN_SUB_EMOTE_UNLOCK"))
+    {
+        this->pickEmote(reward);
+        return;
+    }
+
     QString text;
     if (reward.needsText)
     {
@@ -904,6 +914,82 @@ void TwitchActionsPopup::redeem(const modgql::Reward &reward)
         }
     }
 
+    this->sendRedeem(reward, text, {});
+}
+
+void TwitchActionsPopup::pickEmote(const modgql::Reward &reward)
+{
+    this->say(QStringLiteral("Hole die Emotes des Kanals …"));
+    QPointer<TwitchActionsPopup> self(this);
+    modgql::subEmotes(
+        this->channelId_,
+        [self, reward](const std::vector<modgql::SubEmote> &emotes) {
+            if (!self)
+            {
+                return;
+            }
+            if (emotes.empty())
+            {
+                self->say(QStringLiteral("Der Kanal hat keine Sub-Emotes."),
+                          true);
+                return;
+            }
+            self->say({});
+
+            // The pictures first, so the list shows what is picked - it
+            // opens after a moment even where some do not come
+            auto menu = std::make_shared<QMenu>(self.data());
+            menu->addSection(QStringLiteral("Für %1 Punkte freischalten")
+                                 .arg(points(reward.cost)));
+            auto waiting = std::make_shared<int>(static_cast<int>(emotes.size()));
+            auto opened = std::make_shared<bool>(false);
+            const auto open = [self, menu, opened, reward] {
+                if (!self || *opened)
+                {
+                    return;
+                }
+                *opened = true;
+                auto *picked = menu->exec(QCursor::pos());
+                if (picked != nullptr && picked->data().isValid())
+                {
+                    self->sendRedeem(reward, {}, picked->data().toString());
+                }
+            };
+            for (const auto &emote : emotes)
+            {
+                auto *action = menu->addAction(emote.token);
+                action->setData(emote.id);
+                QPointer<QAction> guarded(action);
+                webbadges::picture(
+                    QStringLiteral("https://static-cdn.jtvnw.net/emoticons/"
+                                   "v2/%1/default/dark/2.0")
+                        .arg(emote.id),
+                    self.data(),
+                    [guarded, waiting, open](const QPixmap &picture) {
+                        if (guarded)
+                        {
+                            guarded->setIcon(QIcon(picture));
+                        }
+                        if (--*waiting <= 0)
+                        {
+                            open();
+                        }
+                    });
+            }
+            QTimer::singleShot(1500, self.data(), open);
+        },
+        [self](const QString &error) {
+            if (self)
+            {
+                self->say(error, true);
+            }
+        });
+}
+
+void TwitchActionsPopup::sendRedeem(const modgql::Reward &reward,
+                                    const QString &text,
+                                    const QString &emoteId)
+{
     QPointer<TwitchActionsPopup> self(this);
     modgql::redeemReward(
         this->channelId_, reward, text,
@@ -920,7 +1006,8 @@ void TwitchActionsPopup::redeem(const modgql::Reward &reward)
                 self->say(error, true);
                 self->refreshPoints();
             }
-        });
+        },
+        emoteId);
 }
 
 void TwitchActionsPopup::createPoll()

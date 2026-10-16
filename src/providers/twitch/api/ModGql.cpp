@@ -14,9 +14,11 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QPointer>
+#include <QSet>
 #include <QUrlQuery>
 
 #include <algorithm>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -290,6 +292,77 @@ void refresh(std::function<void(bool)> onDone)
         })
         .onError([onDone](const NetworkResult &) {
             onDone(false);
+        })
+        .execute();
+}
+
+/// What a reward Twitch has in every channel is called here, what it asks
+/// for, and whether it needs a text - for the ones ChattiFlexii can redeem
+struct AutomaticReward {
+    QString title;
+    QString prompt;
+    bool needsText = false;
+};
+
+std::optional<AutomaticReward> automaticReward(const QString &type)
+{
+    if (type == "SEND_HIGHLIGHTED_MESSAGE")
+    {
+        return AutomaticReward{
+            QStringLiteral("Nachricht hervorheben"),
+            QStringLiteral("Deine Nachricht steht hervorgehoben im Chat."),
+            true};
+    }
+    if (type == "SINGLE_MESSAGE_BYPASS_SUB_MODE")
+    {
+        return AutomaticReward{
+            QStringLiteral("Im Sub-Modus schreiben"),
+            QStringLiteral("Eine Nachricht, auch wenn nur Subs schreiben "
+                           "dürfen."),
+            true};
+    }
+    if (type == "RANDOM_SUB_EMOTE_UNLOCK")
+    {
+        return AutomaticReward{
+            QStringLiteral("Zufälliges Emote freischalten"),
+            QStringLiteral("Ein zufälliges Sub-Emote des Kanals für 24 "
+                           "Stunden."),
+            false};
+    }
+    if (type == "CHOSEN_SUB_EMOTE_UNLOCK")
+    {
+        return AutomaticReward{
+            QStringLiteral("Emote wählen und freischalten"),
+            QStringLiteral("Ein Sub-Emote des Kanals deiner Wahl für 24 "
+                           "Stunden."),
+            false};
+    }
+    return std::nullopt;
+}
+
+/// The answer of a reward Twitch has everywhere: what went wrong, or the
+/// balance left
+void redeemAutomatic(const QJsonObject &payload, const QString &field,
+                     std::function<void(qint64)> onDone, Failed onError)
+{
+    gqlRequest(payload, true)
+        .onSuccess([field, onDone, onError](const NetworkResult &result) {
+            const auto answer = firstAnswer(result.parseJsonValue());
+            const auto error = errorOf(answer, field);
+            if (!error.isEmpty())
+            {
+                onError(explain(error));
+                return;
+            }
+            onDone(answer.value("data")
+                       .toObject()
+                       .value(field)
+                       .toObject()
+                       .value("balance")
+                       .toInteger(-1));
+        })
+        .onError([onError](const NetworkResult &result) {
+            onError("Netzwerkfehler: " + result.formatError());
         })
         .execute();
 }
@@ -738,6 +811,51 @@ void channelPoints(const QString &channelLogin,
                     points.rewards.push_back(std::move(entry));
                 }
             }
+            // And those Twitch has in every channel - the ones that can be
+            // had for points and need nothing but a text or an emote
+            for (const auto &value :
+                 settings.value("automaticRewards").toArray())
+            {
+                const auto reward = value.toObject();
+                const auto type = reward.value("type").toString();
+                const auto known = automaticReward(type);
+                if (!known ||
+                    reward.value("pricingType").toString("POINTS") != "POINTS")
+                {
+                    continue;
+                }
+                auto image = reward.value("image").toObject();
+                if (image.isEmpty())
+                {
+                    image = reward.value("defaultImage").toObject();
+                }
+                auto cost = reward.value("cost").toInt(-1);
+                if (cost <= 0)
+                {
+                    cost = reward.value("defaultCost").toInt(0);
+                }
+                Reward entry{
+                    .type = type,
+                    .id = reward.value("id").toString(),
+                    .title = known->title,
+                    .prompt = known->prompt,
+                    .cost = cost,
+                    .color = reward.value("backgroundColor")
+                                 .toString(reward.value("defaultBackgroundColor")
+                                               .toString()),
+                    .imageUrl = image.value("url2x").toString(
+                        image.value("url").toString()),
+                    .enabled = reward.value("isEnabled").toBool(false) &&
+                               !reward.value("isPaused").toBool(false),
+                    .inStock = reward.value("isInStock").toBool(true),
+                    .needsText = known->needsText,
+                };
+                if (entry.cost > 0)
+                {
+                    points.rewards.push_back(std::move(entry));
+                }
+            }
+
             std::ranges::sort(points.rewards,
                               [](const Reward &a, const Reward &b) {
                                   return a.cost < b.cost;
@@ -753,13 +871,85 @@ void channelPoints(const QString &channelLogin,
 
 void redeemReward(const QString &channelId, const Reward &reward,
                   const QString &text, std::function<void(qint64)> onDone,
-                  Failed onError)
+                  Failed onError, const QString &emoteId)
 {
     if (saved().accessToken.isEmpty())
     {
         onError("Nicht bei Twitch angemeldet.");
         return;
     }
+
+    // Those Twitch has in every channel each go their own way
+    if (!reward.type.isEmpty())
+    {
+        QJsonObject input{
+            {"channelID", channelId},
+            {"cost", reward.cost},
+            {"transactionID", withoutDashes(generateUuid())},
+        };
+        if (reward.type == "SEND_HIGHLIGHTED_MESSAGE")
+        {
+            input.insert("message", text);
+            redeemAutomatic(
+                persisted("SendHighlightedChatMessage",
+                          "bb187d763156dc5c25c6457e1b32da6c5033cb7504854e6d33"
+                          "a8b876d10444b6",
+                          {{"input", input}}),
+                "sendHighlightedChatMessage", std::move(onDone),
+                std::move(onError));
+            return;
+        }
+        if (reward.type == "SINGLE_MESSAGE_BYPASS_SUB_MODE")
+        {
+            static const auto *mutation = R"(
+                mutation SendSubsOnlyMessage(
+                    $input: SendChatMessageThroughSubscriberModeInput!
+                ) {
+                    sendChatMessageThroughSubscriberMode(input: $input) {
+                        balance error { code }
+                    }
+                }
+            )";
+            input.insert("message", text);
+            redeemAutomatic({{"query", mutation},
+                             {"variables", QJsonObject{{"input", input}}}},
+                            "sendChatMessageThroughSubscriberMode",
+                            std::move(onDone), std::move(onError));
+            return;
+        }
+        if (reward.type == "RANDOM_SUB_EMOTE_UNLOCK")
+        {
+            redeemAutomatic(
+                persisted("UnlockRandomSubscriberEmote",
+                          "f548e89966b21d0094f3dc35233232eb6ec76d63e02594c8a4"
+                          "94407712a85350",
+                          {{"input", input}}),
+                "unlockRandomSubscriberEmote", std::move(onDone),
+                std::move(onError));
+            return;
+        }
+        if (reward.type == "CHOSEN_SUB_EMOTE_UNLOCK")
+        {
+            static const auto *mutation = R"(
+                mutation UnlockChosenSubscriberEmote(
+                    $input: UnlockChosenSubscriberEmoteInput!
+                ) {
+                    unlockChosenSubscriberEmote(input: $input) {
+                        balance error { code }
+                    }
+                }
+            )";
+            input.insert("emoteID", emoteId);
+            redeemAutomatic({{"query", mutation},
+                             {"variables", QJsonObject{{"input", input}}}},
+                            "unlockChosenSubscriberEmote", std::move(onDone),
+                            std::move(onError));
+            return;
+        }
+        onError("Diese Belohnung kann ChattiFlexii nicht einlösen.");
+        return;
+    }
+
     QJsonObject input{
         {"channelID", channelId},
         {"cost", reward.cost},
@@ -1009,6 +1199,63 @@ void addModComment(const QString &channelId, const QString &targetId,
     mutate({{"query", mutation}, {"variables", QJsonObject{{"input", input}}}},
            "createModeratorComment", false, std::move(onDone),
            std::move(onError));
+}
+
+void subEmotes(const QString &channelId,
+               std::function<void(std::vector<SubEmote>)> onEmotes,
+               Failed onError)
+{
+    if (saved().accessToken.isEmpty())
+    {
+        onError("Nicht bei Twitch angemeldet.");
+        return;
+    }
+    gqlRequest(persisted("EmotePicker_EmotePicker_UserSubscriptionProducts",
+                         "511bebfb513d0127d24a7fe49aa2b7717306a611e1f4269a93e0"
+                         "cc76e8a65a81",
+                         {{"channelOwnerID", channelId}}),
+               true)
+        .onSuccess([onEmotes, onError](const NetworkResult &result) {
+            const auto answer = firstAnswer(result.parseJsonValue());
+            const auto error = errorOf(answer, {});
+            if (!error.isEmpty())
+            {
+                onError(explain(error));
+                return;
+            }
+            std::vector<SubEmote> emotes;
+            QSet<QString> seen;
+            const auto products = answer.value("data")
+                                      .toObject()
+                                      .value("user")
+                                      .toObject()
+                                      .value("subscriptionProducts")
+                                      .toArray();
+            for (const auto &product : products)
+            {
+                for (const auto &value :
+                     product.toObject().value("emotes").toArray())
+                {
+                    const auto emote = value.toObject();
+                    SubEmote found{
+                        .id = emote.value("id").toString(),
+                        .token = emote.value("token").toString(),
+                    };
+                    if (found.id.isEmpty() || found.token.isEmpty() ||
+                        seen.contains(found.id))
+                    {
+                        continue;
+                    }
+                    seen.insert(found.id);
+                    emotes.push_back(std::move(found));
+                }
+            }
+            onEmotes(std::move(emotes));
+        })
+        .onError([onError](const NetworkResult &result) {
+            onError("Netzwerkfehler: " + result.formatError());
+        })
+        .execute();
 }
 
 }  // namespace chatterino::modgql

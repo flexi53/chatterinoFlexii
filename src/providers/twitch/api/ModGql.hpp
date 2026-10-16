@@ -54,6 +54,9 @@ enum class DeviceState {
 
 /// A reward of a channel that can be bought with its points
 struct Reward {
+    /// Empty for the channel's own rewards; for those Twitch has in every
+    /// channel what it is, as SEND_HIGHLIGHTED_MESSAGE
+    QString type;
     QString id;
     QString title;
     QString prompt;
@@ -63,6 +66,12 @@ struct Reward {
     bool enabled = true;
     bool inStock = true;
     bool needsText = false;
+};
+
+/// A subscriber emote of a channel, which points can unlock for a day
+struct SubEmote {
+    QString id;
+    QString token;
 };
 
 /// What you have in a channel and can buy there
@@ -174,10 +183,16 @@ void addModComment(const QString &channelId, const QString &targetId,
 void channelPoints(const QString &channelLogin,
                    std::function<void(ChannelPoints)> onPoints,
                    Failed onError);
-/// Buys @a reward, with @a text where it asks for some. Calls back with the
-/// balance left.
+/// The channel's subscriber emotes, to pick one to unlock
+void subEmotes(const QString &channelId,
+               std::function<void(std::vector<SubEmote>)> onEmotes,
+               Failed onError);
+
+/// Buys @a reward, with @a text where it asks for some, and @a emoteId for
+/// the one that unlocks a chosen emote. Calls back with the balance left.
+/// Works for the channel's own rewards and for those Twitch has everywhere.
 void redeemReward(const QString &channelId, const Reward &reward,
                   const QString &text, std::function<void(qint64)> onDone,
-                  Failed onError);
+                  Failed onError, const QString &emoteId = {});
 
 }  // namespace chatterino::modgql

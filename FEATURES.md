@@ -528,7 +528,11 @@ account, kept in the keychain only.
   laid out like the alert windows: the channel with your balance on top, its
   **rewards as tiles** in their own colours with picture and price - pale
   where they cannot be had - and a click redeems, asking for the text where
-  a reward wants one. Moderators also **start polls** (2 to 5 answers, extra
+  a reward wants one. Besides the channel's own rewards there are those
+  Twitch has everywhere: **Nachricht hervorheben**, **Im Sub-Modus
+  schreiben**, **Zufälliges Emote freischalten** and **Emote wählen und
+  freischalten**, which lists the channel's sub emotes with their pictures.
+  Moderators also **start polls** (2 to 5 answers, extra
   votes for points if wanted) **and predictions** (2 to 10 outcomes) there,
   with the duration picked from a row of choices
 - **Raids** show as a banner of their own: where the channel raids to, how
