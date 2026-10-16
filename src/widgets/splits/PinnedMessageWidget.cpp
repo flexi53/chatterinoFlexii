@@ -78,6 +78,12 @@ PinnedMessageWidget::PinnedMessageWidget(QWidget *parent)
     footerRow->addWidget(this->countdownLabel());
     this->contentBox()->addLayout(footerRow);
 
+    getSettings()->showPinnedBanner.connect(
+        [this] {
+            this->refresh();
+        },
+        this->settingConnections_, false);
+
     this->scaleChangedEvent(this->scale());
     this->hide();
 }
@@ -193,7 +199,8 @@ std::unique_ptr<QMenu> PinnedMessageWidget::buildModMenu()
 
 void PinnedMessageWidget::refresh()
 {
-    if (!this->channel_)
+    // ChattiFlexii: Aussehen -> Splits can do without it altogether
+    if (!this->channel_ || !getSettings()->showPinnedBanner)
     {
         this->stopCountdown();
         this->stopAutoHide();
@@ -258,6 +265,10 @@ void PinnedMessageWidget::toggleUserPinned()
     }
     else
     {
+        if (!getSettings()->showPinnedBanner)
+        {
+            return;
+        }
         this->userToggled_ = true;
         this->setDismissed(false);
         this->stopAutoHide();

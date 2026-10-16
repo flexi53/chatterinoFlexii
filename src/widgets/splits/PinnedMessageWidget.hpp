@@ -59,6 +59,9 @@ private:
 
     TwitchChannel *channel_ = nullptr;
     pajlada::Signals::SignalHolder signalHolder_;
+    /// ChattiFlexii: what lives as long as the banner does - the channel's
+    /// connections above are cleared with every channel
+    pajlada::Signals::SignalHolder settingConnections_;
 
     // Header row
     /// Mod Menu.

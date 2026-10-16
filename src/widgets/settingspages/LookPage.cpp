@@ -724,12 +724,25 @@ void LookPage::buildSplitsTab(GeneralPageView &layout)
         "erscheint also überall, nicht nur wo du Mod bist. Die Knöpfe dazu "
         "holst du dir unter Titelleiste → Aufbau. Abstimmen und wetten per "
         "Klick im Banner richtest du unter Twitch-Extras ein.");
-    SettingWidget::checkbox("Umfragen und Vorhersagen zeigen", s.showVoteBanner)
-        ->setTooltip("Zeigt die laufende Umfrage oder Vorhersage mit "
-                     "Balken, Stimmen und Restzeit. Nach dem Ende bleibt "
-                     "das Ergebnis noch kurz stehen.")
-        ->addKeywords({"umfrage", "poll", "vorhersage", "prediction",
-                       "banner"})
+    layout.addDescription(
+        "Jede Art für sich - was aus ist, erscheint gar nicht.");
+    SettingWidget::checkbox("Angepinnte Nachricht zeigen", s.showPinnedBanner)
+        ->setTooltip("Zeigt die angepinnte Nachricht des Kanals. Ob sie "
+                     "nach einer halben Minute wegklappt, stellst du unter "
+                     "General mit „Always show pinned channel message“ ein.")
+        ->addKeywords({"pin", "angepinnt", "banner"})
+        ->addTo(layout);
+    SettingWidget::checkbox("Umfragen zeigen", s.showVoteBanner)
+        ->setTooltip("Zeigt die laufende Umfrage mit Balken, Stimmen und "
+                     "Restzeit. Nach dem Ende bleibt das Ergebnis noch kurz "
+                     "stehen.")
+        ->addKeywords({"umfrage", "poll", "banner"})
+        ->addTo(layout);
+    SettingWidget::checkbox("Vorhersagen zeigen", s.showPredictionBanner)
+        ->setTooltip("Zeigt die laufende Vorhersage mit Ausgängen, Punkten "
+                     "und Quoten. Nach dem Ende bleibt das Ergebnis noch kurz "
+                     "stehen.")
+        ->addKeywords({"vorhersage", "prediction", "punkte", "banner"})
         ->addTo(layout);
     SettingWidget::checkbox("Hype Train zeigen", s.showHypeTrainBanner)
         ->setTooltip("Zeigt den laufenden Hype Train mit Level, Fortschritt "
@@ -759,8 +772,12 @@ void LookPage::buildSplitsTab(GeneralPageView &layout)
     addStandardButton(layout, "Banner wie am Anfang, mit Rahmen in der "
                               "Akzentfarbe",
                       [&s] {
+                          s.showPinnedBanner.setValue(
+                              s.showPinnedBanner.getDefaultValue());
                           s.showVoteBanner.setValue(
                               s.showVoteBanner.getDefaultValue());
+                          s.showPredictionBanner.setValue(
+                              s.showPredictionBanner.getDefaultValue());
                           s.showHypeTrainBanner.setValue(
                               s.showHypeTrainBanner.getDefaultValue());
                           s.showRaidBanner.setValue(

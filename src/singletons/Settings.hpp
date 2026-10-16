@@ -301,6 +301,12 @@ public:
     /// ChattiFlexii, Aussehen -> Splits: the banner under the header saying
     /// what the channel is voting on right now
     BoolSetting showVoteBanner = {"/appearance/banners/showVotes", true};
+    /// ChattiFlexii, Aussehen -> Splits: predictions in that banner - polls
+    /// go by the one above
+    BoolSetting showPredictionBanner = {"/appearance/banners/showPredictions",
+                                        true};
+    /// ChattiFlexii, Aussehen -> Splits: the banner with the pinned message
+    BoolSetting showPinnedBanner = {"/appearance/banners/showPinned", true};
     /// ChattiFlexii, Twitch-Extras: a click on a line of the banner votes or
     /// bets, and moderators get its buttons - needs the Twitch app login
     BoolSetting voteBannerActions = {"/twitchExtras/bannerActions", true};

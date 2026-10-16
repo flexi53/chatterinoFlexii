@@ -237,6 +237,11 @@ VoteBannerWidget::VoteBannerWidget(QWidget *parent)
             this->refresh();
         },
         this->connections_, false);
+    getSettings()->showPredictionBanner.connect(
+        [this] {
+            this->refresh();
+        },
+        this->connections_, false);
     getSettings()->voteBannerActions.connect(
         [this] {
             this->refresh();
@@ -297,9 +302,12 @@ void VoteBannerWidget::toggleUserPinned()
 
     // Nothing to bring back where nothing is running, or where the banner
     // is switched off altogether
-    if (this->channel_ == nullptr || !getSettings()->showVoteBanner ||
-        (this->channel_->currentPoll() == nullptr &&
-         this->channel_->currentPrediction() == nullptr))
+    // Polls and predictions are switched on and off each for itself
+    const bool polls = getSettings()->showVoteBanner;
+    const bool predictions = getSettings()->showPredictionBanner;
+    if (this->channel_ == nullptr ||
+        ((!polls || this->channel_->currentPoll() == nullptr) &&
+         (!predictions || this->channel_->currentPrediction() == nullptr)))
     {
         return;
     }
@@ -313,8 +321,10 @@ void VoteBannerWidget::toggleUserPinned()
 
 void VoteBannerWidget::refresh()
 {
-    // Aussehen -> Chat can do without the banner altogether
-    if (this->channel_ == nullptr || !getSettings()->showVoteBanner)
+    // Aussehen -> Splits can do without polls, predictions or both
+    const bool polls = getSettings()->showVoteBanner;
+    const bool predictions = getSettings()->showPredictionBanner;
+    if (this->channel_ == nullptr || (!polls && !predictions))
     {
         this->stopCountdown();
         this->stopAutoHide();
@@ -322,8 +332,9 @@ void VoteBannerWidget::refresh()
         return;
     }
 
-    const auto *poll = this->channel_->currentPoll();
-    const auto *prediction = this->channel_->currentPrediction();
+    const auto *poll = polls ? this->channel_->currentPoll() : nullptr;
+    const auto *prediction =
+        predictions ? this->channel_->currentPrediction() : nullptr;
 
     // A running vote comes first; of two running ones the poll, which is
     // the shorter of the two
