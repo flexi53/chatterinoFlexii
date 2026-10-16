@@ -27,6 +27,7 @@ class SplitOverlay;
 class PinnedMessageWidget;
 class VoteBannerWidget;
 class HypeTrainBannerWidget;
+class RaidBannerWidget;
 class SelectChannelDialog;
 class OverlayWindow;
 
@@ -184,6 +185,7 @@ private:
     PinnedMessageWidget *const pinnedBanner_;
     VoteBannerWidget *const voteBanner_;
     HypeTrainBannerWidget *const hypeBanner_;
+    RaidBannerWidget *const raidBanner_;
     ChannelView *const view_;
     SplitInput *const input_;
     SplitOverlay *const overlay_;

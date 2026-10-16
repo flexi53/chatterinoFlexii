@@ -9,6 +9,7 @@
 #include <pajlada/signals/signal.hpp>
 #include "providers/twitch/pubsubmessages/HypeTrain.hpp"
 #include "providers/twitch/pubsubmessages/Polls.hpp"
+#include "providers/twitch/pubsubmessages/Raid.hpp"
 #include "providers/twitch/pubsubmessages/Predictions.hpp"
 
 #include <QJsonObject>
@@ -85,6 +86,12 @@ public:
             changed;
     } hypeTrain;
 
+    struct {
+        /// ChattiFlexii: a raid was set up, changed, went or was called
+        /// off. The arguments are the channel's id and the raid.
+        pajlada::Signals::Signal<const QString &, const PubSubRaid &> changed;
+    } raid;
+
     /**
      * Listen to incoming channel point redemptions in the given channel.
      * This topic is relevant for everyone.
@@ -126,6 +133,14 @@ public:
      * PubSub topic: hype-train-events-v1.{channelID}
      */
     void listenToHypeTrain(const QString &channelID);
+
+    /**
+     * ChattiFlexii: listen to the raids the given channel sets up. As with
+     * polls, this topic is answered to everyone.
+     *
+     * PubSub topic: raid.{channelID}
+     */
+    void listenToRaid(const QString &channelID);
 
     struct {
         std::atomic<uint32_t> messagesReceived{0};

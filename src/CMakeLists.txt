@@ -589,6 +589,8 @@ set(SOURCE_FILES
         providers/twitch/pubsubmessages/PinnedChatUpdates.hpp
         providers/twitch/pubsubmessages/Polls.cpp
         providers/twitch/pubsubmessages/Polls.hpp
+        providers/twitch/pubsubmessages/Raid.cpp
+        providers/twitch/pubsubmessages/Raid.hpp
         providers/twitch/pubsubmessages/Predictions.cpp
         providers/twitch/pubsubmessages/Predictions.hpp
         providers/twitch/pubsubmessages/Unlisten.cpp
@@ -1082,6 +1084,8 @@ set(SOURCE_FILES
         widgets/splits/InputHighlighter.hpp
         widgets/splits/HypeTrainBannerWidget.cpp
         widgets/splits/HypeTrainBannerWidget.hpp
+        widgets/splits/RaidBannerWidget.cpp
+        widgets/splits/RaidBannerWidget.hpp
         widgets/splits/SendWaitBar.cpp
         widgets/splits/SendWaitBar.hpp
         widgets/splits/Split.cpp

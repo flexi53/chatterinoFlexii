@@ -1620,6 +1620,7 @@ void TwitchChannel::refreshPubSub()
     getApp()->getTwitchPubSub()->listenToPolls(roomId);
     getApp()->getTwitchPubSub()->listenToPredictions(roomId);
     getApp()->getTwitchPubSub()->listenToHypeTrain(roomId);
+    getApp()->getTwitchPubSub()->listenToRaid(roomId);
 
     if (currentAccount->isAnon())
     {
@@ -2837,6 +2838,47 @@ void TwitchChannel::takeHypeTrain(const PubSubHypeTrain &train)
 
     this->hypeTrain_ = train;
     this->hypeTrainChanged.invoke();
+}
+
+const PubSubRaid *TwitchChannel::currentRaid() const
+{
+    return this->raid_ ? &*this->raid_ : nullptr;
+}
+
+void TwitchChannel::takeRaid(const PubSubRaid &raid)
+{
+    if (raid.kind == PubSubRaid::Kind::Other)
+    {
+        return;
+    }
+    // That it went or was called off is the end of the one we have - an
+    // end for one we never saw starting is nothing to show
+    if (raid.kind != PubSubRaid::Kind::Update &&
+        (!this->raid_ || this->raid_->id != raid.id))
+    {
+        return;
+    }
+    auto taken = raid;
+    if (this->raid_ && this->raid_->id == raid.id)
+    {
+        // An update that does not say when it was set up keeps the clock
+        // the raid already has, rather than winding it up again
+        if (!raid.startKnown)
+        {
+            taken.goesAt = this->raid_->goesAt;
+            taken.startKnown = this->raid_->startKnown;
+        }
+        // The end says little more than which raid it was
+        if (taken.targetLogin.isEmpty())
+        {
+            taken.targetId = this->raid_->targetId;
+            taken.targetLogin = this->raid_->targetLogin;
+            taken.targetDisplayName = this->raid_->targetDisplayName;
+            taken.viewerCount = this->raid_->viewerCount;
+        }
+    }
+    this->raid_ = taken;
+    this->raidChanged.invoke();
 }
 
 const HelixPinnedChatMessage *TwitchChannel::getPinnedMessage() const

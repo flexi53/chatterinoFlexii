@@ -312,6 +312,9 @@ public:
     /// given, 0 for the one it comes up with
     IntSetting twitchExtrasWidth = {"/twitchExtras/windowWidth", 0};
     IntSetting twitchExtrasHeight = {"/twitchExtras/windowHeight", 0};
+    /// ChattiFlexii, Aussehen -> Splits: the banner for a raid the channel
+    /// is setting up
+    BoolSetting showRaidBanner = {"/appearance/banners/showRaid", true};
     /// ChattiFlexii, Aussehen -> Splits: the banner for the hype train
     BoolSetting showHypeTrainBanner = {"/appearance/banners/showHypeTrain",
                                        true};

@@ -531,6 +531,12 @@ account, kept in the keychain only.
   a reward wants one. Moderators also **start polls** (2 to 5 answers, extra
   votes for points if wanted) **and predictions** (2 to 10 outcomes) there,
   with the duration picked from a row of choices
+- **Raids** show as a banner of their own: where the channel raids to, how
+  many go along and how long until it goes, with the time running out
+  along its edge. Moderators get **Jetzt** and **Abbrechen** on it. It can
+  be switched off under Appearance -> Splits -> Banner
+- The broadcaster makes someone an **editor**, or takes it back, with the
+  **Editor** button on their user card, beside mod and VIP
 - Twitch does not offer this way to other apps; if it changes something,
   it may stop working without warning
 

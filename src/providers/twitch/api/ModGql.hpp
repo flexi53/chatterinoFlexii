@@ -121,6 +121,11 @@ void resolvePrediction(const QString &predictionId, const QString &outcomeId,
 void makePrediction(const QString &predictionId, const QString &outcomeId,
                     int points, Done onDone, Failed onError);
 
+/// Sends the raid the channel with the id @a channelId is setting up now,
+/// rather than when the wait is over - or calls it off
+void goRaid(const QString &channelId, Done onDone, Failed onError);
+void cancelRaid(const QString &channelId, Done onDone, Failed onError);
+
 /// Makes @a targetLogin an editor of the channel with the id @a channelId,
 /// or takes that back - only the broadcaster may
 void addEditor(const QString &channelId, const QString &targetLogin,

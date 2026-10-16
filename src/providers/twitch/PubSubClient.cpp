@@ -252,6 +252,18 @@ void PubSubClient::handleMessageResponse(const PubSubMessageMessage &message)
         return;
     }
 
+    if (message.topic.startsWith("raid."))
+    {
+        const auto channelId = message.topic.sliced(
+            static_cast<qsizetype>(sizeof("raid.") - 1));
+        auto raid = raidFrom(message.messageObject);
+        if (raid)
+        {
+            this->manager_.raid.changed.invoke(channelId, *raid);
+        }
+        return;
+    }
+
     if (!message.topic.startsWith("community-points-channel-v1."))
     {
         return;

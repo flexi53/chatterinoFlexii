@@ -40,6 +40,7 @@
 #include "widgets/splits/DraggedSplit.hpp"
 #include "widgets/splits/PinnedMessageWidget.hpp"
 #include "widgets/splits/HypeTrainBannerWidget.hpp"
+#include "widgets/splits/RaidBannerWidget.hpp"
 #include "widgets/splits/VoteBannerWidget.hpp"
 #include "widgets/splits/SplitContainer.hpp"
 #include "widgets/splits/SplitHeader.hpp"
@@ -140,6 +141,7 @@ Split::Split(QWidget *parent)
     , pinnedBanner_(new PinnedMessageWidget(this))
     , voteBanner_(new VoteBannerWidget(this))
     , hypeBanner_(new HypeTrainBannerWidget(this))
+    , raidBanner_(new RaidBannerWidget(this))
     , view_(new ChannelView(this, this, ChannelView::Context::None,
                             getSettings()->scrollbackSplitLimit))
     , input_(new SplitInput(this))
@@ -168,6 +170,7 @@ Split::Split(QWidget *parent)
     banners->addWidget(this->pinnedBanner_);
     banners->addWidget(this->voteBanner_);
     banners->addWidget(this->hypeBanner_);
+    banners->addWidget(this->raidBanner_);
     banners->addStretch(1);
     this->bannerBox_ = banners;
     // The room on the right follows the scrollbar coming and going
@@ -179,6 +182,7 @@ Split::Split(QWidget *parent)
         this->pinnedBanner_->update();
         this->voteBanner_->update();
         this->hypeBanner_->update();
+        this->raidBanner_->update();
     };
     this->signalHolder_.managedConnect(this->focused, repaintBanners);
     this->signalHolder_.managedConnect(this->focusLost, repaintBanners);
@@ -192,6 +196,10 @@ Split::Split(QWidget *parent)
                                            this->layoutBanners();
                                        });
     this->signalHolder_.managedConnect(this->hypeBanner_->visibilityChanged,
+                                       [this] {
+                                           this->layoutBanners();
+                                       });
+    this->signalHolder_.managedConnect(this->raidBanner_->visibilityChanged,
                                        [this] {
                                            this->layoutBanners();
                                        });
@@ -1001,6 +1009,7 @@ void Split::setChannel(IndirectChannel newChannel)
         this->pinnedBanner_->setChannel(tc);
         this->voteBanner_->setChannel(tc);
         this->hypeBanner_->setChannel(tc);
+        this->raidBanner_->setChannel(tc);
     }
     else if (kc != nullptr)
     {
@@ -1022,12 +1031,14 @@ void Split::setChannel(IndirectChannel newChannel)
         this->pinnedBanner_->setChannel(nullptr);
         this->voteBanner_->setChannel(nullptr);
         this->hypeBanner_->setChannel(nullptr);
+        this->raidBanner_->setChannel(nullptr);
     }
     else
     {
         this->pinnedBanner_->setChannel(nullptr);
         this->voteBanner_->setChannel(nullptr);
         this->hypeBanner_->setChannel(nullptr);
+        this->raidBanner_->setChannel(nullptr);
     }
 
     this->indirectChannelChangedConnection_ =
@@ -1233,7 +1244,8 @@ void Split::layoutBanners()
     this->bannerBox_->setContentsMargins(side, 0, side + bar, 0);
 
     for (auto *banner : std::initializer_list<QWidget *>{
-             this->pinnedBanner_, this->voteBanner_, this->hypeBanner_})
+             this->pinnedBanner_, this->voteBanner_, this->hypeBanner_,
+             this->raidBanner_})
     {
         banner->raise();
     }

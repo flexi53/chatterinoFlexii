@@ -178,28 +178,13 @@ VoteBannerWidget::VoteBannerWidget(QWidget *parent)
 {
     this->headerRow()->addWidget(this->countdownLabel());
 
-    // ChattiFlexii: what a moderator can do about what is shown, quiet
-    // enough to leave the card a card
-    const auto modButton = [this](const QString &text, const QString &tip) {
-        auto *button = new QPushButton(text, this);
-        button->setCursor(Qt::PointingHandCursor);
-        button->setToolTip(tip);
-        button->setFocusPolicy(Qt::NoFocus);
-        button->setStyleSheet(
-            u"QPushButton { border: 1px solid rgba(173, 173, 184, 90); "
-            "border-radius: 4px; padding: 0px 6px; background: transparent; "
-            "color: #adadb8; }"
-            "QPushButton:hover { background: rgba(173, 173, 184, 40); }"_s);
-        button->hide();
-        this->headerRow()->addWidget(button);
-        return button;
-    };
-    this->endButton_ = modButton(
+    // ChattiFlexii: what a moderator can do about what is shown
+    this->endButton_ = this->addHeaderButton(
         u"Beenden"_s, u"Beendet die Umfrage jetzt - die Stimmen bleiben."_s);
-    this->lockButton_ = modButton(
+    this->lockButton_ = this->addHeaderButton(
         u"Sperren"_s, u"Nimmt keine Einsätze mehr an. Danach einen Ausgang "
                       "anklicken, um ihn gewinnen zu lassen."_s);
-    this->cancelButton_ = modButton(
+    this->cancelButton_ = this->addHeaderButton(
         u"Abbrechen"_s,
         u"Bricht die Vorhersage ab - alle bekommen ihre Punkte zurück."_s);
 

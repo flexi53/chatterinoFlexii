@@ -736,6 +736,13 @@ void LookPage::buildSplitsTab(GeneralPageView &layout)
                      "und Restzeit.")
         ->addKeywords({"hype", "train", "banner"})
         ->addTo(layout);
+    SettingWidget::checkbox("Raids zeigen", s.showRaidBanner)
+        ->setTooltip("Zeigt, wohin der Kanal gerade raidet, wie viele "
+                     "mitgehen und wie lange es noch dauert. Mit der "
+                     "Anmeldung unter Twitch-Extras bekommen Mods dort "
+                     "„Jetzt“ und „Abbrechen“.")
+        ->addKeywords({"raid", "banner"})
+        ->addTo(layout);
     SettingWidget::checkbox("Rahmen um die Banner", s.bannerBorder)
         ->setTooltip("Eine dünne Linie um jede Karte. Trägt die Karte die "
                      "Farbe der Titelleiste - und ist die bei dir "
@@ -756,6 +763,8 @@ void LookPage::buildSplitsTab(GeneralPageView &layout)
                               s.showVoteBanner.getDefaultValue());
                           s.showHypeTrainBanner.setValue(
                               s.showHypeTrainBanner.getDefaultValue());
+                          s.showRaidBanner.setValue(
+                              s.showRaidBanner.getDefaultValue());
                           s.bannerBorder.setValue(
                               s.bannerBorder.getDefaultValue());
                           s.bannerBorderColor.setValue(

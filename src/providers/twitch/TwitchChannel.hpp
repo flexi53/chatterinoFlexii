@@ -14,6 +14,7 @@
 #include "providers/ffz/FfzEmotes.hpp"
 #include "providers/twitch/eventsub/SubscriptionHandle.hpp"
 #include "providers/twitch/pubsubmessages/HypeTrain.hpp"
+#include "providers/twitch/pubsubmessages/Raid.hpp"
 #include "providers/twitch/pubsubmessages/Polls.hpp"
 #include "providers/twitch/pubsubmessages/Predictions.hpp"
 #include "providers/twitch/TwitchEmotes.hpp"
@@ -482,6 +483,14 @@ public:
     /// Fires whenever that train changes
     pajlada::Signals::NoArgSignal hypeTrainChanged;
 
+    /// ChattiFlexii: the raid this channel is setting up, or the one that
+    /// just went or was called off - or null
+    const PubSubRaid *currentRaid() const;
+    /// ChattiFlexii: what the raid topic just said
+    void takeRaid(const PubSubRaid &raid);
+    /// Fires whenever that raid changes
+    pajlada::Signals::NoArgSignal raidChanged;
+
 private:
     struct NameOptions {
         // displayName is the non-CJK-display name for this user
@@ -686,6 +695,7 @@ private:
     std::optional<PubSubPoll> poll_;
     std::optional<PubSubPrediction> prediction_;
     std::optional<PubSubHypeTrain> hypeTrain_;
+    std::optional<PubSubRaid> raid_;
     /// Incremented before each getPinnedChatMessage request so that stale
     /// responses from earlier requests are discarded.
     uint64_t pinnedMessageRequestId_ = 0;

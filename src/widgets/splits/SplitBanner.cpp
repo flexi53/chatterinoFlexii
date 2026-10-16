@@ -12,6 +12,7 @@
 #include <QLabel>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPushButton>
 #include <QPaintEvent>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -101,6 +102,23 @@ QVBoxLayout *SplitBanner::contentBox() const
 QLabel *SplitBanner::countdownLabel() const
 {
     return this->countdownLabel_;
+}
+
+QPushButton *SplitBanner::addHeaderButton(const QString &text,
+                                          const QString &tooltip)
+{
+    auto *button = new QPushButton(text, this);
+    button->setCursor(Qt::PointingHandCursor);
+    button->setToolTip(tooltip);
+    button->setFocusPolicy(Qt::NoFocus);
+    button->setStyleSheet(
+        u"QPushButton { border: 1px solid rgba(173, 173, 184, 90); "
+        "border-radius: 4px; padding: 0px 6px; background: transparent; "
+        "color: #adadb8; }"
+        "QPushButton:hover { background: rgba(173, 173, 184, 40); }"_s);
+    button->hide();
+    this->headerRow_->addWidget(button);
+    return button;
 }
 
 void SplitBanner::setDismissed(bool dismissed)

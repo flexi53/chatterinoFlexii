@@ -356,6 +356,22 @@ void TwitchIrcServer::initialize()
                 }
             });
         });
+
+    this->signalHolder.managedConnect(
+        getApp()->getTwitchPubSub()->raid.changed,
+        [this](const QString &channelId, const PubSubRaid &raid) {
+            auto chan = this->getChannelOrEmptyByID(channelId);
+            postToThread([chan, raid] {
+                if (isAppAboutToQuit())
+                {
+                    return;
+                }
+                if (auto *channel = dynamic_cast<TwitchChannel *>(chan.get()))
+                {
+                    channel->takeRaid(raid);
+                }
+            });
+        });
 }
 
 void TwitchIrcServer::aboutToQuit()

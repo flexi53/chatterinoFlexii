@@ -10,6 +10,7 @@
 #include "providers/twitch/pubsubmessages/HypeTrain.hpp"
 #include "providers/twitch/pubsubmessages/Polls.hpp"
 #include "providers/twitch/pubsubmessages/Predictions.hpp"
+#include "providers/twitch/pubsubmessages/Raid.hpp"
 #include "Test.hpp"
 
 #include <QJsonDocument>
@@ -333,4 +334,61 @@ TEST(FlexiiVotes, WhatTheHypeTopicElseSendsSaysNothingAboutTheTrain)
     EXPECT_TRUE(levelUp->hasProgress);
 
     EXPECT_FALSE(hypeTrainFrom({}).has_value());
+}
+
+TEST(FlexiiVotes, ARaidIsReadOutOfWhatTheTopicSends)
+{
+    const auto created = QDateTime::currentDateTimeUtc().addSecs(-30);
+    const auto raid = raidFrom(payload(
+        QString(R"({
+        "type": "raid_update_v2",
+        "raid": {
+            "id": "raid-1",
+            "source_id": "11",
+            "target_id": "22",
+            "target_login": "zielkanal",
+            "target_display_name": "ZielKanal",
+            "viewer_count": 345,
+            "force_raid_now_seconds": 90,
+            "raid_created_at": %1
+        }
+    })")
+            .arg(created.toSecsSinceEpoch())
+            .toUtf8()
+            .constData()));
+    ASSERT_TRUE(raid.has_value());
+
+    EXPECT_EQ(raid->kind, PubSubRaid::Kind::Update);
+    EXPECT_EQ(raid->id, "raid-1");
+    EXPECT_EQ(raid->targetLogin, "zielkanal");
+    EXPECT_EQ(raid->targetDisplayName, "ZielKanal");
+    EXPECT_EQ(raid->viewerCount, 345);
+    EXPECT_TRUE(raid->startKnown);
+    // A minute and a half after it was set up, half a minute ago
+    EXPECT_GT(raid->remaining().count(), 58000);
+    EXPECT_LE(raid->remaining().count(), 60000);
+}
+
+TEST(FlexiiVotes, ARaidThatGoesNeedsNoMoreThanWhichRaidItWas)
+{
+    const auto went = raidFrom(payload(R"({
+        "type": "raid_go_v2",
+        "raid": {"id": "raid-1"}
+    })"));
+    ASSERT_TRUE(went.has_value());
+    EXPECT_EQ(went->kind, PubSubRaid::Kind::Went);
+
+    const auto canceled = raidFrom(payload(R"({
+        "type": "raid_cancel_v2",
+        "data": {"raid": {"id": "raid-1"}}
+    })"));
+    ASSERT_TRUE(canceled.has_value());
+    EXPECT_EQ(canceled->kind, PubSubRaid::Kind::Canceled);
+
+    // An update has to say where it goes
+    EXPECT_FALSE(raidFrom(payload(R"({
+        "type": "raid_update_v2",
+        "raid": {"id": "raid-1"}
+    })")).has_value());
+    EXPECT_FALSE(raidFrom({}).has_value());
 }

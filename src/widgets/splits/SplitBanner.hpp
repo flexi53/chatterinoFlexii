@@ -10,6 +10,7 @@
 
 class QHBoxLayout;
 class QLabel;
+class QPushButton;
 class QTimer;
 class QVBoxLayout;
 
@@ -55,6 +56,10 @@ protected:
     QVBoxLayout *contentBox() const;
     /// Not placed in a layout - subclasses add it to the row they want.
     QLabel *countdownLabel() const;
+    /// ChattiFlexii: a small button at the end of the header row - for what
+    /// a moderator can do about what the banner shows. Quiet enough to leave
+    /// the card a card; hidden until shown.
+    QPushButton *addHeaderButton(const QString &text, const QString &tooltip);
 
     /// Ticks once immediately, then every second.
     void startCountdown();

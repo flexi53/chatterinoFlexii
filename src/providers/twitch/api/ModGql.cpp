@@ -824,4 +824,22 @@ void removeEditor(const QString &channelId, const QString &targetLogin,
            "removeEditor", true, std::move(onDone), std::move(onError));
 }
 
+void goRaid(const QString &channelId, Done onDone, Failed onError)
+{
+    mutate(persisted("GoRaid",
+                     "878ca88bed0c5a5f0687ad07562cffc0bf6a3136f15e5015c0f5f5f7"
+                     "f367f70a",
+                     {{"input", QJsonObject{{"sourceID", channelId}}}}),
+           "goRaid", false, std::move(onDone), std::move(onError));
+}
+
+void cancelRaid(const QString &channelId, Done onDone, Failed onError)
+{
+    mutate(persisted("CancelRaid",
+                     "42a2a699ac85256d72fff2471c75803f7ffbc767ba790725de5ad5d6"
+                     "e0163648",
+                     {{"input", QJsonObject{{"sourceID", channelId}}}}),
+           "cancelRaid", false, std::move(onDone), std::move(onError));
+}
+
 }  // namespace chatterino::modgql
