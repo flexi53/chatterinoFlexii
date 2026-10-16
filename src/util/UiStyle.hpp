@@ -4,7 +4,9 @@
 
 #pragma once
 
+#include <QColor>
 #include <QSize>
+#include <QString>
 
 /// Look -> Style: what the chosen look changes, asked in one place. Classic
 /// is Chatterino as it always was, and every answer here falls back to it.
@@ -36,5 +38,12 @@ int scrollbarWidth();
 QSize inputButton();
 /// The room inside an alert window, unscaled
 int alertMargin();
+/// How the buttons in the alert windows look that are not the one
+/// recommended: the rounded, quiet shape the rest of ChattiFlexii uses, in
+/// the colours of the theme now
+QString quietButtonStyle();
+/// The one button of an alert window that is recommended, set off in
+/// @a color - the glow around it is up to whoever shows it
+QString accentButtonStyle(const QColor &color);
 
 }  // namespace chatterino::uistyle

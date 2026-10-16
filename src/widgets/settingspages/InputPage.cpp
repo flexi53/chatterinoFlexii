@@ -109,10 +109,11 @@ void addButtonList(GeneralPageView &layout, QWidget *parent)
         }
         if (key == inputbuttons::TWITCH_ACTIONS)
         {
-            return "Öffnet die Kanalpunkte des Kanals mit den Belohnungen zum "
-                   "Einlösen - und als Mod das Starten von Umfragen und "
-                   "Vorhersagen. Braucht die Anmeldung unter Einstellungen → "
-                   "Twitch-Extras.";
+            return "Zeigt deinen Kontostand an Kanalpunkten im Kanal und "
+                   "öffnet die Belohnungen zum Einlösen - als Mod auch das "
+                   "Starten von Umfragen und Vorhersagen. Braucht die "
+                   "Anmeldung unter Einstellungen → Twitch-Extras; ohne sie "
+                   "steht nur die Münze da.";
         }
         if (key == inputbuttons::CLEAR)
         {

@@ -149,11 +149,10 @@ void TwitchExtrasPage::initWindow(GeneralPageView &layout)
 {
     layout.addTitle("Umfragen, Vorhersagen und Kanalpunkte");
     layout.addDescription(
-        "Der Knopf mit den drei Balken in der Eingabeleiste öffnet ein "
-        "Fenster für den Kanal: Kanalpunkte mit Kontostand und den "
-        "Belohnungen zum Einlösen - und als Mod Umfragen und Vorhersagen "
-        "starten. Ob der Knopf da ist und wo er steht, stellst du unter "
-        "Eingabefeld → Knöpfe ein.");
+        "Neben dem Eingabefeld steht dein Kontostand an Kanalpunkten im "
+        "Kanal. Ein Klick darauf öffnet die Belohnungen zum Einlösen - und "
+        "als Mod das Starten von Umfragen und Vorhersagen. Ob die Anzeige da "
+        "ist und wo sie steht, stellst du unter Eingabefeld → Knöpfe ein.");
 }
 
 void TwitchExtrasPage::showLoginState()

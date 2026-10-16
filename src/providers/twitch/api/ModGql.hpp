@@ -86,6 +86,11 @@ void whenReady(QObject *receiver, std::function<void(bool)> done);
 /// The login came, went or was found to have run out
 pajlada::Signals::NoArgSignal &loginChanged();
 
+/// Someone's balance in a channel became known: the channel's login and the
+/// points. Comes with every answer of channelPoints, so whatever shows the
+/// balance stays up to date with whatever asked.
+pajlada::Signals::Signal<QString, qint64> &balanceChanged();
+
 /// Starts a device login: the user enters the code on Twitch's page
 void startDeviceLogin(std::function<void(DeviceCode)> onCode, Failed onError);
 /// Asks whether the code from startDeviceLogin has been entered yet

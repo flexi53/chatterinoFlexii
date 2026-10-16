@@ -308,6 +308,10 @@ public:
     /// outcome, separated by commas
     QStringSetting predictionStakes = {"/twitchExtras/predictionStakes",
                                        "10, 100, 500, 1000, 5000"};
+    /// ChattiFlexii, Twitch-Extras: the size the points window was last
+    /// given, 0 for the one it comes up with
+    IntSetting twitchExtrasWidth = {"/twitchExtras/windowWidth", 0};
+    IntSetting twitchExtrasHeight = {"/twitchExtras/windowHeight", 0};
     /// ChattiFlexii, Aussehen -> Splits: the banner for the hype train
     BoolSetting showHypeTrainBanner = {"/appearance/banners/showHypeTrain",
                                        true};

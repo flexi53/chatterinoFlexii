@@ -4,50 +4,230 @@
 
 #include "widgets/buttons/TwitchActionsButton.hpp"
 
+#include "providers/twitch/api/ModGql.hpp"
 #include "singletons/Theme.hpp"
 
+#include <QLocale>
 #include <QPainter>
+#include <QPainterPath>
+#include <QPointer>
 
 #include <algorithm>
+#include <chrono>
 
 namespace chatterino {
+
+namespace {
+
+/// How often the balance is asked for again while nothing here changed it -
+/// watching earns points slowly
+constexpr auto REFRESH_EVERY = std::chrono::minutes(5);
+
+/// Room around the coin and the number inside the pill, unscaled
+constexpr int PADDING = 6;
+constexpr int GAP = 4;
+
+}  // namespace
 
 TwitchActionsButton::TwitchActionsButton(BaseWidget *parent)
     : Button(parent)
 {
-    this->setToolTip(QStringLiteral(
-        "Kanalpunkte dieses Kanals einlösen - und als Mod Umfragen und "
-        "Vorhersagen starten. Mitmachen geht im Banner über dem Chat."));
+    this->refreshTooltip();
+
+    this->refresh_.setInterval(REFRESH_EVERY);
+    QObject::connect(&this->refresh_, &QTimer::timeout, this, [this] {
+        this->fetch();
+    });
+
+    // Whoever asked - this button, the window, another split - the number
+    // here follows
+    this->connections_.managedConnect(
+        modgql::balanceChanged(), [this](const QString &channel, qint64 points) {
+            if (channel != this->channel_)
+            {
+                return;
+            }
+            this->balance_ = points;
+            this->refreshTooltip();
+            this->fitWidth();
+            this->update();
+        });
+    this->connections_.managedConnect(modgql::loginChanged(), [this] {
+        this->loggedIn_ = modgql::currentLogin().has_value();
+        this->balance_.reset();
+        this->refreshTooltip();
+        this->fitWidth();
+        this->update();
+        this->fetch();
+    });
+
+    QPointer<TwitchActionsButton> self(this);
+    modgql::whenReady(this, [self](bool loggedIn) {
+        if (!self)
+        {
+            return;
+        }
+        self->loggedIn_ = loggedIn;
+        self->refreshTooltip();
+        self->fetch();
+    });
+}
+
+void TwitchActionsButton::setChannel(const QString &channelLogin)
+{
+    const auto channel = channelLogin.toLower();
+    if (channel == this->channel_)
+    {
+        return;
+    }
+    this->channel_ = channel;
+    this->balance_.reset();
+    this->refreshTooltip();
+    this->fitWidth();
+    this->update();
+    this->fetch();
+}
+
+void TwitchActionsButton::setBaseSize(QSize size)
+{
+    this->baseSize_ = size;
+    this->setFixedHeight(size.height());
+    this->fitWidth();
+}
+
+QString TwitchActionsButton::shortPoints(qint64 points)
+{
+    const QLocale german(QLocale::German);
+    if (points < 10000)
+    {
+        return german.toString(points);
+    }
+    if (points < 1000000)
+    {
+        return german.toString(static_cast<double>(points) / 1000.0, 'f',
+                               points < 100000 ? 1 : 0) +
+               QStringLiteral("K");
+    }
+    return german.toString(static_cast<double>(points) / 1000000.0, 'f', 1) +
+           QStringLiteral("M");
+}
+
+void TwitchActionsButton::fetch()
+{
+    if (!this->loggedIn_ || this->channel_.isEmpty())
+    {
+        this->refresh_.stop();
+        return;
+    }
+    this->refresh_.start();
+    // The answer comes back through balanceChanged; a channel without
+    // points just leaves the coin alone
+    modgql::channelPoints(
+        this->channel_, [](const modgql::ChannelPoints &) {},
+        [](const QString &) {});
+}
+
+void TwitchActionsButton::refreshTooltip()
+{
+    if (!this->loggedIn_)
+    {
+        this->setToolTip(QStringLiteral(
+            "Kanalpunkte, und als Mod Umfragen und Vorhersagen starten. "
+            "Braucht die Anmeldung unter Einstellungen → Twitch-Extras."));
+        return;
+    }
+    if (this->balance_)
+    {
+        this->setToolTip(
+            QStringLiteral("%1 Kanalpunkte in #%2 - klicken für die "
+                           "Belohnungen")
+                .arg(QLocale(QLocale::German).toString(*this->balance_),
+                     this->channel_));
+        return;
+    }
+    this->setToolTip(QStringLiteral("Kanalpunkte dieses Kanals"));
+}
+
+void TwitchActionsButton::fitWidth()
+{
+    if (!this->baseSize_.isValid())
+    {
+        return;
+    }
+    if (!this->balance_)
+    {
+        this->setFixedWidth(this->baseSize_.width());
+        return;
+    }
+    const auto scale = this->scale();
+    const QFontMetrics metrics(this->font());
+    const auto text = metrics.horizontalAdvance(shortPoints(*this->balance_));
+    const auto coin = this->baseSize_.height() - int(10 * scale);
+    this->setFixedWidth(std::max(
+        this->baseSize_.width(),
+        int((PADDING * 2 + GAP) * scale) + coin + text));
 }
 
 void TwitchActionsButton::paintContent(QPainter &painter)
 {
-    QColor color = getTheme()->messages.textColors.regular;
-    color.setAlpha(this->mouseOver() ? 255 : 200);
-
+    const auto *theme = getTheme();
     const auto scale = this->scale();
     painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(color);
 
-    // As big as the icons next to it, inside the same padding
+    QColor text = theme->messages.textColors.regular;
+    text.setAlpha(this->mouseOver() ? 255 : 210);
+    // The colour Twitch gives its points, a touch deeper on a light theme
+    const QColor coinColor =
+        theme->isLightTheme() ? QColor("#7a3fd1") : QColor("#bf94ff");
+
+    const QRectF whole(this->rect());
     const qreal side =
-        std::min(this->width() - (12 * scale), this->height() - (6 * scale));
-    QRectF box(0, 0, side, side);
-    box.moveCenter(QRectF(this->rect()).center());
+        std::min(whole.height() - (10 * scale), whole.width() - (12 * scale));
 
-    // Three bars of different length, lying down like the ones on twitch.tv
-    const auto bar = box.height() * 0.2;
-    const auto gap = (box.height() - (3 * bar)) / 2;
-    const auto radius = bar / 2;
-    int i = 0;
-    for (const auto length : {0.95, 0.6, 0.8})
+    // With a number it is a pill - coin and number side by side
+    QRectF coin(0, 0, side, side);
+    if (this->balance_)
     {
-        painter.drawRoundedRect(
-            QRectF(box.left(), box.top() + (i * (bar + gap)),
-                   box.width() * length, bar),
-            radius, radius);
-        i++;
+        auto pill = whole.adjusted(1 * scale, 3 * scale, -1 * scale,
+                                   -3 * scale);
+        QColor fill = coinColor;
+        fill.setAlpha(this->mouseOver() ? 55 : 32);
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(fill);
+        painter.drawRoundedRect(pill, pill.height() / 2, pill.height() / 2);
+        coin.moveCenter(
+            QPointF(pill.left() + (PADDING * scale) + (side / 2),
+                    pill.center().y()));
+    }
+    else
+    {
+        coin.moveCenter(whole.center());
+    }
+
+    // Twitch's coin: a ring with a notch, so it reads as the points one
+    QPen pen(coinColor);
+    pen.setWidthF(1.6 * scale);
+    pen.setCapStyle(Qt::RoundCap);
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+    const auto inset = coin.width() * 0.08;
+    const auto ring = coin.adjusted(inset, inset, -inset, -inset);
+    painter.drawArc(ring, 120 * 16, 300 * 16);
+    painter.setBrush(coinColor);
+    painter.setPen(Qt::NoPen);
+    const auto dot = ring.width() * 0.16;
+    painter.drawEllipse(ring.center(), dot, dot);
+
+    if (this->balance_)
+    {
+        painter.setPen(text);
+        painter.setFont(this->font());
+        const QRectF label(coin.right() + (GAP * scale), whole.top(),
+                           whole.right() - coin.right() - (GAP * scale) -
+                               (PADDING * scale),
+                           whole.height());
+        painter.drawText(label, Qt::AlignVCenter | Qt::AlignLeft,
+                         shortPoints(*this->balance_));
     }
 }
 

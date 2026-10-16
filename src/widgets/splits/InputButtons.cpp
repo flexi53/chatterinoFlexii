@@ -44,7 +44,7 @@ QString nameOf(const QString &key)
     }
     if (key == TWITCH_ACTIONS)
     {
-        return QStringLiteral("Kanalpunkte, Umfrage/Vorhersage starten (Balken)");
+        return QStringLiteral("Kanalpunkte (Münze mit Kontostand)");
     }
     if (key == CLEAR)
     {

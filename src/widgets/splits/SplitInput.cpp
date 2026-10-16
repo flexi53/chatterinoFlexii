@@ -409,6 +409,9 @@ void SplitInput::initLayout()
             }
             auto *popup = new TwitchActionsPopup(twitch, this);
             this->twitchActionsPopup_ = popup;
+            // Right above the points, as the emote window comes up by its
+            // button
+            popup->placeAbove(this->ui_.twitchActionsButton);
             popup->show();
         });
 
@@ -555,8 +558,8 @@ void SplitInput::updateEmoteButton()
     this->ui_.alertMuteButton->setFixedWidth(width);
     this->ui_.autoMessageButton->setFixedHeight(height);
     this->ui_.autoMessageButton->setFixedWidth(width);
-    this->ui_.twitchActionsButton->setFixedHeight(height);
-    this->ui_.twitchActionsButton->setFixedWidth(width);
+    // As high as the others, wider where the number of points needs it
+    this->ui_.twitchActionsButton->setBaseSize(QSize(width, height));
     this->ui_.badgeButton->setFixedHeight(height);
     this->ui_.badgeButton->setFixedWidth(width);
     this->ui_.clipButton->setFixedHeight(height);
@@ -695,6 +698,8 @@ void SplitInput::updateModAssistButton()
         twitch != nullptr ? twitch->getName() : QString{});
     this->ui_.autoMessageButton->setVisible(
         canWrite && mine && getSettings()->showAutoMessagesButton);
+    this->ui_.twitchActionsButton->setChannel(
+        twitch != nullptr ? twitch->getName() : QString{});
     this->ui_.twitchActionsButton->setVisible(
         canWrite && getSettings()->showTwitchActionsButton);
     this->ui_.badgeButton->setChannel(

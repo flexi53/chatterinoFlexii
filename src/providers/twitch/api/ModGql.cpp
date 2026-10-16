@@ -348,6 +348,12 @@ pajlada::Signals::NoArgSignal &loginChanged()
     return signal;
 }
 
+pajlada::Signals::Signal<QString, qint64> &balanceChanged()
+{
+    static pajlada::Signals::Signal<QString, qint64> signal;
+    return signal;
+}
+
 void whenReady(QObject *receiver, std::function<void(bool)> done)
 {
     // Checked with Twitch once per run; whoever asks while that is under
@@ -676,7 +682,8 @@ void channelPoints(const QString &channelLogin,
                          {{"channelLogin", channelLogin},
                           {"includeGoalTypes", QJsonArray{"CREATOR", "BOOST"}}}),
                true)
-        .onSuccess([onPoints, onError](const NetworkResult &result) {
+        .onSuccess([channelLogin, onPoints,
+                    onError](const NetworkResult &result) {
             const auto answer = firstAnswer(result.parseJsonValue());
             const auto error = errorOf(answer, {});
             if (!error.isEmpty())
@@ -735,6 +742,7 @@ void channelPoints(const QString &channelLogin,
                               [](const Reward &a, const Reward &b) {
                                   return a.cost < b.cost;
                               });
+            balanceChanged().invoke(channelLogin.toLower(), points.balance);
             onPoints(std::move(points));
         })
         .onError([onError](const NetworkResult &result) {

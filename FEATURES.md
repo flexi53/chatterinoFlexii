@@ -521,10 +521,14 @@ account, kept in the keychain only.
   stake of your own is always there. Moderators get **Beenden**, **Sperren**
   and **Abbrechen** on the card, and a click on an outcome lets it win; a
   locked prediction stays up for them until it is resolved
-- **The three bars** in the input bar open a window with the channel's
-  **channel points**: the balance and every reward, with a text field where
-  one asks for it. Moderators also **start polls** (2 to 5 answers, extra
-  votes for points if wanted) **and predictions** (2 to 10 outcomes) there
+- **Your points** stand beside the input as a small pill with Twitch's coin
+  and the balance in that channel, kept up to date. A click opens a window
+  laid out like the alert windows: the channel with your balance on top, its
+  **rewards as tiles** in their own colours with picture and price - pale
+  where they cannot be had - and a click redeems, asking for the text where
+  a reward wants one. Moderators also **start polls** (2 to 5 answers, extra
+  votes for points if wanted) **and predictions** (2 to 10 outcomes) there,
+  with the duration picked from a row of choices
 - Twitch does not offer this way to other apps; if it changes something,
   it may stop working without warning
 

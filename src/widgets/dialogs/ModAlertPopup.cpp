@@ -1340,27 +1340,7 @@ void ModAlertPopup::themeChangedEvent()
 
 QString ModAlertPopup::quietButtonStyle() const
 {
-    const auto light = this->theme->isLightTheme();
-    const auto text = this->theme->messages.textColors.regular;
-    const auto line = light ? QColor(0, 0, 0, 60) : QColor(255, 255, 255, 45);
-    const auto hover = light ? QColor(0, 0, 0, 18) : QColor(255, 255, 255, 22);
-    const auto pressed =
-        light ? QColor(0, 0, 0, 34) : QColor(255, 255, 255, 40);
-
-    const auto rgba = [](const QColor &color) {
-        return QStringLiteral("rgba(%1, %2, %3, %4)")
-            .arg(color.red())
-            .arg(color.green())
-            .arg(color.blue())
-            .arg(color.alpha());
-    };
-
-    return QStringLiteral(
-               "QPushButton { border: 1px solid %1; border-radius: 5px; "
-               "padding: 3px 10px; background: transparent; color: %2; }"
-               "QPushButton:hover { background: %3; }"
-               "QPushButton:pressed { background: %4; }")
-        .arg(rgba(line), text.name(), rgba(hover), rgba(pressed));
+    return uistyle::quietButtonStyle();
 }
 
 void ModAlertPopup::setActions(int recommended)
@@ -1474,18 +1454,7 @@ void ModAlertPopup::setActions(int recommended)
         if (value == recommended)
         {
             button->setToolTip(tooltip + QStringLiteral(" - empfohlen"));
-            button->setStyleSheet(
-                QStringLiteral(
-                    "QPushButton { border: 2px solid %1; "
-                    "border-radius: 5px; padding: 3px 10px; "
-                    "background: rgba(%2, %3, %4, 45); color: %5; }"
-                    "QPushButton:hover { background: rgba(%2, %3, %4, 75); }"
-                    "QPushButton:pressed { background: rgba(%2, %3, %4, 110); }")
-                    .arg(color.name())
-                    .arg(color.red())
-                    .arg(color.green())
-                    .arg(color.blue())
-                    .arg(this->theme->messages.textColors.regular.name()));
+            button->setStyleSheet(uistyle::accentButtonStyle(color));
             auto *glow = new QGraphicsDropShadowEffect(button);
             glow->setOffset(0, 0);
             glow->setBlurRadius(16);
