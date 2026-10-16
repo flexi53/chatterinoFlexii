@@ -111,25 +111,38 @@ TwitchActionsPopup::TwitchActionsPopup(
     auto *layout = new QVBoxLayout(this->getLayoutContainer());
     layout->setContentsMargins(10, 10, 10, 10);
 
-    // Without the login nothing here works - it is made under Twitch-Extras
+    // Without the login nothing here works - it is made under Twitch-Extras.
+    // Until then the window shows only that, rather than greyed out tabs
+    // that look as if they should work
     this->loginNote_ = new QWidget;
     {
-        auto *row = new QHBoxLayout(this->loginNote_);
-        row->setContentsMargins(0, 0, 0, 6);
+        auto *box = new QVBoxLayout(this->loginNote_);
+        box->setContentsMargins(20, 20, 20, 20);
+        box->addStretch(1);
+        box->addWidget(boldLabel(QStringLiteral("Noch nicht angemeldet")), 0,
+                       Qt::AlignHCenter);
         auto *text = new QLabel(QStringLiteral(
-            "Dafür braucht es die Anmeldung als Twitch-App unter "
-            "Einstellungen → Twitch-Extras."));
+            "Kanalpunkte, Umfragen und Vorhersagen laufen über eine eigene "
+            "Anmeldung als Twitch-App. Die machst du einmal unter "
+            "Einstellungen → Twitch-Extras: Code holen, auf "
+            "twitch.tv/activate eingeben, fertig. Danach geht es hier "
+            "von selbst weiter."));
         text->setWordWrap(true);
-        row->addWidget(text, 1);
-        auto *open = new QPushButton(QStringLiteral("Öffnen"));
+        text->setAlignment(Qt::AlignHCenter);
+        box->addWidget(text);
+        auto *open = new QPushButton(QStringLiteral("Jetzt anmelden …"));
+        open->setDefault(true);
+        open->setMinimumHeight(32);
         QObject::connect(open, &QPushButton::clicked, this, [this] {
             SettingsDialog::showDialog(this,
                                        SettingsDialogPreference::TwitchExtras);
         });
-        row->addWidget(open, 0, Qt::AlignTop);
+        box->addSpacing(8);
+        box->addWidget(open, 0, Qt::AlignHCenter);
+        box->addStretch(1);
     }
     this->loginNote_->hide();
-    layout->addWidget(this->loginNote_);
+    layout->addWidget(this->loginNote_, 1);
 
     this->tabs_ = new QTabWidget;
     this->tabs_->addTab(this->buildPointsTab(), QStringLiteral("Kanalpunkte"));
@@ -311,7 +324,7 @@ QWidget *TwitchActionsPopup::buildPredictionTab()
 void TwitchActionsPopup::showState()
 {
     this->loginNote_->setVisible(!this->loggedIn_);
-    this->tabs_->setEnabled(this->loggedIn_);
+    this->tabs_->setVisible(this->loggedIn_);
 
     if (!this->moderates_)
     {
