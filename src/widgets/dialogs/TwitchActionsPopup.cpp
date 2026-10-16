@@ -314,7 +314,7 @@ TwitchActionsPopup::TwitchActionsPopup(
              std::initializer_list<std::pair<const char *, int>>{
                  {"Belohnungen", RewardsPage},
                  {"Umfrage starten", PollPage},
-                 {"Vorhersage starten", PredictionPage}})
+                 {"Wette starten", PredictionPage}})
         {
             auto *button = new QPushButton(QString::fromUtf8(text));
             button->setCheckable(true);
@@ -510,7 +510,7 @@ QWidget *TwitchActionsPopup::buildLoginPage()
     title->setFont(font);
     box->addWidget(title, 0, Qt::AlignHCenter);
     auto *text = mutedLabel(QStringLiteral(
-        "Kanalpunkte, Umfragen und Vorhersagen laufen über eine eigene "
+        "Kanalpunkte, Umfragen und Wetten laufen über eine eigene "
         "Anmeldung als Twitch-App. Die machst du einmal unter "
         "Einstellungen → Twitch-Extras: Code holen, auf twitch.tv/activate "
         "eingeben, fertig. Danach geht es hier von selbst weiter."));
@@ -675,12 +675,12 @@ QWidget *TwitchActionsPopup::buildPredictionPage()
     layout->setContentsMargins(0, 0, 0, 0);
 
     this->predictionRunning_ = mutedLabel(QStringLiteral(
-        "Gerade läuft eine Vorhersage - Sperren, Abbrechen und den Gewinner "
+        "Gerade läuft eine Wette - Sperren, Abbrechen und den Gewinner "
         "wählen geht im Banner über dem Chat. Ist sie entschieden, kannst du "
         "hier die nächste starten."));
     layout->addWidget(this->predictionRunning_);
 
-    auto *card = this->addCard(layout, QStringLiteral("Neue Vorhersage"),
+    auto *card = this->addCard(layout, QStringLiteral("Neue Wette"),
                                &this->predictionCard_);
     this->predictionTitle_ = new QLineEdit;
     this->predictionTitle_->setMaxLength(45);
@@ -721,7 +721,7 @@ QWidget *TwitchActionsPopup::buildPredictionPage()
                                               {"30 min", 1800}},
                                              120);
 
-    auto *start = new QPushButton(QStringLiteral("Vorhersage starten"));
+    auto *start = new QPushButton(QStringLiteral("Wette starten"));
     start->setCursor(Qt::PointingHandCursor);
     this->accentButtons_.push_back(start);
     QObject::connect(start, &QPushButton::clicked, this, [this] {
@@ -1118,12 +1118,12 @@ void TwitchActionsPopup::createPrediction()
     }
     if (title.isEmpty())
     {
-        this->say(QStringLiteral("Die Vorhersage braucht eine Frage."), true);
+        this->say(QStringLiteral("Die Wette braucht eine Frage."), true);
         return;
     }
     if (outcomes.size() < 2)
     {
-        this->say(QStringLiteral("Eine Vorhersage braucht mindestens zwei "
+        this->say(QStringLiteral("Eine Wette braucht mindestens zwei "
                                  "Ausgänge."),
                   true);
         return;
@@ -1144,7 +1144,7 @@ void TwitchActionsPopup::createPrediction()
             {
                 return;
             }
-            self->say(QStringLiteral("Vorhersage gestartet - sie erscheint "
+            self->say(QStringLiteral("Wette gestartet - sie erscheint "
                                      "gleich im Banner."));
             self->predictionTitle_->clear();
             for (auto *outcome : self->predictionOutcomes_)
