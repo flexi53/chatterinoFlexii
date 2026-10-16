@@ -32,8 +32,8 @@ public:
     /// look - the pill is as high, and wider where the number needs it
     void setBaseSize(QSize size);
 
-    /// "12,3K" for 12 345 - short enough for the input bar
-    static QString shortPoints(qint64 points);
+    /// "1.412.345" - the whole number, with the dots between thousands
+    static QString pointsText(qint64 points);
 
 protected:
     void paintContent(QPainter &painter) override;

@@ -95,21 +95,10 @@ void TwitchActionsButton::setBaseSize(QSize size)
     this->fitWidth();
 }
 
-QString TwitchActionsButton::shortPoints(qint64 points)
+QString TwitchActionsButton::pointsText(qint64 points)
 {
-    const QLocale german(QLocale::German);
-    if (points < 10000)
-    {
-        return german.toString(points);
-    }
-    if (points < 1000000)
-    {
-        return german.toString(static_cast<double>(points) / 1000.0, 'f',
-                               points < 100000 ? 1 : 0) +
-               QStringLiteral("K");
-    }
-    return german.toString(static_cast<double>(points) / 1000000.0, 'f', 1) +
-           QStringLiteral("M");
+    // The whole number, as twitch.tv shows it beside the chat
+    return QLocale(QLocale::German).toString(points);
 }
 
 void TwitchActionsButton::fetch()
@@ -161,7 +150,7 @@ void TwitchActionsButton::fitWidth()
     }
     const auto scale = this->scale();
     const QFontMetrics metrics(this->font());
-    const auto text = metrics.horizontalAdvance(shortPoints(*this->balance_));
+    const auto text = metrics.horizontalAdvance(pointsText(*this->balance_));
     const auto coin = this->baseSize_.height() - int(10 * scale);
     this->setFixedWidth(std::max(
         this->baseSize_.width(),
@@ -227,7 +216,7 @@ void TwitchActionsButton::paintContent(QPainter &painter)
                                (PADDING * scale),
                            whole.height());
         painter.drawText(label, Qt::AlignVCenter | Qt::AlignLeft,
-                         shortPoints(*this->balance_));
+                         pointsText(*this->balance_));
     }
 }
 
