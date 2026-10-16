@@ -547,6 +547,10 @@ public:
                                          true};
     ChatterinoSetting<std::vector<QString>> modHighlightChannels = {
         "/moderation/modHighlights/channels", {}};
+    /// Mark mods of every channel whosthemod knows, not just the ones picked.
+    /// Each chatter is looked up once, the way /wtm does it.
+    BoolSetting modHighlightsAllKnown = {"/moderation/modHighlights/allKnown",
+                                         false};
     BoolSetting modHighlightsColorEnabled = {
         "/moderation/modHighlights/colorEnabled", true};
     QStringSetting modHighlightsColor = {"/moderation/modHighlights/color",

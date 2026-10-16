@@ -148,6 +148,19 @@ void ModHighlightsPage::buildGeneralTab(QVBoxLayout *layout)
         "Mods der ausgewählten Kanäle markieren",
         getSettings()->modHighlightsEnabled));
     layout->addWidget(this->createCheckBox(
+        "Alle Kanäle nehmen, die whosthemod kennt - nicht nur die ausgewählten",
+        getSettings()->modHighlightsAllKnown,
+        "Jeder Chatter wird einmal bei whosthemod.xyz nachgeschlagen, so wie "
+        "/wtm im Plugin, und bekommt die Bilder aller Kanäle, in denen er Mod "
+        "ist - die ausgewählten zuerst, höchstens sechs. Die erste Nachricht "
+        "eines neuen Chatters bleibt noch unmarkiert, bis die Antwort da ist. "
+        "Die Antworten halten einen Tag."));
+    getSettings()->modHighlightsAllKnown.connect(
+        [this](const bool &, auto) {
+            this->showState();
+        },
+        this->managedConnections_, false);
+    layout->addWidget(this->createCheckBox(
         "In der Usercard zeigen, in welchen Kanälen jemand Mod ist",
         getSettings()->modHighlightsUserCard,
         "Fragt beim Öffnen einer Usercard whosthemod.xyz, so wie /wtm im "
@@ -312,6 +325,17 @@ void ModHighlightsPage::showState()
 
     const auto &highlights = ModHighlights::instance();
     const auto channels = chosenChannels();
+    if (getSettings()->modHighlightsAllKnown.getValue())
+    {
+        const auto [lookedUp, moderating] = highlights.lookedUpCount();
+        this->status_->setText(
+            QStringLiteral("Alle bekannten Kanäle  ·  %1 Chatter nachgeschlagen, "
+                           "%2 davon Mod  ·  %3 ausgewählte Kanäle zuerst")
+                .arg(lookedUp)
+                .arg(moderating)
+                .arg(channels.size()));
+        return;
+    }
     if (channels.empty())
     {
         this->status_->setText("Noch kein Kanal ausgewählt.");

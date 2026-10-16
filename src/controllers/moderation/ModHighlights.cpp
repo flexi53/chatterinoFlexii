@@ -25,6 +25,7 @@
 #include <QSet>
 #include <QTimer>
 
+#include <algorithm>
 #include <chrono>
 #include <tuple>
 
@@ -36,6 +37,24 @@ const QString API_BASE = QStringLiteral("https://whosthemod.xyz/api/public");
 /// How old the mod lists may get before they are fetched again
 constexpr qint64 REFRESH_AFTER_SECONDS = 6 * 60 * 60;
 constexpr int TIMEOUT_MS = 15000;
+/// With every known channel on: how long a chatter's channels hold before
+/// they are asked again, how long they are kept at all, and how many
+/// pictures one message gets at most
+constexpr qint64 USER_FRESH_SECONDS = 24 * 60 * 60;
+constexpr qint64 USER_KEEP_SECONDS = 7 * 24 * 60 * 60;
+constexpr int MAX_PICTURES = 6;
+/// Kept per chatter - bots moderate thousands of channels
+constexpr int MAX_KEPT_CHANNELS = 100;
+/// How many chatters may wait to be looked up; a busy chat brings more than
+/// whosthemod should be asked at once
+constexpr int MAX_WAITING = 300;
+constexpr int LOOKUP_INTERVAL_MS = 400;
+
+QString usersStorePath()
+{
+    return QDir(getApp()->getPaths().miscDirectory)
+        .absoluteFilePath(QStringLiteral("mod-highlights-users.json"));
+}
 
 QString storePath()
 {
@@ -147,8 +166,223 @@ QString ModHighlights::captionFor(const QString &login) const
         return {};
     }
 
+    const auto key = login.toLower();
+    const bool allKnown = getSettings()->modHighlightsAllKnown.getValue();
+
     std::lock_guard lock(this->mutex_);
-    return this->captions_.value(login.toLower());
+    if (!allKnown)
+    {
+        return this->captions_.value(key);
+    }
+    if (this->excludedNames_.contains(key) ||
+        (this->excludeBotNames_ && key.endsWith(QStringLiteral("bot"))))
+    {
+        return {};
+    }
+
+    const auto it = this->users_.constFind(key);
+    const bool stale =
+        it == this->users_.constEnd() ||
+        it->fetched.secsTo(QDateTime::currentDateTimeUtc()) >=
+            USER_FRESH_SECONDS;
+    if (stale && this->context_ != nullptr && !this->queued_.contains(key) &&
+        this->waiting_.size() < MAX_WAITING)
+    {
+        this->queued_.insert(key);
+        this->waiting_.append(key);
+    }
+    if (it == this->users_.constEnd())
+    {
+        // Not looked up yet - the chosen channels' lists may already know
+        return this->captions_.value(key);
+    }
+    return this->allChannelsCaptionLocked(key, it->channels);
+}
+
+QString ModHighlights::allChannelsCaptionLocked(
+    const QString &login, const QStringList &channels) const
+{
+    (void)login;
+    if (channels.isEmpty())
+    {
+        return {};
+    }
+
+    // The chosen channels are the ones that matter most, so they come first
+    const auto chosen = chosenChannels();
+    QStringList ordered;
+    for (const auto &channel : chosen)
+    {
+        if (channels.contains(channel))
+        {
+            ordered.append(channel);
+        }
+    }
+    for (const auto &channel : channels)
+    {
+        if (!ordered.contains(channel))
+        {
+            ordered.append(channel);
+        }
+    }
+
+    QString caption;
+    for (qsizetype i = 0; i < std::min<qsizetype>(ordered.size(), MAX_PICTURES);
+         i++)
+    {
+        if (!caption.isEmpty())
+        {
+            caption += u' ';
+        }
+        caption += u'@' + ordered[i];
+    }
+    return caption;
+}
+
+std::pair<int, int> ModHighlights::lookedUpCount() const
+{
+    std::lock_guard lock(this->mutex_);
+    int moderating = 0;
+    for (const auto &user : this->users_)
+    {
+        if (!user.channels.isEmpty())
+        {
+            moderating++;
+        }
+    }
+    return {static_cast<int>(this->users_.size()), moderating};
+}
+
+void ModHighlights::lookUpNext()
+{
+    if (this->lookingUp_ || !getSettings()->modHighlightsEnabled.getValue() ||
+        !getSettings()->modHighlightsAllKnown.getValue() || !pluginAvailable())
+    {
+        return;
+    }
+
+    QString login;
+    {
+        std::lock_guard lock(this->mutex_);
+        if (this->waiting_.isEmpty() ||
+            (this->pausedUntil_.isValid() &&
+             QDateTime::currentDateTimeUtc() < this->pausedUntil_))
+        {
+            return;
+        }
+        login = this->waiting_.takeFirst();
+    }
+
+    this->lookingUp_ = true;
+    NetworkRequest(API_BASE + QStringLiteral("/check?user=") + login,
+                   NetworkRequestType::Get)
+        .timeout(TIMEOUT_MS)
+        .caller(this->context_)
+        .onSuccess([this, login](const NetworkResult &result) {
+            this->lookingUp_ = false;
+            const auto root = result.parseJson();
+            auto channels =
+                loginList(root.value(QStringLiteral("channels")).toArray());
+
+            // Bots moderate thousands - the chosen channels are kept, and
+            // enough of the rest to fill a message
+            if (channels.size() > MAX_KEPT_CHANNELS)
+            {
+                const auto chosen = chosenChannels();
+                QStringList kept;
+                for (const auto &channel : channels)
+                {
+                    if (chosen.contains(channel) ||
+                        kept.size() < MAX_KEPT_CHANNELS)
+                    {
+                        kept.append(channel);
+                    }
+                }
+                channels = kept;
+            }
+
+            {
+                std::lock_guard lock(this->mutex_);
+                this->users_.insert(
+                    login, {QDateTime::currentDateTimeUtc(), channels});
+                this->queued_.remove(login);
+            }
+            this->saveUsersSoon();
+        })
+        .onError([this, login](const NetworkResult &) {
+            this->lookingUp_ = false;
+            std::lock_guard lock(this->mutex_);
+            this->queued_.remove(login);
+            // Not asked again right away - whosthemod may be down
+            this->pausedUntil_ =
+                QDateTime::currentDateTimeUtc().addSecs(60);
+        })
+        .execute();
+}
+
+void ModHighlights::loadUsers()
+{
+    QFile file(usersStorePath());
+    if (!file.open(QIODevice::ReadOnly))
+    {
+        return;
+    }
+
+    const auto root = QJsonDocument::fromJson(file.readAll()).object();
+    const auto now = QDateTime::currentDateTimeUtc();
+
+    std::lock_guard lock(this->mutex_);
+    for (auto it = root.begin(); it != root.end(); ++it)
+    {
+        const auto object = it.value().toObject();
+        const auto fetched = QDateTime::fromString(
+            object.value(QStringLiteral("fetched")).toString(), Qt::ISODate);
+        if (!fetched.isValid() || fetched.secsTo(now) >= USER_KEEP_SECONDS)
+        {
+            continue;
+        }
+        this->users_.insert(
+            it.key(),
+            {fetched,
+             loginList(object.value(QStringLiteral("channels")).toArray())});
+    }
+}
+
+void ModHighlights::saveUsersSoon()
+{
+    if (this->usersSavePending_ || this->context_ == nullptr)
+    {
+        return;
+    }
+    this->usersSavePending_ = true;
+
+    // Written once a batch of answers is in, not after each one
+    QTimer::singleShot(10000, this->context_, [this] {
+        this->usersSavePending_ = false;
+
+        QJsonObject root;
+        {
+            std::lock_guard lock(this->mutex_);
+            for (auto it = this->users_.constBegin();
+                 it != this->users_.constEnd(); ++it)
+            {
+                root.insert(it.key(),
+                            QJsonObject{
+                                {QStringLiteral("fetched"),
+                                 it->fetched.toString(Qt::ISODate)},
+                                {QStringLiteral("channels"),
+                                 QJsonArray::fromStringList(it->channels)},
+                            });
+            }
+        }
+
+        QSaveFile file(usersStorePath());
+        if (file.open(QIODevice::WriteOnly))
+        {
+            file.write(QJsonDocument(root).toJson(QJsonDocument::Compact));
+            file.commit();
+        }
+    });
 }
 
 void ModHighlights::start()
@@ -160,6 +394,16 @@ void ModHighlights::start()
     this->context_ = new QObject;
 
     this->load();
+    this->loadUsers();
+
+    // With every known channel on, the chatters seen are looked up one at a
+    // time
+    auto *lookups = new QTimer(this->context_);
+    lookups->setInterval(LOOKUP_INTERVAL_MS);
+    QObject::connect(lookups, &QTimer::timeout, this->context_, [this] {
+        this->lookUpNext();
+    });
+    lookups->start();
 
     // Looked at every hour, fetched when the lists have grown old
     auto *timer = new QTimer(this->context_);
@@ -291,6 +535,13 @@ void ModHighlights::lookUpModChannels(
                 static_cast<int>(found.former.size()));
 
             answers.insert(key, {QDateTime::currentDateTimeUtc(), found});
+            {
+                auto &highlights = ModHighlights::instance();
+                std::lock_guard lock(highlights.mutex_);
+                highlights.users_.insert(
+                    key, {QDateTime::currentDateTimeUtc(),
+                          found.channels.mid(0, MAX_KEPT_CHANNELS)});
+            }
             done(found);
         })
         .execute();
@@ -493,6 +744,8 @@ void ModHighlights::listsChanged()
 void ModHighlights::rebuildCaptionsLocked(const QStringList &chosen)
 {
     const auto excluded = exclusions();
+    this->excludedNames_ = excluded.names;
+    this->excludeBotNames_ = excluded.botNames;
 
     this->captions_.clear();
     for (const auto &channel : chosen)

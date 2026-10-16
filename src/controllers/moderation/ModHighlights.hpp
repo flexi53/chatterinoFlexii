@@ -8,6 +8,7 @@
 #include <pajlada/signals/signalholder.hpp>
 #include <QDateTime>
 #include <QHash>
+#include <QSet>
 #include <QString>
 #include <QStringList>
 
@@ -65,6 +66,9 @@ public:
     int modCount(const QString &channel) const;
     /// How many different people moderate the chosen channels
     int markedCount() const;
+    /// With every known channel on: how many chatters have been looked up,
+    /// and how many of them moderate somewhere
+    std::pair<int, int> lookedUpCount() const;
 
     /// Asks the public mod list of @a channel, and keeps it. Calls back with
     /// the number of mods, or -1 when it could not be asked.
@@ -106,6 +110,31 @@ private:
     /// channel at a time are taken in together
     void listsChanged();
     void rebuildCaptionsLocked(const QStringList &chosen);
+    /// The caption for @a login from every channel they moderate, the
+    /// chosen ones first. The caller holds mutex_.
+    QString allChannelsCaptionLocked(const QString &login,
+                                     const QStringList &channels) const;
+    /// Asks whosthemod for the next chatter waiting to be looked up
+    void lookUpNext();
+    void loadUsers();
+    void saveUsersSoon();
+
+    struct KnownUser {
+        QDateTime fetched;
+        QStringList channels;
+    };
+    /// With every known channel on: where each chatter seen moderates
+    QHash<QString, KnownUser> users_;
+    /// Chatters waiting to be looked up, and the same as a set
+    mutable QStringList waiting_;
+    mutable QSet<QString> queued_;
+    bool lookingUp_ = false;
+    /// The moderators left out, as last read from the settings
+    QSet<QString> excludedNames_;
+    bool excludeBotNames_ = false;
+    /// No lookups before this, after whosthemod did not answer
+    QDateTime pausedUntil_;
+    bool usersSavePending_ = false;
 
     mutable std::mutex mutex_;
     /// Each channel's mods, as last fetched
