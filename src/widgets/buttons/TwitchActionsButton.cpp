@@ -7,6 +7,8 @@
 #include "providers/twitch/api/ModGql.hpp"
 #include "singletons/Theme.hpp"
 
+#include <QEvent>
+#include <QFontMetricsF>
 #include <QLocale>
 #include <QPainter>
 #include <QPainterPath>
@@ -14,6 +16,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 
 namespace chatterino {
 
@@ -148,13 +151,26 @@ void TwitchActionsButton::fitWidth()
         this->setFixedWidth(this->baseSize_.width());
         return;
     }
+    // Laid out as paintContent draws it: the pill's edge, room, the coin, a
+    // gap, the number, room, the edge - and a little air, so the last digit
+    // is never cut off by rounding
     const auto scale = this->scale();
-    const QFontMetrics metrics(this->font());
+    const QFontMetricsF metrics(this->font());
     const auto text = metrics.horizontalAdvance(pointsText(*this->balance_));
-    const auto coin = this->baseSize_.height() - int(10 * scale);
-    this->setFixedWidth(std::max(
-        this->baseSize_.width(),
-        int((PADDING * 2 + GAP) * scale) + coin + text));
+    const auto coin = this->baseSize_.height() - (10 * scale);
+    const auto needed = (2 * scale) + (PADDING * 2 * scale) + coin +
+                        (GAP * scale) + text + (3 * scale);
+    this->setFixedWidth(
+        std::max(this->baseSize_.width(), int(std::ceil(needed))));
+}
+
+void TwitchActionsButton::changeEvent(QEvent *event)
+{
+    Button::changeEvent(event);
+    if (event->type() == QEvent::FontChange)
+    {
+        this->fitWidth();
+    }
 }
 
 void TwitchActionsButton::paintContent(QPainter &painter)
@@ -215,7 +231,8 @@ void TwitchActionsButton::paintContent(QPainter &painter)
                            whole.right() - coin.right() - (GAP * scale) -
                                (PADDING * scale),
                            whole.height());
-        painter.drawText(label, Qt::AlignVCenter | Qt::AlignLeft,
+        painter.drawText(label,
+                         Qt::AlignVCenter | Qt::AlignLeft | Qt::TextDontClip,
                          pointsText(*this->balance_));
     }
 }

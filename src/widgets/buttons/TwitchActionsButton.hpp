@@ -37,6 +37,8 @@ public:
 
 protected:
     void paintContent(QPainter &painter) override;
+    /// A new font needs a new width
+    void changeEvent(QEvent *event) override;
 
 private:
     void fetch();
