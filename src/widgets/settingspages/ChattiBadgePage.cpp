@@ -51,7 +51,7 @@ void ChattiBadgePage::initOwnBadge(GeneralPageView &layout)
         "Behalten wird der Login dort nicht.");
 
     SettingWidget::lineEdit("Badge-Server", s.chattiBadgesServer,
-                            "https://chatti-badges.….workers.dev")
+                            "https://chatti-badges.chattiflexii.workers.dev")
         ->setTooltip("Wo die Badges liegen. Steht schon richtig da, wenn "
                      "ChattiFlexii so ausgeliefert wurde.")
         ->addKeywords({"badge", "server", "chatti"})

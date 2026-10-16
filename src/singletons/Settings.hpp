@@ -744,7 +744,9 @@ public:
     /// ChattiFlexii's own badges - see providers/chattibadges
     BoolSetting showBadgesChatti = {"/appearance/badges/chatti", true};
     /// Where they are kept, uploaded and approved
-    QStringSetting chattiBadgesServer = {"/appearance/badges/chattiServer", ""};
+    QStringSetting chattiBadgesServer = {
+        "/appearance/badges/chattiServer",
+        "https://chatti-badges.chattiflexii.workers.dev"};
     /// The label put on a first-time chatter's message, the way Twitch does.
     /// Edited through the "First Messages" row on the highlights page like
     /// every other caption; empty means no label.
