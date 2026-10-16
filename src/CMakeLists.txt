@@ -596,6 +596,8 @@ set(SOURCE_FILES
 
         providers/twitch/api/Helix.cpp
         providers/twitch/api/Helix.hpp
+        providers/twitch/api/ModGql.cpp
+        providers/twitch/api/ModGql.hpp
 
         singletons/CrashHandler.cpp
         singletons/CrashHandler.hpp
@@ -809,6 +811,8 @@ set(SOURCE_FILES
         widgets/buttons/AlertMuteButton.hpp
         widgets/buttons/AutoMessageButton.cpp
         widgets/buttons/AutoMessageButton.hpp
+        widgets/buttons/TwitchActionsButton.cpp
+        widgets/buttons/TwitchActionsButton.hpp
         widgets/buttons/BadgeButton.cpp
         widgets/buttons/BadgeButton.hpp
         widgets/buttons/Button.cpp
@@ -885,6 +889,8 @@ set(SOURCE_FILES
         widgets/dialogs/SelectChannelFiltersDialog.hpp
         widgets/dialogs/ModerationAssistantPopup.cpp
         widgets/dialogs/ModerationAssistantPopup.hpp
+        widgets/dialogs/TwitchActionsPopup.cpp
+        widgets/dialogs/TwitchActionsPopup.hpp
         widgets/dialogs/AlertLevelBar.cpp
         widgets/dialogs/AlertLevelBar.hpp
         widgets/dialogs/BadgePicker.cpp
@@ -1047,6 +1053,8 @@ set(SOURCE_FILES
         widgets/settingspages/PageSections.hpp
         widgets/settingspages/TransferPage.cpp
         widgets/settingspages/TransferPage.hpp
+        widgets/settingspages/TwitchExtrasPage.cpp
+        widgets/settingspages/TwitchExtrasPage.hpp
         widgets/settingspages/ModerationPage.cpp
         widgets/settingspages/ModerationPage.hpp
         widgets/settingspages/NicknamesPage.cpp

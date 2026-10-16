@@ -15,6 +15,7 @@ namespace chatterino::inputbuttons {
 inline const QString MOD_ASSIST = QStringLiteral("modAssist");
 inline const QString ALERT_MUTE = QStringLiteral("alertMute");
 inline const QString AUTO_MESSAGES = QStringLiteral("autoMessages");
+inline const QString TWITCH_ACTIONS = QStringLiteral("twitchActions");
 inline const QString CLEAR = QStringLiteral("clear");
 inline const QString FOCUS = QStringLiteral("focus");
 inline const QString FOLLOW = QStringLiteral("follow");

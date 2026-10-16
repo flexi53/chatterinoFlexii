@@ -57,6 +57,9 @@ TEST(FlexiiVotes, APollIsReadOutOfWhatTheTopicSends)
     EXPECT_EQ(poll->totalVotes, 100);
     EXPECT_EQ(poll->pointsPerVote, 500);
     ASSERT_EQ(poll->choices.size(), 2);
+    // What a vote from the banner is sent with
+    EXPECT_EQ(poll->choices.at(0).id, "a");
+    EXPECT_EQ(poll->choices.at(1).id, "b");
     EXPECT_EQ(poll->choices.at(1).title, "Mirage");
     EXPECT_EQ(poll->choices.at(1).votes, 70);
     ASSERT_TRUE(poll->leader().has_value());

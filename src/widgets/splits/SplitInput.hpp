@@ -31,6 +31,7 @@ namespace chatterino {
 
 class Split;
 class EmotePopup;
+class TwitchActionsPopup;
 class InputCompletionPopup;
 class InputHighlighter;
 class MessageView;
@@ -46,6 +47,7 @@ enum class CompletionKind;
 
 class AlertMuteButton;
 class AutoMessageButton;
+class TwitchActionsButton;
 class BadgeButton;
 class SendWaitBar;
 
@@ -192,6 +194,7 @@ protected:
     Split *const split_;
     ChannelView *const channelView_;
     QPointer<EmotePopup> emotePopup_;
+    QPointer<TwitchActionsPopup> twitchActionsPopup_;
     /// Follows the moderator status of the current channel
     std::optional<pajlada::Signals::ScopedConnection> modStateConnection_;
     QPointer<InputCompletionPopup> inputCompletionPopup_;
@@ -225,6 +228,7 @@ protected:
         AlertMuteButton *alertMuteButton;
         /// ChattiFlexii: Autonachrichten on or off in this channel
         AutoMessageButton *autoMessageButton;
+        TwitchActionsButton *twitchActionsButton;
         BadgeButton *badgeButton;
         /// ChattiFlexii: clips the stream from the chat window
         SvgButton *clipButton;

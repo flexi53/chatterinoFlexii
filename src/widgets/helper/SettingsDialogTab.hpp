@@ -23,6 +23,7 @@ enum class SettingsTabId {
     Accounts,
     Moderation,
     About,
+    TwitchExtras,
 };
 
 class SettingsDialogTab : public BaseWidget

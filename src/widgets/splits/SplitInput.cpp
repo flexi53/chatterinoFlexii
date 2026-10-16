@@ -27,6 +27,7 @@
 #include "util/UiStyle.hpp"
 #include "widgets/buttons/AlertMuteButton.hpp"
 #include "widgets/buttons/AutoMessageButton.hpp"
+#include "widgets/buttons/TwitchActionsButton.hpp"
 #include "widgets/buttons/BadgeButton.hpp"
 #include "widgets/buttons/ClearChatButton.hpp"
 #include "widgets/buttons/FocusButton.hpp"
@@ -35,6 +36,7 @@
 #include "widgets/buttons/SvgButton.hpp"
 #include "widgets/dialogs/EmotePopup.hpp"
 #include "widgets/dialogs/ModerationAssistantPopup.hpp"
+#include "widgets/dialogs/TwitchActionsPopup.hpp"
 #include "widgets/helper/ChannelView.hpp"
 #include "widgets/helper/CmdDeleteKeyFilter.hpp"
 #include "widgets/helper/MessageView.hpp"
@@ -249,6 +251,7 @@ void SplitInput::initLayout()
                           &getSettings()->showModAssistButton,
                           &getSettings()->showAlertMuteButton,
                           &getSettings()->showAutoMessagesButton,
+                          &getSettings()->showTwitchActionsButton,
                           &getSettings()->showBadgeButton,
                           &getSettings()->showClipButton,
                           &getSettings()->showFollowBrowserButton})
@@ -299,6 +302,10 @@ void SplitInput::initLayout()
         // Autonachrichten on or off for this channel
         this->ui_.autoMessageButton = new AutoMessageButton;
         this->ui_.autoMessageButton->hide();
+
+        // The channel's poll, prediction and channel points
+        this->ui_.twitchActionsButton = new TwitchActionsButton;
+        this->ui_.twitchActionsButton->hide();
 
         // Which badge you wear here, as on twitch.tv
         this->ui_.badgeButton = new BadgeButton;
@@ -374,6 +381,36 @@ void SplitInput::initLayout()
     QObject::connect(this->ui_.emoteButton, &Button::leftClicked, [this] {
         this->openEmotePopup();
     });
+
+    // The channel's poll, prediction and channel points, one window per
+    // split - a second click brings it back to the front
+    QObject::connect(
+        this->ui_.twitchActionsButton, &Button::leftClicked, [this] {
+            auto twitch = std::dynamic_pointer_cast<TwitchChannel>(
+                this->split_->getChannel());
+            if (twitch == nullptr)
+            {
+                return;
+            }
+            // The split may show another channel by now
+            if (this->twitchActionsPopup_ &&
+                this->twitchActionsPopup_->channelLogin() !=
+                    twitch->getName().toLower())
+            {
+                this->twitchActionsPopup_->close();
+            }
+            if (this->twitchActionsPopup_ &&
+                this->twitchActionsPopup_->isVisible())
+            {
+                this->twitchActionsPopup_->show();
+                this->twitchActionsPopup_->raise();
+                this->twitchActionsPopup_->activateWindow();
+                return;
+            }
+            auto *popup = new TwitchActionsPopup(twitch, this);
+            this->twitchActionsPopup_ = popup;
+            popup->show();
+        });
 
     // open the moderation assistant for this channel
     QObject::connect(this->ui_.modAssistButton, &Button::leftClicked, [this] {
@@ -518,6 +555,8 @@ void SplitInput::updateEmoteButton()
     this->ui_.alertMuteButton->setFixedWidth(width);
     this->ui_.autoMessageButton->setFixedHeight(height);
     this->ui_.autoMessageButton->setFixedWidth(width);
+    this->ui_.twitchActionsButton->setFixedHeight(height);
+    this->ui_.twitchActionsButton->setFixedWidth(width);
     this->ui_.badgeButton->setFixedHeight(height);
     this->ui_.badgeButton->setFixedWidth(width);
     this->ui_.clipButton->setFixedHeight(height);
@@ -574,6 +613,10 @@ void SplitInput::arrangeButtons()
         else if (key == inputbuttons::AUTO_MESSAGES)
         {
             button = this->ui_.autoMessageButton;
+        }
+        else if (key == inputbuttons::TWITCH_ACTIONS)
+        {
+            button = this->ui_.twitchActionsButton;
         }
         else if (key == inputbuttons::CLEAR)
         {
@@ -652,6 +695,8 @@ void SplitInput::updateModAssistButton()
         twitch != nullptr ? twitch->getName() : QString{});
     this->ui_.autoMessageButton->setVisible(
         canWrite && mine && getSettings()->showAutoMessagesButton);
+    this->ui_.twitchActionsButton->setVisible(
+        canWrite && getSettings()->showTwitchActionsButton);
     this->ui_.badgeButton->setChannel(
         canWrite ? this->split_->getChannel() : nullptr);
     this->ui_.badgeButton->setVisible(canWrite &&

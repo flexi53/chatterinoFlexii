@@ -722,7 +722,8 @@ void LookPage::buildSplitsTab(GeneralPageView &layout)
         "Die Leiste zwischen Titelleiste und Chat. Twitch schickt jedem "
         "Zuschauer, was im Kanal gerade abgestimmt wird - das Banner "
         "erscheint also überall, nicht nur wo du Mod bist. Die Knöpfe dazu "
-        "holst du dir unter Titelleiste → Aufbau.");
+        "holst du dir unter Titelleiste → Aufbau. Abstimmen und wetten per "
+        "Klick im Banner richtest du unter Twitch-Extras ein.");
     SettingWidget::checkbox("Umfragen und Vorhersagen zeigen", s.showVoteBanner)
         ->setTooltip("Zeigt die laufende Umfrage oder Vorhersage mit "
                      "Balken, Stimmen und Restzeit. Nach dem Ende bleibt "

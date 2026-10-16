@@ -32,6 +32,8 @@ struct PubSubPoll {
     };
 
     struct Choice {
+        /// What a vote for it is sent with
+        QString id;
         QString title;
         int votes = 0;
     };

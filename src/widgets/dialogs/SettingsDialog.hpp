@@ -43,6 +43,8 @@ enum class SettingsDialogPreference {
     Accounts,
     ModerationActions,
     About,
+    /// ChattiFlexii: the Twitch app login, polls, predictions, points
+    TwitchExtras,
 };
 
 class SettingsDialog : public BaseWindow

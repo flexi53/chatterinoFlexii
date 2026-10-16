@@ -299,6 +299,10 @@ moderators hand out there.
   otherwise, and at most three suggestions are open at once
 - How many cases it needs and how similar a message has to be are under
   Settings -> Mod-Assistent
+- Under the reason the window lists the cases the suggestion rests on, each
+  with **Stimmt** - right and relevant, it then counts twice - and
+  **Löschen**, which takes a wrong case out at once. The assistant's own
+  window has a column for the confirmed ones and a button to mark several
 
 "Similar" means similar wording. It is good at spam, repeated insults and
 links, and knows nothing about context - someone quoting a message to
@@ -389,6 +393,12 @@ computer and fetched again every six hours. Type a channel name and press
 Enter: it is checked against the same public list /modcheck in the plugin
 shows, and added. A chatter's own user or badge highlight keeps its colour
 and caption; the pictures join it.
+
+A switch takes **every channel whosthemod knows** instead of only the chosen
+ones: each chatter is looked up once, the way /wtm does it, and gets the
+pictures of all the channels they moderate - the chosen ones first, six at
+most. The first message of someone new stays unmarked until the answer is
+in; answers are kept for a day.
 
 Bots are left out, on a tab of their own: fossabot, nightbot, moobot,
 aecrobot, streamelements and other common ones are listed to begin with, the
@@ -498,6 +508,25 @@ ends, and **/unpin** takes it down. A message's **Moderate** menu has **Pin**
 - until the stream ends, or for 1, 10 or 30 minutes - and **Unpin**. This is
 taken over from Chatterino ahead of its next release; the banner Chatterino
 shows above the chat for the pinned message is left out.
+
+## Polls, predictions and channel points
+
+What the Twitch website lets you do beyond chatting, the way Moltorino brings
+it. It needs a login of its own as Twitch's TV app, made under Settings ->
+**Twitch-Extras** with a code on twitch.tv/activate - separate from the chat
+account, kept in the keychain only.
+
+- **In the banner**: a click on a line of a poll votes for it, a click on an
+  outcome offers stakes to bet - the amounts are set on that page, and a
+  stake of your own is always there. Moderators get **Beenden**, **Sperren**
+  and **Abbrechen** on the card, and a click on an outcome lets it win; a
+  locked prediction stays up for them until it is resolved
+- **The three bars** in the input bar open a window with the channel's
+  **channel points**: the balance and every reward, with a text field where
+  one asks for it. Moderators also **start polls** (2 to 5 answers, extra
+  votes for points if wanted) **and predictions** (2 to 10 outcomes) there
+- Twitch does not offer this way to other apps; if it changes something,
+  it may stop working without warning
 
 ## Badges and Twitch
 

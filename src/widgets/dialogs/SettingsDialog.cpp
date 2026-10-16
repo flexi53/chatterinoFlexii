@@ -41,6 +41,7 @@
 #include "widgets/settingspages/NotificationPage.hpp"
 #include "widgets/settingspages/PluginsPage.hpp"
 #include "widgets/settingspages/TransferPage.hpp"
+#include "widgets/settingspages/TwitchExtrasPage.hpp"
 
 #include <QApplication>
 #include <QDialogButtonBox>
@@ -340,6 +341,7 @@ void SettingsDialog::addTabs()
     this->ui_.tabContainer->addSpacing(16);
     this->addTab([]{return new ModChangesPage;},       "WhosTheMod",     ":/settings/whosthemod.svg");
     this->addTab([]{return new BadgesPage;},           "HallOfBadges",   ":/settings/badges.svg");
+    this->addTab([]{return new TwitchExtrasPage;},     "Twitch-Extras",  ":/settings/twitchextras.svg", SettingsTabId::TwitchExtras);
     this->ui_.tabContainer->addSpacing(16);
     this->addTab([]{return new NotesPage;},            "Notizen",        ":/settings/notes.svg");
     this->addTab([]{return new ModHighlightsPage;},    "Mod-Highlights", ":/settings/modhighlights.svg");
@@ -542,6 +544,10 @@ void SettingsDialog::showDialog(QWidget *parent,
             instance->selectTab(SettingsTabId::About);
         }
         break;
+
+        case SettingsDialogPreference::TwitchExtras:
+            instance->selectTab(SettingsTabId::TwitchExtras);
+            break;
 
         default:;
     }

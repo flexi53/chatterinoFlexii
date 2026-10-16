@@ -57,6 +57,10 @@ void addButtonList(GeneralPageView &layout, QWidget *parent)
         {
             return &s.showAutoMessagesButton;
         }
+        if (key == inputbuttons::TWITCH_ACTIONS)
+        {
+            return &s.showTwitchActionsButton;
+        }
         if (key == inputbuttons::CLEAR)
         {
             return &s.showClearChatButton;
@@ -102,6 +106,13 @@ void addButtonList(GeneralPageView &layout, QWidget *parent)
             return "Schaltet die Autonachrichten (Erweitert → "
                    "Autonachrichten) für diesen Kanal an und aus. Grün heißt: "
                    "dein Account antwortet hier von selbst.";
+        }
+        if (key == inputbuttons::TWITCH_ACTIONS)
+        {
+            return "Öffnet die Kanalpunkte des Kanals mit den Belohnungen zum "
+                   "Einlösen - und als Mod das Starten von Umfragen und "
+                   "Vorhersagen. Braucht die Anmeldung unter Einstellungen → "
+                   "Twitch-Extras.";
         }
         if (key == inputbuttons::CLEAR)
         {
@@ -283,6 +294,8 @@ void InputPage::initLayout(GeneralPageView &layout)
                 s.showAlertMuteButton.getDefaultValue());
             s.showAutoMessagesButton.setValue(
                 s.showAutoMessagesButton.getDefaultValue());
+            s.showTwitchActionsButton.setValue(
+                s.showTwitchActionsButton.getDefaultValue());
             s.showBadgeButton.setValue(s.showBadgeButton.getDefaultValue());
             s.showClipButton.setValue(s.showClipButton.getDefaultValue());
             s.showFollowBrowserButton.setValue(

@@ -301,6 +301,13 @@ public:
     /// ChattiFlexii, Aussehen -> Splits: the banner under the header saying
     /// what the channel is voting on right now
     BoolSetting showVoteBanner = {"/appearance/banners/showVotes", true};
+    /// ChattiFlexii, Twitch-Extras: a click on a line of the banner votes or
+    /// bets, and moderators get its buttons - needs the Twitch app login
+    BoolSetting voteBannerActions = {"/twitchExtras/bannerActions", true};
+    /// ChattiFlexii, Twitch-Extras: the stakes offered on a click on an
+    /// outcome, separated by commas
+    QStringSetting predictionStakes = {"/twitchExtras/predictionStakes",
+                                       "10, 100, 500, 1000, 5000"};
     /// ChattiFlexii, Aussehen -> Splits: the banner for the hype train
     BoolSetting showHypeTrainBanner = {"/appearance/banners/showHypeTrain",
                                        true};
@@ -1240,6 +1247,8 @@ public:
     BoolSetting showModAssistButton = {"/ui/buttons/modAssist", true};
     BoolSetting showAlertMuteButton = {"/ui/buttons/alertMute", true};
     BoolSetting showAutoMessagesButton = {"/ui/buttons/autoMessages", true};
+    /// Poll, prediction and channel points of the channel
+    BoolSetting showTwitchActionsButton = {"/ui/buttons/twitchActions", true};
     /// Choosing the badge you wear - needs the browser login, so off until
     /// asked for
     BoolSetting showBadgeButton = {"/ui/buttons/badge", false};

@@ -11,8 +11,8 @@ namespace chatterino::inputbuttons {
 
 QStringList defaults()
 {
-    return {MOD_ASSIST, ALERT_MUTE, AUTO_MESSAGES, CLEAR, FOCUS,
-            FOLLOW,     BADGE,      CLIP,          EMOTE};
+    return {MOD_ASSIST, ALERT_MUTE, AUTO_MESSAGES, TWITCH_ACTIONS, CLEAR,
+            FOCUS,      FOLLOW,     BADGE,         CLIP,           EMOTE};
 }
 
 QStringList order()
@@ -41,6 +41,10 @@ QString nameOf(const QString &key)
     if (key == AUTO_MESSAGES)
     {
         return QStringLiteral("Autonachrichten (Sprechblase)");
+    }
+    if (key == TWITCH_ACTIONS)
+    {
+        return QStringLiteral("Kanalpunkte, Umfrage/Vorhersage starten (Balken)");
     }
     if (key == CLEAR)
     {

@@ -168,6 +168,7 @@ std::optional<PubSubPoll> pollFrom(const QJsonObject &root)
     {
         const auto choice = value.toObject();
         out.choices.push_back({
+            .id = firstOf(choice, {"choice_id"_L1, "id"_L1}).toString(),
             .title = choice.value("title"_L1).toString(),
             .votes = countOf(firstOf(choice, {"votes"_L1, "total_voters"_L1})),
         });

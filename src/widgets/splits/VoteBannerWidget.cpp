@@ -4,14 +4,23 @@
 
 #include "widgets/splits/VoteBannerWidget.hpp"
 
+#include "providers/twitch/api/ModGql.hpp"
 #include "providers/twitch/TwitchChannel.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
 #include "util/Helpers.hpp"
+#include "widgets/dialogs/SettingsDialog.hpp"
 
+#include <QHBoxLayout>
+#include <QInputDialog>
 #include <QLabel>
+#include <QMenu>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPointer>
+#include <QPushButton>
+#include <QRegularExpression>
 #include <QShowEvent>
 #include <QVBoxLayout>
 
@@ -51,6 +60,48 @@ void VoteBarWidget::setBar(const QString &title, const QString &right,
     this->update();
 }
 
+void VoteBarWidget::setOnClick(std::function<void()> onClick)
+{
+    this->onClick_ = std::move(onClick);
+    this->setCursor(this->onClick_ ? Qt::PointingHandCursor
+                                   : Qt::ArrowCursor);
+    this->update();
+}
+
+void VoteBarWidget::mousePressEvent(QMouseEvent *event)
+{
+    // Taken here, so the release comes here too rather than to the card
+    if (event->button() == Qt::LeftButton && this->onClick_)
+    {
+        event->accept();
+        return;
+    }
+    BaseWidget::mousePressEvent(event);
+}
+
+void VoteBarWidget::mouseReleaseEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton && this->onClick_ &&
+        this->rect().contains(event->position().toPoint()))
+    {
+        // Copied, since the click may set a new one
+        auto onClick = this->onClick_;
+        onClick();
+    }
+}
+
+void VoteBarWidget::enterEvent(QEnterEvent * /*event*/)
+{
+    this->hovered_ = true;
+    this->update();
+}
+
+void VoteBarWidget::leaveEvent(QEvent * /*event*/)
+{
+    this->hovered_ = false;
+    this->update();
+}
+
 QSize VoteBarWidget::sizeHint() const
 {
     return {10, int(BAR_HEIGHT * this->scale())};
@@ -76,6 +127,11 @@ void VoteBarWidget::paintEvent(QPaintEvent * /*event*/)
     // The track behind it, a touch lighter than the banner
     auto track = this->color_;
     track.setAlpha(this->leading_ ? 45 : 32);
+    // A line that can be clicked lights up under the pointer
+    if (this->hovered_ && this->onClick_)
+    {
+        track.setAlpha(track.alpha() + 30);
+    }
     QPainterPath path;
     path.addRoundedRect(whole, rounded, rounded);
     painter.fillPath(path, track);
@@ -122,6 +178,66 @@ VoteBannerWidget::VoteBannerWidget(QWidget *parent)
 {
     this->headerRow()->addWidget(this->countdownLabel());
 
+    // ChattiFlexii: what a moderator can do about what is shown, quiet
+    // enough to leave the card a card
+    const auto modButton = [this](const QString &text, const QString &tip) {
+        auto *button = new QPushButton(text, this);
+        button->setCursor(Qt::PointingHandCursor);
+        button->setToolTip(tip);
+        button->setFocusPolicy(Qt::NoFocus);
+        button->setStyleSheet(
+            u"QPushButton { border: 1px solid rgba(173, 173, 184, 90); "
+            "border-radius: 4px; padding: 0px 6px; background: transparent; "
+            "color: #adadb8; }"
+            "QPushButton:hover { background: rgba(173, 173, 184, 40); }"_s);
+        button->hide();
+        this->headerRow()->addWidget(button);
+        return button;
+    };
+    this->endButton_ = modButton(
+        u"Beenden"_s, u"Beendet die Umfrage jetzt - die Stimmen bleiben."_s);
+    this->lockButton_ = modButton(
+        u"Sperren"_s, u"Nimmt keine Einsätze mehr an. Danach einen Ausgang "
+                      "anklicken, um ihn gewinnen zu lassen."_s);
+    this->cancelButton_ = modButton(
+        u"Abbrechen"_s,
+        u"Bricht die Vorhersage ab - alle bekommen ihre Punkte zurück."_s);
+
+    QObject::connect(this->endButton_, &QPushButton::clicked, this, [this] {
+        const auto *poll =
+            this->channel_ != nullptr ? this->channel_->currentPoll() : nullptr;
+        if (poll == nullptr)
+        {
+            return;
+        }
+        auto [done, failed] = this->reporter(u"Umfrage beendet."_s);
+        modgql::endPoll(poll->id, done, failed);
+    });
+    QObject::connect(this->lockButton_, &QPushButton::clicked, this, [this] {
+        const auto *prediction = this->channel_ != nullptr
+                                     ? this->channel_->currentPrediction()
+                                     : nullptr;
+        if (prediction == nullptr)
+        {
+            return;
+        }
+        auto [done, failed] = this->reporter(
+            u"Gesperrt - jetzt den Ausgang anklicken, der gewinnt."_s);
+        modgql::lockPrediction(prediction->id, done, failed);
+    });
+    QObject::connect(this->cancelButton_, &QPushButton::clicked, this, [this] {
+        const auto *prediction = this->channel_ != nullptr
+                                     ? this->channel_->currentPrediction()
+                                     : nullptr;
+        if (prediction == nullptr)
+        {
+            return;
+        }
+        auto [done, failed] =
+            this->reporter(u"Abgebrochen - die Punkte gehen zurück."_s);
+        modgql::cancelPrediction(prediction->id, done, failed);
+    });
+
     this->bars_->setContentsMargins(0, 2, 0, 0);
     this->bars_->setSpacing(3);
     this->contentBox()->addLayout(this->bars_);
@@ -136,6 +252,25 @@ VoteBannerWidget::VoteBannerWidget(QWidget *parent)
             this->refresh();
         },
         this->connections_, false);
+    getSettings()->voteBannerActions.connect(
+        [this] {
+            this->refresh();
+        },
+        this->connections_, false);
+
+    // Whether a click can do something depends on the Twitch app login
+    QPointer<VoteBannerWidget> self(this);
+    modgql::whenReady(this, [self](bool loggedIn) {
+        if (self)
+        {
+            self->loggedIn_ = loggedIn;
+            self->refresh();
+        }
+    });
+    this->connections_.managedConnect(modgql::loginChanged(), [this] {
+        this->loggedIn_ = modgql::currentLogin().has_value();
+        this->refresh();
+    });
 
     this->scaleChangedEvent(this->scale());
 }
@@ -260,8 +395,171 @@ void VoteBannerWidget::useBars(size_t count)
 
 void VoteBannerWidget::setFooter(const QString &text)
 {
-    this->footerLabel_->setText(text);
+    auto shown = text.toHtmlEscaped();
+    // ChattiFlexii: how the last vote, bet or button went
+    if (!this->note_.isEmpty() && this->noteFor_ == this->showing_)
+    {
+        shown += u" · <span style=\"color:%1\">%2</span>"_s.arg(
+            this->noteIsError_ ? u"#ff6b6b"_s : u"#3ecf8e"_s,
+            this->note_.toHtmlEscaped());
+    }
+    this->footerLabel_->setTextFormat(Qt::RichText);
+    this->footerLabel_->setText(shown);
     this->footerLabel_->setVisible(!text.isEmpty());
+    this->showModButtons();
+}
+
+bool VoteBannerWidget::canAct() const
+{
+    return this->loggedIn_ && getSettings()->voteBannerActions;
+}
+
+bool VoteBannerWidget::moderates() const
+{
+    return this->channel_ != nullptr &&
+           (this->channel_->isMod() || this->channel_->isBroadcaster());
+}
+
+void VoteBannerWidget::showModButtons()
+{
+    const bool can = this->canAct() && this->moderates();
+    const auto *poll =
+        this->channel_ != nullptr ? this->channel_->currentPoll() : nullptr;
+    const auto *prediction = this->channel_ != nullptr
+                                 ? this->channel_->currentPrediction()
+                                 : nullptr;
+    const bool pollShown = poll != nullptr && poll->id == this->showing_;
+    const bool predictionShown =
+        prediction != nullptr && prediction->id == this->showing_;
+
+    this->endButton_->setVisible(can && pollShown && poll->running());
+    this->lockButton_->setVisible(
+        can && predictionShown &&
+        prediction->status == PubSubPrediction::Status::Active);
+    this->cancelButton_->setVisible(
+        can && predictionShown &&
+        (prediction->status == PubSubPrediction::Status::Active ||
+         prediction->status == PubSubPrediction::Status::Locked));
+}
+
+void VoteBannerWidget::noteResult(const QString &text, bool error)
+{
+    this->note_ = text;
+    this->noteIsError_ = error;
+    this->noteFor_ = this->showing_;
+    this->refresh();
+}
+
+std::pair<std::function<void()>, std::function<void(const QString &)>>
+    VoteBannerWidget::reporter(const QString &done)
+{
+    QPointer<VoteBannerWidget> self(this);
+    return {
+        [self, done] {
+            if (self)
+            {
+                self->noteResult(done, false);
+            }
+        },
+        [self](const QString &error) {
+            if (self)
+            {
+                self->noteResult(error, true);
+            }
+        },
+    };
+}
+
+void VoteBannerWidget::clickedPoll(size_t index)
+{
+    if (!this->loggedIn_)
+    {
+        SettingsDialog::showDialog(this, SettingsDialogPreference::TwitchExtras);
+        return;
+    }
+    const auto *poll =
+        this->channel_ != nullptr ? this->channel_->currentPoll() : nullptr;
+    if (poll == nullptr || index >= poll->choices.size() ||
+        poll->choices.at(index).id.isEmpty())
+    {
+        return;
+    }
+    const auto &choice = poll->choices.at(index);
+    auto [done, failed] =
+        this->reporter(u"Für „%1“ gestimmt"_s.arg(choice.title));
+    modgql::voteInPoll(poll->id, choice.id, done, failed);
+}
+
+void VoteBannerWidget::clickedPrediction(size_t index, QWidget *bar)
+{
+    if (!this->loggedIn_)
+    {
+        SettingsDialog::showDialog(this, SettingsDialogPreference::TwitchExtras);
+        return;
+    }
+    const auto *prediction = this->channel_ != nullptr
+                                 ? this->channel_->currentPrediction()
+                                 : nullptr;
+    if (prediction == nullptr || index >= prediction->outcomes.size())
+    {
+        return;
+    }
+    const auto predictionId = prediction->id;
+    const auto outcome = prediction->outcomes.at(index);
+    const bool open = prediction->status == PubSubPrediction::Status::Active;
+
+    QMenu menu(this);
+    if (open)
+    {
+        menu.addSection(u"Auf „%1“ setzen"_s.arg(outcome.title));
+        static const QRegularExpression separators(u"[\\s,;]+"_s);
+        for (const auto &part :
+             getSettings()->predictionStakes.getValue().split(
+                 separators, Qt::SkipEmptyParts))
+        {
+            bool ok = false;
+            const auto amount = part.toInt(&ok);
+            if (!ok || amount <= 0)
+            {
+                continue;
+            }
+            menu.addAction(u"%1 Punkte"_s.arg(localizeNumbers(amount)),
+                           [this, predictionId, outcome, amount] {
+                               auto [done, failed] = this->reporter(
+                                   u"%1 Punkte auf „%2“"_s.arg(
+                                       localizeNumbers(amount), outcome.title));
+                               modgql::makePrediction(predictionId, outcome.id,
+                                                      amount, done, failed);
+                           });
+        }
+        menu.addAction(u"Eigener Einsatz …"_s, [this, predictionId, outcome] {
+            bool ok = false;
+            const auto amount = QInputDialog::getInt(
+                this, u"Vorhersage"_s,
+                u"Wie viele Punkte auf „%1“?"_s.arg(outcome.title), 100, 1,
+                250000, 10, &ok);
+            if (!ok)
+            {
+                return;
+            }
+            auto [done, failed] = this->reporter(u"%1 Punkte auf „%2“"_s.arg(
+                localizeNumbers(amount), outcome.title));
+            modgql::makePrediction(predictionId, outcome.id, amount, done,
+                                   failed);
+        });
+    }
+    if (this->moderates())
+    {
+        menu.addSection(u"Als Mod"_s);
+        menu.addAction(u"„%1“ gewinnt"_s.arg(outcome.title),
+                       [this, predictionId, outcome] {
+                           auto [done, failed] = this->reporter(
+                               u"Aufgelöst - „%1“ gewinnt"_s.arg(outcome.title));
+                           modgql::resolvePrediction(predictionId, outcome.id,
+                                                     done, failed);
+                       });
+    }
+    menu.exec(bar->mapToGlobal(QPoint(0, bar->height())));
 }
 
 void VoteBannerWidget::showPoll()
@@ -297,6 +595,22 @@ void VoteBannerWidget::showPoll()
             u"%1 % · %2"_s.arg(percent).arg(localizeNumbers(choice.votes)),
             share, this->theme->accent,
             leader.has_value() && *leader == i);
+        // ChattiFlexii: a click votes for it
+        if (poll->running() && getSettings()->voteBannerActions)
+        {
+            this->bar_.at(i)->setOnClick([this, i] {
+                this->clickedPoll(i);
+            });
+            this->bar_.at(i)->setToolTip(
+                this->loggedIn_ ? u"Klicken, um dafür zu stimmen"_s
+                                : u"Zum Abstimmen unter Einstellungen → "
+                                  "Twitch-Extras anmelden"_s);
+        }
+        else
+        {
+            this->bar_.at(i)->setOnClick({});
+            this->bar_.at(i)->setToolTip({});
+        }
     }
 
     QString footer =
@@ -381,6 +695,30 @@ void VoteBannerWidget::showPrediction()
                          prediction->winningOutcomeId == outcome.id;
         this->bar_.at(i)->setBar(outcome.title, right, share,
                                  outcome.asColor(), won);
+        // ChattiFlexii: a click bets on it, or lets a moderator resolve it
+        const bool open =
+            prediction->status == PubSubPrediction::Status::Active;
+        const bool locked =
+            prediction->status == PubSubPrediction::Status::Locked;
+        if (getSettings()->voteBannerActions &&
+            (open || (locked && this->moderates())))
+        {
+            auto *bar = this->bar_.at(i);
+            bar->setOnClick([this, i, bar] {
+                this->clickedPrediction(i, bar);
+            });
+            bar->setToolTip(
+                !this->loggedIn_
+                    ? u"Zum Mitmachen unter Einstellungen → Twitch-Extras "
+                      "anmelden"_s
+                : open ? u"Klicken, um Punkte darauf zu setzen"_s
+                       : u"Klicken, um diesen Ausgang gewinnen zu lassen"_s);
+        }
+        else
+        {
+            this->bar_.at(i)->setOnClick({});
+            this->bar_.at(i)->setToolTip({});
+        }
     }
 
     QString footer = u"%1 Punkte gesetzt"_s.arg(localizeNumbers(total));
@@ -418,7 +756,9 @@ void VoteBannerWidget::showPrediction()
             // it folds away by itself and comes back with the result,
             // unless it was opened by hand
             this->stopAutoHide();
-            if (!this->userToggled_)
+            // A moderator who can resolve it here keeps it, to do so
+            const bool resolvable = this->canAct() && this->moderates();
+            if (!this->userToggled_ && !resolvable)
             {
                 this->hide();
                 return;
