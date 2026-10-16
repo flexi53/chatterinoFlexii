@@ -177,7 +177,9 @@ public:
 
 private:
     /// Registers this widget & its optional label to the given page view
-    void registerWidget(GeneralPageView &view);
+    /// @a row is shown along with what matches a search - this widget, or
+    /// nothing where only its label and action went into another layout
+    void registerWidget(GeneralPageView &view, QWidget *row);
 
     /// Shows the dot where the setting is not where it started, and takes
     /// it back when pressed

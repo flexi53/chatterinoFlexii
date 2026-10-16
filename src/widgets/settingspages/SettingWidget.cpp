@@ -648,14 +648,19 @@ void SettingWidget::addTo(GeneralPageView &view)
 {
     view.pushWidget(this);
 
-    this->registerWidget(view);
+    this->registerWidget(view, this);
 }
 
 void SettingWidget::addTo(GeneralPageView &view, QFormLayout *formLayout)
 {
-    this->registerWidget(view);
+    // ChattiFlexii: only the label and the action go into the form - this
+    // widget stays behind without a parent. Shown by a search it came up
+    // as a window of its own, a small dark one with just the mark in it,
+    // left lying on the desktop.
+    this->registerWidget(view, nullptr);
 
     formLayout->addRow(this->label, this->actionWidget);
+    this->hide();
 }
 
 void SettingWidget::addToLayout(QLayout *layout)
@@ -669,13 +674,13 @@ void SettingWidget::addToLayout(QLayout *layout)
     assert(false && "unimplemented");
 }
 
-void SettingWidget::registerWidget(GeneralPageView &view)
+void SettingWidget::registerWidget(GeneralPageView &view, QWidget *row)
 {
     if (this->label != nullptr)
     {
-        view.registerWidget(this->label, this->keywords, this);
+        view.registerWidget(this->label, this->keywords, row);
     }
-    view.registerWidget(this->actionWidget, this->keywords, this);
+    view.registerWidget(this->actionWidget, this->keywords, row);
 }
 
 }  // namespace chatterino
