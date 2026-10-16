@@ -161,7 +161,12 @@ void ChattiBadges::reload()
                     .name = EmoteName{u"chatti:" % login},
                     .images = ImageSet{Image::fromUrl(
                         Url{image}, 18.0 / side, QSize(side, side))},
-                    .tooltip = Tooltip{QStringLiteral("ChattiFlexii-Badge")},
+                    // The program it was uploaded with - ChattiFlexii, or a
+                    // friend's own that uses the same server
+                    .tooltip = Tooltip{
+                        user.value("client")
+                            .toString(QStringLiteral("ChattiFlexii")) +
+                        QStringLiteral("-Badge")},
                     .homePage = Url{},
                 });
                 badgeMap.emplace(it.key(), std::move(emote));
@@ -245,6 +250,7 @@ void upload(const QByteArray &picture, bool animated, QObject *caller,
     }
     send(std::move(*built)
              .header("Content-Type", animated ? "image/gif" : "image/png")
+             .header("X-Badge-Client", "ChattiFlexii")
              .payload(picture),
          caller,
          [done](const QJsonObject &) {
@@ -298,6 +304,8 @@ void waiting(QObject *caller,
                     .userId = entry.value("userId").toString(),
                     .login = entry.value("login").toString(),
                     .image = entry.value("image").toString(),
+                    .client = entry.value("client").toString(
+                        QStringLiteral("ChattiFlexii")),
                 });
             }
             done(found);

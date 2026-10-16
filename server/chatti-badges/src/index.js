@@ -23,6 +23,19 @@
 const MAX_PNG_BYTES = 64 * 1024;
 const MAX_GIF_BYTES = 1024 * 1024;
 const MAX_SIDE = 240;
+// The program a badge was uploaded with, shown when hovering it - every
+// client that uses this server sends its own name along
+const DEFAULT_CLIENT = "ChattiFlexii";
+
+/// The name of the program in the request's X-Badge-Client header - letters,
+/// digits, spaces and a few marks, at most 32 of them
+function clientOf(request) {
+    const sent = (request.headers.get("X-Badge-Client") || "")
+        .replace(/[^\p{L}\p{N} ._-]/gu, "")
+        .trim()
+        .slice(0, 32);
+    return sent || DEFAULT_CLIENT;
+}
 const UPLOAD_EVERY_SECONDS = 60;
 const LIST_CACHE_SECONDS = 300;
 
@@ -117,10 +130,11 @@ function imageUrl(origin, id, version) {
     return `${origin}/image/${id}/${fileOf(version)}`;
 }
 
-async function setListed(env, id, login, version, size) {
+async function setListed(env, id, login, version, size, client) {
     const list = await readList(env);
     if (version) {
-        list[id] = { login, version, size: size || 72 };
+        list[id] = { login, version, size: size || 72,
+                     client: client || DEFAULT_CLIENT };
     } else {
         delete list[id];
     }
@@ -142,6 +156,7 @@ async function handle(request, env) {
                 login: entry.login,
                 image: imageUrl(origin, id, entry.version),
                 size: entry.size || 72,
+                client: entry.client || DEFAULT_CLIENT,
             };
         }
         return json({ users }, 200, {
@@ -225,6 +240,7 @@ async function handle(request, env) {
         record.login = user.login;
         record.pending = version;
         record.pendingSize = size.width;
+        record.pendingClient = clientOf(request);
         record.uploadedAt = now;
         await env.BADGES.put(`user:${user.id}`, JSON.stringify(record));
 
@@ -259,6 +275,7 @@ async function handle(request, env) {
                         userId: id,
                         login: record.login,
                         image: imageUrl(origin, id, record.pending),
+                        client: record.pendingClient || DEFAULT_CLIENT,
                         uploadedAt: record.uploadedAt || 0,
                     });
                 }
@@ -303,11 +320,13 @@ async function approve(env, origin, id) {
     }
     record.approved = record.pending;
     record.approvedSize = record.pendingSize || 72;
+    record.approvedClient = record.pendingClient || DEFAULT_CLIENT;
+    delete record.pendingClient;
     delete record.pending;
     delete record.pendingSize;
     await env.BADGES.put(`user:${id}`, JSON.stringify(record));
     await setListed(env, id, record.login, record.approved,
-                    record.approvedSize);
+                    record.approvedSize, record.approvedClient);
     return json({ approved: imageUrl(origin, id, record.approved) });
 }
 

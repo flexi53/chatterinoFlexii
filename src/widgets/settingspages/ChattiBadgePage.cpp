@@ -193,7 +193,10 @@ void ChattiBadgePage::initOwnBadge(GeneralPageView &layout)
                     picture->setAlignment(Qt::AlignCenter);
                     showPicture(picture, entry.image);
                     lineLayout->addWidget(picture);
-                    lineLayout->addWidget(new QLabel(entry.login), 1);
+                    lineLayout->addWidget(
+                        new QLabel(QStringLiteral("%1  ·  aus %2")
+                                       .arg(entry.login, entry.client)),
+                        1);
                     auto *yes = new QPushButton("Freigeben");
                     auto *no = new QPushButton("Ablehnen");
                     lineLayout->addWidget(yes);

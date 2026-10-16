@@ -52,3 +52,41 @@ admin's own upload is approved at once.
 | `DELETE /user/<id>` | admins | takes someone's badge away |
 
 "Signed in" means an `Authorization: OAuth <twitch token>` header.
+
+## Using it from another client
+
+Any Chatterino fork can show these badges and let its users upload theirs.
+Hovering a badge says which program it came from, so each client sends its
+own name along.
+
+**Showing them** - fetch the list every few minutes:
+
+```
+GET https://chatti-badges.chattiflexii.workers.dev/badges
+
+{"users": {"<twitch user id>": {
+    "login": "fx_flexii",
+    "image": "https://…/image/<id>/<file>.png",   // or .gif, animated
+    "size": 72,                                   // width in pixels
+    "client": "ChattiFlexii"                      // shown as "ChattiFlexii-Badge"
+}}}
+```
+
+Show `image` as a badge next to the user with that id, at a scale of
+`18 / size`, with `<client>-Badge` as its tooltip. In ChattiFlexii this is
+`src/providers/chattibadges/ChattiBadges.cpp` (MIT), hooked in where the
+Moltorino badges are.
+
+**Uploading** - with the user's Twitch login and the program's name:
+
+```
+POST /upload
+Authorization: OAuth <the user's twitch token>
+X-Badge-Client: Sonkerino
+Content-Type: image/png          (or image/gif)
+
+<the picture: PNG up to 64 KB, or animated GIF up to 1 MB, at most 240 × 240>
+```
+
+It waits until an admin approves it. `GET /me` with the same header says
+whether it is approved or still waiting.

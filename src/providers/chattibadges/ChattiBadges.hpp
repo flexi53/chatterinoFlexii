@@ -81,6 +81,8 @@ struct Waiting {
     QString userId;
     QString login;
     QString image;
+    /// The program it was uploaded with
+    QString client;
 };
 
 /// @a picture made what the server takes: a PNG of 72 × 72, the picture
