@@ -46,7 +46,7 @@ void ChattiBadgePage::initOwnBadge(GeneralPageView &layout)
     layout.addDescription(
         "Ein Bild deiner Wahl neben deinem Namen - für alle, die ChattiFlexii "
         "benutzen. Ein Bild wird auf 72 × 72 gebracht; ein animiertes GIF "
-        "geht so hoch, wie es ist, und darf höchstens 128 × 128 und 512 KB "
+        "geht so hoch, wie es ist, und darf höchstens 240 × 240 und 1 MB "
         "haben. Sehen "
         "können es die anderen, sobald es freigegeben ist. Anzeigen lassen "
         "es sich unter General → Visible badges → ChattiFlexii.");
@@ -265,7 +265,7 @@ void ChattiBadgePage::initOwnBadge(GeneralPageView &layout)
             {
                 status->setText(
                     QStringLiteral("Das GIF ist %1 × %2 groß - für ein "
-                                   "animiertes Badge höchstens 128 × 128. "
+                                   "animiertes Badge höchstens 240 × 240. "
                                    "Am besten schon quadratisch.")
                         .arg(size.width())
                         .arg(size.height()));
@@ -274,7 +274,7 @@ void ChattiBadgePage::initOwnBadge(GeneralPageView &layout)
             if (bytes.size() > chattibadges::MAX_GIF_BYTES)
             {
                 status->setText(QStringLiteral("Das GIF hat %1 KB - "
-                                               "höchstens 512 KB.")
+                                               "höchstens 1 MB.")
                                     .arg(bytes.size() / 1024));
                 return;
             }

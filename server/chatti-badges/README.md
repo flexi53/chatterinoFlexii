@@ -45,7 +45,7 @@ admin's own upload is approved at once.
 | `GET /badges` | everyone | every approved badge, by Twitch user id |
 | `GET /image/<id>/<file>` | everyone | a picture, `.png` or `.gif` |
 | `GET /me` | signed in | one's own badge, approved and waiting, and whether one is an admin |
-| `POST /upload` | signed in | a PNG (64 KB) or an animated GIF (512 KB), at most 128 × 128, for one's own name |
+| `POST /upload` | signed in | a PNG (64 KB; ChattiFlexii makes it 72 × 72) or an animated GIF (1 MB), at most 240 × 240, for one's own name |
 | `DELETE /mine` | signed in | takes one's own badge away |
 | `GET /pending` | admins | what waits for approval |
 | `POST /approve/<id>`, `POST /reject/<id>` | admins | approves or turns down what waits |

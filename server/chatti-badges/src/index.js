@@ -21,8 +21,8 @@
 
 // A PNG is made small by ChattiFlexii; a GIF comes as it is, to keep moving
 const MAX_PNG_BYTES = 64 * 1024;
-const MAX_GIF_BYTES = 512 * 1024;
-const MAX_SIDE = 128;
+const MAX_GIF_BYTES = 1024 * 1024;
+const MAX_SIDE = 240;
 const UPLOAD_EVERY_SECONDS = 60;
 const LIST_CACHE_SECONDS = 300;
 
@@ -204,11 +204,11 @@ async function handle(request, env) {
         }
         const limit = gif ? MAX_GIF_BYTES : MAX_PNG_BYTES;
         if (bytes.length > limit) {
-            return fail(413, gif ? "Das GIF ist zu groß - höchstens 512 KB."
+            return fail(413, gif ? "Das GIF ist zu groß - höchstens 1 MB."
                                  : "Das Bild ist zu groß - höchstens 64 KB.");
         }
         if (size.width > MAX_SIDE || size.height > MAX_SIDE) {
-            return fail(415, "Das Bild ist zu groß - höchstens 128 × 128.");
+            return fail(415, "Das Bild ist zu groß - höchstens 240 × 240.");
         }
 
         const record = (await readUser(env, user.id)) || {};
