@@ -23,6 +23,7 @@ class QFrame;
 class QHBoxLayout;
 class QLabel;
 class QPushButton;
+class QVBoxLayout;
 
 namespace chatterino {
 
@@ -156,6 +157,9 @@ private:
     void warn();
     /// Headline, why line and button for a suggestion
     void applySuggestion(const ModSuggestion &suggestion);
+    /// A line for each case @a suggestion rests on, with "Stimmt" and
+    /// "Löschen"
+    void showCases(const ModSuggestion &suggestion);
     void applyEmoteSpam(int emotes, int messages, int window, int action,
                         int step, int actionsServed, int stepCount, int streak);
     /// How the buttons that are not the recommended one look: the rounded,
@@ -208,6 +212,10 @@ private:
     QPushButton *doesNotFit_{};
     /// What the suggestion was about, to turn it down by
     QString suggestedText_;
+    /// ChattiFlexii: on a suggestion - the cases it rests on, each with a
+    /// way to say it is right or to delete it
+    QWidget *casesBox_{};
+    QVBoxLayout *casesLayout_{};
     /// The action buttons, rebuilt for each alert
     QHBoxLayout *actions_{};
 

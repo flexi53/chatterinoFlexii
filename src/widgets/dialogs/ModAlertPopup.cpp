@@ -463,6 +463,14 @@ ModAlertPopup::ModAlertPopup(QString channel, QString login, QWidget *parent)
     this->reasonBox_->hide();
     layout->addWidget(this->reasonBox_);
 
+    // The cases a suggestion rests on, to be judged right where they show
+    this->casesBox_ = new QWidget;
+    this->casesLayout_ = new QVBoxLayout(this->casesBox_);
+    this->casesLayout_->setContentsMargins(0, 0, 0, 0);
+    this->casesLayout_->setSpacing(2);
+    this->casesBox_->hide();
+    layout->addWidget(this->casesBox_);
+
     // What they wrote, as it looked in chat
     this->messages_ = new ChannelView(this, ChannelView::Context::UserCard,
                                       SHOWN_MESSAGES * 2);
@@ -865,7 +873,105 @@ void ModAlertPopup::applySuggestion(const ModSuggestion &suggestion)
 
     const auto described = describeSuggestion(suggestion);
     this->setReason(described.reason, described.details, described.tooltip);
+    this->showCases(suggestion);
     this->setActions(suggestion.seconds);
+}
+
+void ModAlertPopup::showCases(const ModSuggestion &suggestion)
+{
+    while (auto *item = this->casesLayout_->takeAt(0))
+    {
+        if (auto *widget = item->widget())
+        {
+            widget->deleteLater();
+        }
+        delete item->layout();
+        delete item;
+    }
+    if (suggestion.closest.empty())
+    {
+        this->casesBox_->hide();
+        return;
+    }
+
+    auto *caption = new QLabel(
+        grey(QStringLiteral("Worauf der Vorschlag beruht - stimmt der Fall "
+                            "und gehört er hierher?")));
+    caption->setTextFormat(Qt::RichText);
+    caption->setWordWrap(true);
+    this->casesLayout_->addWidget(caption);
+
+    const auto smallButton = [this](const QString &text,
+                                    const QString &tooltip) {
+        auto *button = new QPushButton(text);
+        button->setCursor(Qt::PointingHandCursor);
+        button->setStyleSheet(this->quietButtonStyle());
+        button->setToolTip(tooltip);
+        button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        return button;
+    };
+
+    for (const auto &match : suggestion.closest)
+    {
+        auto *row = new QWidget;
+        auto *rowLayout = new QHBoxLayout(row);
+        rowLayout->setContentsMargins(0, 0, 0, 0);
+        rowLayout->setSpacing(4);
+
+        const auto &modCase = match.modCase;
+        auto *text = new QLabel;
+        text->setTextFormat(Qt::PlainText);
+        text->setText(describeMatch(match, false));
+        text->setToolTip(modCase.messages.join('\n'));
+        text->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+        rowLayout->addWidget(text, 1);
+
+        auto *right = smallButton(
+            modCase.confirmed ? QStringLiteral("✓ Bestätigt")
+                              : QStringLiteral("✓ Stimmt"),
+            QStringLiteral("Der Fall ist richtig und gehört hierher - er zählt "
+                           "bei künftigen Vorschlägen doppelt. Nochmal "
+                           "klicken nimmt das zurück."));
+        right->setCheckable(true);
+        right->setChecked(modCase.confirmed);
+        auto *remove = smallButton(
+            QStringLiteral("✕ Löschen"),
+            QStringLiteral("Der Fall ist falsch oder gehört nicht hierher - er "
+                           "wird aus den gesammelten Fällen gelöscht."));
+        rowLayout->addWidget(right);
+        rowLayout->addWidget(remove);
+
+        const auto time = modCase.time;
+        const auto user = modCase.user;
+        QObject::connect(right, &QPushButton::toggled, this,
+                         [this, right, time, user](bool on) {
+                             right->setText(on ? QStringLiteral("✓ Bestätigt")
+                                               : QStringLiteral("✓ Stimmt"));
+                             if (!this->test_)
+                             {
+                                 ModerationAssistant::instance().setConfirmed(
+                                     this->channel_, time, user, on);
+                             }
+                         });
+        QObject::connect(remove, &QPushButton::clicked, this,
+                         [this, text, right, remove, time, user] {
+                             if (!this->test_)
+                             {
+                                 ModerationAssistant::instance().removeCase(
+                                     this->channel_, time, user);
+                             }
+                             auto font = text->font();
+                             font.setStrikeOut(true);
+                             text->setFont(font);
+                             text->setEnabled(false);
+                             right->hide();
+                             remove->setEnabled(false);
+                             remove->setText(QStringLiteral("Gelöscht"));
+                         });
+
+        this->casesLayout_->addWidget(row);
+    }
+    this->casesBox_->show();
 }
 
 void ModAlertPopup::setReason(const QString &reason, const QString &details,
@@ -908,6 +1014,10 @@ void ModAlertPopup::setReason(const QString &reason, const QString &details,
     if (this->kind_ != Kind::Suggestion && this->doesNotFit_ != nullptr)
     {
         this->doesNotFit_->hide();
+    }
+    if (this->kind_ != Kind::Suggestion && this->casesBox_ != nullptr)
+    {
+        this->casesBox_->hide();
     }
     }
     this->reasonDetails_->setVisible(!details.isEmpty());

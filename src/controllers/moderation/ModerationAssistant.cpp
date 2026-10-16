@@ -294,6 +294,30 @@ void ModerationAssistant::removeCase(const QString &channelName,
     }
 }
 
+void ModerationAssistant::setConfirmed(const QString &channelName,
+                                       const QDateTime &time,
+                                       const QString &user, bool confirmed)
+{
+    const auto channel = channelName.toLower();
+
+    std::lock_guard lock(this->mutex_);
+    auto &channelData = this->data(channel);
+    bool changed = false;
+    for (auto &entry : channelData.entries)
+    {
+        if (entry.modCase.time == time && entry.modCase.user == user &&
+            entry.modCase.confirmed != confirmed)
+        {
+            entry.modCase.confirmed = confirmed;
+            changed = true;
+        }
+    }
+    if (changed)
+    {
+        this->save(channel, channelData);
+    }
+}
+
 void ModerationAssistant::reject(const QString &channelName,
                                  const QString &text)
 {
@@ -405,7 +429,8 @@ std::optional<ModSuggestion> ModerationAssistant::suggest(
 
         if (best >= threshold)
         {
-            outcomes[entry.modCase.seconds]++;
+            // A case a moderator checked weighs more than one merely collected
+            outcomes[entry.modCase.seconds] += entry.modCase.confirmed ? 2 : 1;
             hits.push_back({&entry, best, bestMessage});
         }
     }
@@ -892,6 +917,7 @@ ModerationAssistant::ChannelData &ModerationAssistant::data(
         modCase.seconds = object.value(QStringLiteral("seconds")).toInt();
         modCase.reason = object.value(QStringLiteral("reason")).toString();
         modCase.category = object.value(QStringLiteral("category")).toString();
+        modCase.confirmed = object.value(QStringLiteral("confirmed")).toBool();
         for (const auto message :
              object.value(QStringLiteral("messages")).toArray())
         {
@@ -938,6 +964,7 @@ void ModerationAssistant::save(const QString &channel,
             {QStringLiteral("seconds"), modCase.seconds},
             {QStringLiteral("reason"), modCase.reason},
             {QStringLiteral("category"), modCase.category},
+            {QStringLiteral("confirmed"), modCase.confirmed},
             {QStringLiteral("messages"),
              QJsonArray::fromStringList(modCase.messages)},
             {QStringLiteral("reasons"),

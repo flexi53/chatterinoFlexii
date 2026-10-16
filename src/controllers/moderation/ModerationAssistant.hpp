@@ -45,6 +45,9 @@ struct ModCase {
     /// live or nobody knew. The same words mean different things in a game
     /// and in Just Chatting, so it is worth keeping.
     QString category;
+    /// A moderator said in the suggestion window that the case is right and
+    /// belongs here. It counts twice when the assistant weighs its outcome.
+    bool confirmed = false;
 };
 
 /// An earlier case a message resembles, and what it has in common with it
@@ -103,6 +106,9 @@ public:
     std::vector<ModCase> cases(const QString &channel) const;
     void removeCase(const QString &channel, const QDateTime &time,
                     const QString &user);
+    /// Marks a case as right and relevant, or takes that back
+    void setConfirmed(const QString &channel, const QDateTime &time,
+                      const QString &user, bool confirmed);
 
     /// A suggestion for a message, if the channel is suggesting and enough
     /// past cases resemble it. @a category is what the channel streams now,

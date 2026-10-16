@@ -133,7 +133,13 @@ ModerationAssistantPopup::ModerationAssistantPopup(const QString &channel,
         "Liest die Timeouts und Banns, die schon in den Chat-Logs dieses "
         "Kanals stehen, damit es von Anfang an etwas zum Lernen gibt."));
     auto *removeButton = new QPushButton(QStringLiteral("Auswahl entfernen"));
+    auto *confirmButton =
+        new QPushButton(QStringLiteral("Auswahl als richtig markieren"));
+    confirmButton->setToolTip(QStringLiteral(
+        "Die Fälle stimmen und gehören hierher - sie zählen bei Vorschlägen "
+        "doppelt. Sind alle gewählten schon markiert, wird es zurückgenommen."));
     actions->addWidget(importButton);
+    actions->addWidget(confirmButton);
     actions->addWidget(removeButton);
     actions->addStretch(1);
     layout->addLayout(actions);
@@ -143,7 +149,7 @@ ModerationAssistantPopup::ModerationAssistantPopup(const QString &channel,
         QStringLiteral("User, Mod, Grund oder Nachricht suchen"));
     layout->addWidget(this->search_);
 
-    this->table_ = new QTableWidget(0, 7);
+    this->table_ = new QTableWidget(0, 8);
     this->table_->setHorizontalHeaderLabels({
         QStringLiteral("Zeit"),
         QStringLiteral("Mod"),
@@ -151,6 +157,7 @@ ModerationAssistantPopup::ModerationAssistantPopup(const QString &channel,
         QStringLiteral("Aktion"),
         QStringLiteral("Mod-Kommentar"),
         QStringLiteral("Erkannt"),
+        QStringLiteral("Richtig"),
         QStringLiteral("Was geschrieben wurde"),
     });
     this->table_->horizontalHeader()->setStretchLastSection(true);
@@ -200,6 +207,26 @@ ModerationAssistantPopup::ModerationAssistantPopup(const QString &channel,
             ModerationAssistant::instance().removeCase(
                 this->channel_, item->data(Qt::UserRole).toDateTime(),
                 item->data(Qt::UserRole + 1).toString());
+        }
+        this->refresh();
+    });
+
+    QObject::connect(confirmButton, &QPushButton::clicked, this, [this] {
+        const auto rows = this->table_->selectionModel()->selectedRows();
+        bool allConfirmed = !rows.isEmpty();
+        for (const auto &row : rows)
+        {
+            allConfirmed = allConfirmed &&
+                           this->table_->item(row.row(), 0)
+                               ->data(Qt::UserRole + 2)
+                               .toBool();
+        }
+        for (const auto &row : rows)
+        {
+            const auto *item = this->table_->item(row.row(), 0);
+            ModerationAssistant::instance().setConfirmed(
+                this->channel_, item->data(Qt::UserRole).toDateTime(),
+                item->data(Qt::UserRole + 1).toString(), !allConfirmed);
         }
         this->refresh();
     });
@@ -268,6 +295,7 @@ void ModerationAssistantPopup::refresh()
             modCase.time.toString(QStringLiteral("dd.MM.yyyy HH:mm")));
         timeItem->setData(Qt::UserRole, modCase.time);
         timeItem->setData(Qt::UserRole + 1, modCase.user);
+        timeItem->setData(Qt::UserRole + 2, modCase.confirmed);
         this->table_->setItem(row, 0, timeItem);
 
         this->table_->setItem(
@@ -284,10 +312,14 @@ void ModerationAssistantPopup::refresh()
                     : QStringLiteral("Bann")));
         this->table_->setItem(row, 4, new QTableWidgetItem(modCase.reason));
         this->table_->setItem(row, 5, new QTableWidgetItem(detected));
+        this->table_->setItem(
+            row, 6,
+            new QTableWidgetItem(modCase.confirmed ? QStringLiteral("✓")
+                                                   : QString()));
 
         auto *saidItem = new QTableWidgetItem(said);
         saidItem->setToolTip(modCase.messages.join('\n'));
-        this->table_->setItem(row, 6, saidItem);
+        this->table_->setItem(row, 7, saidItem);
     }
 
     this->table_->resizeColumnsToContents();
