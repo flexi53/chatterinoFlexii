@@ -72,6 +72,30 @@ struct ChannelPoints {
     std::vector<Reward> rewards;
 };
 
+/// One message as Twitch keeps it for the moderators of a channel
+struct ModLogMessage {
+    QString id;
+    QDateTime sentAt;
+    QString text;
+    QString senderLogin;
+    QString senderDisplayName;
+    QString senderColor;
+    bool deleted = false;
+    /// Who deleted it, where it was
+    QString deletedBy;
+};
+
+/// A note a moderator left about someone, which the channel's other
+/// moderators see too
+struct ModComment {
+    QString id;
+    QDateTime time;
+    QString text;
+    QString authorLogin;
+    QString authorDisplayName;
+    QString authorColor;
+};
+
 /// Reads the saved login, if any, and calls @a done once it is known
 void load(QObject *receiver, Done done);
 /// The account signed in, or nothing
@@ -132,6 +156,19 @@ void addEditor(const QString &channelId, const QString &targetLogin,
                Done onDone, Failed onError);
 void removeEditor(const QString &channelId, const QString &targetLogin,
                   Done onDone, Failed onError);
+
+/// What @a senderId wrote in the channel with the id @a channelId, as Twitch
+/// keeps it for its moderators - deleted messages included. Oldest first.
+void modLogMessages(const QString &channelId, const QString &senderId,
+                    std::function<void(std::vector<ModLogMessage>)> onMessages,
+                    Failed onError);
+/// The notes moderators left about @a targetId in the channel, oldest first
+void modComments(const QString &channelId, const QString &targetId,
+                 std::function<void(std::vector<ModComment>)> onComments,
+                 Failed onError);
+/// Leaves a note about @a targetId the channel's other moderators see
+void addModComment(const QString &channelId, const QString &targetId,
+                   const QString &text, Done onDone, Failed onError);
 
 /// Your balance and the rewards on offer in @a channelLogin
 void channelPoints(const QString &channelLogin,

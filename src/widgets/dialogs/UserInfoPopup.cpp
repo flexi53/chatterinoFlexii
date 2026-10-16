@@ -39,6 +39,7 @@
 #include "util/OpenOwnTab.hpp"
 #include "util/LayoutCreator.hpp"
 #include "util/PostToThread.hpp"
+#include "util/UiStyle.hpp"
 #include "widgets/buttons/LabelButton.hpp"
 #include "widgets/buttons/PixmapButton.hpp"
 #include "widgets/dialogs/EditUserNotesDialog.hpp"
@@ -57,6 +58,9 @@
 #include "widgets/Window.hpp"
 
 #include <QCheckBox>
+#include <QPushButton>
+#include <QLineEdit>
+#include <QButtonGroup>
 #include <QDateTime>
 #include <QDesktopServices>
 #include <QDir>
@@ -942,9 +946,121 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
         this->ui_.latestMessages->setSizePolicy(QSizePolicy::Expanding,
                                                 QSizePolicy::Expanding);
 
+        // ChattiFlexii, Twitch-Extras: for moderators the same list also
+        // shows what Twitch keeps of them, and the notes moderators left
+        this->ui_.historySwitch = new QWidget;
+        {
+            auto *row = new QHBoxLayout(this->ui_.historySwitch);
+            row->setContentsMargins(0, 2, 0, 2);
+            row->setSpacing(4);
+            auto *group = new QButtonGroup(this->ui_.historySwitch);
+            group->setExclusive(true);
+            for (const auto &[text, mode, tip] :
+                 std::initializer_list<
+                     std::tuple<const char *, HistoryMode, const char *>>{
+                     {"Hier gesehen", HistoryMode::Seen,
+                      "Was Chatti von der Person gesehen hat"},
+                     {"Twitch-Verlauf", HistoryMode::Twitch,
+                      "Was Twitch für die Mods von der Person aufhebt - "
+                      "auch gelöschte Nachrichten, und wer sie gelöscht "
+                      "hat"},
+                     {"Mod-Kommentare", HistoryMode::Comments,
+                      "Notizen, die Mods hier zu der Person hinterlassen "
+                      "haben - die anderen Mods sehen sie auch"}})
+            {
+                auto *button = new QPushButton(QString::fromUtf8(text));
+                button->setCheckable(true);
+                button->setCursor(Qt::PointingHandCursor);
+                button->setToolTip(QString::fromUtf8(tip));
+                button->setStyleSheet(uistyle::quietButtonStyle());
+                button->setChecked(mode == HistoryMode::Seen);
+                group->addButton(button, static_cast<int>(mode));
+                row->addWidget(button);
+                if (mode == HistoryMode::Seen)
+                {
+                    this->ui_.historySeen = button;
+                }
+                if (mode == HistoryMode::Comments)
+                {
+                    this->ui_.historyComments = button;
+                }
+            }
+            row->addStretch(1);
+            QObject::connect(group, &QButtonGroup::idClicked, this,
+                             [this](int mode) {
+                                 this->showHistory(
+                                     static_cast<HistoryMode>(mode));
+                             });
+        }
+        this->ui_.historySwitch->hide();
+
+        this->ui_.commentRow = new QWidget;
+        {
+            auto *row = new QHBoxLayout(this->ui_.commentRow);
+            row->setContentsMargins(0, 2, 0, 0);
+            this->ui_.commentField = new QLineEdit;
+            this->ui_.commentField->setMaxLength(500);
+            this->ui_.commentField->setPlaceholderText(
+                "Kommentar für die anderen Mods …");
+            row->addWidget(this->ui_.commentField, 1);
+            auto *add = new QPushButton("Hinzufügen");
+            add->setCursor(Qt::PointingHandCursor);
+            add->setStyleSheet(uistyle::quietButtonStyle());
+            row->addWidget(add);
+            const auto submit = [this] {
+                auto *twitchChannel = dynamic_cast<TwitchChannel *>(
+                    this->underlyingChannel_.get());
+                const auto text = this->ui_.commentField->text().trimmed();
+                if (twitchChannel == nullptr || text.isEmpty() ||
+                    this->userId_.isEmpty())
+                {
+                    return;
+                }
+                this->ui_.commentField->setEnabled(false);
+                std::weak_ptr<bool> hack = this->lifetimeHack_;
+                modgql::addModComment(
+                    twitchChannel->roomId(), this->userId_, text,
+                    [this, hack] {
+                        if (!hack.lock())
+                        {
+                            return;
+                        }
+                        this->ui_.commentField->clear();
+                        this->ui_.commentField->setEnabled(true);
+                        this->showHistory(HistoryMode::Comments);
+                    },
+                    [this, hack](const QString &error) {
+                        if (!hack.lock())
+                        {
+                            return;
+                        }
+                        this->ui_.commentField->setEnabled(true);
+                        this->underlyingChannel_->addSystemMessage(
+                            u"Mod-Kommentar: "_s + error);
+                    });
+            };
+            QObject::connect(add, &QPushButton::clicked, this, submit);
+            QObject::connect(this->ui_.commentField, &QLineEdit::returnPressed,
+                             this, submit);
+        }
+        this->ui_.commentRow->hide();
+
+        logs->addWidget(this->ui_.historySwitch);
         logs->addWidget(this->ui_.noMessagesLabel);
         logs->addWidget(this->ui_.latestMessages);
+        logs->addWidget(this->ui_.commentRow);
         logs->setAlignment(this->ui_.noMessagesLabel, Qt::AlignHCenter);
+
+        // Only for moderators, and only with the login it goes through
+        std::ignore = this->userStateChanged_.connect([this] {
+            auto *twitchChannel =
+                dynamic_cast<TwitchChannel *>(this->underlyingChannel_.get());
+            const bool moderates =
+                twitchChannel != nullptr &&
+                (twitchChannel->isMod() || twitchChannel->isBroadcaster());
+            this->ui_.historySwitch->setVisible(
+                moderates && modgql::currentLogin().has_value());
+        });
     }
 
     // size grip
@@ -1160,6 +1276,13 @@ void UserInfoPopup::setData(const QString &name,
                             const ChannelPtr &contextChannel,
                             const ChannelPtr &openingChannel)
 {
+    // ChattiFlexii: someone else starts with what was seen of them
+    this->historyMode_ = HistoryMode::Seen;
+    this->ui_.historySeen->setChecked(true);
+    this->ui_.historyComments->setText(u"Mod-Kommentare"_s);
+    this->ui_.commentRow->hide();
+    this->ui_.noMessagesLabel->setText("No recent messages");
+
     const QStringView idPrefix = u"id:";
     bool isId = name.startsWith(idPrefix);
     if (isId)
@@ -1223,6 +1346,151 @@ void UserInfoPopup::setData(const QString &name,
     }
 }
 
+
+namespace {
+
+/// One line of the Twitch history or of a note, laid out as the chat has it
+MessagePtr historyLine(const QDateTime &time, const QString &displayName,
+                       const QString &color, const QString &text,
+                       bool deleted, const QString &deletedBy)
+{
+    const auto local = time.toLocalTime();
+    MessageBuilder builder;
+    builder.emplace<TimestampElement>(local.time());
+    // The list reaches back over days, so a day that is not today says so
+    if (local.date() != QDate::currentDate())
+    {
+        builder.emplace<TextElement>(local.toString(u"dd.MM."_s),
+                                     MessageElementFlag::Text,
+                                     MessageColor::System);
+    }
+    QColor nameColor(color);
+    builder.emplace<TextElement>(
+        displayName + ":", MessageElementFlag::Username,
+        MessageColor(nameColor.isValid() ? nameColor : QColor(255, 127, 80)),
+        FontStyle::ChatMediumBold);
+    builder.appendOrEmplaceText(text, MessageColor::Text);
+    if (deleted)
+    {
+        // Greyed out, as a deleted message is in the chat
+        builder->flags.set(MessageFlag::Disabled);
+        builder.emplace<TextElement>(
+            deletedBy.isEmpty() ? u"(gelöscht)"_s
+                                : u"(gelöscht von %1)"_s.arg(deletedBy),
+            MessageElementFlag::Text, MessageColor::System);
+    }
+    builder->loginName = displayName.toLower();
+    builder->displayName = displayName;
+    builder->messageText = text;
+    builder->searchText = displayName + ": " + text;
+    builder->serverReceivedTime = time;
+    return builder.release();
+}
+
+}  // namespace
+
+void UserInfoPopup::showOwnMessages(const std::vector<MessagePtr> &messages,
+                                    const QString &none)
+{
+    // What arrives in the chat now is not part of this list
+    this->refreshConnection_.reset();
+
+    auto channel = std::make_shared<Channel>(this->underlyingChannel_->getName(),
+                                             Channel::Type::None);
+    for (const auto &message : messages)
+    {
+        channel->addMessage(message, MessageContext::Original);
+    }
+    this->ui_.latestMessages->setChannel(channel);
+    this->ui_.latestMessages->setSourceChannel(this->underlyingChannel_);
+
+    const bool any = !messages.empty();
+    this->ui_.latestMessages->setVisible(any);
+    this->ui_.noMessagesLabel->setText(none);
+    this->ui_.noMessagesLabel->setVisible(!any);
+}
+
+void UserInfoPopup::showHistory(HistoryMode mode)
+{
+    this->historyMode_ = mode;
+    this->ui_.commentRow->setVisible(mode == HistoryMode::Comments);
+    if (mode == HistoryMode::Seen)
+    {
+        this->ui_.noMessagesLabel->setText("No recent messages");
+        this->updateLatestMessages();
+        return;
+    }
+
+    auto *twitchChannel =
+        dynamic_cast<TwitchChannel *>(this->underlyingChannel_.get());
+    if (twitchChannel == nullptr || this->userId_.isEmpty())
+    {
+        this->showOwnMessages({}, u"Die Person ist noch nicht geladen."_s);
+        return;
+    }
+
+    this->showOwnMessages({}, u"Frage Twitch …"_s);
+    std::weak_ptr<bool> hack = this->lifetimeHack_;
+    const auto failed = [this, hack, mode](const QString &error) {
+        if (hack.lock() && this->historyMode_ == mode)
+        {
+            this->showOwnMessages({}, error);
+        }
+    };
+
+    if (mode == HistoryMode::Twitch)
+    {
+        modgql::modLogMessages(
+            twitchChannel->roomId(), this->userId_,
+            [this, hack](const std::vector<modgql::ModLogMessage> &found) {
+                if (!hack.lock() || this->historyMode_ != HistoryMode::Twitch)
+                {
+                    return;
+                }
+                std::vector<MessagePtr> messages;
+                for (const auto &message : found)
+                {
+                    messages.push_back(historyLine(
+                        message.sentAt,
+                        message.senderDisplayName.isEmpty()
+                            ? this->userName_
+                            : message.senderDisplayName,
+                        message.senderColor, message.text, message.deleted,
+                        message.deletedBy));
+                }
+                this->showOwnMessages(
+                    messages, u"Twitch hebt nichts von der Person auf."_s);
+            },
+            failed);
+        return;
+    }
+
+    modgql::modComments(
+        twitchChannel->roomId(), this->userId_,
+        [this, hack](const std::vector<modgql::ModComment> &found) {
+            if (!hack.lock())
+            {
+                return;
+            }
+            this->ui_.historyComments->setText(
+                found.empty() ? u"Mod-Kommentare"_s
+                              : u"Mod-Kommentare (%1)"_s.arg(found.size()));
+            if (this->historyMode_ != HistoryMode::Comments)
+            {
+                return;
+            }
+            std::vector<MessagePtr> messages;
+            for (const auto &comment : found)
+            {
+                messages.push_back(historyLine(
+                    comment.time, comment.authorDisplayName,
+                    comment.authorColor, comment.text, false, {}));
+            }
+            this->showOwnMessages(
+                messages, u"Noch kein Mod hat etwas zu der Person notiert."_s);
+        },
+        failed);
+}
 
 void UserInfoPopup::updateLatestMessages()
 {

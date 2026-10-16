@@ -14,14 +14,19 @@
 #include <QPointer>
 
 #include <chrono>
+#include <vector>
 
 class QCheckBox;
+class QLineEdit;
+class QPushButton;
 class QMovie;
 
 namespace chatterino {
 
 class Channel;
 using ChannelPtr = std::shared_ptr<Channel>;
+struct Message;
+using MessagePtr = std::shared_ptr<const Message>;
 class Label;
 class MarkdownLabel;
 class EditUserNotesDialog;
@@ -58,6 +63,14 @@ private:
     void updateUserData();
     void updateLatestMessages();
     void updateNotes();
+    /// ChattiFlexii, Twitch-Extras: what the list at the bottom shows - what
+    /// was seen here, what Twitch keeps for the moderators, or the notes
+    /// they left
+    enum class HistoryMode { Seen, Twitch, Comments };
+    void showHistory(HistoryMode mode);
+    /// Puts @a messages in the list instead of what was seen here
+    void showOwnMessages(const std::vector<MessagePtr> &messages,
+                         const QString &none);
 
     void loadAvatar(const QString &userID, const QString &pictureURL,
                     bool isKick);
@@ -78,6 +91,7 @@ private:
     void appendCommonProfileActions(QMenu *menu);
 
     bool isMod_{};
+    HistoryMode historyMode_ = HistoryMode::Seen;
     bool isBroadcaster_{};
 
     Split *split_;
@@ -132,6 +146,13 @@ private:
 
         Label *noMessagesLabel = nullptr;
         ChannelView *latestMessages = nullptr;
+        /// ChattiFlexii: the switch above the list, and the line to leave a
+        /// note under it - only for moderators with the Twitch app login
+        QWidget *historySwitch = nullptr;
+        QPushButton *historySeen = nullptr;
+        QPushButton *historyComments = nullptr;
+        QWidget *commentRow = nullptr;
+        QLineEdit *commentField = nullptr;
 
         LabelButton *usercardLabel = nullptr;
         /// ChattiFlexii: their own chat as a tab, and their 7TV page

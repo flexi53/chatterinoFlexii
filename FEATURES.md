@@ -535,6 +535,11 @@ account, kept in the keychain only.
   many go along and how long until it goes, with the time running out
   along its edge. Moderators get **Jetzt** and **Abbrechen** on it. It can
   be switched off under Appearance -> Splits -> Banner
+- On a **user card**, moderators get a switch above the messages:
+  **Hier gesehen** - as before -, **Twitch-Verlauf** - what Twitch keeps of
+  the person for its moderators, deleted messages greyed out with who
+  deleted them - and **Mod-Kommentare**, the notes moderators left about
+  them, with a line to leave one
 - The broadcaster makes someone an **editor**, or takes it back, with the
   **Editor** button on their user card, beside mod and VIP
 - Twitch does not offer this way to other apps; if it changes something,

@@ -842,4 +842,173 @@ void cancelRaid(const QString &channelId, Done onDone, Failed onError)
            "cancelRaid", false, std::move(onDone), std::move(onError));
 }
 
+void modLogMessages(const QString &channelId, const QString &senderId,
+                    std::function<void(std::vector<ModLogMessage>)> onMessages,
+                    Failed onError)
+{
+    if (saved().accessToken.isEmpty())
+    {
+        onError("Nicht bei Twitch angemeldet.");
+        return;
+    }
+    gqlRequest(persisted("ViewerCardModLogsMessagesBySender",
+                         "eb4e9869e1bb0b3ed553e1ed657fa09f8553781093569c3a5813"
+                         "ad09ee9c0776",
+                         {{"channelID", channelId}, {"senderID", senderId}}),
+               true)
+        .onSuccess([onMessages, onError](const NetworkResult &result) {
+            const auto answer = firstAnswer(result.parseJsonValue());
+            const auto error = errorOf(answer, {});
+            if (!error.isEmpty())
+            {
+                onError(explain(error));
+                return;
+            }
+            const auto edges = answer.value("data")
+                                   .toObject()
+                                   .value("viewerCardModLogs")
+                                   .toObject()
+                                   .value("messages")
+                                   .toObject()
+                                   .value("edges")
+                                   .toArray();
+            std::vector<ModLogMessage> messages;
+            for (const auto &value : edges)
+            {
+                const auto node = value.toObject().value("node").toObject();
+                const auto sender = node.value("sender").toObject();
+                ModLogMessage message{
+                    .id = node.value("id").toString(),
+                    .sentAt = QDateTime::fromString(
+                        node.value("sentAt").toString(), Qt::ISODateWithMs),
+                    .text = node.value("content")
+                                .toObject()
+                                .value("text")
+                                .toString(),
+                    .senderLogin = sender.value("login").toString(),
+                    .senderDisplayName = sender.value("displayName").toString(),
+                    .senderColor = sender.value("chatColor").toString(),
+                    .deleted = node.value("isDeleted").toBool(false),
+                    .deletedBy = node.value("lastUpdatedBy")
+                                     .toObject()
+                                     .value("displayName")
+                                     .toString(),
+                };
+                if (!message.id.isEmpty() && !message.text.isEmpty())
+                {
+                    messages.push_back(std::move(message));
+                }
+            }
+            std::ranges::sort(messages, [](const auto &a, const auto &b) {
+                return a.sentAt < b.sentAt;
+            });
+            onMessages(std::move(messages));
+        })
+        .onError([onError](const NetworkResult &result) {
+            onError("Netzwerkfehler: " + result.formatError());
+        })
+        .execute();
+}
+
+void modComments(const QString &channelId, const QString &targetId,
+                 std::function<void(std::vector<ModComment>)> onComments,
+                 Failed onError)
+{
+    if (saved().accessToken.isEmpty())
+    {
+        onError("Nicht bei Twitch angemeldet.");
+        return;
+    }
+    static const auto *query = R"(
+        query ChattiModeratorComments($channelID: ID!, $targetID: ID!) {
+            viewerCardModLogs(channelID: $channelID, targetID: $targetID) {
+                comments(first: 50) {
+                    ... on ModLogsCommentConnection {
+                        edges { node {
+                            id timestamp text
+                            author { login displayName chatColor }
+                        } }
+                    }
+                    ... on ModLogsCommentsError { code }
+                    __typename
+                }
+            }
+        }
+    )";
+    gqlRequest({{"query", query},
+                {"variables", QJsonObject{{"channelID", channelId},
+                                          {"targetID", targetId}}}},
+               false)
+        .onSuccess([onComments, onError](const NetworkResult &result) {
+            const auto answer = firstAnswer(result.parseJsonValue());
+            const auto error = errorOf(answer, {});
+            if (!error.isEmpty())
+            {
+                onError(explain(error));
+                return;
+            }
+            const auto comments = answer.value("data")
+                                      .toObject()
+                                      .value("viewerCardModLogs")
+                                      .toObject()
+                                      .value("comments")
+                                      .toObject();
+            if (comments.value("__typename").toString().endsWith("Error"))
+            {
+                onError(explain(comments.value("code").toString(
+                    QStringLiteral("Twitch gibt die Kommentare nicht "
+                                   "heraus."))));
+                return;
+            }
+            std::vector<ModComment> found;
+            for (const auto &value : comments.value("edges").toArray())
+            {
+                const auto node = value.toObject().value("node").toObject();
+                const auto author = node.value("author").toObject();
+                ModComment comment{
+                    .id = node.value("id").toString(),
+                    .time = QDateTime::fromString(
+                        node.value("timestamp").toString(), Qt::ISODateWithMs),
+                    .text = node.value("text").toString(),
+                    .authorLogin = author.value("login").toString(),
+                    .authorDisplayName = author.value("displayName").toString(),
+                    .authorColor = author.value("chatColor").toString(),
+                };
+                if (!comment.id.isEmpty())
+                {
+                    found.push_back(std::move(comment));
+                }
+            }
+            std::ranges::sort(found, [](const auto &a, const auto &b) {
+                return a.time < b.time;
+            });
+            onComments(std::move(found));
+        })
+        .onError([onError](const NetworkResult &result) {
+            onError("Netzwerkfehler: " + result.formatError());
+        })
+        .execute();
+}
+
+void addModComment(const QString &channelId, const QString &targetId,
+                   const QString &text, Done onDone, Failed onError)
+{
+    static const auto *mutation = R"(
+        mutation ChattiCreateModeratorComment(
+            $input: CreateModeratorCommentInput!
+        ) {
+            createModeratorComment(input: $input) { comment { id } }
+        }
+    )";
+    const QJsonObject input{
+        {"channelID", channelId},
+        {"targetID", targetId},
+        {"text", text},
+        {"isShareable", false},
+    };
+    mutate({{"query", mutation}, {"variables", QJsonObject{{"input", input}}}},
+           "createModeratorComment", false, std::move(onDone),
+           std::move(onError));
+}
+
 }  // namespace chatterino::modgql
