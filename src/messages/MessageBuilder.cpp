@@ -31,6 +31,7 @@
 #include "providers/ffz/FfzEmotes.hpp"
 #include "providers/homies/HomiesBadges.hpp"
 #include "providers/moltorino/MoltorinoBadges.hpp"
+#include "providers/chattibadges/ChattiBadges.hpp"
 #include "providers/links/LinkResolver.hpp"
 #include "providers/seventv/SeventvBadges.hpp"
 #include "providers/seventv/SeventvEmotes.hpp"
@@ -1817,6 +1818,7 @@ std::pair<MessagePtrMut, HighlightAlert> MessageBuilder::makeIrcMessage(
     builder.appendSeventvBadges(userID);
     builder.appendHomiesBadge(userID);
     builder.appendMoltorinoBadge(userID);
+    builder.appendChattiBadge(userID);
 
     builder.appendUsername(tags, args);
 
@@ -2780,6 +2782,23 @@ void MessageBuilder::appendHomiesBadge(const QString &userID)
         this->emplace<BadgeElement>(*badge, MessageElementFlag::BadgeHomies);
 
         /// e.g. "homies:Homies Supporter"
+        this->message().externalBadges.emplace_back((*badge)->name.string);
+    }
+}
+
+void MessageBuilder::appendChattiBadge(const QString &userID)
+{
+    auto *badges = getApp()->getChattiBadges();
+    if (badges == nullptr)
+    {
+        return;  // not available, e.g. in tests
+    }
+
+    if (auto badge = badges->getBadge({userID}))
+    {
+        this->emplace<BadgeElement>(*badge, MessageElementFlag::BadgeChatti);
+
+        /// e.g. "chatti:fx_flexii"
         this->message().externalBadges.emplace_back((*badge)->name.string);
     }
 }

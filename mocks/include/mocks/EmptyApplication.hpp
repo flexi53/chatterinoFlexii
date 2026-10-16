@@ -182,6 +182,11 @@ public:
         return nullptr;
     }
 
+    ChattiBadges *getChattiBadges() override
+    {
+        return nullptr;
+    }
+
     MoltorinoBadges *getMoltorinoBadges() override
     {
         assert(!"getMoltorinoBadges was called without being initialized");

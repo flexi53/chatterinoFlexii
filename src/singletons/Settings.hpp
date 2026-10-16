@@ -741,6 +741,10 @@ public:
     BoolSetting showBadgesSevenTV = {"/appearance/badges/seventv", true};
     BoolSetting showBadgesHomies = {"/appearance/badges/homies", true};
     BoolSetting showBadgesMoltorino = {"/appearance/badges/moltorino", true};
+    /// ChattiFlexii's own badges - see providers/chattibadges
+    BoolSetting showBadgesChatti = {"/appearance/badges/chatti", true};
+    /// Where they are kept, uploaded and approved
+    QStringSetting chattiBadgesServer = {"/appearance/badges/chattiServer", ""};
     /// The label put on a first-time chatter's message, the way Twitch does.
     /// Edited through the "First Messages" row on the highlights page like
     /// every other caption; empty means no label.

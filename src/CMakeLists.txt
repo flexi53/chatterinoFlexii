@@ -435,6 +435,8 @@ set(SOURCE_FILES
         providers/homies/HomiesBadges.hpp
         providers/moltorino/MoltorinoBadges.cpp
         providers/moltorino/MoltorinoBadges.hpp
+        providers/chattibadges/ChattiBadges.cpp
+        providers/chattibadges/ChattiBadges.hpp
         providers/ffz/FfzBadges.cpp
         providers/ffz/FfzBadges.hpp
         providers/ffz/FfzEmotes.cpp
@@ -1057,6 +1059,8 @@ set(SOURCE_FILES
         widgets/settingspages/TransferPage.hpp
         widgets/settingspages/TwitchExtrasPage.cpp
         widgets/settingspages/TwitchExtrasPage.hpp
+        widgets/settingspages/ChattiBadgePage.cpp
+        widgets/settingspages/ChattiBadgePage.hpp
         widgets/settingspages/ModerationPage.cpp
         widgets/settingspages/ModerationPage.hpp
         widgets/settingspages/NicknamesPage.cpp

@@ -17,6 +17,8 @@ Q_LOGGING_CATEGORY(chatterinoBttv, "chatterino.bttv", logThreshold);
 Q_LOGGING_CATEGORY(chatterinoCache, "chatterino.cache", logThreshold);
 Q_LOGGING_CATEGORY(chatterinoHomies, "chatterino.homies", QtWarningMsg);
 Q_LOGGING_CATEGORY(chatterinoMoltorino, "chatterino.moltorino", QtWarningMsg);
+Q_LOGGING_CATEGORY(chatterinoChattiBadges, "chatterino.chattibadges",
+                   QtWarningMsg);
 Q_LOGGING_CATEGORY(chatterinoCommands, "chatterino.commands", logThreshold);
 Q_LOGGING_CATEGORY(chatterinoCommon, "chatterino.common", logThreshold);
 Q_LOGGING_CATEGORY(chatterinoCompletion, "chatterino.completion", logThreshold);

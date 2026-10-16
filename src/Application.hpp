@@ -48,6 +48,7 @@ class BttvBadges;
 class SeventvBadges;
 class HomiesBadges;
 class MoltorinoBadges;
+class ChattiBadges;
 class SeventvPersonalEmotes;
 class ImageUploader;
 class SeventvAPI;
@@ -106,6 +107,7 @@ public:
     virtual SeventvBadges *getSeventvBadges() = 0;
     virtual HomiesBadges *getHomiesBadges() = 0;
     virtual MoltorinoBadges *getMoltorinoBadges() = 0;
+    virtual ChattiBadges *getChattiBadges() = 0;
     virtual IUserDataController *getUserData() = 0;
     virtual ISoundController *getSound() = 0;
     virtual ITwitchLiveController *getTwitchLiveController() = 0;
@@ -186,6 +188,7 @@ private:
     std::unique_ptr<SeventvBadges> seventvBadges;
     std::unique_ptr<HomiesBadges> homiesBadges;
     std::unique_ptr<MoltorinoBadges> moltorinoBadges;
+    std::unique_ptr<ChattiBadges> chattiBadges;
     std::unique_ptr<SeventvPaints> seventvPaints;
     std::unique_ptr<SeventvPersonalEmotes> seventvPersonalEmotes;
     std::unique_ptr<UserDataController> userData;
@@ -237,6 +240,7 @@ public:
     SeventvBadges *getSeventvBadges() override;
     HomiesBadges *getHomiesBadges() override;
     MoltorinoBadges *getMoltorinoBadges() override;
+    ChattiBadges *getChattiBadges() override;
     IUserDataController *getUserData() override;
     ISoundController *getSound() override;
     ITwitchLiveController *getTwitchLiveController() override;

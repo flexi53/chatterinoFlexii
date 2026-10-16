@@ -22,6 +22,7 @@
 #include "widgets/settingspages/AdvancedPage.hpp"
 #include "widgets/settingspages/AccountsPage.hpp"
 #include "widgets/settingspages/BadgesPage.hpp"
+#include "widgets/settingspages/ChattiBadgePage.hpp"
 #include "widgets/settingspages/InputPage.hpp"
 #include "widgets/settingspages/CommandPage.hpp"
 #include "widgets/settingspages/ExternalToolsPage.hpp"
@@ -342,6 +343,7 @@ void SettingsDialog::addTabs()
     this->addTab([]{return new ModChangesPage;},       "WhosTheMod",     ":/settings/whosthemod.svg");
     this->addTab([]{return new BadgesPage;},           "HallOfBadges",   ":/settings/badges.svg");
     this->addTab([]{return new TwitchExtrasPage;},     "Twitch-Extras",  ":/settings/twitchextras.svg", SettingsTabId::TwitchExtras);
+    this->addTab([]{return new ChattiBadgePage;},      "Chatti-Badge",   ":/settings/chattibadge.svg");
     this->ui_.tabContainer->addSpacing(16);
     this->addTab([]{return new NotesPage;},            "Notizen",        ":/settings/notes.svg");
     this->addTab([]{return new ModHighlightsPage;},    "Mod-Highlights", ":/settings/modhighlights.svg");
