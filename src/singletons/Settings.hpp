@@ -318,6 +318,12 @@ public:
     /// given, 0 for the one it comes up with
     IntSetting twitchExtrasWidth = {"/twitchExtras/windowWidth", 0};
     IntSetting twitchExtrasHeight = {"/twitchExtras/windowHeight", 0};
+    /// Where the points window opens, as it was last moved to - until then
+    /// right above the points beside the input
+    BoolSetting twitchExtrasPositionSaved = {"/twitchExtras/positionSaved",
+                                             false};
+    IntSetting twitchExtrasX = {"/twitchExtras/windowX", 0};
+    IntSetting twitchExtrasY = {"/twitchExtras/windowY", 0};
     /// ChattiFlexii, Aussehen -> Splits: the banner for a raid the channel
     /// is setting up
     BoolSetting showRaidBanner = {"/appearance/banners/showRaid", true};

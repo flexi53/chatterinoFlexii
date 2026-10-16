@@ -24,6 +24,7 @@
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QHideEvent>
+#include <QShowEvent>
 #include <QAction>
 #include <QTimer>
 #include <QIcon>
@@ -394,12 +395,35 @@ TwitchActionsPopup::TwitchActionsPopup(
 
 void TwitchActionsPopup::placeAbove(const QWidget *anchor)
 {
+    // Where it was last moved to, as the alert windows do - bounds checked,
+    // so a place on a screen since unplugged still ends up on one
+    if (getSettings()->twitchExtrasPositionSaved)
+    {
+        this->moveTo(QPoint(getSettings()->twitchExtrasX.getValue(),
+                            getSettings()->twitchExtrasY.getValue()),
+                     widgets::BoundsChecking::DesiredPosition);
+        return;
+    }
     if (anchor == nullptr)
     {
         return;
     }
     const auto corner = anchor->mapToGlobal(QPoint(anchor->width(), 0));
-    this->move(corner.x() - this->width(), corner.y() - this->height() - 6);
+    this->moveTo(QPoint(corner.x() - this->width(),
+                        corner.y() - this->height() - 6),
+                 widgets::BoundsChecking::DesiredPosition);
+}
+
+void TwitchActionsPopup::showEvent(QShowEvent *event)
+{
+    BasePopup::showEvent(event);
+    // What it came up with, so a size or place given to it by hand can be
+    // told apart - the first time only
+    if (!this->shownSize_.isValid())
+    {
+        this->shownSize_ = this->size();
+        this->shownPos_ = this->pos();
+    }
 }
 
 void TwitchActionsPopup::buildHead(QVBoxLayout *layout)
@@ -765,8 +789,18 @@ void TwitchActionsPopup::themeChangedEvent()
 
 void TwitchActionsPopup::hideEvent(QHideEvent *event)
 {
-    getSettings()->twitchExtrasWidth.setValue(this->width());
-    getSettings()->twitchExtrasHeight.setValue(this->height());
+    // Kept only where it was changed by hand, as the alert windows do
+    if (this->shownSize_.isValid() && this->size() != this->shownSize_)
+    {
+        getSettings()->twitchExtrasWidth.setValue(this->width());
+        getSettings()->twitchExtrasHeight.setValue(this->height());
+    }
+    if (this->shownSize_.isValid() && this->pos() != this->shownPos_)
+    {
+        getSettings()->twitchExtrasX.setValue(this->x());
+        getSettings()->twitchExtrasY.setValue(this->y());
+        getSettings()->twitchExtrasPositionSaved.setValue(true);
+    }
     BasePopup::hideEvent(event);
 }
 

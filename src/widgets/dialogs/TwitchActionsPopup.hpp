@@ -8,6 +8,8 @@
 #include "widgets/BasePopup.hpp"
 
 #include <pajlada/signals/signalholder.hpp>
+#include <QPoint>
+#include <QSize>
 #include <QString>
 
 #include <memory>
@@ -54,6 +56,7 @@ public:
 
 protected:
     void themeChangedEvent() override;
+    void showEvent(QShowEvent *event) override;
     void hideEvent(QHideEvent *event) override;
 
 private:
@@ -132,6 +135,10 @@ private:
     std::vector<QLineEdit *> predictionOutcomes_;
     QPushButton *addOutcome_{};
     QButtonGroup *predictionWindow_{};
+
+    /// The size and place it came up with
+    QSize shownSize_;
+    QPoint shownPos_;
 
     pajlada::Signals::SignalHolder connections_;
 };
