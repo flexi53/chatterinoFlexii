@@ -506,8 +506,10 @@ Moderators can pin messages without the Twitch website: **/pin text** sends
 a message and pins it for 20 minutes, **/pin -d none text** until the stream
 ends, and **/unpin** takes it down. A message's **Moderate** menu has **Pin**
 - until the stream ends, or for 1, 10 or 30 minutes - and **Unpin**. This is
-taken over from Chatterino ahead of its next release; the banner Chatterino
-shows above the chat for the pinned message is left out.
+taken over from Chatterino ahead of its next release. The pinned message
+itself stands as a banner under the split header in every channel, not only
+where you moderate; moderators get a menu on it to unpin it now or after a
+while, and to change how long it stays.
 
 ## Polls, predictions and channel points
 
