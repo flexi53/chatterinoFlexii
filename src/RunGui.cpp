@@ -134,6 +134,11 @@ std::chrono::steady_clock::time_point signalsInitTime;
 {
     using namespace std::chrono_literals;
 
+    // ChattiFlexii: a crash in here - the app half torn down on the way out
+    // - ends the process, rather than coming back here over and over at
+    // full speed
+    signal(signum, SIG_DFL);
+
     if (std::chrono::steady_clock::now() - signalsInitTime > 30s &&
         getApp()->getCrashHandler()->shouldRecover())
     {

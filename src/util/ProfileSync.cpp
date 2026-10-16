@@ -10,6 +10,7 @@
 #include "singletons/Settings.hpp"
 #include "singletons/WindowManager.hpp"
 #include "util/AutoBackup.hpp"
+#include "util/PostToThread.hpp"
 #include "util/ProfileSetup.hpp"
 #include "widgets/Window.hpp"
 
@@ -35,6 +36,8 @@
 
 #include <array>
 #include <chrono>
+#include <optional>
+#include <thread>
 #include <vector>
 
 namespace chatterino::profilesync {
@@ -191,18 +194,29 @@ QString rootDirectory()
     return getApp()->getPaths().rootAppDataDirectory;
 }
 
-/// Leaves this computer's setup in the folder, replacing what is there
-bool write(QString &error)
-{
-    getSettings()->requestSave();
-    getApp()->getWindows()->save();
+/// How leaving this computer's setup in the folder went
+struct WriteResult {
+    bool ok = false;
+    QString error;
+    /// Which one it is, and what it looks like - for the settings
+    QString written;
+    QString print;
+};
 
-    const auto parent = autobackup::folder();
+/// The part of a write that touches the folder. Asks nothing of the app, so
+/// it may run off the GUI thread: the folder lies in iCloud Drive, and
+/// macOS lets a read or write there wait until iCloud has the file - long
+/// enough to freeze the app.
+WriteResult writeFiles(const QString &root, const QString &parent,
+                       const QString &computer, const QString &computerName)
+{
+    WriteResult result;
+    QString &error = result.error;
     if (!QDir().mkpath(parent))
     {
         error = QStringLiteral("Der Ordner %1 konnte nicht angelegt werden.")
                     .arg(QDir::toNativeSeparators(parent));
-        return false;
+        return result;
     }
     const QDir dir(parent);
 
@@ -214,10 +228,10 @@ bool write(QString &error)
     }
 
     const auto fresh =
-        exportProfileTo(rootDirectory(), parent, false, error, FRESH_PREFIX);
+        exportProfileTo(root, parent, false, error, FRESH_PREFIX);
     if (fresh.isEmpty())
     {
-        return false;
+        return result;
     }
 
     const auto written =
@@ -237,8 +251,8 @@ bool write(QString &error)
     if (!writeJson(settingsFile, values) ||
         !writeJson(QDir(fresh).absoluteFilePath(SHARED_MARKER),
                    {
-                       {QStringLiteral("computer"), thisComputer()},
-                       {QStringLiteral("computerName"), thisComputerName()},
+                       {QStringLiteral("computer"), computer},
+                       {QStringLiteral("computerName"), computerName},
                        {QStringLiteral("written"), written},
                        {QStringLiteral("fingerprint"), print},
                        {QStringLiteral("format"), FORMAT},
@@ -246,7 +260,7 @@ bool write(QString &error)
     {
         QDir(fresh).removeRecursively();
         error = QStringLiteral("Der Abgleich konnte nicht geschrieben werden.");
-        return false;
+        return result;
     }
 
     // Complete before it takes the old one's place, so the other computer
@@ -256,17 +270,41 @@ bool write(QString &error)
     {
         QDir(fresh).removeRecursively();
         error = QStringLiteral("Der vorige Abgleich ließ sich nicht ersetzen.");
-        return false;
+        return result;
     }
     if (!QDir().rename(fresh, kept))
     {
         QDir(fresh).removeRecursively();
         error = QStringLiteral("Der Abgleich ließ sich nicht umbenennen.");
-        return false;
+        return result;
     }
 
-    getSettings()->profileSyncBase.setValue(written);
-    getSettings()->profileSyncWritten.setValue(print);
+    result.ok = true;
+    result.written = written;
+    result.print = print;
+    return result;
+}
+
+/// Leaves this computer's setup in the folder, replacing what is there.
+/// @a saveFirst puts the settings and windows on disk before - not on the
+/// way out, where the main window already saved them and closed them all.
+bool write(QString &error, bool saveFirst = true)
+{
+    if (saveFirst)
+    {
+        getSettings()->requestSave();
+        getApp()->getWindows()->save();
+    }
+
+    const auto result = writeFiles(rootDirectory(), autobackup::folder(),
+                                   thisComputer(), thisComputerName());
+    if (!result.ok)
+    {
+        error = result.error;
+        return false;
+    }
+    getSettings()->profileSyncBase.setValue(result.written);
+    getSettings()->profileSyncWritten.setValue(result.print);
     return true;
 }
 
@@ -599,6 +637,88 @@ QString syncNow(bool fromUser)
     }
 }
 
+namespace {
+
+/// Looks without holding the app up: what lies in the iCloud folder is read
+/// and written on a thread of its own, and only the answer comes back
+void syncInBackground()
+{
+    if (!getSettings()->profileSyncEnabled.getValue())
+    {
+        return;
+    }
+    // One look at a time - a slow iCloud must not pile them up
+    static bool running = false;
+    if (running)
+    {
+        return;
+    }
+    running = true;
+
+    // What is on disk is what gets compared and written
+    getSettings()->requestSave();
+    getApp()->getWindows()->save();
+
+    // Everything the thread needs, asked here
+    const auto folder = sharedFolder();
+    const auto root = rootDirectory();
+    const auto parent = autobackup::folder();
+    const auto computer = thisComputer();
+    const auto computerName = thisComputerName();
+    const auto base = getSettings()->profileSyncBase.getValue();
+    const auto writtenPrint = getSettings()->profileSyncWritten.getValue();
+
+    std::thread([=] {
+        const auto shared = readShared(folder);
+        const auto step =
+            decide(shared, computer, base, fingerprint(root), writtenPrint);
+        std::optional<WriteResult> wrote;
+        if (step == Step::Write)
+        {
+            wrote = writeFiles(root, parent, computer, computerName);
+        }
+
+        postToThread([shared, step, wrote] {
+            running = false;
+            if (isAppAboutToQuit())
+            {
+                return;
+            }
+            auto &s = *getSettings();
+            switch (step)
+            {
+                case Step::Offer:
+                    if (!putOff().contains(shared->written))
+                    {
+                        offer(*shared);
+                    }
+                    break;
+                case Step::Settle:
+                    s.profileSyncBase.setValue(shared->written);
+                    s.profileSyncWritten.setValue(shared->fingerprint);
+                    break;
+                case Step::Write:
+                    if (wrote && wrote->ok)
+                    {
+                        s.profileSyncBase.setValue(wrote->written);
+                        s.profileSyncWritten.setValue(wrote->print);
+                    }
+                    else if (wrote)
+                    {
+                        qCWarning(chatterinoApp)
+                            << "Sync write failed:" << wrote->error;
+                    }
+                    break;
+                case Step::Nothing:
+                default:
+                    break;
+            }
+        });
+    }).detach();
+}
+
+}  // namespace
+
 void start()
 {
     static bool started = false;
@@ -609,13 +729,14 @@ void start()
     started = true;
 
     auto *context = new QObject(QCoreApplication::instance());
+    // On a thread of their own, so a slow iCloud does not freeze the app
     QTimer::singleShot(FIRST_CHECK, context, [] {
-        syncNow(false);
+        syncInBackground();
     });
     auto *timer = new QTimer(context);
     timer->setInterval(CHECK_EVERY);
     QObject::connect(timer, &QTimer::timeout, context, [] {
-        syncNow(false);
+        syncInBackground();
     });
     timer->start();
 
@@ -635,8 +756,11 @@ void start()
                        fingerprint(rootDirectory()),
                        s.profileSyncWritten.getValue()) == Step::Write)
             {
+                // The main window saved the windows and closed them all
+                // before the app began to quit - saving them again here
+                // reached into what was gone
                 QString error;
-                if (!write(error))
+                if (!write(error, false))
                 {
                     qCWarning(chatterinoApp)
                         << "Sync write on exit failed:" << error;
@@ -652,7 +776,7 @@ void start()
             if (on)
             {
                 QTimer::singleShot(std::chrono::seconds(3), context, [] {
-                    syncNow(false);
+                    syncInBackground();
                 });
             }
         },
