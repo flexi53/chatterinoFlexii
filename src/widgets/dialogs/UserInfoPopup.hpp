@@ -137,6 +137,8 @@ private:
         /// ChattiFlexii: their own chat as a tab, and their 7TV page
         LabelButton *theirChat = nullptr;
         LabelButton *seventvPage = nullptr;
+        /// ChattiFlexii: editor or not, for the broadcaster - Twitch-Extras
+        LabelButton *editorRole = nullptr;
         LabelButton *switchAvatars = nullptr;
 
         TimeoutWidget *timeoutWidget = nullptr;

@@ -802,4 +802,26 @@ void redeemReward(const QString &channelId, const Reward &reward,
         .execute();
 }
 
+void addEditor(const QString &channelId, const QString &targetLogin,
+               Done onDone, Failed onError)
+{
+    mutate(persisted("AddEditorUser",
+                     "3b52bf904ff9ce1b000ac2358080f538fbd1972c1869804f0d0f345d"
+                     "1a56676c",
+                     {{"input", QJsonObject{{"channelID", channelId},
+                                            {"targetUserLogin", targetLogin}}}}),
+           "addEditor", true, std::move(onDone), std::move(onError));
+}
+
+void removeEditor(const QString &channelId, const QString &targetLogin,
+                  Done onDone, Failed onError)
+{
+    mutate(persisted("RemoveEditorUser",
+                     "4699d38183050854dba547d07e340e72bf1f04578f1037a38a1189fa"
+                     "1827790f",
+                     {{"input", QJsonObject{{"channelID", channelId},
+                                            {"targetUserLogin", targetLogin}}}}),
+           "removeEditor", true, std::move(onDone), std::move(onError));
+}
+
 }  // namespace chatterino::modgql

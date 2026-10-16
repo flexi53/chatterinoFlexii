@@ -121,6 +121,13 @@ void resolvePrediction(const QString &predictionId, const QString &outcomeId,
 void makePrediction(const QString &predictionId, const QString &outcomeId,
                     int points, Done onDone, Failed onError);
 
+/// Makes @a targetLogin an editor of the channel with the id @a channelId,
+/// or takes that back - only the broadcaster may
+void addEditor(const QString &channelId, const QString &targetLogin,
+               Done onDone, Failed onError);
+void removeEditor(const QString &channelId, const QString &targetLogin,
+                  Done onDone, Failed onError);
+
 /// Your balance and the rewards on offer in @a channelLogin
 void channelPoints(const QString &channelLogin,
                    std::function<void(ChannelPoints)> onPoints,

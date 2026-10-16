@@ -23,6 +23,7 @@
 #include "providers/kick/KickChatServer.hpp"
 #include "providers/pronouns/Pronouns.hpp"
 #include "providers/twitch/api/Helix.hpp"
+#include "providers/twitch/api/ModGql.hpp"
 #include "providers/twitch/TwitchAccount.hpp"
 #include "providers/twitch/TwitchChannel.hpp"
 #include "providers/twitch/TwitchIrcServer.hpp"
@@ -61,6 +62,7 @@
 #include <QDir>
 #include <QFile>
 #include <QHBoxLayout>
+#include <QMenu>
 #include <QMessageBox>
 #include <QMetaEnum>
 #include <QMovie>
@@ -675,6 +677,15 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
                            .assign(&this->ui_.seventvPage);
         seventv->setToolTip("Öffnet ihr 7TV-Profil im Browser.");
         seventv->setVisible(false);
+        // ChattiFlexii: the role Twitch offers only on its dashboard, beside
+        // the mod and VIP buttons it belongs with - Twitch-Extras
+        auto editor = user.emplace<LabelButton>("Editor", this)
+                          .assign(&this->ui_.editorRole);
+        editor->setToolTip(
+            "Zum Editor des Kanals machen oder das wieder wegnehmen. Geht "
+            "über die Anmeldung unter Einstellungen → Twitch-Extras, mit dem "
+            "Account des Streamers.");
+        editor->setVisible(false);
         auto mod = user.emplace<PixmapButton>(this);
         mod->setPixmap(getResources().buttons.mod);
         mod->setScaleIndependentSize(30, 30);
@@ -707,6 +718,41 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
             }
         });
 
+        QObject::connect(editor.getElement(), &Button::leftClicked, [this] {
+            auto *twitchChannel =
+                dynamic_cast<TwitchChannel *>(this->underlyingChannel_.get());
+            if (twitchChannel == nullptr)
+            {
+                return;
+            }
+            const auto channel = this->underlyingChannel_;
+            const auto channelId = twitchChannel->roomId();
+            const auto login = this->userName_;
+            const auto report = [channel](const QString &done) {
+                return std::make_pair(
+                    modgql::Done([channel, done] {
+                        channel->addSystemMessage(done);
+                    }),
+                    modgql::Failed([channel](const QString &error) {
+                        channel->addSystemMessage(
+                            u"Editor-Rolle: "_s + error);
+                    }));
+            };
+
+            QMenu menu(this);
+            menu.addAction(u"%1 zum Editor machen"_s.arg(login), [=] {
+                auto [done, failed] =
+                    report(u"%1 ist jetzt Editor."_s.arg(login));
+                modgql::addEditor(channelId, login, done, failed);
+            });
+            menu.addAction(u"%1 als Editor entfernen"_s.arg(login), [=] {
+                auto [done, failed] =
+                    report(u"%1 ist kein Editor mehr."_s.arg(login));
+                modgql::removeEditor(channelId, login, done, failed);
+            });
+            menu.exec(QCursor::pos());
+        });
+
         QObject::connect(mod.getElement(), &Button::leftClicked, [this] {
             QString value = "/mod " + this->userName_;
             value = getApp()->getCommands()->execCommand(
@@ -736,7 +782,8 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
         // We can safely ignore this signal connection since this is a private signal, and
         // we only connect once
         std::ignore = this->userStateChanged_.connect([this, mod, unmod, vip,
-                                                       unvip]() mutable {
+                                                       unvip,
+                                                       editor]() mutable {
             TwitchChannel *twitchChannel =
                 dynamic_cast<TwitchChannel *>(this->underlyingChannel_.get());
 
@@ -758,6 +805,9 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
             unmod->setVisible(visibilityModButtons);
             vip->setVisible(visibilityModButtons);
             unvip->setVisible(visibilityModButtons);
+            // Only with the Twitch app login, which is what it goes through
+            editor->setVisible(visibilityModButtons &&
+                               modgql::currentLogin().has_value());
         });
     }
 
