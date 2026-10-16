@@ -10,6 +10,9 @@
 #include "widgets/settingspages/SettingWidget.hpp"
 
 #include <QFileDialog>
+#include <QMovie>
+#include <QImageReader>
+#include <QFile>
 #include <QHBoxLayout>
 #include <QImage>
 #include <QLabel>
@@ -42,7 +45,9 @@ void ChattiBadgePage::initOwnBadge(GeneralPageView &layout)
     layout.addTitle("Dein ChattiFlexii-Badge");
     layout.addDescription(
         "Ein Bild deiner Wahl neben deinem Namen - für alle, die ChattiFlexii "
-        "benutzen. Es wird auf 72 × 72 gebracht und hochgeladen; sehen "
+        "benutzen. Ein Bild wird auf 72 × 72 gebracht; ein animiertes GIF "
+        "geht so hoch, wie es ist, und darf höchstens 128 × 128 und 512 KB "
+        "haben. Sehen "
         "können es die anderen, sobald es freigegeben ist. Anzeigen lassen "
         "es sich unter General → Visible badges → ChattiFlexii.");
     layout.addDescription(
@@ -99,8 +104,10 @@ void ChattiBadgePage::initOwnBadge(GeneralPageView &layout)
     queue->hide();
     layout.addWidget(queue, {"badge", "freigabe", "chatti"});
 
-    // The picture picked and made ready, until it is sent
+    // The picture picked and made ready, until it is sent, and whether it is
+    // an animated GIF
     auto picked = std::make_shared<QByteArray>();
+    auto animated = std::make_shared<bool>(false);
 
     const auto showPicture = [](QLabel *label, const QString &url) {
         if (url.isEmpty())
@@ -230,33 +237,76 @@ void ChattiBadgePage::initOwnBadge(GeneralPageView &layout)
             });
     };
 
-    QObject::connect(pick, &QPushButton::clicked, rowWidget,
-                     [rowWidget, preview, status, send, picked] {
-                         const auto file = QFileDialog::getOpenFileName(
-                             rowWidget, "Bild für dein Badge",
-                             QString(),
-                             "Bilder (*.png *.jpg *.jpeg *.gif *.webp *.bmp)");
-                         if (file.isEmpty())
-                         {
-                             return;
-                         }
-                         QImage image(file);
-                         if (image.isNull())
-                         {
-                             status->setText("Das Bild ließ sich nicht "
-                                             "öffnen.");
-                             return;
-                         }
-                         *picked = chattibadges::badgePng(image);
-                         QPixmap shown;
-                         shown.loadFromData(*picked, "PNG");
-                         preview->setPixmap(shown.scaled(
-                             36, 36, Qt::KeepAspectRatio,
-                             Qt::SmoothTransformation));
-                         status->setText("So wird es aussehen. Jetzt "
-                                         "hochladen.");
-                         send->setEnabled(true);
-                     });
+    QObject::connect(pick, &QPushButton::clicked, rowWidget, [=] {
+        const auto file = QFileDialog::getOpenFileName(
+            rowWidget, "Bild für dein Badge", QString(),
+            "Bilder (*.png *.jpg *.jpeg *.gif *.webp *.bmp)");
+        if (file.isEmpty())
+        {
+            return;
+        }
+
+        // An animated GIF goes as it is - made smaller here it would stop
+        // moving - so it has to be small enough already
+        QImageReader reader(file);
+        if (reader.format() == "gif" && reader.supportsAnimation() &&
+            reader.imageCount() > 1)
+        {
+            const auto size = reader.size();
+            QFile gif(file);
+            if (!gif.open(QIODevice::ReadOnly))
+            {
+                status->setText("Das GIF ließ sich nicht öffnen.");
+                return;
+            }
+            const auto bytes = gif.readAll();
+            if (size.width() > chattibadges::MAX_GIF_SIDE ||
+                size.height() > chattibadges::MAX_GIF_SIDE)
+            {
+                status->setText(
+                    QStringLiteral("Das GIF ist %1 × %2 groß - für ein "
+                                   "animiertes Badge höchstens 128 × 128. "
+                                   "Am besten schon quadratisch.")
+                        .arg(size.width())
+                        .arg(size.height()));
+                return;
+            }
+            if (bytes.size() > chattibadges::MAX_GIF_BYTES)
+            {
+                status->setText(QStringLiteral("Das GIF hat %1 KB - "
+                                               "höchstens 512 KB.")
+                                    .arg(bytes.size() / 1024));
+                return;
+            }
+            *picked = bytes;
+            *animated = true;
+
+            // Moving in the preview too, as it will in the chat
+            auto *movie = new QMovie(file, QByteArray(), preview);
+            movie->setScaledSize(size.scaled(36, 36, Qt::KeepAspectRatio));
+            preview->setMovie(movie);
+            movie->start();
+            status->setText("Animiert - so wird es aussehen. Jetzt "
+                            "hochladen.");
+            send->setEnabled(true);
+            return;
+        }
+
+        QImage image(file);
+        if (image.isNull())
+        {
+            status->setText("Das Bild ließ sich nicht öffnen.");
+            return;
+        }
+        *picked = chattibadges::badgePng(image);
+        *animated = false;
+        QPixmap shown;
+        shown.loadFromData(*picked, "PNG");
+        preview->setPixmap(shown.scaled(36, 36, Qt::KeepAspectRatio,
+                                        Qt::SmoothTransformation));
+        status->setText("So wird es aussehen. Jetzt hochladen.");
+        send->setEnabled(true);
+    });
     QObject::connect(send, &QPushButton::clicked, rowWidget,
                      [=]() {
                          if (picked->isEmpty())
@@ -266,7 +316,7 @@ void ChattiBadgePage::initOwnBadge(GeneralPageView &layout)
                          send->setEnabled(false);
                          status->setText("Lade hoch …");
                          chattibadges::upload(
-                             *picked, rowWidget,
+                             *picked, *animated, rowWidget,
                              [=]() {
                                  picked->clear();
                                  refresh();

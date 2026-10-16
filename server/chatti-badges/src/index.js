@@ -12,13 +12,16 @@
 // variable ADMIN_IDS, separated by commas.
 //
 // What is kept in KV:
-//   user:<id>         {login, approved, pending, uploadedAt} - approved and
-//                     pending are versions, a random word each
-//   image:<id>:<ver>  the PNG itself
-//   list              {"<id>": {"login", "version"}} of everything approved,
-//                     so the list is one read rather than a scan
+//   user:<id>         {login, approved, pending, approvedSize, pendingSize,
+//                     uploadedAt} - approved and pending are file names, a
+//                     random word with .png or .gif, the sizes their width
+//   image:<id>:<file> the picture itself
+//   list              {"<id>": {"login", "version", "size"}} of everything
+//                     approved, so the list is one read rather than a scan
 
-const MAX_BYTES = 64 * 1024;
+// A PNG is made small by ChattiFlexii; a GIF comes as it is, to keep moving
+const MAX_PNG_BYTES = 64 * 1024;
+const MAX_GIF_BYTES = 512 * 1024;
 const MAX_SIDE = 128;
 const UPLOAD_EVERY_SECONDS = 60;
 const LIST_CACHE_SECONDS = 300;
@@ -35,6 +38,25 @@ function json(body, status = 200, extraHeaders = {}) {
 
 function fail(status, message) {
     return json({ error: message }, status);
+}
+
+/// Width and height of a GIF, read from its header - or null for anything
+/// that is not one
+function gifSize(bytes) {
+    const head = String.fromCharCode(...bytes.slice(0, 6));
+    if (bytes.length < 10 || (head !== "GIF87a" && head !== "GIF89a")) {
+        return null;
+    }
+    return {
+        width: bytes[6] | (bytes[7] << 8),
+        height: bytes[8] | (bytes[9] << 8),
+    };
+}
+
+/// The file name a version is served under - versions from before GIFs
+/// were taken have no ending and are PNGs
+function fileOf(version) {
+    return version.includes(".") ? version : `${version}.png`;
 }
 
 function randomVersion() {
@@ -92,13 +114,13 @@ async function readList(env) {
 }
 
 function imageUrl(origin, id, version) {
-    return `${origin}/image/${id}/${version}.png`;
+    return `${origin}/image/${id}/${fileOf(version)}`;
 }
 
-async function setListed(env, id, login, version) {
+async function setListed(env, id, login, version, size) {
     const list = await readList(env);
     if (version) {
-        list[id] = { login, version };
+        list[id] = { login, version, size: size || 72 };
     } else {
         delete list[id];
     }
@@ -119,6 +141,7 @@ async function handle(request, env) {
             users[id] = {
                 login: entry.login,
                 image: imageUrl(origin, id, entry.version),
+                size: entry.size || 72,
             };
         }
         return json({ users }, 200, {
@@ -130,15 +153,20 @@ async function handle(request, env) {
     // only who was given the link finds one that waits
     if (method === "GET" && parts.length === 3 && parts[0] === "image") {
         const id = parts[1];
-        const version = parts[2].replace(/\.png$/, "");
-        const bytes = await env.BADGES.get(`image:${id}:${version}`,
-                                           "arrayBuffer");
+        const file = parts[2];
+        let bytes = await env.BADGES.get(`image:${id}:${file}`, "arrayBuffer");
+        if (!bytes && file.endsWith(".png")) {
+            // Kept from before GIFs were taken, without an ending
+            bytes = await env.BADGES.get(`image:${id}:${file.slice(0, -4)}`,
+                                         "arrayBuffer");
+        }
         if (!bytes) {
             return fail(404, "Kein Bild.");
         }
         return new Response(bytes, {
             headers: {
-                "Content-Type": "image/png",
+                "Content-Type": file.endsWith(".gif") ? "image/gif"
+                                                      : "image/png",
                 "Cache-Control": "public, max-age=31536000, immutable",
             },
         });
@@ -168,12 +196,16 @@ async function handle(request, env) {
     // A new picture for one's own name - it waits until an admin approves it
     if (method === "POST" && parts.length === 1 && parts[0] === "upload") {
         const bytes = new Uint8Array(await request.arrayBuffer());
-        if (bytes.length > MAX_BYTES) {
-            return fail(413, "Das Bild ist zu groß - höchstens 64 KB.");
-        }
-        const size = pngSize(bytes);
+        const png = pngSize(bytes);
+        const gif = png === null ? gifSize(bytes) : null;
+        const size = png || gif;
         if (size === null) {
-            return fail(415, "Das ist kein PNG.");
+            return fail(415, "Nur PNG oder GIF.");
+        }
+        const limit = gif ? MAX_GIF_BYTES : MAX_PNG_BYTES;
+        if (bytes.length > limit) {
+            return fail(413, gif ? "Das GIF ist zu groß - höchstens 512 KB."
+                                 : "Das Bild ist zu groß - höchstens 64 KB.");
         }
         if (size.width > MAX_SIDE || size.height > MAX_SIDE) {
             return fail(415, "Das Bild ist zu groß - höchstens 128 × 128.");
@@ -188,10 +220,11 @@ async function handle(request, env) {
         if (record.pending) {
             await env.BADGES.delete(`image:${user.id}:${record.pending}`);
         }
-        const version = randomVersion();
+        const version = `${randomVersion()}${gif ? ".gif" : ".png"}`;
         await env.BADGES.put(`image:${user.id}:${version}`, bytes);
         record.login = user.login;
         record.pending = version;
+        record.pendingSize = size.width;
         record.uploadedAt = now;
         await env.BADGES.put(`user:${user.id}`, JSON.stringify(record));
 
@@ -269,9 +302,12 @@ async function approve(env, origin, id) {
         await env.BADGES.delete(`image:${id}:${record.approved}`);
     }
     record.approved = record.pending;
+    record.approvedSize = record.pendingSize || 72;
     delete record.pending;
+    delete record.pendingSize;
     await env.BADGES.put(`user:${id}`, JSON.stringify(record));
-    await setListed(env, id, record.login, record.approved);
+    await setListed(env, id, record.login, record.approved,
+                    record.approvedSize);
     return json({ approved: imageUrl(origin, id, record.approved) });
 }
 

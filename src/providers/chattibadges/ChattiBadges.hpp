@@ -88,9 +88,15 @@ struct Waiting {
 QByteArray badgePng(const QImage &picture);
 
 void me(QObject *caller, std::function<void(const Me &)> done, Failed failed);
-/// Uploads @a png for the account logged in here. It waits for an admin -
+/// The most an animated GIF may be, as the server takes it - it is sent as
+/// it is, since making it smaller here would stop it moving
+constexpr int MAX_GIF_SIDE = 128;
+constexpr qsizetype MAX_GIF_BYTES = 512 * 1024;
+
+/// Uploads @a picture for the account logged in here - a PNG from
+/// badgePng(), or an @a animated GIF as it is. It waits for an admin -
 /// unless an admin uploads it.
-void upload(const QByteArray &png, QObject *caller,
+void upload(const QByteArray &picture, bool animated, QObject *caller,
             std::function<void()> done, Failed failed);
 /// Takes the badge of the account logged in here away, shown and waiting
 void removeMine(QObject *caller, std::function<void()> done, Failed failed);

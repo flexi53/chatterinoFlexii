@@ -23,6 +23,7 @@
 #include <QTimer>
 #include <QUrl>
 
+#include <algorithm>
 #include <chrono>
 
 namespace chatterino {
@@ -152,11 +153,14 @@ void ChattiBadges::reload()
                     continue;
                 }
                 const auto login = user.value("login").toString();
-                // One picture of 72 px, shown at a quarter of it
+                // One picture, as wide as the server says - a PNG made 72
+                // px here, a GIF as it came - shown as high as a badge is
+                const auto side =
+                    std::max(1, user.value("size").toInt(BADGE_SIDE));
                 auto emote = std::make_shared<const Emote>(Emote{
                     .name = EmoteName{u"chatti:" % login},
                     .images = ImageSet{Image::fromUrl(
-                        Url{image}, 0.25, QSize(BADGE_SIDE, BADGE_SIDE))},
+                        Url{image}, 18.0 / side, QSize(side, side))},
                     .tooltip = Tooltip{QStringLiteral("ChattiFlexii-Badge")},
                     .homePage = Url{},
                 });
@@ -230,8 +234,8 @@ void me(QObject *caller, std::function<void(const Me &)> done, Failed failed)
         failed);
 }
 
-void upload(const QByteArray &png, QObject *caller, std::function<void()> done,
-            Failed failed)
+void upload(const QByteArray &picture, bool animated, QObject *caller,
+            std::function<void()> done, Failed failed)
 {
     auto built = request(QStringLiteral("/upload"), NetworkRequestType::Post,
                          true, failed);
@@ -240,8 +244,8 @@ void upload(const QByteArray &png, QObject *caller, std::function<void()> done,
         return;
     }
     send(std::move(*built)
-             .header("Content-Type", "image/png")
-             .payload(png),
+             .header("Content-Type", animated ? "image/gif" : "image/png")
+             .payload(picture),
          caller,
          [done](const QJsonObject &) {
              if (auto *badges = getApp()->getChattiBadges())
