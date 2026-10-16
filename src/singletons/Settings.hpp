@@ -359,6 +359,10 @@ public:
                                      true};
     /// Subs, raids, bans and the like marked with a symbol and a colour
     BoolSetting eventSymbols = {"/appearance/messages/eventSymbols", false};
+    /// The kinds of event left unmarked all the same, by their keys in
+    /// ChatEvent.hpp, separated by commas
+    QStringSetting eventSymbolsOff = {"/appearance/messages/eventSymbolsOff",
+                                      ""};
     /// A message mentioning you lights up briefly as it comes in
     BoolSetting pulseMentions = {"/appearance/messages/pulseMentions", false};
     /// The chatter's round profile picture in front of their name

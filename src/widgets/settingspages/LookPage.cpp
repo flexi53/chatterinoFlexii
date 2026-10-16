@@ -6,6 +6,7 @@
 
 #include "Application.hpp"
 #include "messages/layouts/AlternateBackground.hpp"
+#include "messages/layouts/ChatEvent.hpp"
 #include "messages/layouts/MessageRole.hpp"
 #include "common/Channel.hpp"
 #include "messages/Message.hpp"
@@ -25,6 +26,7 @@
 #include "widgets/NotebookEnums.hpp"
 #include "widgets/settingspages/SettingWidget.hpp"
 
+#include <QCheckBox>
 #include <QComboBox>
 #include <QDir>
 #include <QFileDialog>
@@ -1128,9 +1130,54 @@ void LookPage::buildChatTab(GeneralPageView &layout)
         ->setTooltip("Subs ⭐, Gifts 🎁, Raids 🚀, Ankündigungen 📣, "
                      "Timeouts ⏱️, Banns 🔨, Bits 💎, eingelöste Punkte 🎟️ "
                      "und Watch-Streaks 🔥 bekommen vorne ein Symbol und links "
-                     "einen Streifen in ihrer Farbe.")
+                     "einen Streifen in ihrer Farbe. Welche Arten, wählst du "
+                     "darunter einzeln.")
         ->addKeywords({"sub", "raid", "bann", "ban", "timeout", "symbol"})
         ->addTo(layout);
+    {
+        // Which kinds, each for itself - three to a row, under the switch
+        // they belong to
+        auto *kinds = new QWidget;
+        auto *grid = new QGridLayout(kinds);
+        grid->setContentsMargins(20, 0, 0, 4);
+        grid->setHorizontalSpacing(16);
+        grid->setVerticalSpacing(2);
+        const auto events = allEvents();
+        for (size_t i = 0; i < events.size(); i++)
+        {
+            const auto event = events[i];
+            auto *box = new QCheckBox(eventSymbol(event) + u' ' +
+                                      eventName(event));
+            const auto key = eventKey(event);
+            box->setChecked(!s.eventSymbolsOff.getValue()
+                                 .split(u',', Qt::SkipEmptyParts)
+                                 .contains(key));
+            QObject::connect(box, &QCheckBox::toggled, kinds,
+                             [key](bool on) {
+                                 auto off = getSettings()
+                                                ->eventSymbolsOff.getValue()
+                                                .split(u',', Qt::SkipEmptyParts);
+                                 off.removeAll(key);
+                                 if (!on)
+                                 {
+                                     off.append(key);
+                                 }
+                                 getSettings()->eventSymbolsOff.setValue(
+                                     off.join(u','));
+                             });
+            grid->addWidget(box, static_cast<int>(i / 3),
+                            static_cast<int>(i % 3));
+        }
+        grid->setColumnStretch(3, 1);
+        s.eventSymbols.connect(
+            [kinds](const bool &on, auto) {
+                kinds->setEnabled(on);
+            },
+            this->managedConnections_);
+        layout.addWidget(kinds, {"sub", "gift", "raid", "bits", "cheer",
+                                 "timeout", "bann", "punkte", "streak",
+                                 "ankündigung", "symbol"});
+    }
     SettingWidget::checkbox("Erwähnungen kurz aufblinken lassen",
                             s.pulseMentions)
         ->setTooltip("Fällt dein Name - oder kommt ein Whisper - blinkt die "
@@ -1141,6 +1188,7 @@ void LookPage::buildChatTab(GeneralPageView &layout)
         ->addTo(layout);
     addStandardButton(layout, "Keine Symbole, kein Blinken", [&s] {
         s.eventSymbols.setValue(false);
+        s.eventSymbolsOff.setValue(QString());
         s.pulseMentions.setValue(false);
     });
 

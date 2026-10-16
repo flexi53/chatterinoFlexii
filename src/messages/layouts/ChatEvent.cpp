@@ -6,6 +6,7 @@
 
 #include "messages/Message.hpp"
 #include "messages/MessageFlag.hpp"
+#include "singletons/Settings.hpp"
 
 namespace chatterino {
 
@@ -55,6 +56,80 @@ ChatEvent eventOf(const Message &message)
         return ChatEvent::Streak;
     }
     return ChatEvent::None;
+}
+
+std::vector<ChatEvent> allEvents()
+{
+    return {ChatEvent::Sub,     ChatEvent::Gift,         ChatEvent::Raid,
+            ChatEvent::Announcement, ChatEvent::Timeout, ChatEvent::Ban,
+            ChatEvent::Bits,    ChatEvent::Redeem,       ChatEvent::Streak};
+}
+
+QString eventKey(ChatEvent event)
+{
+    switch (event)
+    {
+        case ChatEvent::Sub:
+            return QStringLiteral("sub");
+        case ChatEvent::Gift:
+            return QStringLiteral("gift");
+        case ChatEvent::Raid:
+            return QStringLiteral("raid");
+        case ChatEvent::Announcement:
+            return QStringLiteral("announcement");
+        case ChatEvent::Timeout:
+            return QStringLiteral("timeout");
+        case ChatEvent::Ban:
+            return QStringLiteral("ban");
+        case ChatEvent::Bits:
+            return QStringLiteral("bits");
+        case ChatEvent::Redeem:
+            return QStringLiteral("redeem");
+        case ChatEvent::Streak:
+            return QStringLiteral("streak");
+        case ChatEvent::None:
+        default:
+            return {};
+    }
+}
+
+QString eventName(ChatEvent event)
+{
+    switch (event)
+    {
+        case ChatEvent::Sub:
+            return QStringLiteral("Subs");
+        case ChatEvent::Gift:
+            return QStringLiteral("Gifts");
+        case ChatEvent::Raid:
+            return QStringLiteral("Raids");
+        case ChatEvent::Announcement:
+            return QStringLiteral("Ankündigungen");
+        case ChatEvent::Timeout:
+            return QStringLiteral("Timeouts");
+        case ChatEvent::Ban:
+            return QStringLiteral("Banns");
+        case ChatEvent::Bits:
+            return QStringLiteral("Bits");
+        case ChatEvent::Redeem:
+            return QStringLiteral("Eingelöste Punkte");
+        case ChatEvent::Streak:
+            return QStringLiteral("Watch-Streaks");
+        case ChatEvent::None:
+        default:
+            return {};
+    }
+}
+
+bool eventMarked(ChatEvent event)
+{
+    if (event == ChatEvent::None || !getSettings()->eventSymbols)
+    {
+        return false;
+    }
+    const auto off = getSettings()->eventSymbolsOff.getValue().split(
+        u',', Qt::SkipEmptyParts);
+    return !off.contains(eventKey(event));
 }
 
 QString eventSymbol(ChatEvent event)

@@ -156,8 +156,13 @@ void MessageLayout::actuallyLayout(const MessageLayoutContext &ctx)
     bool hideReplies = !ctx.flags.has(MessageElementFlag::RepliedMessage);
 
     // Room for the symbol of an event in front of it - see Look -> Chat
-    this->event_ = getSettings()->eventSymbols ? eventOf(*this->message_)
-                                               : ChatEvent::None;
+    // - each kind can be left out for itself
+    this->event_ = ChatEvent::None;
+    if (getSettings()->eventSymbols)
+    {
+        const auto event = eventOf(*this->message_);
+        this->event_ = eventMarked(event) ? event : ChatEvent::None;
+    }
     this->container_.beginLayout(
         ctx.width, this->scale_, this->imageScale_, messageFlags,
         this->event_ == ChatEvent::None ? 0 : int(18 * this->scale_));

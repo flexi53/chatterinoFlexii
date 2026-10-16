@@ -177,6 +177,7 @@ WindowManager::WindowManager(const Args &appArgs_, const Paths &paths,
     this->forceLayoutChannelViewsListener.add(fonts.fontChanged);
     this->forceLayoutChannelViewsListener.add(settings.messageSpacing);
     this->forceLayoutChannelViewsListener.add(settings.eventSymbols);
+    this->forceLayoutChannelViewsListener.add(settings.eventSymbolsOff);
 
     this->layoutChannelViewsListener.add(settings.timestampFormat);
 
