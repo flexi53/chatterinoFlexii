@@ -9,10 +9,53 @@
 #include "messages/Image.hpp"
 #include "singletons/Resources.hpp"
 
+#include <QPainter>
+#include <QPainterPath>
 #include <QRegularExpression>
 #include <QUrl>
 
 namespace chatterino {
+
+namespace {
+
+/// ChattiFlexii: a pushpin, drawn in the colour and weight of the bin and
+/// the ban sign next to it
+QPixmap drawPin()
+{
+    constexpr int side = 64;
+    QPixmap pixmap(side, side);
+    pixmap.fill(Qt::transparent);
+
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing);
+    QPen pen(QColor(0x8a, 0x84, 0x94));
+    pen.setWidthF(5);
+    pen.setCapStyle(Qt::RoundCap);
+    pen.setJoinStyle(Qt::RoundJoin);
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+
+    // Leaning to the right, as a pin stuck in a board
+    painter.translate(side / 2.0, side / 2.0);
+    painter.rotate(35);
+    painter.translate(-side / 2.0, -side / 2.0);
+
+    // The head, the body narrowing below it, the plate and the needle
+    painter.drawLine(QPointF(22, 8), QPointF(42, 8));
+    QPainterPath body;
+    body.moveTo(26, 8);
+    body.lineTo(26, 24);
+    body.lineTo(18, 36);
+    body.lineTo(46, 36);
+    body.lineTo(38, 24);
+    body.lineTo(38, 8);
+    painter.drawPath(body);
+    painter.drawLine(QPointF(32, 36), QPointF(32, 58));
+
+    return pixmap;
+}
+
+}  // namespace
 
 ModerationAction::ModerationAction(const QString &action, const QUrl &iconPath)
     : action_(action)
@@ -97,6 +140,10 @@ ModerationAction::ModerationAction(const QString &action, const QUrl &iconPath)
     {
         this->type_ = Type::Delete;
     }
+    else if (action.startsWith("/pin "))
+    {
+        this->type_ = Type::Pin;
+    }
     else
     {
         this->type_ = Type::Custom;
@@ -145,6 +192,10 @@ const std::optional<ImagePtr> &ModerationAction::getImage() const
     {
         this->image_ =
             Image::fromResourcePixmap(getResources().buttons.trashCan);
+    }
+    else if (this->type_ == Type::Pin)
+    {
+        this->image_ = Image::fromResourcePixmap(drawPin());
     }
 
     return this->image_;

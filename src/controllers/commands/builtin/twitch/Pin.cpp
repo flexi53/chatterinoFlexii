@@ -17,6 +17,7 @@
 
 #include <controllers/commands/builtin/twitch/Pin.hpp>
 #include <QCommandLineParser>
+#include <QRegularExpression>
 #include <QProcess>
 
 namespace {
@@ -248,7 +249,8 @@ QString pin(const CommandContext &ctx)
         ctx.channel->addSystemMessage(
             u"Pin a chat message or show the currently pinned one."
             "Usage: /pin [--duration <seconds|until-end|none>] [message]... OR "
-            "/pin --id <message-id> [--duration <seconds|until-end|none>]"_s);
+            "/pin --id <message-id> [--duration <seconds|until-end|none>] OR "
+            "/pin @user [--duration <seconds|until-end|none>]"_s);
         return {};
     }
 
@@ -270,6 +272,42 @@ QString pin(const CommandContext &ctx)
     if (!action->messageID.isEmpty())
     {
         chan->pinMessageAs(action->messageID, action->duration, *currentUser);
+        return {};
+    }
+
+    // ChattiFlexii: /pin @name pins what that user wrote last, as Moltorino
+    // has it. Only with the @ - a bare word is still text to send.
+    static const QRegularExpression userPattern(u"^@(\\w+)$"_s);
+    const auto userMatch = userPattern.match(action->text);
+    if (userMatch.hasMatch())
+    {
+        const auto login = userMatch.captured(1);
+        const auto messages = chan->getMessageSnapshot();
+        for (auto it = messages.rbegin(); it != messages.rend(); ++it)
+        {
+            const auto &message = *it;
+            if (message->id.isEmpty() ||
+                message->flags.has(MessageFlag::System) ||
+                message->loginName.compare(login, Qt::CaseInsensitive) != 0)
+            {
+                continue;
+            }
+
+            // Without a duration given, it stays as long as a pin from the
+            // message menu does
+            const bool durationGiven =
+                ctx.words.contains(u"-d"_s) ||
+                ctx.words.contains(u"--duration"_s) ||
+                ctx.words.contains(u"-duration"_s);
+            chan->pinMessageAs(
+                message->id,
+                durationGiven ? action->duration : std::nullopt, *currentUser,
+                message->messageText);
+            return {};
+        }
+
+        chan->addSystemMessage(
+            u"Keine Nachricht von %1 im Chat gefunden."_s.arg(login));
         return {};
     }
 

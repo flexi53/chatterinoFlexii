@@ -1809,6 +1809,12 @@ std::pair<MessagePtrMut, HighlightAlert> MessageBuilder::makeIrcMessage(
     {
         builder.emplace<TwitchModerationElement>();
     }
+    else
+    {
+        // ChattiFlexii: a mod's or the broadcaster's message can still be
+        // pinned, so the pin button stands there alone
+        builder.emplace<TwitchModerationElement>(true);
+    }
 
     builder.appendTwitchBadges(tags, twitchChannel);
 

@@ -20,6 +20,7 @@
 #include "widgets/settingspages/SettingWidget.hpp"
 
 #include <QCheckBox>
+#include <QSignalBlocker>
 #include <QLineEdit>
 #include <QFormLayout>
 #include <QFileDialog>
@@ -302,6 +303,51 @@ ModerationPage::ModerationPage()
                     }
                 }
             });
+
+        // ChattiFlexii: the pin button, as Moltorino has it - one entry of
+        // the list above, switched on and off here without typing it
+        {
+            auto *pinBox = modMode
+                               .emplace<QCheckBox>(
+                                   "Pin-Knopf an Nachrichten (/pin --id "
+                                   "{msg.id})")
+                               .getElement();
+            pinBox->setToolTip(
+                "Pinnt die Nachricht oben in den Chat, bis der Stream "
+                "endet. Steht auch an Nachrichten von Mods und dem "
+                "Streamer, die sonst keine Mod-Knöpfe haben.");
+
+            const auto isPin = [](const ModerationAction &action) {
+                return action.getType() == ModerationAction::Type::Pin;
+            };
+            const auto refresh = [pinBox, isPin] {
+                const auto actions = getSettings()->moderationActions.readOnly();
+                const QSignalBlocker blocker(pinBox);
+                pinBox->setChecked(
+                    std::any_of(actions->begin(), actions->end(), isPin));
+            };
+            refresh();
+            this->managedConnections_.managedConnect(
+                getSettings()->moderationActions.delayedItemsChanged, refresh);
+
+            QObject::connect(
+                pinBox, &QCheckBox::toggled, this, [isPin](bool on) {
+                    auto &list = getSettings()->moderationActions;
+                    if (on)
+                    {
+                        list.append(ModerationAction("/pin --id {msg.id}"));
+                        return;
+                    }
+                    const auto actions = list.readOnly();
+                    for (int i = int(actions->size()) - 1; i >= 0; i--)
+                    {
+                        if (isPin(actions->at(i)))
+                        {
+                            list.removeAt(i);
+                        }
+                    }
+                });
+        }
 
         // We can safely ignore this signal connection since we own the view
         std::ignore = view->addButtonPressed.connect([] {

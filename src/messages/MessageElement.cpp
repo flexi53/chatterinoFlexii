@@ -1479,6 +1479,12 @@ TwitchModerationElement::TwitchModerationElement()
 {
 }
 
+TwitchModerationElement::TwitchModerationElement(bool onlyPin)
+    : MessageElement(MessageElementFlag::ModeratorTools)
+    , onlyPin_(onlyPin)
+{
+}
+
 void TwitchModerationElement::addToContainer(MessageLayoutContainer &container,
                                              const MessageLayoutContext &ctx)
 {
@@ -1491,6 +1497,11 @@ void TwitchModerationElement::addToContainer(MessageLayoutContainer &container,
         auto actions = getSettings()->moderationActions.readOnly();
         for (const auto &action : *actions)
         {
+            if (this->onlyPin_ &&
+                action.getType() != ModerationAction::Type::Pin)
+            {
+                continue;
+            }
             if (const auto &image = action.getImage())
             {
                 container.addElement(
@@ -1511,7 +1522,7 @@ void TwitchModerationElement::addToContainer(MessageLayoutContainer &container,
 
 std::unique_ptr<MessageElement> TwitchModerationElement::clone() const
 {
-    auto el = std::make_unique<TwitchModerationElement>();
+    auto el = std::make_unique<TwitchModerationElement>(this->onlyPin_);
     el->cloneFrom(*this);
     return el;
 }
@@ -1520,6 +1531,10 @@ QJsonObject TwitchModerationElement::toJson() const
 {
     auto base = MessageElement::toJson();
     base["type"_L1] = u"TwitchModerationElement"_s;
+    if (this->onlyPin_)
+    {
+        base["onlyPin"_L1] = true;
+    }
 
     return base;
 }

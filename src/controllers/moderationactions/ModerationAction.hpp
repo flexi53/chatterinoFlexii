@@ -41,6 +41,12 @@ public:
         Timeout,
 
         /**
+         * ChattiFlexii: /pin --id <msg-id> - pins the message to the top of
+         * the chat, as Moltorino has it beside the other buttons
+         */
+        Pin,
+
+        /**
          * Anything not matching the action types above
          */
         Custom,

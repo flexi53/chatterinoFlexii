@@ -733,6 +733,10 @@ public:
     static constexpr std::string_view TYPE = "twitch-moderation";
 
     TwitchModerationElement();
+    /// ChattiFlexii: @a onlyPin for a message nobody can be timed out or
+    /// banned for - a mod's or the broadcaster's - which can still be
+    /// pinned
+    explicit TwitchModerationElement(bool onlyPin);
 
     void addToContainer(MessageLayoutContainer &container,
                         const MessageLayoutContext &ctx) override;
@@ -741,6 +745,9 @@ public:
 
     QJsonObject toJson() const override;
     std::string_view type() const override;
+
+private:
+    bool onlyPin_ = false;
 };
 
 // Forces a linebreak
