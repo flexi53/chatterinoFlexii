@@ -40,6 +40,7 @@ QString label(const QString &entry);
 struct State {
     bool moderationMode = false;
     bool showActivity = true;
+    bool displayOnly = false;
     QList<QUuid> filters;
     std::optional<bool> checkSpelling;
 };

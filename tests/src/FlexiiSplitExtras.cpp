@@ -597,7 +597,7 @@ TEST(FlexiiHeaderParts, AnOrderIsKeptAsWritten)
     EXPECT_EQ(order.at(3), Part::Title);
     EXPECT_EQ(headerparts::writeOrder(order),
               "picture,cover,activity,title,mode,pin,vote,hype,"
-              "moderation,chatters,tracker,menu,add");
+              "moderation,chatters,tracker,clear,menu,add");
 }
 
 TEST(FlexiiHeaderParts, WhatIsMissingGoesWhereItBelongs)
@@ -611,7 +611,7 @@ TEST(FlexiiHeaderParts, WhatIsMissingGoesWhereItBelongs)
         Part::Menu,     Part::Title,      Part::Activity, Part::Picture,
         Part::Cover,    Part::Mode,       Part::Pin,      Part::Vote,
         Part::Hype,     Part::Moderation, Part::Chatters, Part::Tracker,
-        Part::Add,
+        Part::Clear,    Part::Add,
     };
     EXPECT_EQ(order, expected);
 }
@@ -1937,7 +1937,7 @@ TEST(FlexiiHeaderParts, TheTrackerButtonIsOneOfTheParts)
     const auto at = std::find(order.begin(), order.end(), Part::Tracker);
     ASSERT_NE(at, order.end());
     EXPECT_EQ(*std::prev(at), Part::Chatters);
-    EXPECT_EQ(*std::next(at), Part::Menu);
+    EXPECT_EQ(*std::next(at), Part::Clear);
 
     // and it can be switched off and on again like the others
     EXPECT_TRUE(headerparts::isShown(Part::Tracker));

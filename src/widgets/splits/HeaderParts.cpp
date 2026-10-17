@@ -118,6 +118,15 @@ const std::vector<Info> &all()
             .canHide = true,
         },
         {
+            .part = Part::Clear,
+            .id = "clear",
+            .name = "Chat leeren",
+            .about = "Der Mülleimer - leert den Chat nur bei dir. Nur an "
+                     "Splits, die du im Menü auf „Display only“ gestellt "
+                     "hast; sonst steht er unten in der Eingabeleiste.",
+            .canHide = true,
+        },
+        {
             .part = Part::Menu,
             .id = "menu",
             .name = "Menü",
@@ -636,6 +645,7 @@ bool isButton(Part part)
         case Part::Moderation:
         case Part::Chatters:
         case Part::Tracker:
+        case Part::Clear:
         case Part::Menu:
         case Part::Add:
             return true;

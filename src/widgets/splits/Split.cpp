@@ -270,6 +270,13 @@ Split::Split(QWidget *parent)
     // this connection can be ignored since the SplitInput is owned by this Split
     std::ignore =
         this->input_->textChanged.connect([this](const QString &newText) {
+            // ChattiFlexii: a split only to read keeps its input bar away
+            if (this->displayOnly_)
+            {
+                this->input_->hide();
+                return;
+            }
+
             if (getSettings()->showEmptyInput)
             {
                 // We always show the input regardless of the text, so we can early out here
@@ -289,7 +296,11 @@ Split::Split(QWidget *parent)
 
     getSettings()->showEmptyInput.connect(
         [this](const bool &showEmptyInput) {
-            if (showEmptyInput)
+            if (this->displayOnly_)
+            {
+                this->input_->hide();
+            }
+            else if (showEmptyInput)
             {
                 this->input_->show();
             }
@@ -1109,6 +1120,35 @@ bool Split::getShowActivity() const
     return this->showActivity_;
 }
 
+void Split::setDisplayOnly(bool value)
+{
+    if (this->displayOnly_ == value)
+    {
+        return;
+    }
+    this->displayOnly_ = value;
+
+    if (value)
+    {
+        this->input_->hide();
+    }
+    else if (getSettings()->showEmptyInput ||
+             !this->input_->getInputText().isEmpty())
+    {
+        this->input_->show();
+    }
+    // The bin moves into the header, or back out of it
+    this->header_->updateIcons();
+
+    // Queue up save because: it is kept with the split
+    getApp()->getWindows()->queueSave();
+}
+
+bool Split::getDisplayOnly() const
+{
+    return this->displayOnly_;
+}
+
 std::optional<bool> Split::checkSpellingOverride() const
 {
     return this->input_->checkSpellingOverride();
@@ -1372,6 +1412,7 @@ void Split::popup()
     split->setChannel(this->getIndirectChannel());
     split->setModerationMode(this->getModerationMode());
     split->setShowActivity(this->getShowActivity());
+    split->setDisplayOnly(this->getDisplayOnly());
     split->setFilters(this->getFilters());
 
     window.getNotebook().getOrAddSelectedPage()->insertSplit(split);

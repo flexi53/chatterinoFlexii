@@ -51,6 +51,10 @@ struct SplitDescriptor {
     /// ChattiFlexii: whether this split draws the activity curve
     bool showActivity_{true};
 
+    /// ChattiFlexii: whether this split is only to read, see
+    /// Split::setDisplayOnly
+    bool displayOnly_{false};
+
     std::optional<bool> spellCheckOverride;
 
     QList<QUuid> filters_;

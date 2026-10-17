@@ -110,6 +110,7 @@ void SplitDescriptor::loadFromJSON(SplitDescriptor &descriptor,
     descriptor.moderationMode_ = root.value("moderationMode").toBool();
     // ChattiFlexii: the curve is on unless this split was told otherwise
     descriptor.showActivity_ = root.value("activityGraph").toBool(true);
+    descriptor.displayOnly_ = root.value("displayOnly").toBool(false);
     if (data.contains("channel"))
     {
         descriptor.channelName_ = data.value("channel").toString();

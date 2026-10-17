@@ -16,6 +16,7 @@
 #include "singletons/Theme.hpp"
 #include "util/LayoutHelper.hpp"
 #include "util/UiStyle.hpp"
+#include "widgets/buttons/ClearChatButton.hpp"
 #include "widgets/buttons/DrawnButton.hpp"
 #include "widgets/buttons/LabelButton.hpp"
 #include "widgets/buttons/SvgButton.hpp"
@@ -172,6 +173,7 @@ HeaderPreview::HeaderPreview(QWidget *parent)
             .light = ":/buttons/tracker-lightMode.svg",
         },
         this, {5, 5});
+    this->clear_ = new ClearChatButton(this);
     this->menu_ = new DrawnButton(DrawnButton::Symbol::Kebab, {}, this);
     this->add_ = new DrawnButton(DrawnButton::Symbol::Plus,
                                  {
@@ -185,7 +187,7 @@ HeaderPreview::HeaderPreview(QWidget *parent)
              this->picture_, this->cover_, this->title_, this->stats_,
              this->titleBox_, this->activity_, this->mode_, this->pin_,
              this->vote_, this->hype_, this->moderation_, this->chatters_,
-             this->tracker_, this->menu_, this->add_})
+             this->tracker_, this->clear_, this->menu_, this->add_})
     {
         widget->hide();
         widget->setAttribute(Qt::WA_TransparentForMouseEvents);
@@ -314,6 +316,8 @@ QWidget *HeaderPreview::widgetFor(Part part) const
             return this->chatters_;
         case Part::Tracker:
             return this->tracker_;
+        case Part::Clear:
+            return this->clear_;
         case Part::Menu:
             return this->menu_;
         case Part::Add:
@@ -409,6 +413,7 @@ void HeaderPreview::relayout()
             case Part::Moderation:
             case Part::Chatters:
             case Part::Tracker:
+            case Part::Clear:
             case Part::Menu:
                 return widened(part, button);
             case Part::Add:

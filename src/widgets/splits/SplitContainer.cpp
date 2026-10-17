@@ -975,6 +975,7 @@ void SplitContainer::applyFromDescriptorRecursively(
         split->setChannel(WindowManager::decodeChannel(splitNode));
         split->setModerationMode(splitNode.moderationMode_);
         split->setShowActivity(splitNode.showActivity_);
+        split->setDisplayOnly(splitNode.displayOnly_);
         split->setFilters(splitNode.filters_);
         split->setCheckSpellingOverride(splitNode.spellCheckOverride);
 
@@ -1013,6 +1014,7 @@ void SplitContainer::applyFromDescriptorRecursively(
                 split->setChannel(WindowManager::decodeChannel(splitNode));
                 split->setModerationMode(splitNode.moderationMode_);
                 split->setShowActivity(splitNode.showActivity_);
+                split->setDisplayOnly(splitNode.displayOnly_);
                 split->setCheckSpellingOverride(splitNode.spellCheckOverride);
 
                 auto node = std::make_shared<Node>();

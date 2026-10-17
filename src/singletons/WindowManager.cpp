@@ -749,6 +749,10 @@ void WindowManager::encodeNodeRecursively(SplitNode *node, QJsonObject &obj)
             {
                 obj.insert("activityGraph", false);
             }
+            if (node->getSplit()->getDisplayOnly())
+            {
+                obj.insert("displayOnly", true);
+            }
 
             QJsonObject split;
             WindowManager::encodeChannel(node->getSplit()->getIndirectChannel(),

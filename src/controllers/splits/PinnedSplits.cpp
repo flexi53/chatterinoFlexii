@@ -108,6 +108,7 @@ State stateOf(const QString &entry)
 
     state.moderationMode = mine.value("moderationMode").toBool(false);
     state.showActivity = mine.value("activityGraph").toBool(true);
+    state.displayOnly = mine.value("displayOnly").toBool(false);
     for (const auto &id : mine.value("filters").toArray())
     {
         const auto uuid = QUuid::fromString(id.toString());
@@ -140,6 +141,10 @@ void setStateOf(const QString &entry, const State &state)
     if (!state.showActivity)
     {
         mine["activityGraph"] = false;
+    }
+    if (state.displayOnly)
+    {
+        mine["displayOnly"] = true;
     }
     if (!state.filters.isEmpty())
     {

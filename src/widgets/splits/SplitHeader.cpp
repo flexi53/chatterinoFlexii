@@ -33,6 +33,7 @@
 #include "util/Helpers.hpp"
 #include "util/LayoutHelper.hpp"
 #include "util/UiStyle.hpp"
+#include "widgets/buttons/ClearChatButton.hpp"
 #include "widgets/buttons/DrawnButton.hpp"
 #include "widgets/buttons/LabelButton.hpp"
 #include "widgets/buttons/SvgButton.hpp"
@@ -456,6 +457,8 @@ void SplitHeader::initializeLayout()
         },
         this, {5, 5});
     this->trackerButton_->setToolTip("Kanal auf TwitchTracker öffnen");
+    this->clearButton_ = new ClearChatButton(this);
+    this->clearButton_->hide();
     this->pinButton_ = new SvgButton(
         {
             .dark = ":/buttons/pinnedMessage-chat.svg",
@@ -619,6 +622,9 @@ void SplitHeader::initializeLayout()
             }
         });
 
+    QObject::connect(this->clearButton_, &Button::leftClicked, this, [this] {
+        this->split_->clear();
+    });
     QObject::connect(this->trackerButton_, &Button::leftClicked, this, [this] {
         this->split_->openTrackerInBrowser();
     });
@@ -699,6 +705,18 @@ std::unique_ptr<QMenu> SplitHeader::createMainMenu()
     menu->addAction("Set filters",
                     h->getDisplaySequence(HotkeyCategory::Split, "pickFilters"),
                     this->split_, &Split::setFiltersDialog);
+
+    // ChattiFlexii: a split only to read - no input bar, the bin moves up
+    // here into the header
+    {
+        auto *action = menu->addAction("Display only", this->split_, [this] {
+            this->split_->setDisplayOnly(!this->split_->getDisplayOnly());
+        });
+        action->setCheckable(true);
+        action->setChecked(this->split_->getDisplayOnly());
+        action->setToolTip("Ohne Eingabeleiste - zum Leeren steht der "
+                           "Mülleimer oben im Kopf");
+    }
 
     // ChattiFlexii: the part at the bottom of the window stays while the
     // tabs above it change - what is held there is seen in every tab
@@ -1376,6 +1394,7 @@ void SplitHeader::applyPartWidths(int button, int addButton, float scale)
     this->moderationButton_->setFixedWidth(width(Part::Moderation, button));
     this->chattersButton_->setFixedWidth(width(Part::Chatters, button));
     this->trackerButton_->setFixedWidth(width(Part::Tracker, button));
+    this->clearButton_->setFixedWidth(width(Part::Clear, button));
     this->pinButton_->setFixedWidth(width(Part::Pin, button));
     this->voteButton_->setFixedWidth(width(Part::Vote, button));
     this->hypeButton_->setFixedWidth(width(Part::Hype, button));
@@ -1903,6 +1922,9 @@ void SplitHeader::arrangeParts()
             case Part::Tracker:
                 layout->addWidget(this->trackerButton_);
                 break;
+            case Part::Clear:
+                layout->addWidget(this->clearButton_);
+                break;
             case Part::Menu:
                 layout->addWidget(this->dropdownButton_);
                 break;
@@ -1964,6 +1986,8 @@ QWidget *SplitHeader::buttonFor(headerparts::Part part) const
             return this->chattersButton_;
         case Part::Tracker:
             return this->trackerButton_;
+        case Part::Clear:
+            return this->clearButton_;
         case Part::Menu:
             return this->dropdownButton_;
         case Part::Add:
@@ -2093,6 +2117,11 @@ void SplitHeader::updateIcons()
         this->chattersButton_->hide();
         this->trackerButton_->hide();
     }
+
+    // The bin stands here only where the input bar, its usual place, is gone
+    this->clearButton_->setVisible(
+        this->split_->getDisplayOnly() &&
+        headerparts::isShown(headerparts::Part::Clear));
 
     this->fillButtonGrid();
 }

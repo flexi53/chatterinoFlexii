@@ -457,6 +457,7 @@ void Window::applyPinnedSplits()
         split->setChannel(WindowManager::decodeChannel(descriptor));
         split->setModerationMode(state.moderationMode);
         split->setShowActivity(state.showActivity);
+        split->setDisplayOnly(state.displayOnly);
         split->setFilters(state.filters);
         split->setCheckSpellingOverride(state.checkSpelling);
         container->insertSplit(split, {});
@@ -489,6 +490,7 @@ void Window::savePinnedSplits()
             entry, {
                        .moderationMode = split->getModerationMode(),
                        .showActivity = split->getShowActivity(),
+                       .displayOnly = split->getDisplayOnly(),
                        .filters = split->getFilters(),
                        .checkSpelling = split->checkSpellingOverride(),
                    });

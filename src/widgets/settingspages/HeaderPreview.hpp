@@ -24,6 +24,7 @@ class HeaderTitle;
 class Label;
 class LabelButton;
 class SvgButton;
+class ClearChatButton;
 
 /// Titelleiste: the split header as it will look, made of the
 /// header's own parts. A part is dragged to another place, and the edge of
@@ -139,6 +140,7 @@ private:
     SvgButton *moderation_{};
     SvgButton *chatters_{};
     SvgButton *tracker_{};
+    ClearChatButton *clear_{};
     DrawnButton *menu_{};
     DrawnButton *add_{};
 

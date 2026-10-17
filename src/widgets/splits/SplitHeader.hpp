@@ -24,6 +24,7 @@
 namespace chatterino {
 
 class SvgButton;
+class ClearChatButton;
 class DrawnButton;
 class HeaderPicture;
 class ActivityGraph;
@@ -149,6 +150,9 @@ private:
     SvgButton *moderationButton_{};
     SvgButton *chattersButton_{};
     SvgButton *trackerButton_{};
+    /// ChattiFlexii: the bin of the input bar, here where the split is only
+    /// to read and has no input bar - see Split::setDisplayOnly
+    ClearChatButton *clearButton_{};
     DrawnButton *addButton_{};
     /// Whether this split is the one the plus belongs to
     bool addButtonWanted_{false};

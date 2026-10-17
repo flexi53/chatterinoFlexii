@@ -81,6 +81,12 @@ public:
     void setShowActivity(bool value);
     bool getShowActivity() const;
 
+    /// ChattiFlexii: a split only to read - no input bar, and the bin for
+    /// emptying it stands in the header instead. For the mentions and
+    /// the like, where nothing is ever written.
+    void setDisplayOnly(bool value);
+    bool getDisplayOnly() const;
+
     std::optional<bool> checkSpellingOverride() const;
     void setCheckSpellingOverride(std::optional<bool> override);
 
@@ -175,6 +181,8 @@ private:
     bool moderationMode_{};
     /// ChattiFlexii: see setShowActivity - on, as the curve was
     bool showActivity_{true};
+    /// ChattiFlexii: see setDisplayOnly
+    bool displayOnly_{};
     bool isTopRightSplit_{};
 
     bool isMouseOver_{};

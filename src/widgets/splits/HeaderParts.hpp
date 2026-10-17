@@ -32,6 +32,7 @@ enum class Part {
     Moderation,
     Chatters,
     Tracker,
+    Clear,
     Menu,
     Add,
 };
