@@ -77,6 +77,7 @@ public:
     GapHandle(Qt::Orientation orientation, QSplitter *parent)
         : QSplitterHandle(orientation, parent)
     {
+        this->setMouseTracking(true);
     }
 
 protected:
@@ -92,13 +93,42 @@ protected:
 
     void mousePressEvent(QMouseEvent *event) override
     {
+        this->held_ = mayDrag(event->modifiers());
+        if (!this->held_)
+        {
+            event->ignore();
+            return;
+        }
         this->tookAt_ = event->globalPosition().toPoint().y();
         this->tookWidth_ = this->splitter()->handleWidth();
         QSplitterHandle::mousePressEvent(event);
     }
 
+    void mouseReleaseEvent(QMouseEvent *event) override
+    {
+        this->held_ = false;
+        QSplitterHandle::mouseReleaseEvent(event);
+    }
+
     void mouseMoveEvent(QMouseEvent *event) override
     {
+        // ChattiFlexii: the same rule as the borders between two chats -
+        // without "Grenze jederzeit ziehen" only while ⌘ is held
+        if (event->buttons() == Qt::NoButton)
+        {
+            this->setCursor(mayDrag(event->modifiers())
+                                ? this->splitter()->orientation() ==
+                                          Qt::Vertical
+                                      ? Qt::SplitVCursor
+                                      : Qt::SplitHCursor
+                                : Qt::ArrowCursor);
+            return;
+        }
+        if (!this->held_)
+        {
+            return;
+        }
+
         if (!event->modifiers().testFlag(Qt::AltModifier))
         {
             QSplitterHandle::mouseMoveEvent(event);
@@ -113,17 +143,29 @@ protected:
 
     void mouseDoubleClickEvent(QMouseEvent *event) override
     {
+        if (!mayDrag(event->modifiers()))
+        {
+            event->ignore();
+            return;
+        }
         // Back to a plain line
         this->splitter()->setHandleWidth(LEAST_GAP);
         QSplitterHandle::mouseDoubleClickEvent(event);
     }
 
 private:
+    static bool mayDrag(Qt::KeyboardModifiers modifiers)
+    {
+        return getSettings()->splitBordersDraggable ||
+               modifiers.testFlag(Qt::ControlModifier);
+    }
+
     static constexpr int LEAST_GAP = 4;
     static constexpr int MOST_GAP = 160;
 
     int tookAt_ = 0;
     int tookWidth_ = 0;
+    bool held_ = false;
 };
 
 /// A splitter whose line can be taken hold of that way
