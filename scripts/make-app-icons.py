@@ -4,10 +4,10 @@
 # SPDX-License-Identifier: MIT
 """Macht die Logo-Varianten für Aussehen -> Stil -> Logo.
 
-Vorlage ist das Symbol des Programms selbst (resources/chattiflexii.icns).
-Es besteht aus drei Flächen: der weißen Kachel, dem grauen Körper des „C“
-und dem farbigen Bogen darüber. Jede Variante sagt, was aus diesen dreien
-wird - eine Farbe oder ein Muster.
+Vorlage ist das Symbol des Programms selbst (resources/chattiflexii.icns),
+gezeichnet von make-logo.py. Es besteht aus drei Flächen: der weißen Kachel,
+dem grauen Stamm des „F“ und dem farbigen Balken darüber. Jede Variante
+sagt, was aus diesen dreien wird - eine Farbe oder ein Muster.
 
     python3 scripts/make-app-icons.py
 
@@ -163,7 +163,7 @@ def freigestellt(name: str, koerper, bogen, w, alpha) -> None:
     """Dieselbe Marke ohne Fläche dahinter - für das laufende Programm.
 
     Die weiße Kachel der Vorlage und ihr Schatten fallen weg; übrig bleibt
-    das „C“, das in jedem Dock sitzt.
+    das „F“, das in jedem Dock sitzt.
     """
     flaechen = []
     for wunsch in (koerper, bogen):
