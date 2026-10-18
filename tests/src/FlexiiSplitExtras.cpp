@@ -26,6 +26,7 @@
 #include "controllers/saved/SavedMessages.hpp"
 #include "controllers/twitch/ChannelNumbers.hpp"
 #include "controllers/userdata/UserNotes.hpp"
+#include "messages/BadgeOrder.hpp"
 #include "messages/Message.hpp"
 #include "messages/MessageBuilder.hpp"
 #include "mocks/BaseApplication.hpp"
@@ -1580,6 +1581,39 @@ TEST(FlexiiInputButtons, TheyKeepTheOrderYouGiveThem)
               mixed.indexOf(inputbuttons::CLEAR));
 
     s->inputButtonOrder.setValue("");
+}
+
+TEST(FlexiiBadgeOrder, TheSourcesKeepTheOrderYouGiveThem)
+{
+    MockApplication app;
+    auto *s = getSettings();
+    s->badgeOrder.setValue("");
+
+    const auto standard = badgeorder::defaults();
+    EXPECT_EQ(badgeorder::order(), standard);
+    EXPECT_EQ(standard.front(), badgeorder::FROM_TWITCH);
+    EXPECT_EQ(standard.back(), badgeorder::CHATTI_STATUS);
+
+    // The supporter badge all the way to the front
+    while (badgeorder::move(badgeorder::CHATTI_STATUS, true))
+    {
+    }
+    EXPECT_EQ(badgeorder::order().front(), badgeorder::CHATTI_STATUS);
+    EXPECT_EQ(badgeorder::order().at(1), badgeorder::FROM_TWITCH);
+    EXPECT_FALSE(badgeorder::move(badgeorder::CHATTI_STATUS, true));
+
+    // A saved order that names only some keeps the rest where it was
+    badgeorder::setOrder({badgeorder::FROM_SEVENTV, badgeorder::FROM_TWITCH});
+    const auto mixed = badgeorder::order();
+    EXPECT_EQ(mixed.size(), standard.size());
+    EXPECT_LT(mixed.indexOf(badgeorder::FROM_SEVENTV),
+              mixed.indexOf(badgeorder::FROM_TWITCH));
+
+    for (const auto &key : standard)
+    {
+        EXPECT_NE(badgeorder::nameOf(key), key);
+    }
+    s->badgeOrder.setValue("");
 }
 
 TEST(FlexiiInputButtons, EveryButtonHasAName)

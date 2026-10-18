@@ -366,6 +366,8 @@ set(SOURCE_FILES
         messages/MessageFlag.hpp
         messages/MessageSimilarity.cpp
         messages/MessageSimilarity.hpp
+        messages/BadgeOrder.cpp
+        messages/BadgeOrder.hpp
         messages/MessageSink.hpp
         messages/MessageThread.cpp
         messages/MessageThread.hpp

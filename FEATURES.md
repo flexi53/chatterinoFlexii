@@ -553,6 +553,14 @@ account, kept in the keychain only.
 
 ## Badges and Twitch
 
+- Everyone who uses ChattiFlexii wears the **ChattiFlexii badge** - the F -
+  in every ChattiFlexii; it can be switched off under Chatti-Badge, and
+  goes by itself after 30 days without the program. **Supporters** wear a
+  golden, sparkling F instead, never both; an admin gives it under
+  Chatti-Badge
+- The **order of the badges** in front of a name is set under Aussehen ->
+  Chat, by where they come from: Twitch, Chatterino, FFZ, BTTV, 7TV, Homies,
+  Moltorino, the uploaded Chatti-Badge and user/supporter
 - **Chatterino Homies** badges, switchable under Appearance
 - **7TV** badges and paints load when you join a channel, rather than the
   first time the user writes something

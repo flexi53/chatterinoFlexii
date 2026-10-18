@@ -42,16 +42,31 @@ admin's own upload is approved at once.
 
 | Request | Who | What |
 |---|---|---|
-| `GET /badges` | everyone | every approved badge, by Twitch user id |
-| `GET /image/<id>/<file>` | everyone | a picture, `.png` or `.gif` |
-| `GET /me` | signed in | one's own badge, approved and waiting, and whether one is an admin |
+| `GET /badges` | everyone | every approved badge by Twitch user id (`users`), who wears the user or the supporter badge (`status`) and their pictures (`statusImages`) |
+| `GET /image/<id>/<file>` | everyone | a picture, `.png`, `.gif` or `.webp` |
+| `GET /me` | signed in | one's own badge, approved and waiting, whether one is an admin and whether a supporter |
+| `POST /hello`, `DELETE /hello` | signed in | "I use ChattiFlexii" - written down at most once a day, forgotten after 30 days - or no longer |
 | `POST /upload` | signed in | a PNG (64 KB; ChattiFlexii makes it 72 × 72) or an animated GIF (1 MB), at most 240 × 240, for one's own name |
 | `DELETE /mine` | signed in | takes one's own badge away |
 | `GET /pending` | admins | what waits for approval |
 | `POST /approve/<id>`, `POST /reject/<id>` | admins | approves or turns down what waits |
 | `DELETE /user/<id>` | admins | takes someone's badge away |
+| `GET /supporters` | admins | who is a supporter |
+| `POST /supporters/<login>`, `DELETE /supporters/<id>` | admins | makes someone a supporter, by Twitch name, or no longer |
 
 "Signed in" means an `Authorization: OAuth <twitch token>` header.
+
+## The user and the supporter badge
+
+Their pictures are drawn by `bilder/make.py` from the logo and kept in KV
+like an uploaded one. After changing them, put them there again:
+
+    npx wrangler kv key put --binding BADGES "image:flexii:nutzer.png" --path bilder/nutzer.png --remote
+    npx wrangler kv key put --binding BADGES "image:flexii:supporter.webp" --path bilder/supporter.webp --remote
+
+The list of who uses ChattiFlexii is a single KV entry. Cloudflare's free plan
+writes at most 1000 entries a day, and a hello is written once a day per
+person - so it holds for some hundreds of people using it daily.
 
 ## Using it from another client
 

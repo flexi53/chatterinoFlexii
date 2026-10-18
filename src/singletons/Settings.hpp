@@ -747,6 +747,13 @@ public:
     QStringSetting chattiBadgesServer = {
         "/appearance/badges/chattiServer",
         "https://chatti-badges.chattiflexii.workers.dev"};
+    /// Whether this account tells the server it uses ChattiFlexii, and so
+    /// wears the user badge
+    BoolSetting chattiBadgeShowUse = {"/appearance/badges/chattiShowUse",
+                                      true};
+    /// Which order the badges in front of a name stand in, by where they
+    /// come from - see messages/BadgeOrder.hpp
+    QStringSetting badgeOrder = {"/appearance/badges/order", ""};
     /// The label put on a first-time chatter's message, the way Twitch does.
     /// Edited through the "First Messages" row on the highlights page like
     /// every other caption; empty means no label.

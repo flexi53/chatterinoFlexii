@@ -18,6 +18,15 @@
 //   image:<id>:<file> the picture itself
 //   list              {"<id>": {"login", "version", "size"}} of everything
 //                     approved, so the list is one read rather than a scan
+//   seen              {"<id>": {"login", "at"}} of who uses ChattiFlexii -
+//                     each says so at most once a day, and drops out after
+//                     30 days without a word
+//   supporters        {"<id>": "<login>"}, given by an admin
+//   image:flexii:<file> the pictures of those two badges, put there by hand
+//                     (see README.md)
+//
+// Everyone in seen wears the user badge, every supporter the supporter
+// badge instead - never both.
 
 // A PNG is made small by ChattiFlexii; a GIF comes as it is, to keep moving
 const MAX_PNG_BYTES = 64 * 1024;
@@ -37,6 +46,16 @@ function clientOf(request) {
     return sent || DEFAULT_CLIENT;
 }
 const UPLOAD_EVERY_SECONDS = 60;
+// Who has not said hello for this long loses the user badge
+const SEEN_FOR_SECONDS = 30 * 24 * 60 * 60;
+// A hello within this long of the last one is not written down again, so
+// a day of restarts costs one write
+const HELLO_EVERY_SECONDS = 20 * 60 * 60;
+// The two badges everyone can get, served like an uploaded one
+const STATUS_IMAGES = {
+    user: "nutzer.png",
+    supporter: "supporter.webp",
+};
 const LIST_CACHE_SECONDS = 300;
 
 function json(body, status = 200, extraHeaders = {}) {
@@ -96,7 +115,12 @@ async function whoIs(request) {
     if (!body.user_id || !body.login) {
         return null;
     }
-    return { id: String(body.user_id), login: String(body.login) };
+    return {
+        id: String(body.user_id),
+        login: String(body.login),
+        clientId: String(body.client_id || ""),
+        token,
+    };
 }
 
 function isAdmin(env, user) {
@@ -124,6 +148,47 @@ async function readUser(env, id) {
 
 async function readList(env) {
     return (await env.BADGES.get("list", "json")) || {};
+}
+
+async function readSeen(env) {
+    return (await env.BADGES.get("seen", "json")) || {};
+}
+
+async function readSupporters(env) {
+    return (await env.BADGES.get("supporters", "json")) || {};
+}
+
+/// Who wears which of the two badges: "supporter" or "user" by Twitch id
+async function readStatus(env) {
+    const status = {};
+    const now = Math.floor(Date.now() / 1000);
+    for (const [id, entry] of Object.entries(await readSeen(env))) {
+        if (now - (entry.at || 0) < SEEN_FOR_SECONDS) {
+            status[id] = "user";
+        }
+    }
+    for (const id of Object.keys(await readSupporters(env))) {
+        status[id] = "supporter";
+    }
+    return status;
+}
+
+/// The Twitch user behind a login, asked with the admin's own login
+async function twitchUser(admin, login) {
+    const answer = await fetch(
+        `https://api.twitch.tv/helix/users?login=${encodeURIComponent(login)}`,
+        {
+            headers: {
+                Authorization: `Bearer ${admin.token}`,
+                "Client-Id": admin.clientId,
+            },
+        });
+    if (!answer.ok) {
+        return null;
+    }
+    const found = ((await answer.json()).data || [])[0];
+    return found ? { id: String(found.id), login: String(found.login) }
+                 : null;
 }
 
 function imageUrl(origin, id, version) {
@@ -159,7 +224,15 @@ async function handle(request, env) {
                 client: entry.client || DEFAULT_CLIENT,
             };
         }
-        return json({ users }, 200, {
+        const status = await readStatus(env);
+        return json({
+            users,
+            status,
+            statusImages: {
+                user: imageUrl(origin, "flexii", STATUS_IMAGES.user),
+                supporter: imageUrl(origin, "flexii", STATUS_IMAGES.supporter),
+            },
+        }, 200, {
             "Cache-Control": `public, max-age=${LIST_CACHE_SECONDS}`,
         });
     }
@@ -180,8 +253,9 @@ async function handle(request, env) {
         }
         return new Response(bytes, {
             headers: {
-                "Content-Type": file.endsWith(".gif") ? "image/gif"
-                                                      : "image/png",
+                "Content-Type": file.endsWith(".gif")    ? "image/gif"
+                                : file.endsWith(".webp") ? "image/webp"
+                                                         : "image/png",
                 "Cache-Control": "public, max-age=31536000, immutable",
             },
         });
@@ -205,7 +279,37 @@ async function handle(request, env) {
                          ? imageUrl(origin, user.id, record.pending)
                          : null,
             isAdmin: isAdmin(env, user),
+            supporter: user.id in (await readSupporters(env)),
         });
+    }
+
+    // "I use ChattiFlexii" - for the user badge, at most once a day
+    if (method === "POST" && parts.length === 1 && parts[0] === "hello") {
+        const seen = await readSeen(env);
+        const now = Math.floor(Date.now() / 1000);
+        const last = seen[user.id];
+        if (last && last.login === user.login &&
+            now - (last.at || 0) < HELLO_EVERY_SECONDS) {
+            return json({ seen: true });
+        }
+        seen[user.id] = { login: user.login, at: now };
+        for (const [id, entry] of Object.entries(seen)) {
+            if (now - (entry.at || 0) >= SEEN_FOR_SECONDS) {
+                delete seen[id];
+            }
+        }
+        await env.BADGES.put("seen", JSON.stringify(seen));
+        return json({ seen: true });
+    }
+
+    // The user badge no longer wanted
+    if (method === "DELETE" && parts.length === 1 && parts[0] === "hello") {
+        const seen = await readSeen(env);
+        if (user.id in seen) {
+            delete seen[user.id];
+            await env.BADGES.put("seen", JSON.stringify(seen));
+        }
+        return json({ seen: false });
     }
 
     // A new picture for one's own name - it waits until an admin approves it
@@ -299,6 +403,36 @@ async function handle(request, env) {
         delete record.pending;
         await env.BADGES.put(`user:${parts[1]}`, JSON.stringify(record));
         return json({ rejected: true });
+    }
+
+    // The supporters, by name
+    if (method === "GET" && parts.length === 1 && parts[0] === "supporters") {
+        const supporters = await readSupporters(env);
+        return json({
+            supporters: Object.entries(supporters)
+                .map(([id, login]) => ({ userId: id, login }))
+                .sort((a, b) => a.login.localeCompare(b.login)),
+        });
+    }
+
+    // Making someone a supporter, by their Twitch name
+    if (method === "POST" && parts.length === 2 && parts[0] === "supporters") {
+        const found = await twitchUser(user, parts[1].toLowerCase());
+        if (found === null) {
+            return fail(404, `Twitch kennt „${parts[1]}“ nicht.`);
+        }
+        const supporters = await readSupporters(env);
+        supporters[found.id] = found.login;
+        await env.BADGES.put("supporters", JSON.stringify(supporters));
+        return json({ supporter: found });
+    }
+
+    if (method === "DELETE" && parts.length === 2 &&
+        parts[0] === "supporters") {
+        const supporters = await readSupporters(env);
+        delete supporters[parts[1]];
+        await env.BADGES.put("supporters", JSON.stringify(supporters));
+        return json({ removed: true });
     }
 
     // Taking someone's badge away altogether

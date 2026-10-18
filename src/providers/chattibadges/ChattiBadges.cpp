@@ -13,6 +13,7 @@
 #include "messages/Image.hpp"
 #include "providers/twitch/TwitchAccount.hpp"
 #include "singletons/Settings.hpp"
+#include "util/PostToThread.hpp"
 
 #include <QBuffer>
 #include <QImage>
@@ -35,6 +36,21 @@ namespace {
 constexpr auto RELOAD_EVERY = std::chrono::minutes(10);
 constexpr int BADGE_SIDE = 72;
 constexpr int TIMEOUT_MS = 20000;
+/// The server writes a hello down once a day; asking more often is wasted
+constexpr auto HELLO_EVERY = std::chrono::hours(20);
+
+/// One of the two badges everyone can get, shown as high as a badge is
+EmotePtr statusBadge(const QString &image, const QString &name,
+                     const QString &tooltip)
+{
+    return std::make_shared<const Emote>(Emote{
+        .name = EmoteName{u"chatti:" % name},
+        .images = ImageSet{Image::fromUrl(Url{image}, 18.0 / BADGE_SIDE,
+                                          QSize(BADGE_SIDE, BADGE_SIDE))},
+        .tooltip = Tooltip{tooltip},
+        .homePage = Url{},
+    });
+}
 
 /// What went wrong, as the server says it, or as the network does
 QString errorOf(const NetworkResult &result)
@@ -110,6 +126,12 @@ ChattiBadges::ChattiBadges()
             this->reload();
         },
         this->connections_, false);
+    // Switched on or off under Chatti-Badge: the server hears it at once
+    getSettings()->chattiBadgeShowUse.connect(
+        [this](const bool &, auto) {
+            this->sayHello(true);
+        },
+        this->connections_, false);
 
     this->reload();
 }
@@ -130,6 +152,60 @@ std::optional<EmotePtr> ChattiBadges::getBadge(const UserId &id)
     return std::nullopt;
 }
 
+std::optional<EmotePtr> ChattiBadges::getStatusBadge(const UserId &id)
+{
+    std::shared_lock lock(this->mutex_);
+    auto it = this->statusMap_.find(id.string);
+    if (it != this->statusMap_.end())
+    {
+        return it->second;
+    }
+    return std::nullopt;
+}
+
+void ChattiBadges::sayHello(bool now)
+{
+    auto *app = tryGetApp();
+    if (app == nullptr || app->getAccounts() == nullptr)
+    {
+        return;
+    }
+    const auto account = app->getAccounts()->twitch.getCurrent();
+    if (account == nullptr || account->isAnon() ||
+        chattibadges::server().isEmpty())
+    {
+        return;
+    }
+    const auto login = account->getUserName();
+    const auto at = std::chrono::steady_clock::now();
+    if (!now && login == this->helloLogin_ && at - this->helloAt_ < HELLO_EVERY)
+    {
+        return;
+    }
+    this->helloLogin_ = login;
+    this->helloAt_ = at;
+
+    const bool shown = getSettings()->chattiBadgeShowUse;
+    NetworkRequest(QUrl(chattibadges::server() + QStringLiteral("/hello")),
+                   shown ? NetworkRequestType::Post
+                         : NetworkRequestType::Delete)
+        .timeout(TIMEOUT_MS)
+        .header("Authorization", "OAuth " + account->getOAuthToken())
+        .onSuccess([this, now](const NetworkResult &) {
+            // Switched by hand: the badge comes or goes without waiting
+            if (now)
+            {
+                this->reload();
+            }
+        })
+        .onError([](const NetworkResult &result) {
+            qCWarning(chatterinoChattiBadges)
+                << "Could not tell the badge server about this account:"
+                << result.formatError();
+        })
+        .execute();
+}
+
 void ChattiBadges::reload()
 {
     const auto base = chattibadges::server();
@@ -143,7 +219,8 @@ void ChattiBadges::reload()
         .concurrent()
         .onSuccess([this](const NetworkResult &result) {
             std::unordered_map<QString, EmotePtr> badgeMap;
-            const auto users = result.parseJson().value("users").toObject();
+            const auto answer = result.parseJson();
+            const auto users = answer.value("users").toObject();
             for (auto it = users.begin(); it != users.end(); ++it)
             {
                 const auto user = it.value().toObject();
@@ -172,10 +249,46 @@ void ChattiBadges::reload()
                 badgeMap.emplace(it.key(), std::move(emote));
             }
 
+            // The user and the supporter badge - one picture each, shared
+            // by everyone who wears it
+            std::unordered_map<QString, EmotePtr> statusMap;
+            const auto images = answer.value("statusImages").toObject();
+            const auto user = images.value("user").toString();
+            const auto supporter = images.value("supporter").toString();
+            const auto userBadge =
+                user.isEmpty() ? nullptr
+                               : statusBadge(user, QStringLiteral("Nutzer"),
+                                             QStringLiteral(
+                                                 "ChattiFlexii-Nutzer"));
+            const auto supporterBadge =
+                supporter.isEmpty()
+                    ? nullptr
+                    : statusBadge(supporter, QStringLiteral("Supporter"),
+                                  QStringLiteral("ChattiFlexii-Supporter"));
+            const auto status = answer.value("status").toObject();
+            for (auto it = status.begin(); it != status.end(); ++it)
+            {
+                const auto &badge = it.value().toString() == u"supporter"
+                                        ? supporterBadge
+                                        : userBadge;
+                if (badge)
+                {
+                    statusMap.emplace(it.key(), badge);
+                }
+            }
+
             std::unique_lock lock(this->mutex_);
             this->badgeMap_ = std::move(badgeMap);
+            this->statusMap_ = std::move(statusMap);
             qCDebug(chatterinoChattiBadges)
-                << "Loaded" << this->badgeMap_.size() << "ChattiFlexii badges";
+                << "Loaded" << this->badgeMap_.size() << "ChattiFlexii badges"
+                << "and" << this->statusMap_.size() << "users";
+            lock.unlock();
+            // Here, on the way, so it needs no timer of its own - on the GUI
+            // thread, where the account and the switch live
+            runInGuiThread([this] {
+                this->sayHello();
+            });
         })
         .onError([](const NetworkResult &result) {
             qCWarning(chatterinoChattiBadges)
@@ -234,6 +347,7 @@ void me(QObject *caller, std::function<void(const Me &)> done, Failed failed)
                 .approved = answer.value("approved").toString(),
                 .pending = answer.value("pending").toString(),
                 .isAdmin = answer.value("isAdmin").toBool(),
+                .supporter = answer.value("supporter").toBool(),
             });
         },
         failed);
@@ -346,6 +460,77 @@ void reject(const QString &userId, QObject *caller, std::function<void()> done,
     send(
         std::move(*built), caller,
         [done](const QJsonObject &) {
+            done();
+        },
+        failed);
+}
+
+void supporters(QObject *caller,
+                std::function<void(const std::vector<Supporter> &)> done,
+                Failed failed)
+{
+    auto built = request(QStringLiteral("/supporters"),
+                         NetworkRequestType::Get, true, failed);
+    if (!built)
+    {
+        return;
+    }
+    send(
+        std::move(*built), caller,
+        [done](const QJsonObject &answer) {
+            std::vector<Supporter> found;
+            for (const auto &value : answer.value("supporters").toArray())
+            {
+                const auto entry = value.toObject();
+                found.push_back(Supporter{
+                    .userId = entry.value("userId").toString(),
+                    .login = entry.value("login").toString(),
+                });
+            }
+            done(found);
+        },
+        failed);
+}
+
+void addSupporter(const QString &login, QObject *caller,
+                  std::function<void()> done, Failed failed)
+{
+    auto built = request(
+        QStringLiteral("/supporters/") +
+            QString::fromUtf8(QUrl::toPercentEncoding(login.trimmed())),
+        NetworkRequestType::Post, true, failed);
+    if (!built)
+    {
+        return;
+    }
+    send(
+        std::move(*built), caller,
+        [done](const QJsonObject &) {
+            if (auto *badges = getApp()->getChattiBadges())
+            {
+                badges->reload();
+            }
+            done();
+        },
+        failed);
+}
+
+void removeSupporter(const QString &userId, QObject *caller,
+                     std::function<void()> done, Failed failed)
+{
+    auto built = request(QStringLiteral("/supporters/") + userId,
+                         NetworkRequestType::Delete, true, failed);
+    if (!built)
+    {
+        return;
+    }
+    send(
+        std::move(*built), caller,
+        [done](const QJsonObject &) {
+            if (auto *badges = getApp()->getChattiBadges())
+            {
+                badges->reload();
+            }
             done();
         },
         failed);

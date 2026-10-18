@@ -16,6 +16,7 @@
 #include <QHBoxLayout>
 #include <QImage>
 #include <QLabel>
+#include <QLineEdit>
 #include <QPixmap>
 #include <QPointer>
 #include <QPushButton>
@@ -86,6 +87,27 @@ void ChattiBadgePage::initOwnBadge(GeneralPageView &layout)
     rowWidget->setLayout(row);
     layout.addWidget(rowWidget, {"badge", "chatti", "hochladen", "eigenes"});
 
+    // The two badges everyone can get, and who of them this account wears
+    layout.addTitle("Nutzer und Supporter");
+    layout.addDescription(
+        "Wer ChattiFlexii benutzt, bekommt automatisch das ChattiFlexii-Badge "
+        "neben den Namen - das F mit dem lila Balken. Supporter tragen "
+        "stattdessen das goldene, funkelnde; das vergibt ein Admin. Beide "
+        "zugleich trägt niemand. Wo sie im Chat stehen, stellst du unter "
+        "Aussehen → Chat → Reihenfolge der Badges ein.");
+    SettingWidget::checkbox("Zeigen, dass ich ChattiFlexii nutze",
+                            s.chattiBadgeShowUse)
+        ->setTooltip("Dafür sagt ChattiFlexii dem Badge-Server einmal am Tag, "
+                     "dass dein Account es benutzt. Ohne den Haken "
+                     "verschwindet das Badge wieder. Wer 30 Tage nicht "
+                     "online war, verliert es von selbst.")
+        ->addKeywords({"badge", "nutzer", "chatti", "zeigen"})
+        ->addTo(layout);
+    auto *standing = new QLabel;
+    standing->setWordWrap(true);
+    standing->hide();
+    layout.addWidget(standing, {"badge", "supporter", "chatti"});
+
     // The queue, for whoever may approve
     auto *queueTitle = new QLabel("<b>Warten auf Freigabe</b>");
     queueTitle->setTextFormat(Qt::RichText);
@@ -103,6 +125,28 @@ void ChattiBadgePage::initOwnBadge(GeneralPageView &layout)
     queueList->setContentsMargins(0, 0, 0, 0);
     queue->hide();
     layout.addWidget(queue, {"badge", "freigabe", "chatti"});
+
+    // The supporters, for whoever may give it
+    auto *supportTitle = new QLabel("<b>Supporter</b>");
+    supportTitle->setTextFormat(Qt::RichText);
+    auto *supportName = new QLineEdit;
+    supportName->setPlaceholderText("Twitch-Name");
+    supportName->setClearButtonEnabled(true);
+    auto *supportAdd = new QPushButton("Zum Supporter machen");
+    auto *supportHead = new QHBoxLayout;
+    supportHead->setContentsMargins(0, 8, 0, 0);
+    supportHead->addWidget(supportTitle, 1);
+    supportHead->addWidget(supportName);
+    supportHead->addWidget(supportAdd);
+    auto *supportHeadWidget = new QWidget;
+    supportHeadWidget->setLayout(supportHead);
+    supportHeadWidget->hide();
+    layout.addWidget(supportHeadWidget, {"badge", "supporter", "chatti"});
+    auto *support = new QWidget;
+    auto *supportList = new QVBoxLayout(support);
+    supportList->setContentsMargins(0, 0, 0, 0);
+    support->hide();
+    layout.addWidget(support, {"badge", "supporter", "chatti"});
 
     // The picture picked and made ready, until it is sent, and whether it is
     // an animated GIF
@@ -128,6 +172,7 @@ void ChattiBadgePage::initOwnBadge(GeneralPageView &layout)
     // Set further down - the two ask each other, and both live on in the
     // buttons long after this function is done
     auto refreshQueue = std::make_shared<std::function<void()>>();
+    auto refreshSupporters = std::make_shared<std::function<void()>>();
     const auto refresh = [=]() {
         status->setText("Frage den Badge-Server …");
         chattibadges::me(
@@ -154,11 +199,20 @@ void ChattiBadgePage::initOwnBadge(GeneralPageView &layout)
                 }
                 remove->setEnabled(!me.pending.isEmpty() ||
                                    !me.approved.isEmpty());
+                standing->setVisible(me.supporter);
+                standing->setText("Du bist Supporter - du trägst das goldene "
+                                  "Badge. Danke!");
                 queueHeadWidget->setVisible(me.isAdmin);
                 queue->setVisible(me.isAdmin);
+                supportHeadWidget->setVisible(me.isAdmin);
+                support->setVisible(me.isAdmin);
                 if (me.isAdmin && *refreshQueue)
                 {
                     (*refreshQueue)();
+                }
+                if (me.isAdmin && *refreshSupporters)
+                {
+                    (*refreshSupporters)();
                 }
             },
             [status](const QString &error) {
@@ -239,6 +293,76 @@ void ChattiBadgePage::initOwnBadge(GeneralPageView &layout)
                 queueList->addWidget(new QLabel(error));
             });
     };
+
+    *refreshSupporters = [=]() {
+        while (auto *item = supportList->takeAt(0))
+        {
+            if (auto *widget = item->widget())
+            {
+                widget->deleteLater();
+            }
+            delete item;
+        }
+        chattibadges::supporters(
+            support,
+            [=](const std::vector<chattibadges::Supporter> &found) {
+                if (found.empty())
+                {
+                    supportList->addWidget(new QLabel("Noch niemand."));
+                    return;
+                }
+                for (const auto &entry : found)
+                {
+                    auto *line = new QWidget;
+                    auto *lineLayout = new QHBoxLayout(line);
+                    lineLayout->setContentsMargins(0, 0, 0, 0);
+                    lineLayout->addWidget(new QLabel(entry.login), 1);
+                    auto *drop = new QPushButton("Entfernen");
+                    lineLayout->addWidget(drop);
+                    const auto id = entry.userId;
+                    QObject::connect(
+                        drop, &QPushButton::clicked, line, [=] {
+                            drop->setEnabled(false);
+                            chattibadges::removeSupporter(
+                                id, line,
+                                [=] {
+                                    (*refreshSupporters)();
+                                },
+                                [status, drop](const QString &error) {
+                                    status->setText(error);
+                                    drop->setEnabled(true);
+                                });
+                        });
+                    supportList->addWidget(line);
+                }
+            },
+            [supportList](const QString &error) {
+                supportList->addWidget(new QLabel(error));
+            });
+    };
+
+    const auto addSupporter = [=] {
+        const auto name = supportName->text().trimmed().remove(u'@');
+        if (name.isEmpty())
+        {
+            return;
+        }
+        supportAdd->setEnabled(false);
+        chattibadges::addSupporter(
+            name, support,
+            [=] {
+                supportName->clear();
+                supportAdd->setEnabled(true);
+                (*refreshSupporters)();
+            },
+            [status, supportAdd](const QString &error) {
+                status->setText(error);
+                supportAdd->setEnabled(true);
+            });
+    };
+    QObject::connect(supportAdd, &QPushButton::clicked, support, addSupporter);
+    QObject::connect(supportName, &QLineEdit::returnPressed, support,
+                     addSupporter);
 
     QObject::connect(pick, &QPushButton::clicked, rowWidget, [=] {
         const auto file = QFileDialog::getOpenFileName(

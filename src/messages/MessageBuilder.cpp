@@ -31,6 +31,7 @@
 #include "providers/ffz/FfzEmotes.hpp"
 #include "providers/homies/HomiesBadges.hpp"
 #include "providers/moltorino/MoltorinoBadges.hpp"
+#include "messages/BadgeOrder.hpp"
 #include "providers/chattibadges/ChattiBadges.hpp"
 #include "providers/links/LinkResolver.hpp"
 #include "providers/seventv/SeventvBadges.hpp"
@@ -1816,15 +1817,46 @@ std::pair<MessagePtrMut, HighlightAlert> MessageBuilder::makeIrcMessage(
         builder.emplace<TwitchModerationElement>(true);
     }
 
-    builder.appendTwitchBadges(tags, twitchChannel);
-
-    builder.appendChatterinoBadges(userID);
-    builder.appendFfzBadges(twitchChannel, userID);
-    builder.appendBttvBadges(userID);
-    builder.appendSeventvBadges(userID);
-    builder.appendHomiesBadge(userID);
-    builder.appendMoltorinoBadge(userID);
-    builder.appendChattiBadge(userID);
+    // ChattiFlexii: in the order set under Aussehen -> Chat
+    for (const auto &source : badgeorder::order())
+    {
+        if (source == badgeorder::FROM_TWITCH)
+        {
+            builder.appendTwitchBadges(tags, twitchChannel);
+        }
+        else if (source == badgeorder::FROM_CHATTERINO)
+        {
+            builder.appendChatterinoBadges(userID);
+        }
+        else if (source == badgeorder::FROM_FFZ)
+        {
+            builder.appendFfzBadges(twitchChannel, userID);
+        }
+        else if (source == badgeorder::FROM_BTTV)
+        {
+            builder.appendBttvBadges(userID);
+        }
+        else if (source == badgeorder::FROM_SEVENTV)
+        {
+            builder.appendSeventvBadges(userID);
+        }
+        else if (source == badgeorder::FROM_HOMIES)
+        {
+            builder.appendHomiesBadge(userID);
+        }
+        else if (source == badgeorder::FROM_MOLTORINO)
+        {
+            builder.appendMoltorinoBadge(userID);
+        }
+        else if (source == badgeorder::FROM_CHATTI)
+        {
+            builder.appendChattiBadge(userID);
+        }
+        else if (source == badgeorder::CHATTI_STATUS)
+        {
+            builder.appendChattiStatusBadge(userID);
+        }
+    }
 
     builder.appendUsername(tags, args);
 
@@ -2805,6 +2837,23 @@ void MessageBuilder::appendChattiBadge(const QString &userID)
         this->emplace<BadgeElement>(*badge, MessageElementFlag::BadgeChatti);
 
         /// e.g. "chatti:fx_flexii"
+        this->message().externalBadges.emplace_back((*badge)->name.string);
+    }
+}
+
+void MessageBuilder::appendChattiStatusBadge(const QString &userID)
+{
+    auto *badges = getApp()->getChattiBadges();
+    if (badges == nullptr)
+    {
+        return;  // not available, e.g. in tests
+    }
+
+    if (auto badge = badges->getStatusBadge({userID}))
+    {
+        this->emplace<BadgeElement>(*badge, MessageElementFlag::BadgeChatti);
+
+        /// "chatti:Nutzer" or "chatti:Supporter"
         this->message().externalBadges.emplace_back((*badge)->name.string);
     }
 }

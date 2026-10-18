@@ -10,6 +10,7 @@
 #include <QByteArray>
 #include <QString>
 
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -31,6 +32,10 @@ using EmotePtr = std::shared_ptr<const Emote>;
 /// ChattiFlexii shows it next to that name. They live on a small server of
 /// ChattiFlexii's own - see server/chatti-badges.
 ///
+/// Besides, everyone who uses ChattiFlexii wears its user badge - the
+/// program tells the server so once a day, unless switched off - and those
+/// an admin makes supporters wear the supporter badge instead.
+///
 /// The list is fetched at startup and again every few minutes.
 class ChattiBadges
 {
@@ -46,13 +51,28 @@ public:
     /// The badge for the given Twitch user, if they have one
     std::optional<EmotePtr> getBadge(const UserId &id);
 
+    /// The user or the supporter badge of the given Twitch user, if they
+    /// wear one
+    std::optional<EmotePtr> getStatusBadge(const UserId &id);
+
     /// Fetches the list again now - after an upload or an approval
     void reload();
+
+    /// Tells the server whether this account uses ChattiFlexii, as
+    /// Chatti-Badge says - at most once a day unless @a now
+    void sayHello(bool now = false);
 
 private:
     std::shared_mutex mutex_;
     /// Maps Twitch user IDs to their badge. Guarded by mutex_
     std::unordered_map<QString, EmotePtr> badgeMap_;
+    /// Maps Twitch user IDs to the user or the supporter badge. Guarded by
+    /// mutex_
+    std::unordered_map<QString, EmotePtr> statusMap_;
+    /// Who was last said hello for, and when - so a day of reloads asks
+    /// the server once
+    QString helloLogin_;
+    std::chrono::steady_clock::time_point helloAt_;
     QTimer *timer_ = nullptr;
     pajlada::Signals::SignalHolder connections_;
 };
@@ -74,6 +94,13 @@ struct Me {
     QString approved;
     QString pending;
     bool isAdmin = false;
+    bool supporter = false;
+};
+
+/// Someone an admin made a supporter
+struct Supporter {
+    QString userId;
+    QString login;
 };
 
 /// A badge waiting for an admin
@@ -110,6 +137,15 @@ void approve(const QString &userId, QObject *caller,
              std::function<void()> done, Failed failed);
 void reject(const QString &userId, QObject *caller,
             std::function<void()> done, Failed failed);
+
+void supporters(QObject *caller,
+                std::function<void(const std::vector<Supporter> &)> done,
+                Failed failed);
+/// Makes the Twitch user @a login a supporter
+void addSupporter(const QString &login, QObject *caller,
+                  std::function<void()> done, Failed failed);
+void removeSupporter(const QString &userId, QObject *caller,
+                     std::function<void()> done, Failed failed);
 
 }  // namespace chattibadges
 

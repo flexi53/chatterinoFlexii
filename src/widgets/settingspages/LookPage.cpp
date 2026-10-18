@@ -9,6 +9,7 @@
 #include "messages/layouts/ChatEvent.hpp"
 #include "messages/layouts/MessageRole.hpp"
 #include "common/Channel.hpp"
+#include "messages/BadgeOrder.hpp"
 #include "messages/Message.hpp"
 #include "messages/MessageBuilder.hpp"
 #include "messages/MessageElement.hpp"
@@ -41,6 +42,7 @@
 #include <QListWidget>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QSignalBlocker>
 #include <QToolButton>
 #include <QTabWidget>
 #include <QVBoxLayout>
@@ -1217,6 +1219,94 @@ void LookPage::buildChatTab(GeneralPageView &layout)
             setting->setValue(setting->getDefaultValue());
         }
     });
+
+    layout.addTitle("Reihenfolge der Badges");
+    layout.addDescription(
+        "In welcher Reihenfolge die Badges vor einem Namen stehen, nach ihrer "
+        "Herkunft. Wähle eine aus und schieb sie mit den Knöpfen nach vorne "
+        "oder hinten - etwa das Supporter-Badge ganz nach vorn. Gilt für "
+        "Nachrichten, die ab jetzt kommen. Welche überhaupt zu sehen sind, "
+        "stellst du unter General → Visible badges ein.");
+    {
+        auto *list = new QListWidget;
+        list->setSelectionMode(QAbstractItemView::SingleSelection);
+        // Room for all of them, so nothing has to be scrolled to
+        list->setFixedHeight(list->fontMetrics().lineSpacing() *
+                                 static_cast<int>(badgeorder::defaults().size()) +
+                             24);
+
+        const auto fill = [list](const QString &keep) {
+            const QSignalBlocker blocker(list);
+            list->clear();
+            for (const auto &key : badgeorder::order())
+            {
+                auto *item = new QListWidgetItem(badgeorder::nameOf(key));
+                item->setData(Qt::UserRole, key);
+                list->addItem(item);
+                if (key == keep)
+                {
+                    list->setCurrentItem(item);
+                }
+            }
+        };
+        fill({});
+
+        const auto picked = [list] {
+            auto *item = list->currentItem();
+            return item == nullptr ? QString()
+                                   : item->data(Qt::UserRole).toString();
+        };
+        // Moved from somewhere else - the Standard button - the list says
+        // what holds
+        s.badgeOrder.connect(
+            [fill, picked](const QString &, auto) {
+                fill(picked());
+            },
+            this->managedConnections_, false);
+        layout.addWidget(list, {"badge", "badges", "reihenfolge"});
+
+        auto *front = new QPushButton("Ganz nach vorn");
+        auto *up = new QPushButton("Nach vorn");
+        auto *down = new QPushButton("Nach hinten");
+        auto *back = new QPushButton("Ganz nach hinten");
+        const auto moveBy = [picked](bool forward, bool all) {
+            const auto key = picked();
+            if (key.isEmpty())
+            {
+                return;
+            }
+            while (badgeorder::move(key, forward) && all)
+            {
+            }
+        };
+        QObject::connect(front, &QPushButton::clicked, list, [moveBy] {
+            moveBy(true, true);
+        });
+        QObject::connect(up, &QPushButton::clicked, list, [moveBy] {
+            moveBy(true, false);
+        });
+        QObject::connect(down, &QPushButton::clicked, list, [moveBy] {
+            moveBy(false, false);
+        });
+        QObject::connect(back, &QPushButton::clicked, list, [moveBy] {
+            moveBy(false, true);
+        });
+
+        auto *row = new QHBoxLayout;
+        row->setContentsMargins(0, 0, 0, 0);
+        row->addWidget(front);
+        row->addWidget(up);
+        row->addWidget(down);
+        row->addWidget(back);
+        row->addStretch(1);
+        auto *rowWidget = new QWidget;
+        rowWidget->setLayout(row);
+        layout.addWidget(rowWidget, {"badge", "reihenfolge", "vorne", "hinten"});
+    }
+    addStandardButton(layout, "Badges wieder in der Reihenfolge vom Anfang",
+                      [&s] {
+                          s.badgeOrder.setValue(s.badgeOrder.getDefaultValue());
+                      });
 
     layout.addTitle("In der Usercard");
     layout.addDescription(
