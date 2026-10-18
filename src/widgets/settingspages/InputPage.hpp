@@ -7,6 +7,8 @@
 #include "widgets/settingspages/GeneralPageView.hpp"
 #include "widgets/settingspages/SettingsPage.hpp"
 
+#include <functional>
+
 namespace chatterino {
 
 /// Eingabefeld: the line you write in and the small row of buttons beside
@@ -17,11 +19,13 @@ public:
     InputPage();
 
     bool filterElements(const QString &query) override;
+    void onShow() override;
 
 private:
     void initLayout(GeneralPageView &layout);
 
     GeneralPageView *view_{};
+    std::function<void()> refillButtons_;
 };
 
 }  // namespace chatterino

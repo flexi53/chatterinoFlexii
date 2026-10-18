@@ -39,8 +39,9 @@ void addStandardButton(GeneralPageView &layout, const QString &tooltip,
 }
 
 /// The buttons of the input bar: which are shown, and in which order. Ticked
-/// here they appear, and the two arrows move the picked one about.
-void addButtonList(GeneralPageView &layout, QWidget *parent)
+/// here they appear, and the two arrows move the picked one about. Hands
+/// back what fills the list again, for when the account has changed.
+std::function<void()> addButtonList(GeneralPageView &layout, QWidget *parent)
 {
     auto &s = *getSettings();
 
@@ -165,6 +166,12 @@ void addButtonList(GeneralPageView &layout, QWidget *parent)
         list->clear();
         for (const auto &key : inputbuttons::order())
         {
+            // The account's own ones stay away for everyone else, as they
+            // do in the input bar
+            if (!inputbuttons::offered(key))
+            {
+                continue;
+            }
             auto *item = new QListWidgetItem(inputbuttons::nameOf(key));
             item->setData(Qt::UserRole, key);
             item->setToolTip(tooltipFor(key));
@@ -198,7 +205,20 @@ void addButtonList(GeneralPageView &layout, QWidget *parent)
             return;
         }
         const auto key = item->data(Qt::UserRole).toString();
-        if (inputbuttons::move(key, up))
+        // Past the ones not listed for this account, so every click visibly
+        // moves the picked one
+        bool moved = false;
+        while (inputbuttons::move(key, up))
+        {
+            moved = true;
+            const auto now = inputbuttons::order();
+            const auto at = now.indexOf(key);
+            if (inputbuttons::offered(now.value(up ? at + 1 : at - 1)))
+            {
+                break;
+            }
+        }
+        if (moved)
         {
             fill(key);
         }
@@ -230,6 +250,11 @@ void addButtonList(GeneralPageView &layout, QWidget *parent)
     auto *rowWidget = new QWidget;
     rowWidget->setLayout(row);
     layout.addWidget(rowWidget, {"reihenfolge", "hoch", "runter"});
+
+    return [list, fill] {
+        auto *item = list->currentItem();
+        fill(item == nullptr ? QString() : item->data(Qt::UserRole).toString());
+    };
 }
 
 }  // namespace
@@ -244,6 +269,15 @@ InputPage::InputPage()
     this->initLayout(*this->view_);
 }
 
+void InputPage::onShow()
+{
+    // Logged in as someone else since the page was last open
+    if (this->refillButtons_)
+    {
+        this->refillButtons_();
+    }
+}
+
 void InputPage::initLayout(GeneralPageView &layout)
 {
     auto &s = *getSettings();
@@ -254,7 +288,7 @@ void InputPage::initLayout(GeneralPageView &layout)
         "ausschaltest, ist nicht weg - es steht weiter im Menü des Splits "
         "oder in den Einstellungen.");
 
-    addButtonList(layout, this);
+    this->refillButtons_ = addButtonList(layout, this);
 
     SettingWidget::checkbox("Senden", s.showSendButton)
         ->setTooltip("Schickt die getippte Nachricht ab - dasselbe wie die "
@@ -277,10 +311,9 @@ void InputPage::initLayout(GeneralPageView &layout)
         ->addTo(layout);
 
     layout.addDescription(
-        "„Mod-Assistent“ und „Alarme stumm“ erscheinen ohnehin nur in "
-        "Kanälen, in denen du Mod oder Streamer bist - sonst könnten sie "
-        "nichts ausrichten. „Badge wechseln“ nur dort, wo du eingeloggt "
-        "schreiben kannst, „Clip erstellen“ nur in Twitch-Kanälen.");
+        "Manche Knöpfe erscheinen nur dort, wo sie etwas ausrichten können: "
+        "„Badge wechseln“ nur dort, wo du eingeloggt schreiben kannst, "
+        "„Clip erstellen“ nur in Twitch-Kanälen.");
 
     addStandardButton(
         layout, "Alle Knöpfe wieder so, wie sie am Anfang sind", [&s] {

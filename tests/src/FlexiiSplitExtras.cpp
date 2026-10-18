@@ -2491,6 +2491,27 @@ TEST(FlexiiAdvanced, WithoutTheAccountItStaysShut)
     advanced::stopPretending();
 }
 
+TEST(FlexiiAdvanced, TheAccountsButtonsAreOfferedOnlyToIt)
+{
+    MockApplication app;
+    const QStringList own{inputbuttons::MOD_ASSIST, inputbuttons::ALERT_MUTE,
+                          inputbuttons::AUTO_MESSAGES};
+
+    advanced::pretendUnlocked(false);
+    for (const auto &key : inputbuttons::defaults())
+    {
+        EXPECT_EQ(inputbuttons::ownerOnly(key), own.contains(key));
+        EXPECT_EQ(inputbuttons::offered(key), !own.contains(key));
+    }
+
+    advanced::pretendUnlocked(true);
+    for (const auto &key : inputbuttons::defaults())
+    {
+        EXPECT_TRUE(inputbuttons::offered(key));
+    }
+    advanced::stopPretending();
+}
+
 TEST(FlexiiAdvanced, LockedNothingIsPutInPlaceForTheWatchedPeople)
 {
     MockApplication app;

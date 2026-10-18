@@ -35,6 +35,13 @@ void setOrder(const QStringList &keys);
 /// What the button @a key is called on the settings page
 QString nameOf(const QString &key);
 
+/// Whether @a key belongs to the parts of ChattiFlexii that only the account
+/// it was built for gets - see util/Advanced.hpp
+bool ownerOnly(const QString &key);
+
+/// Whether @a key is offered to the account logged in now
+bool offered(const QString &key);
+
 /// Moves @a key one place towards the front (@a up) or the back, and keeps
 /// the result. Says whether anything moved.
 bool move(const QString &key, bool up);

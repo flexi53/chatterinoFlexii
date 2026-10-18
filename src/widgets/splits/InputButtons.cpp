@@ -5,6 +5,7 @@
 #include "widgets/splits/InputButtons.hpp"
 
 #include "singletons/Settings.hpp"
+#include "util/Advanced.hpp"
 #include "util/SavedOrder.hpp"
 
 namespace chatterino::inputbuttons {
@@ -71,6 +72,16 @@ QString nameOf(const QString &key)
         return QStringLiteral("Emotes");
     }
     return key;
+}
+
+bool ownerOnly(const QString &key)
+{
+    return key == MOD_ASSIST || key == ALERT_MUTE || key == AUTO_MESSAGES;
+}
+
+bool offered(const QString &key)
+{
+    return !ownerOnly(key) || advanced::unlocked();
 }
 
 bool move(const QString &key, const bool up)
