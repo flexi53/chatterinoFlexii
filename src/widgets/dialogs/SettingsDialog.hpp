@@ -64,7 +64,7 @@ protected:
 private:
     std::unique_ptr<boost::signals2::scoped_connection> accountChange_;
     void refresh();
-    /// ChattiFlexii: shows or hides "Erweitert", depending on who is logged
+    /// ChattiFlexii: shows or hides "Automatik", depending on who is logged
     /// in - see util/Advanced.hpp
     void refreshAdvanced();
 

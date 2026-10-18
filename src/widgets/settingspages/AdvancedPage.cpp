@@ -28,13 +28,14 @@ AdvancedPage::AdvancedPage()
     auto *outer = new QVBoxLayout(this);
     outer->setContentsMargins(0, 0, 0, 0);
 
-    // The two halves as they were, each as its own tab
+    // What runs by itself for this account, each as its own tab
     this->tabs_ = new QTabWidget;
     outer->addWidget(this->tabs_);
 
-    this->assistant_ = new ModAssistantPage;
-    this->tabs_->addTab(this->assistant_, "Mod-Assistent");
-    this->buildPeopleTab(addPageTab(this->tabs_, "User"));
+    this->assistant_ =
+        new ModAssistantPage(ModAssistantPage::Part::Suggestions);
+    this->tabs_->addTab(this->assistant_, "Vorschläge");
+    this->buildPeopleTab(addPageTab(this->tabs_, "Leute im Blick"));
     addPageTab(this->tabs_, "Autonachrichten")->addWidget(new AutoMessagesTab);
 }
 
@@ -44,7 +45,7 @@ bool AdvancedPage::filterElements(const QString &query)
     return matchesPageText(this, query) ||
            this->assistant_->filterElements(query) ||
            matchesKeywords(query, {
-                                      "erweitert",
+                                      "automatik",
                                       "user",
                                       "leute",
                                       "im blick",

@@ -14,7 +14,7 @@
 
 namespace chatterino {
 
-/// Erweitert -> Autonachrichten: your own account answers by itself when
+/// Automatik -> Autonachrichten: your own account answers by itself when
 /// something happens in a channel - a chat message matching a pattern, a
 /// sub, a resub, a gift of so many subs, a raid. Each rule has its answers
 /// (one is picked at random), a delay drawn anew each time between a least

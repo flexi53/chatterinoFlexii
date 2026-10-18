@@ -37,6 +37,7 @@
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QSpinBox>
+#include <QTabBar>
 #include <QTabWidget>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -347,7 +348,7 @@ private:
 
 }  // namespace
 
-ModAssistantPage::ModAssistantPage()
+ModAssistantPage::ModAssistantPage(Part part)
 {
     auto *outer = new QVBoxLayout(this);
     outer->setContentsMargins(0, 0, 0, 0);
@@ -366,13 +367,14 @@ ModAssistantPage::ModAssistantPage()
 
     // ----- Allgemein -----
     addText(general,
-            "Der Mod-Assistent meldet sich mit einem Alarm-Fenster, wenn in "
-            "einem Kanal, in dem du Mod bist, etwas passiert: jemand schreibt "
-            "dieselbe Nachricht immer wieder, flutet den Chat mit Emotes, oder "
-            "schreibt etwas, wofür andere Mods schon Timeouts gegeben haben. "
-            "Eingeschaltet wird das pro Kanal über den Schild-Knopf neben dem "
-            "Emote-Knopf. Es passiert nie etwas, solange du nicht selbst auf "
-            "den Knopf im Fenster drückst.");
+            "ChattiFlexii meldet sich mit einem Alarm-Fenster, wenn in einem "
+            "Kanal, in dem du Mod bist, etwas passiert: jemand schreibt "
+            "dieselbe Nachricht immer wieder, flutet den Chat mit Emotes oder "
+            "schreibt ein Wort von deiner Liste. In welchen Kanälen, stellst "
+            "du im Reiter der jeweiligen Alarm-Art ein; die Glocke neben dem "
+            "Eingabefeld schaltet sie dort vorübergehend stumm. Es passiert "
+            "nie etwas, solange du nicht selbst auf den Knopf im Fenster "
+            "drückst.");
     addText(general,
             "Was hier steht, gilt für alle Alarm-Fenster. Alles zu einer "
             "bestimmten Art von Alarm findest du in ihrem eigenen Reiter.",
@@ -616,15 +618,37 @@ ModAssistantPage::ModAssistantPage()
     }
     suggestions->addStretch(1);
 
+    // The channels a kind of alert watches, written as on Mod-Highlights
+    const auto addChannels = [this](QVBoxLayout *layout,
+                                    QStringSetting &setting) {
+        addHeading(layout, "Kanäle");
+        auto *edit = new QLineEdit(setting.getValue());
+        edit->setPlaceholderText("zarbex, trymacs");
+        edit->setClearButtonEnabled(true);
+        edit->setToolTip(
+            "Die Kanäle, in denen dieser Alarm aufgeht, durch Kommas "
+            "getrennt. Er geht nur dort auf, wo du Mod oder Streamer bist.");
+        QObject::connect(edit, &QLineEdit::textEdited, this,
+                         [&setting](const QString &text) {
+                             setting.setValue(text.trimmed().toLower());
+                         });
+        setting.connect(
+            [edit](const QString &value, auto) {
+                if (!edit->hasFocus())
+                {
+                    edit->setText(value);
+                }
+            },
+            this->managedConnections_, false);
+        layout->addWidget(edit);
+    };
+
     // ----- Wiederholte Nachrichten -----
     addText(repeats,
             "Ein Alarm, wenn jemand dreimal hintereinander dieselbe Nachricht "
             "schreibt. Er bietet einen Timeout an, und macht der User nach dem "
             "Timeout weiter, beim nächsten Mal die nächste Stufe.");
-    addText(repeats,
-            "Eingeschaltet wird der Alarm pro Kanal über den Schild-Knopf in "
-            "diesem Kanal.",
-            true);
+    addChannels(repeats, getSettings()->repeatAlertChannels);
 
     addHeading(repeats, "Erkennung");
     {
@@ -691,10 +715,7 @@ ModAssistantPage::ModAssistantPage()
             "auslösen: eine einzelne Nachricht mit sehr vielen Emotes, und "
             "mehrere Nachrichten hintereinander, in denen nichts als Emotes "
             "stehen.");
-    addText(emotes,
-            "Eingeschaltet wird der Alarm pro Kanal über den Schild-Knopf in "
-            "diesem Kanal.",
-            true);
+    addChannels(emotes, getSettings()->emoteAlertChannels);
 
     addHeading(emotes, "Erkennung");
     {
@@ -799,10 +820,7 @@ ModAssistantPage::ModAssistantPage()
             "sie hier untereinander - aus jedem Wort wird von selbst ein "
             "Muster gebaut, das es auch abgewandelt findet: sybau, syb4u, "
             "s.y.b.a.u, mit kyrillischen Buchstaben.");
-    addText(words,
-            "Eingeschaltet wird der Alarm pro Kanal über den Schild-Knopf in "
-            "diesem Kanal.",
-            true);
+    addChannels(words, getSettings()->wordAlertChannels);
 
     addHeading(words, "Wörter");
     {
@@ -993,6 +1011,27 @@ ModAssistantPage::ModAssistantPage()
             "du ohnehin im Chat, dort steht dann der Kanal dabei.",
             true);
     shared->addStretch(1);
+
+    // Mod-Alarme keeps every tab but the suggestions, Automatik only those.
+    // The others are taken off rather than deleted, as the settings still
+    // talk to their widgets.
+    constexpr int suggestionsTab = 1;
+    if (part == Part::Alerts)
+    {
+        tabs->removeTab(suggestionsTab);
+        return;
+    }
+    for (int i = tabs->count() - 1; i >= 0; --i)
+    {
+        if (i != suggestionsTab)
+        {
+            tabs->removeTab(i);
+        }
+    }
+    // A single tab needs no bar of its own - it sits in one of Automatik's
+    tabs->tabBar()->hide();
+    // The delay serves the test suggestion too
+    suggestions->insertWidget(suggestions->count() - 1, delayTests);
 }
 
 bool ModAssistantPage::filterElements(const QString &query)

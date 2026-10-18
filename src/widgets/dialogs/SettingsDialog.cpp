@@ -347,7 +347,8 @@ void SettingsDialog::addTabs()
     this->ui_.tabContainer->addSpacing(16);
     this->addTab([]{return new NotesPage;},            "Notizen",        ":/settings/notes.svg");
     this->addTab([]{return new ModHighlightsPage;},    "Mod-Highlights", ":/settings/modhighlights.svg");
-    this->addTab([]{return new AdvancedPage;},         "Erweitert",      ":/settings/modassistant.svg");
+    this->addTab([]{return new ModAssistantPage;},     "Mod-Alarme",     ":/settings/modalerts.svg");
+    this->addTab([]{return new AdvancedPage;},         "Automatik",      ":/settings/modassistant.svg");
     this->ui_.tabContainer->addSpacing(16);
     this->addTab([]{return new TransferPage;},         "Sichern & Übertragen", ":/settings/transfer.svg");
     // Ours are drawn in the modern way to begin with; Chatterino's own get
@@ -581,12 +582,12 @@ void SettingsDialog::refresh()
 
 void SettingsDialog::refreshAdvanced()
 {
-    // "Erweitert" belongs to the account this was built for - everyone else
+    // "Automatik" belongs to the account this was built for - everyone else
     // gets the program without it, see util/Advanced.hpp
     const bool shown = advanced::unlocked();
     for (auto *tab : this->tabs_)
     {
-        if (this->tabKeys_.value(tab) != QStringLiteral("Erweitert"))
+        if (this->tabKeys_.value(tab) != QStringLiteral("Automatik"))
         {
             continue;
         }

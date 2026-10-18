@@ -2494,7 +2494,7 @@ TEST(FlexiiAdvanced, WithoutTheAccountItStaysShut)
 TEST(FlexiiAdvanced, TheAccountsButtonsAreOfferedOnlyToIt)
 {
     MockApplication app;
-    const QStringList own{inputbuttons::MOD_ASSIST, inputbuttons::ALERT_MUTE,
+    const QStringList own{inputbuttons::MOD_ASSIST,
                           inputbuttons::AUTO_MESSAGES};
 
     advanced::pretendUnlocked(false);

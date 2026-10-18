@@ -11,7 +11,7 @@
 
 namespace chatterino {
 
-/// Erweitert -> Autonachrichten, switched on and off for the channel its
+/// Automatik -> Autonachrichten, switched on and off for the channel its
 /// split shows: a speech bubble, coloured while your account answers here
 /// by itself, struck through while it does not.
 class AutoMessageButton : public Button

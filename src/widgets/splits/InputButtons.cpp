@@ -76,7 +76,7 @@ QString nameOf(const QString &key)
 
 bool ownerOnly(const QString &key)
 {
-    return key == MOD_ASSIST || key == ALERT_MUTE || key == AUTO_MESSAGES;
+    return key == MOD_ASSIST || key == AUTO_MESSAGES;
 }
 
 bool offered(const QString &key)

@@ -93,8 +93,8 @@ std::function<void()> addButtonList(GeneralPageView &layout, QWidget *parent)
         if (key == inputbuttons::MOD_ASSIST)
         {
             return "Öffnet das Fenster, in dem du für diesen Kanal "
-                   "einstellst, worauf der Mod-Assistent achtet. Erscheint "
-                   "nur, wo du Mod oder Streamer bist.";
+                   "einstellst, ob der Mod-Assistent lernt oder vorschlägt. "
+                   "Erscheint nur, wo du Mod oder Streamer bist.";
         }
         if (key == inputbuttons::ALERT_MUTE)
         {
@@ -104,7 +104,7 @@ std::function<void()> addButtonList(GeneralPageView &layout, QWidget *parent)
         }
         if (key == inputbuttons::AUTO_MESSAGES)
         {
-            return "Schaltet die Autonachrichten (Erweitert → "
+            return "Schaltet die Autonachrichten (Automatik → "
                    "Autonachrichten) für diesen Kanal an und aus. Grün heißt: "
                    "dein Account antwortet hier von selbst.";
         }

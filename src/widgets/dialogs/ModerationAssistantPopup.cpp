@@ -4,14 +4,10 @@
 
 #include "widgets/dialogs/ModerationAssistantPopup.hpp"
 
-#include "controllers/moderation/EmoteSpamDetector.hpp"
-#include "controllers/moderation/WordAlertDetector.hpp"
 #include "controllers/moderation/ModerationAssistant.hpp"
-#include "controllers/moderation/RepeatSpamDetector.hpp"
 #include "singletons/Settings.hpp"
 #include "util/FormatTime.hpp"
 
-#include <QCheckBox>
 #include <QComboBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -72,47 +68,8 @@ ModerationAssistantPopup::ModerationAssistantPopup(const QString &channel,
     modeRow->addStretch(1);
     layout->addLayout(modeRow);
 
-    auto *repeatAlert = new QCheckBox(QStringLiteral(
-        "Alarm, wenn jemand dreimal hintereinander dieselbe Nachricht schreibt"));
-    repeatAlert->setToolTip(QStringLiteral(
-        "Öffnet ein Fenster mit den letzten Nachrichten und einem "
-        "Timeout-Knopf. Macht der User nach einem Timeout weiter, bietet der "
-        "Knopf die nächste Stufe an - die Stufen stellst du unter "
-        "Einstellungen → Mod-Assistent ein. Unabhängig vom Modus oben."));
-    repeatAlert->setChecked(
-        RepeatSpamDetector::instance().isEnabled(this->channel_));
-    QObject::connect(repeatAlert, &QCheckBox::toggled, this, [this](bool on) {
-        RepeatSpamDetector::instance().setEnabled(this->channel_, on);
-    });
-    layout->addWidget(repeatAlert);
-
-    auto *emoteAlert = new QCheckBox(QStringLiteral("Alarm bei Emote-Spam"));
-    emoteAlert->setToolTip(QStringLiteral(
-        "Öffnet ein Fenster, wenn jemand den Chat mit Emotes flutet - die "
-        "Emotes werden über eine kurze Zeit zusammengezählt, wie unter "
-        "Einstellungen → Mod-Assistent eingestellt. Zuerst bietet es an, die "
-        "Nachrichten zu löschen, später einen Timeout. Unabhängig vom Modus "
-        "oben."));
-    emoteAlert->setChecked(
-        EmoteSpamDetector::instance().isEnabled(this->channel_));
-    QObject::connect(emoteAlert, &QCheckBox::toggled, this, [this](bool on) {
-        EmoteSpamDetector::instance().setEnabled(this->channel_, on);
-    });
-    layout->addWidget(emoteAlert);
-
-    auto *wordAlert = new QCheckBox(QStringLiteral("Alarm bei Wörtern von "
-                                                   "der Liste"));
-    wordAlert->setToolTip(QStringLiteral(
-        "Öffnet ein Fenster, wenn jemand ein Wort schreibt, das du unter "
-        "Einstellungen → Mod-Assistent → Wörter hinterlegt hast - auch "
-        "abgewandelt geschrieben. Es schlägt die Timeout-Dauer vor, die du "
-        "dort eingestellt hast. Unabhängig vom Modus oben."));
-    wordAlert->setChecked(WordAlertDetector::instance().isEnabled(this->channel_));
-    QObject::connect(wordAlert, &QCheckBox::toggled, this, [this](bool on) {
-        WordAlertDetector::instance().setEnabled(this->channel_, on);
-    });
-    layout->addWidget(wordAlert);
-
+    // Which alerts go off in a channel is set on Mod-Alarme, for everyone;
+    // this window is only about the suggestions
     this->status_ = new QLabel;
     layout->addWidget(this->status_);
 

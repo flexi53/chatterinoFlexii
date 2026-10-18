@@ -16,10 +16,10 @@ namespace chatterino {
 
 class ModAssistantPage;
 
-/// Erweitert: the parts that belong to the account this was built for - the
-/// moderation assistant with its alert windows, and the User tab that
-/// gathers what watched people write. The page is only there while that
-/// account is logged in, see util/Advanced.hpp.
+/// Automatik: the parts that belong to the account this was built for - the
+/// suggestions the moderation assistant learns, the people kept in view and
+/// the automatic answers. The page is only there while that account is
+/// logged in, see util/Advanced.hpp.
 class AdvancedPage : public SettingsPage
 {
 public:

@@ -25,7 +25,7 @@ class QWidget;
 
 namespace chatterino {
 
-/// Erweitert -> Autonachrichten: the rules on the left, the chosen one to
+/// Automatik -> Autonachrichten: the rules on the left, the chosen one to
 /// edit below, and a test that shows what would be sent without sending it.
 /// Saved half a second after the last change.
 class AutoMessagesTab : public QWidget

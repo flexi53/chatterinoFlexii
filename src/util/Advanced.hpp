@@ -7,10 +7,11 @@
 #include <QString>
 
 /// The parts of ChattiFlexii that belong to the one account it was built
-/// for: the moderation assistant with its alerts, and the User tab that
-/// gathers what watched people write. Everyone else gets the program
-/// without them - the settings page "Erweitert" is not shown, the shield
-/// button stays away and no alert window ever opens.
+/// for: the suggestions the moderation assistant learns, the people kept in
+/// view and the automatic answers. Everyone else gets the program without
+/// them - the settings page "Automatik" is not shown, and neither are the
+/// shield and the speech bubble beside the input. The alert windows, their
+/// page Mod-Alarme and the bell are everyone's.
 ///
 /// This is tidying up, not a lock: the code is public, and anyone who
 /// builds it themselves can put their own name in. It keeps the download

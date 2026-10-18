@@ -22,6 +22,7 @@
 #include "singletons/Settings.hpp"
 #include "singletons/StreamerMode.hpp"
 #include "singletons/WindowManager.hpp"
+#include "util/Advanced.hpp"
 #include "util/Helpers.hpp"
 #include "util/PostToThread.hpp"
 
@@ -153,14 +154,16 @@ void Connection::onChannelChatMessage(
 }
 
 /// Hands a timeout or ban to the moderation assistant, together with what the
-/// user wrote before it. Does nothing in channels it is not collecting in.
+/// user wrote before it. Does nothing in channels it is not collecting in,
+/// nor for anyone but the account the assistant belongs to.
 static void recordModerationCase(const ChannelPtr &channel,
                                  const QDateTime &time,
                                  const QString &moderator, const QString &user,
                                  const QString &reason, int seconds)
 {
-    if (ModerationAssistant::instance().mode(channel->getName()) ==
-        ModAssistMode::Off)
+    if (!advanced::unlocked() ||
+        ModerationAssistant::instance().mode(channel->getName()) ==
+            ModAssistMode::Off)
     {
         return;
     }

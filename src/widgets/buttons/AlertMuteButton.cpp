@@ -59,10 +59,10 @@ void AlertMuteButton::refreshTooltip()
             ? QStringLiteral("Alarm-Fenster für %1 sind aus - es geht keines "
                              "mehr auf. Klicken, um sie wieder zu erlauben.")
                   .arg(where)
-            : QStringLiteral("Alarm-Fenster für %1 ausschalten - der "
-                             "Mod-Assistent passt weiter auf, aber nichts "
-                             "ploppt mehr auf. Andere Kanäle bleiben, wie "
-                             "sie sind.")
+            : QStringLiteral("Alarm-Fenster für %1 ausschalten - es wird "
+                             "weiter aufgepasst, aber nichts ploppt mehr auf. "
+                             "Andere Kanäle bleiben, wie sie sind. Welche "
+                             "Alarme wo aufgehen, steht unter Mod-Alarme.")
                   .arg(where));
 }
 

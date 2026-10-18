@@ -1396,8 +1396,9 @@ void IrcMessageHandler::addMessage(Communi::IrcMessage *message,
             }
         }
 
-        // ChattiFlexii: the alerts belong to the account this was built for
-        if (!isSub && !tags.contains("historical") && advanced::unlocked())
+        // ChattiFlexii: the alerts are everyone's; the suggestions and the
+        // automatic answers belong to the account this was built for
+        if (!isSub && !tags.contains("historical"))
         {
             RepeatSpamDetector::instance().onMessage(
                 chan->getName(), msg->loginName, msg->displayName, content,
@@ -1407,6 +1408,9 @@ void IrcMessageHandler::addMessage(Communi::IrcMessage *message,
             WordAlertDetector::instance().onMessage(
                 chan->getName(), msg->loginName, msg->displayName, content,
                 tags.value("badges").toString(), msg->id);
+        }
+        if (!isSub && !tags.contains("historical") && advanced::unlocked())
+        {
             ModerationAssistant::instance().onMessage(
                 chan->getName(), msg->loginName, msg->displayName, content,
                 tags.value("badges").toString());

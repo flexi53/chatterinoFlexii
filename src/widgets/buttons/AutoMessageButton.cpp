@@ -52,12 +52,12 @@ void AutoMessageButton::refreshTooltip()
     this->setToolTip(
         AutoMessages::isOn(this->channel_)
             ? QStringLiteral("Autonachrichten in %1 sind an - dein Account "
-                             "antwortet nach den Regeln unter Erweitert → "
+                             "antwortet nach den Regeln unter Automatik → "
                              "Autonachrichten. Klicken zum Ausschalten.")
                   .arg(where)
             : QStringLiteral("Autonachrichten in %1 sind aus. Klicken zum "
                              "Einschalten - die Regeln stehen unter "
-                             "Erweitert → Autonachrichten.")
+                             "Automatik → Autonachrichten.")
                   .arg(where));
 }
 

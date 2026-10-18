@@ -675,13 +675,14 @@ void SplitInput::updateModAssistButton()
         twitch != nullptr && (twitch->isMod() || twitch->isBroadcaster());
     // Buttons: both are only ever there where they could do
     // something, and only while they are switched on
-    // The shield and the bell belong to the alerts, and those belong to the
-    // account this was built for - see util/Advanced.hpp
+    // The shield holds the suggestions, which belong to the account this was
+    // built for - see util/Advanced.hpp. The bell silences the alerts, which
+    // are everyone's.
     const bool mine = advanced::unlocked();
     this->ui_.modAssistButton->setVisible(
         moderates && mine && getSettings()->showModAssistButton);
-    this->ui_.alertMuteButton->setVisible(
-        moderates && mine && getSettings()->showAlertMuteButton);
+    this->ui_.alertMuteButton->setVisible(moderates &&
+                                          getSettings()->showAlertMuteButton);
     // It silences the channel it stands in, like the shield beside it
     this->ui_.alertMuteButton->setChannel(
         twitch != nullptr ? twitch->getName() : QString{});

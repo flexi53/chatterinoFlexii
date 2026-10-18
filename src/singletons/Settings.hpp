@@ -1311,7 +1311,7 @@ public:
     /// Notizen -> Leute im Blick: a tab collecting what the chosen people
     /// write, wherever you have their channel open
     BoolSetting watchedPeopleEnabled = {"/notes/people/enabled", false};
-    /// Erweitert -> Autonachrichten: rules as JSON, see
+    /// Automatik -> Autonachrichten: rules as JSON, see
     /// controllers/automessages/AutoMessages.hpp
     /// Channels (logins, ';' between them) where they are switched on - by
     /// the speech bubble in the input bar

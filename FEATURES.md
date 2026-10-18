@@ -233,20 +233,21 @@ off brings the theme back and keeps your colours for later.
   in the WhoseTheMod plugin does, so it needs that plugin switched on, and it
   can be turned off on the Mod-Highlights page.
 
-## Erweitert
+## Automatik
 
-The moderation assistant, the User tab and the automatic answers sit
-together on one settings page called **Erweitert**, one tab each. That page is only there while the
-account it was built for is logged in - anyone else gets ChattiFlexii
-without those parts: no page, no shield and bell beside the input, no entry
-in the right-click menu, no User tab and no alert window ever opens. The
-rest of the program is the same for everyone. It is tidying up rather than
-a lock: the code is public, and whoever builds it can put their own name in
-(`src/util/Advanced.hpp`).
+The suggestions the moderation assistant learns, the people kept in view
+and the automatic answers sit together on one settings page called
+**Automatik**, one tab each. That page is only there while the account it
+was built for is logged in - anyone else gets ChattiFlexii without those
+parts: no page, no shield and no speech bubble beside the input, no entry in
+the right-click menu and nothing collected. The alert windows are not part
+of it: their page **Mod-Alarme** and the bell are there for everyone. It is
+tidying up rather than a lock: the code is public, and whoever builds it can
+put their own name in (`src/util/Advanced.hpp`).
 
 ## Automatic answers
 
-Under Erweitert → **Autonachrichten** your own account answers by itself
+Under Automatik → **Autonachrichten** your own account answers by itself
 when something happens in a channel:
 
 - **Sub-Gifts** from so many subs on - of several rules the one with the
@@ -278,9 +279,9 @@ two seconds, whatever the rules say.
 
 ## Moderation assistant
 
-In channels you moderate, a shield button sits next to the emote button. It
-opens the assistant for that channel, which learns from the timeouts and bans
-moderators hand out there.
+In channels you moderate, a shield button sits next to the emote button - for
+the account Automatik belongs to. It opens the assistant for that channel,
+which learns from the timeouts and bans moderators hand out there.
 
 - **Off**, **Learn** or **Suggest**, chosen per channel
 - A case is the action - duration, moderator, reason - together with what the
@@ -298,7 +299,7 @@ moderators hand out there.
 - **Nothing happens unless you press the button.** The window closes by itself
   otherwise, and at most three suggestions are open at once
 - How many cases it needs and how similar a message has to be are under
-  Settings -> Mod-Assistent
+  Settings -> Automatik -> Vorschläge
 - Under the reason the window lists the cases the suggestion rests on, each
   with **Stimmt** - right and relevant, it then counts twice - and
   **Löschen**, which takes a wrong case out at once. The assistant's own
@@ -307,7 +308,7 @@ moderators hand out there.
 "Similar" means similar wording. It is good at spam, repeated insults and
 links, and knows nothing about context - someone quoting a message to
 complain about it looks the same to it. That is why it suggests and never
-acts. **Show a test suggestion** under Settings -> Mod-Assistent
+acts. **Show a test suggestion** under Settings -> Automatik -> Vorschläge
 opens one with made up messages.
 
 Cases stay on your computer. Moderators, VIPs and the broadcaster never get
@@ -315,8 +316,9 @@ suggestions, and neither do your own messages.
 
 ### Repeated messages
 
-The same popup has a switch that watches for a chatter sending the same
-message three times in a row. When it happens a window laid out like a user
+The alerts below are everyone's, set up under Settings -> **Mod-Alarme**,
+each in the channels written into its own tab. The first watches for a
+chatter sending the same message three times in a row. When it happens a window laid out like a user
 card opens - without taking the keyboard from you - with their picture and how
 old their account is, their recent messages as they looked in chat with
 Twitch's timeout notices in between, and a timeout button. Each time they send that message again after
@@ -335,13 +337,12 @@ not keep it at the first step.
   down along its bottom, and stays open while the mouse is over it
 
 Steps, similarity and the closing time are under Settings ->
-Mod-Assistent, along with **Show a test alert**, which opens the window with made
+Mod-Alarme, along with **Show a test alert**, which opens the window with made
 up messages and buttons that do nothing.
 
 ### Emote spam
 
-A second switch in the same popup watches for chatters flooding the chat with
-emotes. It adds up the emotes of their messages over a short time - **8 within
+A second alert watches for chatters flooding the chat with emotes. It adds up the emotes of their messages over a short time - **8 within
 60 seconds** to begin with - counting the messages where emotes outweigh words,
 so a string of short bursts with the odd word in between counts as much as one
 long wall. The same window comes up, offering what the steps say - to begin
@@ -352,7 +353,7 @@ out, by you or anyone else - or, when nobody acts, once they have flooded as
 many emotes again as the alert starts at: an ignored alert comes back a step
 higher rather than at the first step again. Emojis count as emotes; cheers do
 not. The number, the time, the steps and a **Show a test emote spam alert**
-button are under Settings -> Mod-Assistent.
+button are under Settings -> Mod-Alarme.
 
 ### All alert windows
 
@@ -376,14 +377,15 @@ repeated", "Emote spam", or what the assistant found - in a colour of its own
 for each kind of alert, which the running bar takes too. The colours can be
 changed; whatever is picked is made bright, so the reason always stands out.
 
-Settings -> Mod-Assistent is split into tabs: **General** for what all alert
-windows share, then one each for **suggestions**, **repeated messages** and
-**emote spam** with everything about that alert - detection, steps, colour and
-its test button.
+Settings -> Mod-Alarme is split into tabs: **General** for what all alert
+windows share, then one each for **repeated messages**, **emote spam** and
+**words** with everything about that alert - its channels, detection, steps,
+colour and its test button. The bell beside the input silences them for a
+channel without changing any of it.
 
 ### Mod highlights
 
-Settings has a **Mod-Highlights** page, right below Mod-Assistent, that
+Settings has a **Mod-Highlights** page that
 works with the **WhoseTheMod** plugin switched on: pick channels, and messages
 from their moderators are
 marked with the **profile pictures** of those channels at the end of the line -
@@ -405,8 +407,8 @@ aecrobot, streamelements and other common ones are listed to begin with, the
 list can be edited, and any name ending in "bot" is left out too unless that
 is switched off.
 
-The **User** tab of that page is where the watched people are kept - the
-list, the filter and the button that opens their tab. What you note about
+The **Leute im Blick** tab under Automatik is where the watched people are
+kept - the list, the filter and the button that opens their tab. What you note about
 people and the messages you kept with "Merken" stay under **Notizen**,
 where everyone has them.
 
