@@ -560,7 +560,10 @@ account, kept in the keychain only.
   Chatti-Badge
 - The **order of the badges** in front of a name is set under Aussehen ->
   Chat, by where they come from: Twitch, Chatterino, FFZ, BTTV, 7TV, Homies,
-  Moltorino, the uploaded Chatti-Badge and user/supporter
+  Moltorino, sonkerino, the uploaded Chatti-Badge and user/supporter
+- **sonkerino** badges - what people uploaded on sonkerino.kuestenfunk.org,
+  a friend's own Chatterino - with a switch of their own under Visible
+  badges
 - **Chatterino Homies** badges, switchable under Appearance
 - **7TV** badges and paints load when you join a channel, rather than the
   first time the user writes something
