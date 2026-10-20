@@ -20,6 +20,8 @@ inline const QString FROM_BTTV = QStringLiteral("bttv");
 inline const QString FROM_SEVENTV = QStringLiteral("seventv");
 inline const QString FROM_HOMIES = QStringLiteral("homies");
 inline const QString FROM_MOLTORINO = QStringLiteral("moltorino");
+/// Uploaded on sonkerino.kuestenfunk.org
+inline const QString FROM_SONKERINO = QStringLiteral("sonkerino");
 /// The one someone uploaded under Chatti-Badge
 inline const QString FROM_CHATTI = QStringLiteral("chatti");
 /// ChattiFlexii-Nutzer or -Supporter - never both

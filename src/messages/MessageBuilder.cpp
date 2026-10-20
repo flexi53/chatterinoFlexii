@@ -33,6 +33,7 @@
 #include "providers/moltorino/MoltorinoBadges.hpp"
 #include "messages/BadgeOrder.hpp"
 #include "providers/chattibadges/ChattiBadges.hpp"
+#include "providers/sonkerino/SonkerinoBadges.hpp"
 #include "providers/links/LinkResolver.hpp"
 #include "providers/seventv/SeventvBadges.hpp"
 #include "providers/seventv/SeventvEmotes.hpp"
@@ -1848,6 +1849,10 @@ std::pair<MessagePtrMut, HighlightAlert> MessageBuilder::makeIrcMessage(
         {
             builder.appendMoltorinoBadge(userID);
         }
+        else if (source == badgeorder::FROM_SONKERINO)
+        {
+            builder.appendSonkerinoBadge(userID);
+        }
         else if (source == badgeorder::FROM_CHATTI)
         {
             builder.appendChattiBadge(userID);
@@ -2854,6 +2859,25 @@ void MessageBuilder::appendChattiStatusBadge(const QString &userID)
         this->emplace<BadgeElement>(*badge, MessageElementFlag::BadgeChatti);
 
         /// "chatti:Nutzer" or "chatti:Supporter"
+        this->message().externalBadges.emplace_back((*badge)->name.string);
+    }
+}
+
+void MessageBuilder::appendSonkerinoBadge(const QString &userID)
+{
+    // The tests have none of the badge providers, and should not go out to
+    // fetch this one either
+    if (getApp()->getMoltorinoBadges() == nullptr)
+    {
+        return;
+    }
+
+    if (auto badge = sonkerinobadges::badgeOf(userID))
+    {
+        this->emplace<BadgeElement>(*badge,
+                                    MessageElementFlag::BadgeSonkerino);
+
+        /// e.g. "sonkerino:<badge id>"
         this->message().externalBadges.emplace_back((*badge)->name.string);
     }
 }

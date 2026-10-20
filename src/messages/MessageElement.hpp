@@ -57,7 +57,8 @@ enum class MessageElementFlag : int64_t {
 
     /// ChattiFlexii: its own badges, uploaded under Chatti-Badge
     BadgeChatti = (1LL << 9),
-    // unused: (1LL << 10),
+    /// ChattiFlexii: badges from the sonkerino badge server
+    BadgeSonkerino = (1LL << 10),
 
     BitsStatic = (1LL << 11),
     BitsAnimated = (1LL << 12),
@@ -136,7 +137,7 @@ enum class MessageElementFlag : int64_t {
     Badges = BadgeGlobalAuthority | BadgePredictions | BadgeChannelAuthority |
              BadgeSubscription | BadgeVanity | BadgeChatterino | BadgeSevenTV |
              BadgeFfz | BadgeSharedChannel | BadgeBttv | BadgeHomies |
-             BadgeMoltorino | BadgeChatti,
+             BadgeMoltorino | BadgeChatti | BadgeSonkerino,
 
     ChannelName = (1LL << 20),
 

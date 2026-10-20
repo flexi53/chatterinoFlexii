@@ -1158,6 +1158,11 @@ void GeneralPage::initLayout(GeneralPageView &layout)
         ->setTooltip("Badges ChattiFlexii users made for themselves")
         ->addKeywords({"chatti", "flexii"})
         ->addTo(layout);
+    SettingWidget::checkbox("sonkerino", s.showBadgesSonkerino)
+        ->setTooltip("Badges sonkerino users uploaded on "
+                     "sonkerino.kuestenfunk.org")
+        ->addKeywords({"sonkerino", "sonker"})
+        ->addTo(layout);
     SettingWidget::checkbox("7TV", s.showBadgesSevenTV)
         ->addKeywords({"seventv"})
         ->setTooltip("Badges for 7TV admins, developers, and supporters")

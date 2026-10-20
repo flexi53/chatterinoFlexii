@@ -741,6 +741,8 @@ public:
     BoolSetting showBadgesSevenTV = {"/appearance/badges/seventv", true};
     BoolSetting showBadgesHomies = {"/appearance/badges/homies", true};
     BoolSetting showBadgesMoltorino = {"/appearance/badges/moltorino", true};
+    /// Badges from sonkerino's server - see providers/sonkerino
+    BoolSetting showBadgesSonkerino = {"/appearance/badges/sonkerino", true};
     /// ChattiFlexii's own badges - see providers/chattibadges
     BoolSetting showBadgesChatti = {"/appearance/badges/chatti", true};
     /// Where they are kept, uploaded and approved

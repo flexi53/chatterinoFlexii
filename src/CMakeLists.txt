@@ -423,6 +423,8 @@ set(SOURCE_FILES
         providers/bttv/liveupdates/BttvLiveUpdateSubscription.hpp
 
         providers/chatterino/ChatterinoBadges.cpp
+        providers/sonkerino/SonkerinoBadges.cpp
+        providers/sonkerino/SonkerinoBadges.hpp
         providers/chatterino/ChatterinoBadges.hpp
 
         providers/colors/NamedColor.hpp

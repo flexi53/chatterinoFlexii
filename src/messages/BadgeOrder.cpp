@@ -11,9 +11,9 @@ namespace chatterino::badgeorder {
 
 QStringList defaults()
 {
-    return {FROM_TWITCH,    FROM_CHATTERINO, FROM_FFZ,
-            FROM_BTTV,      FROM_SEVENTV,    FROM_HOMIES,
-            FROM_MOLTORINO, FROM_CHATTI,     CHATTI_STATUS};
+    return {FROM_TWITCH,  FROM_CHATTERINO, FROM_FFZ,       FROM_BTTV,
+            FROM_SEVENTV, FROM_HOMIES,     FROM_MOLTORINO, FROM_SONKERINO,
+            FROM_CHATTI,  CHATTI_STATUS};
 }
 
 QStringList order()
@@ -58,6 +58,10 @@ QString nameOf(const QString &key)
     if (key == FROM_MOLTORINO)
     {
         return QStringLiteral("Moltorino");
+    }
+    if (key == FROM_SONKERINO)
+    {
+        return QStringLiteral("sonkerino");
     }
     if (key == FROM_CHATTI)
     {

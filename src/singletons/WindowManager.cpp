@@ -147,6 +147,7 @@ WindowManager::WindowManager(const Args &appArgs_, const Paths &paths,
     this->updateWordTypeMaskListener.add(settings.showBadgesHomies);
     this->updateWordTypeMaskListener.add(settings.showBadgesMoltorino);
     this->updateWordTypeMaskListener.add(settings.showBadgesChatti);
+    this->updateWordTypeMaskListener.add(settings.showBadgesSonkerino);
     this->updateWordTypeMaskListener.add(settings.chatAvatars);
     this->updateWordTypeMaskListener.add(settings.enableEmoteImages);
     this->updateWordTypeMaskListener.add(settings.lowercaseDomains);
@@ -260,6 +261,8 @@ void WindowManager::updateWordTypeMask()
     flags.set(settings->showBadgesMoltorino ? MEF::BadgeMoltorino
                                             : MEF::None);
     flags.set(settings->showBadgesChatti ? MEF::BadgeChatti : MEF::None);
+    flags.set(settings->showBadgesSonkerino ? MEF::BadgeSonkerino
+                                            : MEF::None);
     // Captions are free text the user typed themselves, so there is nothing
     // to toggle - an empty caption simply produces no element.
     flags.set(MEF::FirstMessageMarker);
